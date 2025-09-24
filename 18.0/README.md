@@ -34,7 +34,18 @@ docker run -d --name odoo18 --network odoo-net \
 ```
 
 ### 5. Access
-Open your browser at: [http://localhost:8069](http://localhost:8069)
+
+#### Odoo Web Application
+- **URL:** [http://localhost:8069](http://localhost:8069)
+- **Username:** `admin`
+- **Password:** `admin`
+
+#### Database Access (DBeaver, pgAdmin, etc.)
+- **Host:** `localhost`
+- **Port:** `5432`
+- **Database:** `realestate`
+- **Username:** `odoo`
+- **Password:** `odoo`
 
 ---
 

@@ -1,0 +1,50 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: db
+    ports:
+      - "5432:5432"  # Exposta para acesso externo (DBeaver, pgAdmin, etc.)
+    environment:
+      POSTGRES_DB: realestate
+      POSTGRES_USER: odoo
+      POSTGRES_PASSWORD: odoo
+    volumes:
+      - odoo18-db:/var/lib/postgresql/data
+    networks:
+      - odoo-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U odoo"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  odoo:
+    image: odoo:18.0
+    container_name: odoo18
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8069:8069"   # HTTP
+      - "8071:8071"   # XML-RPCs
+      - "8072:8072"   # longpolling
+    environment:
+      HOST: db
+      PORT: 5432
+      USER: odoo
+      PASSWORD: odoo
+    volumes:
+      - odoo18-data:/var/lib/odoo
+      - ./extra-addons:/mnt/extra-addons
+      # Descomente para usar configuração customizada:
+      # - ./odoo.conf:/etc/odoo/odoo.conf:ro
+    networks:
+      - odoo-net
+
+volumes:
+  odoo18-db:
+  odoo18-data:
+
+networks:
+  odoo-net:
+    driver: bridge
