@@ -1,0 +1,11 @@
+<odoo>
+    <!-- Menu Principal - sequence controla posição na barra principal -->
+    <menuitem id="menu_real_estate_root" name="Real Estate" sequence="15" web_icon="quicksol_estate,static/description/icon.png"/>
+    
+    <!-- Submenus - sequence controla ordem dentro do menu -->
+    <menuitem id="menu_real_estate_property" name="Properties" parent="menu_real_estate_root" sequence="10" action="action_property"/>
+    <menuitem id="menu_real_estate_agent" name="Agents" parent="menu_real_estate_root" sequence="20" action="action_agent"/>
+    <menuitem id="menu_real_estate_tenant" name="Tenants" parent="menu_real_estate_root" sequence="30" action="action_tenant"/>
+    <menuitem id="menu_real_estate_lease" name="Leases" parent="menu_real_estate_root" sequence="40" action="action_lease"/>
+    <menuitem id="menu_real_estate_sale" name="Sales" parent="menu_real_estate_root" sequence="50" action="action_sale"/>
+</odoo>
