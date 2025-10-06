@@ -1,10 +1,47 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_real_estate_property,access_real_estate_property,model_real_estate_property,,1,1,1,1
-access_real_estate_agent,access_real_estate_agent,model_real_estate_agent,,1,1,1,1
-access_real_estate_lease,access_real_estate_lease,model_real_estate_lease,,1,1,1,1
-access_real_estate_sale,access_real_estate_sale,model_real_estate_sale,,1,1,1,1
-access_real_estate_tenant,access_real_estate_tenant,model_real_estate_tenant,,1,1,1,1
-access_real_estate_property_type_user,access_real_estate_property_type_user,model_real_estate_property_type,,1,1,1,1
-access_real_estate_property_amenity,access_real_estate_amenity,model_real_estate_amenity,,1,1,1,1
-access_real_estate_property_image,access_real_estate_image,model_real_estate_property_image,,1,1,1,1
-
+access_system_admin_estate_company,System Admin: Estate Companies,model_thedevkitchen_estate_company,base.group_system,1,1,1,1
+access_system_admin_property,System Admin: Properties,model_real_estate_property,base.group_system,1,1,1,1
+access_system_admin_agent,System Admin: Agents,model_real_estate_agent,base.group_system,1,1,1,1
+access_system_admin_lease,System Admin: Leases,model_real_estate_lease,base.group_system,1,1,1,1
+access_system_admin_sale,System Admin: Sales,model_real_estate_sale,base.group_system,1,1,1,1
+access_system_admin_tenant,System Admin: Tenants,model_real_estate_tenant,base.group_system,1,1,1,1
+access_system_admin_property_type,System Admin: Property Types,model_real_estate_property_type,base.group_system,1,1,1,1
+access_system_admin_amenity,System Admin: Amenities,model_real_estate_amenity,base.group_system,1,1,1,1
+access_system_admin_property_image,System Admin: Property Images,model_real_estate_property_image,base.group_system,1,1,1,1
+access_company_manager_estate_company,Company Manager: Estate Companies,model_thedevkitchen_estate_company,group_real_estate_manager,1,1,1,1
+access_company_manager_property,Company Manager: Properties,model_real_estate_property,group_real_estate_manager,1,1,1,1
+access_company_manager_agent,Company Manager: Agents,model_real_estate_agent,group_real_estate_manager,1,1,1,1
+access_company_manager_lease,Company Manager: Leases,model_real_estate_lease,group_real_estate_manager,1,1,1,1
+access_company_manager_sale,Company Manager: Sales,model_real_estate_sale,group_real_estate_manager,1,1,1,1
+access_company_manager_tenant,Company Manager: Tenants,model_real_estate_tenant,group_real_estate_manager,1,1,1,1
+access_company_manager_property_type,Company Manager: Property Types,model_real_estate_property_type,group_real_estate_manager,1,1,1,1
+access_company_manager_amenity,Company Manager: Amenities,model_real_estate_amenity,group_real_estate_manager,1,1,1,1
+access_company_manager_property_image,Company Manager: Property Images,model_real_estate_property_image,group_real_estate_manager,1,1,1,1
+access_company_user_estate_company,Company User: Estate Companies,model_thedevkitchen_estate_company,group_real_estate_user,1,0,0,0
+access_company_user_property,Company User: Properties,model_real_estate_property,group_real_estate_user,1,1,1,0
+access_company_user_agent,Company User: Agents,model_real_estate_agent,group_real_estate_user,1,1,0,0
+access_company_user_lease,Company User: Leases,model_real_estate_lease,group_real_estate_user,1,1,1,0
+access_company_user_sale,Company User: Sales,model_real_estate_sale,group_real_estate_user,1,1,1,0
+access_company_user_tenant,Company User: Tenants,model_real_estate_tenant,group_real_estate_user,1,1,1,0
+access_company_user_property_type,Company User: Property Types,model_real_estate_property_type,group_real_estate_user,1,0,0,0
+access_company_user_amenity,Company User: Amenities,model_real_estate_amenity,group_real_estate_user,1,0,0,0
+access_company_user_property_image,Company User: Property Images,model_real_estate_property_image,group_real_estate_user,1,1,1,1
+access_agent_estate_company,Agent: Estate Companies,model_thedevkitchen_estate_company,group_real_estate_agent,1,0,0,0
+access_agent_property,Agent: Properties,model_real_estate_property,group_real_estate_agent,1,1,0,0
+access_agent_agent,Agent: Agents,model_real_estate_agent,group_real_estate_agent,1,1,0,0
+access_agent_lease,Agent: Leases,model_real_estate_lease,group_real_estate_agent,1,1,0,0
+access_agent_sale,Agent: Sales,model_real_estate_sale,group_real_estate_agent,1,1,0,0
+access_agent_tenant,Agent: Tenants,model_real_estate_tenant,group_real_estate_agent,1,0,0,0
+access_agent_property_type,Agent: Property Types,model_real_estate_property_type,group_real_estate_agent,1,0,0,0
+access_agent_amenity,Agent: Amenities,model_real_estate_amenity,group_real_estate_agent,1,0,0,0
+access_agent_property_image,Agent: Property Images,model_real_estate_property_image,group_real_estate_agent,1,1,1,1
+access_portal_estate_company,Portal: Estate Companies,model_thedevkitchen_estate_company,base.group_portal,1,0,0,0
+access_portal_property,Portal: Properties,model_real_estate_property,base.group_portal,1,0,0,0
+access_portal_agent,Portal: Agents,model_real_estate_agent,base.group_portal,1,0,0,0
+access_portal_property_type,Portal: Property Types,model_real_estate_property_type,base.group_portal,1,0,0,0
+access_portal_amenity,Portal: Amenities,model_real_estate_amenity,base.group_portal,1,0,0,0
+access_portal_property_image,Portal: Property Images,model_real_estate_property_image,base.group_portal,1,0,0,0
+access_public_property,Public: Properties,model_real_estate_property,base.group_public,1,0,0,0
+access_public_property_type,Public: Property Types,model_real_estate_property_type,base.group_public,1,0,0,0
+access_public_amenity,Public: Amenities,model_real_estate_amenity,base.group_public,1,0,0,0
+access_public_property_image,Public: Property Images,model_real_estate_property_image,base.group_public,1,0,0,0
