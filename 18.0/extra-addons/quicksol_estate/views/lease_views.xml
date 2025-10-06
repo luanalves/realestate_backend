@@ -15,6 +15,7 @@
                 <field name="property_id"/>
                 <field name="tenant_id"/>
                 <field name="rent_amount"/>
+                <field name="company_ids" widget="many2many_tags"/>
             </list>
         </field>
     </record>
@@ -33,6 +34,7 @@
                     <group>
                         <field name="property_id"/>
                         <field name="tenant_id"/>
+                        <field name="company_ids" widget="many2many_tags"/>
                     </group>
                 </sheet>
             </form>

@@ -13,10 +13,17 @@
             <form string="Agent">
                 <sheet>
                     <group>
-                        <field name="name"/>
-                        <field name="phone"/>
-                        <field name="email"/>
-                        <field name="years_experience"/>
+                        <group>
+                            <field name="name"/>
+                            <field name="user_id"/>
+                            <field name="phone"/>
+                            <field name="email"/>
+                        </group>
+                        <group>
+                            <field name="years_experience"/>
+                            <field name="agency_name"/>
+                            <field name="company_ids" widget="many2many_tags"/>
+                        </group>
                     </group>
                 </sheet>
             </form>
@@ -29,9 +36,11 @@
         <field name="arch" type="xml">
             <list>
                 <field name="name"/>
+                <field name="user_id"/>
                 <field name="phone"/>
                 <field name="email"/>
                 <field name="years_experience"/>
+                <field name="company_ids" widget="many2many_tags"/>
             </list>
         </field>
     </record>
