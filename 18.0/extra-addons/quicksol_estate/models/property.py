@@ -21,6 +21,7 @@ class Property(models.Model):
     num_floors = fields.Integer('Number of Floors')
     amenities = fields.Many2many('real.estate.amenity', string='Amenities')
     # Relationships
+    company_ids = fields.Many2many('thedevkitchen.estate.company', 'thedevkitchen_company_property_rel', 'property_id', 'company_id', string='Real Estate Companies')
     agent_id = fields.Many2one('real.estate.agent', string='Agent')
     tenant_id = fields.Many2one('real.estate.tenant', string='Tenant')
     sale_id = fields.Many2one('real.estate.sale', string='Sale')

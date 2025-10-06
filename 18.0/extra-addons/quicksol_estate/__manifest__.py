@@ -17,16 +17,27 @@ Key Features:
 """,
     'author': 'Quicksol Technolgies',
     'website': 'https://quicksol.ca',
-    'depends': ['base'],
+    'depends': ['base', 'portal'],
     'data': [
+        # Security files (must be loaded first)
+        'security/groups.xml',
         'security/real_estate_security.xml',
+        'security/record_rules.xml',
         'security/ir.model.access.csv',
+        
+        # Data files
         'data/property_type_data.xml',
+        'data/company_data.xml',
+        'data/demo_users.xml',
+        
+        # Views
+        'views/company_views.xml',
         'views/property_views.xml',
         'views/agent_views.xml',
         'views/lease_views.xml',
         'views/sale_views.xml',
         'views/tenant_views.xml',
+        'views/res_users_views.xml',
         'views/real_estate_menus.xml',
     ],
     'license': 'LGPL-3',

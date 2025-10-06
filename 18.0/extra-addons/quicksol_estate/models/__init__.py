@@ -5,3 +5,4 @@ from . import lease
 from . import sale
 from . import tenant
 from . import company
+from . import res_users
