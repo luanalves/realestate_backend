@@ -1,4 +1,5 @@
-from odoo import models, fields
+from odoo import models, fields, api
+from odoo.exceptions import ValidationError
 
 class Lease(models.Model):
     _name = 'real.estate.lease'
@@ -10,3 +11,11 @@ class Lease(models.Model):
     start_date = fields.Date(string='Start Date', required=True)
     end_date = fields.Date(string='End Date', required=True)
     rent_amount = fields.Float(string='Rent', required=True)
+
+    @api.constrains('start_date', 'end_date')
+    def _validate_lease_dates(self):
+        """Validate that end date is after start date"""
+        for record in self:
+            if record.start_date and record.end_date:
+                if record.end_date <= record.start_date:
+                    raise ValidationError("End date must be after start date.")

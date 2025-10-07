@@ -1,4 +1,6 @@
 from odoo import models, fields, api
+from odoo.exceptions import ValidationError
+from odoo.tools import email_normalize
 
 class Agent(models.Model):
     _name = 'real.estate.agent'
@@ -17,6 +19,16 @@ class Agent(models.Model):
     agency_name = fields.Char('Agency Name')
     years_experience = fields.Integer('Years of Experience')
     profile_picture = fields.Binary('Profile Picture')
+
+    @api.constrains('email')
+    def _validate_email(self):
+        """Validate email format using Odoo's email_normalize function"""
+        for record in self:
+            if record.email:
+                try:
+                    email_normalize(record.email)
+                except ValueError:
+                    raise ValidationError("Please enter a valid email address.")
 
     @api.onchange('user_id')
     def _onchange_user_id(self):
@@ -42,9 +54,12 @@ class Agent(models.Model):
     def write(self, vals):
         """Override write to maintain synchronization"""
         result = super().write(vals)
-        # If user_id changed, sync the companies
-        if 'user_id' in vals:
+        # Only sync company_ids when user_id is changed and company_ids was NOT explicitly provided
+        if 'user_id' in vals and 'company_ids' not in vals:
             for agent in self:
                 if agent.user_id:
-                    agent.company_ids = agent.user_id.estate_company_ids
+                    # Guard against missing estate_company_ids on the user
+                    user_estate_companies = getattr(agent.user_id, 'estate_company_ids', None)
+                    if user_estate_companies:
+                        agent.company_ids = user_estate_companies
         return result

@@ -1,4 +1,5 @@
 from odoo import models, fields, api
+from odoo.exceptions import ValidationError
 import re
 
 
@@ -73,7 +74,7 @@ class RealEstateCompany(models.Model):
     def _check_cnpj(self):
         for record in self:
             if record.cnpj and not self._validate_cnpj(record.cnpj):
-                raise models.ValidationError('Invalid CNPJ format. Please use: XX.XXX.XXX/XXXX-XX')
+                raise ValidationError('Invalid CNPJ format. Please use: XX.XXX.XXX/XXXX-XX')
 
     def _validate_cnpj(self, cnpj):
         """Basic CNPJ format validation"""
