@@ -15,7 +15,7 @@ Key Features:
 - Property Status**: Set the status of a property (available, sold, rented, etc.).
 
 """,
-    'author': 'Quicksol Technolgies',
+    'author': 'Quicksol Technologies',
     'website': 'https://quicksol.ca',
     'depends': ['base', 'portal'],
     'data': [
@@ -43,7 +43,7 @@ Key Features:
     'license': 'LGPL-3',
     'images': ['static/description/banner.png'],
     'installable': True,
-    'auto_install' : False,
+    'auto_install': False,
     'application': True,
 
 }
