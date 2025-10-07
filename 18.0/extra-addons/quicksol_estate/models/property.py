@@ -13,7 +13,12 @@ class Property(models.Model):
     latitude = fields.Float('Latitude')
     longitude = fields.Float('Longitude')
     country_id = fields.Many2one('res.country', string='Country')
-    price = fields.Float(string='Price')
+    currency_id = fields.Many2one(
+        'res.currency',
+        string='Currency',
+        default=lambda self: self.env.company.currency_id,
+    )
+    price = fields.Monetary(string='Price', currency_field='currency_id')
     status = fields.Selection([('available', 'Available'), ('pending', 'Pending'), ('sold', 'Sold'), ('rented', 'Rented')], string='Status', default='available')
     area = fields.Float('Area (sqft)', required=True)
     num_rooms = fields.Integer('Number of Rooms')
@@ -35,7 +40,7 @@ class Property(models.Model):
         ('new', 'New'),
         ('good', 'Good'),
         ('needs_renovation', 'Needs Renovation')
-    ], string='Condition', required=True)
+    ], string='Condition', required=True, default='good')
 
 class PropertyType(models.Model):
     _name = 'real.estate.property.type'
