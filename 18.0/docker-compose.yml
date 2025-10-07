@@ -28,6 +28,7 @@ services:
       - "8069:8069"   # HTTP
       - "8071:8071"   # XML-RPCs
       - "8072:8072"   # longpolling
+    working_dir: /usr/bin
     environment:
       HOST: db
       PORT: 5432
@@ -36,8 +37,8 @@ services:
     volumes:
       - odoo18-data:/var/lib/odoo
       - ./extra-addons:/mnt/extra-addons
-      # Descomente para usar configuração customizada:
-      # - ./odoo.conf:/etc/odoo/odoo.conf:ro
+      # Configuração customizada habilitada:
+      - ./odoo.conf:/etc/odoo/odoo.conf:ro
     networks:
       - odoo-net
 
