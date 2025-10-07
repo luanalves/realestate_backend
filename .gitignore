@@ -1,1 +1,19 @@
-.idea
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Odoo specific
+*.pyc
+.idea/
+.vscode/
+*.log
+
+# Docker/Database
+*.sql
+.env
+
+# OS specific
+.DS_Store
+Thumbs.db.idea
