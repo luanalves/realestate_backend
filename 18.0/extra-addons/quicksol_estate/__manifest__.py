@@ -30,15 +30,15 @@ Key Features:
         'data/company_data.xml',
         'data/demo_users.xml',
         
-        # Views
+        # Views (actions must be loaded before menus that reference them)
         'views/company_views.xml',
         'views/property_views.xml',
         'views/agent_views.xml',
         'views/lease_views.xml',
         'views/sale_views.xml',
         'views/tenant_views.xml',
-        'views/res_users_views.xml',
         'views/real_estate_menus.xml',
+        'views/res_users_views.xml',
     ],
     'license': 'LGPL-3',
     'images': ['static/description/banner.png'],
