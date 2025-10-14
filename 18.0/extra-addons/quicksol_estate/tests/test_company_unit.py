@@ -140,20 +140,16 @@ class TestCompanyUnit(BaseCompanyTest):
         
         for raw_cnpj, expected_formatted in test_cases:
             with self.subTest(cnpj=raw_cnpj):
-                # Arrange
-                company = self.create_mock_record('thedevkitchen.estate.company', {
+                # Act - Create company record and trigger CNPJ formatting
+                company = self.env['thedevkitchen.estate.company'].create({
                     'name': 'Test Company',
-                    'cnpj': raw_cnpj
                 })
+                # Write CNPJ to trigger onchange formatting
+                company.write({'cnpj': raw_cnpj})
+                company._onchange_cnpj()  # Explicitly trigger the formatting logic
                 
-                # Act - Simulate formatting logic
-                if len(raw_cnpj) == 14 and raw_cnpj.isdigit():
-                    formatted_cnpj = f"{raw_cnpj[:2]}.{raw_cnpj[2:5]}.{raw_cnpj[5:8]}/{raw_cnpj[8:12]}-{raw_cnpj[12:14]}"
-                else:
-                    formatted_cnpj = raw_cnpj
-                
-                # Assert
-                self.assertEqual(formatted_cnpj, expected_formatted,
+                # Assert - Check that model applied correct formatting
+                self.assertEqual(company.cnpj, expected_formatted,
                     f"CNPJ {raw_cnpj} should be formatted to {expected_formatted}")
     
     @patch('odoo.exceptions.ValidationError')
