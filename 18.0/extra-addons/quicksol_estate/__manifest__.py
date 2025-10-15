@@ -26,7 +26,6 @@ Key Features:
         'security/ir.model.access.csv',
         
         # Data files
-        'data/property_type_data.xml',
         'data/company_data.xml',
         'data/demo_users.xml',
         
