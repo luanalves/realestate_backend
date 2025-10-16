@@ -1,56 +1,410 @@
-from odoo import models, fields
+# -*- coding: utf-8 -*-
+from odoo import models, fields, api
+from odoo.exceptions import ValidationError
+
 
 class Property(models.Model):
     _name = 'real.estate.property'
     _description = 'Property'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _rec_name = 'name'
+    _order = 'create_date desc'
 
-    name = fields.Char(string='Property Name', required=True)
-    property_type_id = fields.Many2one('real.estate.property.type', string='Property Type', required=True)
-    address = fields.Text(string='Address')
-    city = fields.Char(string='City')
-    state = fields.Char('State')
-    zip_code = fields.Char('Zip Code')
-    latitude = fields.Float('Latitude')
-    longitude = fields.Float('Longitude')
-    country_id = fields.Many2one('res.country', string='Country')
+    # ========== BASIC INFO ==========
+    name = fields.Char(string='Property Name', required=True, tracking=True)
+    reference_code = fields.Char(string='Reference Code', copy=False, tracking=True, index=True)
+    active = fields.Boolean(default=True)
+    
+    # ========== OWNER DATA ==========
+    owner_id = fields.Many2one('real.estate.property.owner', string='Owner', tracking=True)
+    owner_name = fields.Char(string='Owner Name', related='owner_id.name', readonly=True)
+    phone_ids = fields.One2many('real.estate.property.phone', 'property_id', string='Contact Phones')
+    email_ids = fields.One2many('real.estate.property.email', 'property_id', string='Contact Emails')
+    origin_media = fields.Selection([
+        ('website', 'Website'),
+        ('social_media', 'Social Media'),
+        ('referral', 'Referral'),
+        ('walk_in', 'Walk-in'),
+        ('phone', 'Phone'),
+        ('email', 'Email'),
+        ('partner', 'Partner'),
+        ('other', 'Other'),
+    ], string='Origin Media', required=True, default='website', tracking=True)
+    activity_notification = fields.Selection([
+        ('all', 'All Activities'),
+        ('important', 'Important Only'),
+        ('none', 'None'),
+    ], string='Activity Notification', default='important')
+    
+    # ========== STRUCTURE ==========
+    property_purpose = fields.Selection([
+        ('residential', 'Residential'),
+        ('commercial', 'Commercial'),
+        ('industrial', 'Industrial'),
+        ('rural', 'Rural'),
+        ('vacation', 'Vacation/Temporary'),
+        ('corporate', 'Corporate'),
+    ], string='Purpose', required=True, default='residential', tracking=True)
+    
+    property_type_id = fields.Many2one('real.estate.property.type', string='Property Type', required=True, tracking=True)
+    building_id = fields.Many2one('real.estate.property.building', string='Building/Condominium', tracking=True)
+    building_name = fields.Char(string='Building Name', related='building_id.name', readonly=True)
+    floor_number = fields.Integer(string='Floor Number')
+    unit_number = fields.Char(string='Unit Number')
+    
+    # ========== LOCATION ==========
+    # CEP and Address
+    zip_code = fields.Char(string='CEP', size=9, tracking=True)
+    country_id = fields.Many2one('res.country', string='Country', default=lambda self: self.env.ref('base.br').id, tracking=True)
+    state = fields.Char(string='State', tracking=True)
+    city = fields.Char(string='City', tracking=True)
+    neighborhood = fields.Char(string='Neighborhood', tracking=True)
+    street = fields.Char(string='Street', tracking=True)
+    street_number = fields.Char(string='Number')
+    complement = fields.Char(string='Complement')
+    address = fields.Text(string='Complete Address', compute='_compute_address', store=True)
+    
+    # Geolocation
+    latitude = fields.Float(string='Latitude', digits=(10, 7))
+    longitude = fields.Float(string='Longitude', digits=(10, 7))
+    
+    # ========== PRIMARY DATA ==========
+    # Intentions
+    for_sale = fields.Boolean(string='For Sale', default=True, tracking=True)
+    for_rent = fields.Boolean(string='For Rent', tracking=True)
+    
+    # Pricing
     currency_id = fields.Many2one(
         'res.currency',
         string='Currency',
         default=lambda self: self.env.company.currency_id,
     )
-    price = fields.Monetary(string='Price', currency_field='currency_id')
-    status = fields.Selection([('available', 'Available'), ('pending', 'Pending'), ('sold', 'Sold'), ('rented', 'Rented')], string='Status', default='available')
-    area = fields.Float('Area (sqft)', required=True)
-    num_rooms = fields.Integer('Number of Rooms')
-    num_bathrooms = fields.Integer('Number of Bathrooms')
-    num_floors = fields.Integer('Number of Floors')
-    amenities = fields.Many2many('real.estate.amenity', string='Amenities')
-    # Relationships
-    company_ids = fields.Many2many('thedevkitchen.estate.company', 'thedevkitchen_company_property_rel', 'property_id', 'company_id', string='Real Estate Companies')
-    agent_id = fields.Many2one('real.estate.agent', string='Agent')
-    tenant_id = fields.Many2one('real.estate.tenant', string='Tenant')
-    sale_id = fields.Many2one('real.estate.sale', string='Sale')
-    lease_id = fields.Many2one('real.estate.lease', string='Lease')
-    # Images
-    image = fields.Binary('Property Image')
-    image_gallery = fields.One2many('real.estate.property.image', 'property_id', string='Image Gallery')
-
-    # Customizable Features
+    price = fields.Monetary(string='Sale Price', currency_field='currency_id', tracking=True)
+    rent_price = fields.Monetary(string='Rent Price', currency_field='currency_id', tracking=True)
+    
+    # Taxes and Insurance
+    iptu_annual = fields.Monetary(string='IPTU Annual', currency_field='currency_id')
+    iptu_monthly = fields.Monetary(string='IPTU Monthly', compute='_compute_iptu_monthly', store=True)
+    insurance_value = fields.Monetary(string='Insurance Value', currency_field='currency_id')
+    condominium_fee = fields.Monetary(string='Condominium Fee', currency_field='currency_id')
+    
+    # Status
+    property_status = fields.Selection([
+        ('available', 'Available'),
+        ('occupied', 'Occupied'),
+        ('rented', 'Rented'),
+        ('reserved', 'Reserved'),
+        ('sold', 'Sold'),
+        ('under_construction', 'Under Construction'),
+        ('maintenance', 'Under Maintenance'),
+    ], string='Property Status', required=True, default='available', tracking=True)
+    
+    location_type = fields.Selection([
+        ('urban', 'Urban'),
+        ('suburban', 'Suburban'),
+        ('rural', 'Rural'),
+        ('beach', 'Beach'),
+        ('mountain', 'Mountain'),
+    ], string='Location Type', default='urban')
+    
+    # Authorization
+    authorization_start_date = fields.Date(string='Authorization Start Date', tracking=True)
+    authorization_end_date = fields.Date(string='Authorization End Date', tracking=True)
+    authorization_active = fields.Boolean(string='Authorization Active', compute='_compute_authorization_active', store=True)
+    
+    # Financial Options
+    accepts_fgts = fields.Boolean(string='Accepts FGTS')
+    accepts_financing = fields.Boolean(string='Accepts Financing', default=True)
+    
+    # ========== FEATURES/CHARACTERISTICS ==========
+    # Areas
+    area = fields.Float(string='Built Area (m²)', required=True, tracking=True)
+    total_area = fields.Float(string='Total Area (m²)', tracking=True)
+    private_area = fields.Float(string='Private Area (m²)')
+    land_area = fields.Float(string='Land Area (m²)')
+    
+    # Rooms and Spaces
+    num_rooms = fields.Integer(string='Bedrooms')
+    num_suites = fields.Integer(string='Suites')
+    num_bathrooms = fields.Integer(string='Bathrooms')
+    num_parking = fields.Integer(string='Parking Spaces')
+    num_floors = fields.Integer(string='Number of Floors')
+    
+    # Construction
+    construction_year = fields.Integer(string='Construction Year')
+    reform_year = fields.Integer(string='Reform Year')
+    property_age = fields.Integer(string='Property Age (years)', compute='_compute_property_age', store=True)
+    
+    # Condition
     condition = fields.Selection([
         ('new', 'New'),
+        ('excellent', 'Excellent'),
         ('good', 'Good'),
-        ('needs_renovation', 'Needs Renovation')
-    ], string='Condition', required=True, default='good')
+        ('fair', 'Fair'),
+        ('needs_renovation', 'Needs Renovation'),
+        ('under_construction', 'Under Construction'),
+    ], string='Condition', required=True, default='good', tracking=True)
+    
+    # Amenities
+    amenities = fields.Many2many('real.estate.amenity', string='Amenities')
+    
+    # ========== ZONING ==========
+    zoning_type = fields.Selection([
+        ('residential', 'Residential'),
+        ('commercial', 'Commercial'),
+        ('mixed', 'Mixed Use'),
+        ('industrial', 'Industrial'),
+        ('agricultural', 'Agricultural'),
+    ], string='Zoning Type')
+    zoning_restrictions = fields.Text(string='Zoning Restrictions')
+    
+    # ========== MARKERS/TAGS ==========
+    tag_ids = fields.Many2many('real.estate.property.tag', string='Tags')
+    
+    # ========== KEY CONTROL ==========
+    key_ids = fields.One2many('real.estate.property.key', 'property_id', string='Keys')
+    has_keys = fields.Boolean(string='Has Keys', compute='_compute_has_keys')
+    
+    # ========== PHOTOS ==========
+    image = fields.Binary(string='Main Property Image', attachment=True)
+    photo_ids = fields.One2many('real.estate.property.photo', 'property_id', string='Photo Gallery')
+    photo_count = fields.Integer(string='Photo Count', compute='_compute_photo_count')
+    
+    # ========== WEB PUBLISHING ==========
+    publish_website = fields.Boolean(string='Publish on Website', default=False)
+    publish_featured = fields.Boolean(string='Featured Property')
+    publish_super_featured = fields.Boolean(string='Super Featured')
+    youtube_video_url = fields.Char(string='YouTube Video URL')
+    virtual_tour_url = fields.Char(string='Virtual Tour URL')
+    
+    # SEO
+    meta_title = fields.Char(string='Meta Title', size=60)
+    meta_description = fields.Text(string='Meta Description', size=160)
+    meta_keywords = fields.Char(string='Meta Keywords')
+    
+    # Descriptions
+    description = fields.Html(string='Property Description')
+    description_short = fields.Text(string='Short Description', size=250)
+    internal_notes = fields.Text(string='Internal Notes (Confidential)')
+    
+    # ========== SIGNS AND BANNERS ==========
+    has_sign = fields.Boolean(string='Has Sign/Banner')
+    sign_installation_date = fields.Date(string='Sign Installation Date')
+    sign_removal_date = fields.Date(string='Sign Removal Date')
+    sign_type = fields.Selection([
+        ('sale', 'For Sale'),
+        ('rent', 'For Rent'),
+        ('sold', 'Sold'),
+        ('rented', 'Rented'),
+    ], string='Sign Type')
+    sign_notes = fields.Text(string='Sign Notes')
+    
+    # ========== COMMISSIONS ==========
+    commission_ids = fields.One2many('real.estate.property.commission', 'property_id', string='Commissions')
+    total_commission = fields.Monetary(string='Total Commission', compute='_compute_total_commission', currency_field='currency_id')
+    
+    # ========== DOCUMENTS ==========
+    document_ids = fields.One2many('real.estate.property.document', 'property_id', string='Documents')
+    document_count = fields.Integer(string='Document Count', compute='_compute_document_count')
+    matricula_number = fields.Char(string='Matrícula Number')
+    iptu_code = fields.Char(string='IPTU Code')
+    cnpj_owner = fields.Char(string='Owner CNPJ', size=18)
+    
+    # ========== RELATIONSHIPS ==========
+    company_ids = fields.Many2many('thedevkitchen.estate.company', 'thedevkitchen_company_property_rel', 'property_id', 'company_id', string='Real Estate Companies')
+    agent_id = fields.Many2one('real.estate.agent', string='Responsible Agent', tracking=True)
+    tenant_id = fields.Many2one('real.estate.tenant', string='Current Tenant')
+    sale_id = fields.Many2one('real.estate.sale', string='Sale')
+    lease_id = fields.Many2one('real.estate.lease', string='Lease')
+    
+    # ========== LEGACY FIELDS (for compatibility) ==========
+    status = fields.Selection([
+        ('available', 'Available'),
+        ('pending', 'Pending'),
+        ('sold', 'Sold'),
+        ('rented', 'Rented')
+    ], string='Status (Legacy)', default='available')
+    
+    # ========== COMPUTED FIELDS ==========
+    @api.depends('street', 'street_number', 'complement', 'neighborhood', 'city', 'state', 'zip_code', 'country_id')
+    def _compute_address(self):
+        for prop in self:
+            address_parts = []
+            if prop.street:
+                street_full = prop.street
+                if prop.street_number:
+                    street_full += f', {prop.street_number}'
+                if prop.complement:
+                    street_full += f' - {prop.complement}'
+                address_parts.append(street_full)
+            if prop.neighborhood:
+                address_parts.append(prop.neighborhood)
+            if prop.city:
+                city_state = prop.city
+                if prop.state:
+                    city_state += f' - {prop.state}'
+                address_parts.append(city_state)
+            if prop.zip_code:
+                address_parts.append(f'CEP: {prop.zip_code}')
+            if prop.country_id:
+                address_parts.append(prop.country_id.name)
+            prop.address = '\n'.join(address_parts) if address_parts else ''
+    
+    @api.depends('iptu_annual')
+    def _compute_iptu_monthly(self):
+        for prop in self:
+            prop.iptu_monthly = prop.iptu_annual / 12 if prop.iptu_annual else 0
+    
+    @api.depends('authorization_start_date', 'authorization_end_date')
+    def _compute_authorization_active(self):
+        today = fields.Date.today()
+        for prop in self:
+            if prop.authorization_start_date and prop.authorization_end_date:
+                prop.authorization_active = prop.authorization_start_date <= today <= prop.authorization_end_date
+            elif prop.authorization_start_date:
+                prop.authorization_active = prop.authorization_start_date <= today
+            else:
+                prop.authorization_active = False
+    
+    @api.depends('construction_year')
+    def _compute_property_age(self):
+        current_year = fields.Date.today().year
+        for prop in self:
+            if prop.construction_year:
+                prop.property_age = current_year - prop.construction_year
+            else:
+                prop.property_age = 0
+    
+    @api.depends('key_ids')
+    def _compute_has_keys(self):
+        for prop in self:
+            prop.has_keys = bool(prop.key_ids)
+    
+    @api.depends('photo_ids')
+    def _compute_photo_count(self):
+        for prop in self:
+            prop.photo_count = len(prop.photo_ids)
+    
+    @api.depends('commission_ids', 'commission_ids.commission_amount')
+    def _compute_total_commission(self):
+        for prop in self:
+            prop.total_commission = sum(prop.commission_ids.mapped('commission_amount'))
+    
+    @api.depends('document_ids')
+    def _compute_document_count(self):
+        for prop in self:
+            prop.document_count = len(prop.document_ids)
+    
+    # ========== CONSTRAINTS ==========
+    @api.constrains('for_sale', 'for_rent')
+    def _check_intentions(self):
+        for prop in self:
+            if not prop.for_sale and not prop.for_rent:
+                raise ValidationError('Property must be for sale, for rent, or both.')
+    
+    @api.constrains('price', 'rent_price')
+    def _check_prices(self):
+        for prop in self:
+            if prop.for_sale and (not prop.price or prop.price <= 0):
+                raise ValidationError('Sale price must be greater than zero when property is for sale.')
+            if prop.for_rent and (not prop.rent_price or prop.rent_price <= 0):
+                raise ValidationError('Rent price must be greater than zero when property is for rent.')
+    
+    @api.constrains('area', 'total_area')
+    def _check_areas(self):
+        for prop in self:
+            if prop.area and prop.area <= 0:
+                raise ValidationError('Built area must be greater than zero.')
+            if prop.total_area and prop.total_area < prop.area:
+                raise ValidationError('Total area cannot be less than built area.')
+    
+    @api.constrains('construction_year', 'reform_year')
+    def _check_years(self):
+        current_year = fields.Date.today().year
+        for prop in self:
+            if prop.construction_year and (prop.construction_year < 1800 or prop.construction_year > current_year + 5):
+                raise ValidationError(f'Construction year must be between 1800 and {current_year + 5}.')
+            if prop.reform_year and prop.construction_year and prop.reform_year < prop.construction_year:
+                raise ValidationError('Reform year cannot be before construction year.')
+    
+    @api.constrains('authorization_start_date', 'authorization_end_date')
+    def _check_authorization_dates(self):
+        for prop in self:
+            if prop.authorization_start_date and prop.authorization_end_date:
+                if prop.authorization_end_date < prop.authorization_start_date:
+                    raise ValidationError('Authorization end date cannot be before start date.')
+    
+    # ========== ONCHANGE METHODS ==========
+    @api.onchange('zip_code')
+    def _onchange_zip_code(self):
+        """CEP search integration point - to be implemented with Brazilian CEP API"""
+        if self.zip_code and len(self.zip_code.replace('-', '').replace('.', '')) == 8:
+            # TODO: Integrate with ViaCEP API or similar
+            # For now, just format the CEP
+            cep_clean = self.zip_code.replace('-', '').replace('.', '')
+            self.zip_code = f'{cep_clean[:5]}-{cep_clean[5:]}'
+    
+    @api.onchange('building_id')
+    def _onchange_building(self):
+        """Auto-fill location from building"""
+        if self.building_id:
+            self.zip_code = self.building_id.zip_code
+            self.city = self.building_id.city
+            self.state = self.building_id.state
+            self.country_id = self.building_id.country_id
+            self.condominium_fee = self.building_id.monthly_fee
+    
+    # ========== ACTIONS ==========
+    def action_view_photos(self):
+        return {
+            'name': 'Photos',
+            'type': 'ir.actions.act_window',
+            'res_model': 'real.estate.property.photo',
+            'view_mode': 'kanban,tree,form',
+            'domain': [('property_id', '=', self.id)],
+            'context': {'default_property_id': self.id},
+        }
+    
+    def action_view_documents(self):
+        return {
+            'name': 'Documents',
+            'type': 'ir.actions.act_window',
+            'res_model': 'real.estate.property.document',
+            'view_mode': 'tree,form',
+            'domain': [('property_id', '=', self.id)],
+            'context': {'default_property_id': self.id},
+        }
+    
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if not vals.get('reference_code'):
+                vals['reference_code'] = self.env['ir.sequence'].next_by_code('real.estate.property') or 'NEW'
+        return super().create(vals_list)
+
 
 class PropertyType(models.Model):
     _name = 'real.estate.property.type'
     _description = 'Property Type'
 
     name = fields.Char(string='Type Name', required=True)
+    active = fields.Boolean(default=True)
 
+
+class PropertyTag(models.Model):
+    _name = 'real.estate.property.tag'
+    _description = 'Property Tag'
+    _rec_name = 'name'
+
+    name = fields.Char(string='Tag Name', required=True)
+    color = fields.Integer(string='Color')
+    active = fields.Boolean(default=True)
+
+
+# Keep compatibility with old PropertyImage model
 class PropertyImage(models.Model):
     _name = 'real.estate.property.image'
-    _description = 'Property Image'
+    _description = 'Property Image (Legacy)'
 
     image = fields.Binary('Image', required=True)
     description = fields.Char('Image Description')
