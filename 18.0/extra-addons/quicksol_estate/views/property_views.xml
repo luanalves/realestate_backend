@@ -1,64 +1,504 @@
+<?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!-- ========== ACTIONS ========== -->
     <record id="action_property" model="ir.actions.act_window">
         <field name="name">Properties</field>
         <field name="res_model">real.estate.property</field>
-        <field name="view_mode">list,form</field>
+        <field name="view_mode">list,kanban,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first property
+            </p>
+            <p>
+                Register properties with complete information following Kenlo Imóveis standards.
+            </p>
+        </field>
     </record>
 
+    <!-- ========== FORM VIEW - KENLO STYLE ========== -->
     <record id="view_property_form" model="ir.ui.view">
         <field name="name">real.estate.property.form</field>
         <field name="model">real.estate.property</field>
         <field name="arch" type="xml">
-            <form>
+            <form string="Property">
+                <header>
+                    <field name="property_status" widget="statusbar" statusbar_visible="available,reserved,sold,rented"/>
+                </header>
                 <sheet>
+                    <!-- Title and Main Image -->
+                    <field name="image" widget="image" class="oe_avatar"/>
+                    <div class="oe_title">
+                        <label for="name" string="Property Name"/>
+                        <h1>
+                            <field name="name" placeholder="e.g., Luxury Apartment in Copacabana"/>
+                        </h1>
+                        <div>
+                            <field name="reference_code" readonly="1"/>
+                        </div>
+                    </div>
+                    
+                    <!-- Smart Buttons -->
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_photos" type="object" class="oe_stat_button" icon="fa-camera">
+                            <field name="photo_count" widget="statinfo" string="Photos"/>
+                        </button>
+                        <button name="action_view_documents" type="object" class="oe_stat_button" icon="fa-file">
+                            <field name="document_count" widget="statinfo" string="Documents"/>
+                        </button>
+                        <button name="toggle_active" type="object" class="oe_stat_button" icon="fa-archive">
+                            <field name="active" widget="boolean_button" options="{'terminology': 'archive'}"/>
+                        </button>
+                    </div>
+                    
+                    <!-- Quick Info Group -->
                     <group>
-                        <field name="name"/>
-                        <field name="address"/>
-                        <field name="city"/>
-                        <field name="state"/>
-                        <field name="country_id"/>
-                        <field name="zip_code"/>
-                        <field name="company_ids" widget="many2many_tags"/>
+                        <group>
+                            <field name="property_type_id" required="1"/>
+                            <field name="property_purpose" required="1"/>
+                            <field name="for_sale"/>
+                            <field name="for_rent"/>
+                        </group>
+                        <group>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="price" invisible="not for_sale"/>
+                            <field name="rent_price" invisible="not for_rent"/>
+                            <field name="area" required="1"/>
+                        </group>
                     </group>
-                    <group>
-                        <field name="property_type_id"/>
-                        <field name="price"/>
-                        <field name="status"/>
-                    </group>
-                    <group>
-                        <field name="area"/>
-                        <field name="num_rooms"/>
-                        <field name="num_bathrooms"/>
-                        <field name="num_floors"/>
-                        <field name="condition"/>
-                    </group>
-                    <group>
-                        <field name="amenities" widget="many2many_tags"/>
-                    </group>
-                    <group string="Images">
-                        <field name="image" widget="image"/>
-                    </group>
-                    <group string="Location">
-                        <field name="latitude"/>
-                        <field name="longitude"/>
-                    </group>
+                    
+                    <!-- Main Notebook with 13 Tabs -->
+                    <notebook>
+                        <!-- TAB 1: OWNER DATA -->
+                        <page string="Owner Data" name="owner_data">
+                            <group>
+                                <group>
+                                    <field name="owner_id" context="{'form_view_ref': 'quicksol_estate.view_property_owner_form'}"/>
+                                    <field name="owner_name" readonly="1" invisible="not owner_id"/>
+                                    <field name="origin_media" required="1"/>
+                                    <field name="activity_notification"/>
+                                </group>
+                                <group>
+                                    <field name="agent_id"/>
+                                    <field name="company_ids" widget="many2many_tags"/>
+                                </group>
+                            </group>
+                            
+                            <group string="Contact Phones">
+                                <field name="phone_ids" nolabel="1">
+                                    <list editable="bottom">
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="phone" placeholder="(11) 98765-4321"/>
+                                        <field name="phone_type"/>
+                                        <field name="notes"/>
+                                    </list>
+                                </field>
+                            </group>
+                            
+                            <group string="Contact Emails">
+                                <field name="email_ids" nolabel="1">
+                                    <list editable="bottom">
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="email" placeholder="usuario@exemplo.com.br"/>
+                                        <field name="email_type"/>
+                                        <field name="notes"/>
+                                    </list>
+                                </field>
+                            </group>
+                        </page>
+                        
+                        <!-- TAB 2: STRUCTURE -->
+                        <page string="Structure" name="structure">
+                            <group>
+                                <group>
+                                    <field name="building_id" context="{'form_view_ref': 'quicksol_estate.view_property_building_form'}"/>
+                                    <field name="building_name" readonly="1" invisible="not building_id"/>
+                                    <field name="floor_number"/>
+                                    <field name="unit_number"/>
+                                    <field name="num_floors"/>
+                                </group>
+                                <group>
+                                    <field name="condominium_fee"/>
+                                    <field name="construction_year"/>
+                                    <field name="reform_year"/>
+                                    <field name="property_age" readonly="1"/>
+                                </group>
+                            </group>
+                        </page>
+                        
+                        <!-- TAB 3: LOCATION -->
+                        <page string="Location" name="location">
+                            <group>
+                                <group string="Address">
+                                    <field name="zip_code" placeholder="00000-000"/>
+                                    <field name="country_id"/>
+                                    <field name="state"/>
+                                    <field name="city"/>
+                                    <field name="neighborhood"/>
+                                </group>
+                                <group string=" ">
+                                    <field name="street"/>
+                                    <field name="street_number"/>
+                                    <field name="complement"/>
+                                    <field name="location_type"/>
+                                </group>
+                            </group>
+                            
+                            <group string="Complete Address">
+                                <field name="address" readonly="1" nolabel="1"/>
+                            </group>
+                            
+                            <group string="Geolocation">
+                                <group>
+                                    <field name="latitude"/>
+                                </group>
+                                <group>
+                                    <field name="longitude"/>
+                                </group>
+                            </group>
+                        </page>
+                        
+                        <!-- TAB 4: PRIMARY DATA -->
+                        <page string="Primary Data" name="primary_data">
+                            <group>
+                                <group string="Pricing">
+                                    <field name="for_sale"/>
+                                    <field name="price" required="for_sale" invisible="not for_sale"/>
+                                    <field name="for_rent"/>
+                                    <field name="rent_price" required="for_rent" invisible="not for_rent"/>
+                                </group>
+                                <group string="Taxes &amp; Fees">
+                                    <field name="iptu_annual"/>
+                                    <field name="iptu_monthly" readonly="1"/>
+                                    <field name="insurance_value"/>
+                                    <field name="condominium_fee"/>
+                                </group>
+                            </group>
+                            
+                            <group>
+                                <group string="Status">
+                                    <field name="property_status" required="1"/>
+                                    <field name="condition" required="1"/>
+                                    <field name="status"/>
+                                </group>
+                                <group string="Authorization Period">
+                                    <field name="authorization_start_date"/>
+                                    <field name="authorization_end_date"/>
+                                    <field name="authorization_active" readonly="1" widget="boolean"/>
+                                </group>
+                            </group>
+                            
+                            <group>
+                                <group string="Financial Options">
+                                    <field name="accepts_fgts"/>
+                                    <field name="accepts_financing"/>
+                                </group>
+                                <group string="Relationships">
+                                    <field name="tenant_id"/>
+                                    <field name="sale_id"/>
+                                    <field name="lease_id"/>
+                                </group>
+                            </group>
+                        </page>
+                        
+                        <!-- TAB 5: FEATURES/CHARACTERISTICS -->
+                        <page string="Features" name="features">
+                            <group>
+                                <group string="Areas (m²)">
+                                    <field name="area" required="1"/>
+                                    <field name="total_area"/>
+                                    <field name="private_area"/>
+                                    <field name="land_area"/>
+                                </group>
+                                <group string="Rooms &amp; Spaces">
+                                    <field name="num_rooms"/>
+                                    <field name="num_suites"/>
+                                    <field name="num_bathrooms"/>
+                                    <field name="num_parking"/>
+                                </group>
+                            </group>
+                            
+                            <group string="Amenities">
+                                <field name="amenities" widget="many2many_tags" nolabel="1"/>
+                            </group>
+                        </page>
+                        
+                        <!-- TAB 6: ZONING -->
+                        <page string="Zoning" name="zoning">
+                            <group>
+                                <group>
+                                    <field name="zoning_type"/>
+                                </group>
+                            </group>
+                            <group string="Zoning Restrictions">
+                                <field name="zoning_restrictions" nolabel="1"/>
+                            </group>
+                        </page>
+                        
+                        <!-- TAB 7: MARKERS/TAGS -->
+                        <page string="Tags" name="tags">
+                            <group>
+                                <field name="tag_ids" widget="many2many_tags" options="{'color_field': 'color', 'no_create_edit': False}" nolabel="1"/>
+                            </group>
+                        </page>
+                        
+                        <!-- TAB 8: KEY CONTROL -->
+                        <page string="Key Control" name="key_control">
+                            <group>
+                                <field name="has_keys" widget="boolean" readonly="1"/>
+                            </group>
+                            <field name="key_ids" nolabel="1">
+                                <list editable="bottom">
+                                    <field name="key_code"/>
+                                    <field name="key_type"/>
+                                    <field name="quantity"/>
+                                    <field name="status"/>
+                                    <field name="location"/>
+                                    <field name="checked_out_by"/>
+                                    <field name="checked_out_date"/>
+                                    <field name="expected_return_date"/>
+                                    <field name="notes"/>
+                                </list>
+                            </field>
+                        </page>
+                        
+                        <!-- TAB 9: PHOTOS -->
+                        <page string="Photos" name="photos">
+                            <field name="photo_ids" nolabel="1">
+                                <kanban>
+                                    <field name="id"/>
+                                    <field name="name"/>
+                                    <field name="image"/>
+                                    <field name="is_main"/>
+                                    <field name="sequence" widget="handle"/>
+                                    <templates>
+                                        <t t-name="kanban-box">
+                                            <div class="oe_kanban_global_click">
+                                                <div class="o_kanban_image">
+                                                    <img t-att-src="kanban_image('real.estate.property.photo', 'image', record.id.raw_value)" alt="Property Photo"/>
+                                                </div>
+                                                <div class="oe_kanban_details">
+                                                    <strong><field name="name"/></strong>
+                                                    <div t-if="record.is_main.raw_value">
+                                                        <span class="badge badge-success">Main Photo</span>
+                                                    </div>
+                                                    <div>
+                                                        <field name="description"/>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </t>
+                                    </templates>
+                                </kanban>
+                            </field>
+                        </page>
+                        
+                        <!-- TAB 10: WEB PUBLISHING -->
+                        <page string="Web Publishing" name="web_publishing">
+                            <group>
+                                <group string="Publishing Options">
+                                    <field name="publish_website"/>
+                                    <field name="publish_featured" invisible="not publish_website"/>
+                                    <field name="publish_super_featured" invisible="not publish_website"/>
+                                </group>
+                                <group string="Media Links">
+                                    <field name="youtube_video_url" placeholder="https://youtube.com/watch?v=..."/>
+                                    <field name="virtual_tour_url" placeholder="https://..."/>
+                                </group>
+                            </group>
+                            
+                            <group string="SEO">
+                                <group>
+                                    <field name="meta_title" placeholder="Max 60 characters"/>
+                                    <field name="meta_keywords" placeholder="keyword1, keyword2, keyword3"/>
+                                </group>
+                                <group>
+                                    <field name="meta_description" placeholder="Max 160 characters"/>
+                                </group>
+                            </group>
+                            
+                            <group string="Property Description">
+                                <field name="description_short" placeholder="Brief description for listings (max 250 chars)"/>
+                                <field name="description" widget="html" placeholder="Complete property description with all details..."/>
+                            </group>
+                            
+                            <group string="Internal Notes (Confidential)">
+                                <field name="internal_notes" placeholder="Internal notes - not visible to public"/>
+                            </group>
+                        </page>
+                        
+                        <!-- TAB 11: SIGNS AND BANNERS -->
+                        <page string="Signs" name="signs">
+                            <group>
+                                <group>
+                                    <field name="has_sign"/>
+                                    <field name="sign_type" invisible="not has_sign"/>
+                                    <field name="sign_installation_date" invisible="not has_sign"/>
+                                    <field name="sign_removal_date" invisible="not has_sign"/>
+                                </group>
+                                <group>
+                                    <field name="sign_notes" invisible="not has_sign"/>
+                                </group>
+                            </group>
+                        </page>
+                        
+                        <!-- TAB 12: COMMISSIONS -->
+                        <page string="Commissions" name="commissions">
+                            <group>
+                                <field name="total_commission" widget="monetary" readonly="1"/>
+                            </group>
+                            <field name="commission_ids" nolabel="1">
+                                <list editable="bottom">
+                                    <field name="name"/>
+                                    <field name="commission_type"/>
+                                    <field name="value"/>
+                                    <field name="applies_to"/>
+                                    <field name="agent_id"/>
+                                    <field name="commission_amount" readonly="1"/>
+                                    <field name="currency_id" invisible="1"/>
+                                    <field name="notes"/>
+                                </list>
+                            </field>
+                        </page>
+                        
+                        <!-- TAB 13: DOCUMENTS -->
+                        <page string="Documents" name="documents">
+                            <group>
+                                <group>
+                                    <field name="matricula_number"/>
+                                    <field name="iptu_code"/>
+                                    <field name="cnpj_owner"/>
+                                </group>
+                            </group>
+                            
+                            <field name="document_ids" nolabel="1">
+                                <list>
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="name"/>
+                                    <field name="document_type"/>
+                                    <field name="issue_date"/>
+                                    <field name="expiry_date"/>
+                                    <field name="is_confidential" widget="boolean"/>
+                                    <field name="file_name"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
                 </sheet>
+                
+                <!-- Chatter -->
+                <div class="oe_chatter">
+                    <field name="message_follower_ids" groups="base.group_user"/>
+                    <field name="message_ids"/>
+                </div>
             </form>
         </field>
     </record>
 
+    <!-- ========== LIST VIEW ========== -->
     <record id="view_property_tree" model="ir.ui.view">
         <field name="name">real.estate.property.list</field>
         <field name="model">real.estate.property</field>
         <field name="arch" type="xml">
-            <list string="Properties">
+            <list string="Properties" default_order="create_date desc">
+                <field name="reference_code"/>
                 <field name="name"/>
                 <field name="property_type_id"/>
                 <field name="city"/>
-                <field name="status"/>
-                <field name="price"/>
-                <field name="company_ids" widget="many2many_tags"/>
+                <field name="property_status"/>
+                <field name="price" optional="show"/>
+                <field name="rent_price" optional="hide"/>
+                <field name="area"/>
+                <field name="num_rooms" optional="show"/>
+                <field name="num_bathrooms" optional="hide"/>
+                <field name="owner_id" optional="show"/>
+                <field name="agent_id" optional="show"/>
+                <field name="company_ids" widget="many2many_tags" optional="hide"/>
+                <field name="for_sale" widget="boolean" optional="hide"/>
+                <field name="for_rent" widget="boolean" optional="hide"/>
             </list>
+        </field>
+    </record>
+
+    <!-- ========== KANBAN VIEW ========== -->
+    <record id="view_property_kanban" model="ir.ui.view">
+        <field name="name">real.estate.property.kanban</field>
+        <field name="model">real.estate.property</field>
+        <field name="arch" type="xml">
+            <kanban default_order="create_date desc">
+                <field name="id"/>
+                <field name="name"/>
+                <field name="image"/>
+                <field name="price"/>
+                <field name="rent_price"/>
+                <field name="city"/>
+                <field name="property_status"/>
+                <field name="area"/>
+                <field name="num_rooms"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div class="oe_kanban_global_click">
+                            <div class="o_kanban_image">
+                                <img t-att-src="kanban_image('real.estate.property', 'image', record.id.raw_value)" alt="Property"/>
+                            </div>
+                            <div class="oe_kanban_details">
+                                <strong class="o_kanban_record_title"><field name="name"/></strong>
+                                <div class="o_kanban_record_subtitle">
+                                    <field name="city"/> - <field name="area"/> m²
+                                </div>
+                                <div>
+                                    <field name="property_status" widget="label_selection" options="{'classes': {'available': 'success', 'sold': 'danger', 'rented': 'warning'}}"/>
+                                </div>
+                                <div t-if="record.price.raw_value">
+                                    <strong>Sale: </strong><field name="price" widget="monetary"/>
+                                </div>
+                                <div t-if="record.rent_price.raw_value">
+                                    <strong>Rent: </strong><field name="rent_price" widget="monetary"/>
+                                </div>
+                                <div t-if="record.num_rooms.raw_value">
+                                    <i class="fa fa-bed"/> <field name="num_rooms"/> rooms
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- ========== SEARCH VIEW ========== -->
+    <record id="view_property_search" model="ir.ui.view">
+        <field name="name">real.estate.property.search</field>
+        <field name="model">real.estate.property</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name" string="Property"/>
+                <field name="reference_code"/>
+                <field name="city"/>
+                <field name="neighborhood"/>
+                <field name="property_type_id"/>
+                <field name="owner_id"/>
+                <field name="agent_id"/>
+                
+                <filter string="For Sale" name="for_sale" domain="[('for_sale', '=', True)]"/>
+                <filter string="For Rent" name="for_rent" domain="[('for_rent', '=', True)]"/>
+                <separator/>
+                <filter string="Available" name="available" domain="[('property_status', '=', 'available')]"/>
+                <filter string="Sold" name="sold" domain="[('property_status', '=', 'sold')]"/>
+                <filter string="Rented" name="rented" domain="[('property_status', '=', 'rented')]"/>
+                <separator/>
+                <filter string="Published on Website" name="published" domain="[('publish_website', '=', True)]"/>
+                <filter string="Featured" name="featured" domain="[('publish_featured', '=', True)]"/>
+                <separator/>
+                <filter string="Archived" name="archived" domain="[('active', '=', False)]"/>
+                
+                <group expand="0" string="Group By">
+                    <filter string="Status" name="group_status" context="{'group_by': 'property_status'}"/>
+                    <filter string="Property Type" name="group_type" context="{'group_by': 'property_type_id'}"/>
+                    <filter string="City" name="group_city" context="{'group_by': 'city'}"/>
+                    <filter string="Agent" name="group_agent" context="{'group_by': 'agent_id'}"/>
+                    <filter string="Owner" name="group_owner" context="{'group_by': 'owner_id'}"/>
+                </group>
+            </search>
         </field>
     </record>
 </odoo>
