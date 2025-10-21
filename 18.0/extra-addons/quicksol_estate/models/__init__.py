@@ -1,3 +1,6 @@
+# Import helpers
+from . import file_validator
+
 # Import auxiliary models FIRST (before property)
 from . import amenity
 from . import property_owner
