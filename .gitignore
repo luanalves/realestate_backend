@@ -14,6 +14,9 @@ __pycache__/
 *.sql
 .env
 
+# Odoo filestore (imagens e arquivos anexados)
+*/filestore/
+
 # OS specific
 .DS_Store
 Thumbs.db.idea

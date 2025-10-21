@@ -37,6 +37,7 @@ services:
       DB_NAME: realestate
     volumes:
       - odoo18-data:/var/lib/odoo
+      - ./filestore:/var/lib/odoo/filestore
       - ./extra-addons:/mnt/extra-addons
       # Configuração customizada habilitada:
       - ./odoo.conf:/etc/odoo/odoo.conf:ro
