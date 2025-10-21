@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 from odoo import models, fields, api
+from odoo.exceptions import ValidationError
+from .file_validator import FileValidator
 
 
 class PropertyPhoto(models.Model):
@@ -13,15 +15,34 @@ class PropertyPhoto(models.Model):
     image_small = fields.Binary(string='Small Photo', compute='_compute_images', store=True)
     description = fields.Text(string='Description')
     is_main = fields.Boolean(string='Main Photo', default=False)
-    property_id = fields.Many2one('real.estate.property', string='Property', ondelete='cascade', required=True)
+    property_id = fields.Many2one('real.estate.property', string='Property', ondelete='cascade')
     sequence = fields.Integer(string='Sequence', default=10)
     active = fields.Boolean(default=True)
+
+    @api.constrains('image', 'name')
+    def _check_image_constraints(self):
+        """Valida tamanho e extensão da imagem usando FileValidator"""
+        for photo in self:
+            if photo.image and photo.name:
+                FileValidator.validate_image(photo.image, photo.name)
 
     @api.depends('image')
     def _compute_images(self):
         for photo in self:
             photo.image_medium = photo.image
             photo.image_small = photo.image
+    
+    @api.model
+    def create(self, vals):
+        """Garante que property_id seja preenchido do contexto"""
+        if not vals.get('property_id') and self._context.get('default_property_id'):
+            vals['property_id'] = self._context.get('default_property_id')
+        
+        # Validação: property_id é obrigatório
+        if not vals.get('property_id'):
+            raise ValidationError('A foto deve estar associada a uma propriedade.')
+        
+        return super(PropertyPhoto, self).create(vals)
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -70,13 +91,32 @@ class PropertyDocument(models.Model):
         ('habite_se', 'Habite-se'),
         ('alvara', 'Alvará'),
         ('other', 'Other'),
-    ], string='Document Type', required=True)
+    ], string='Document Type')
     file = fields.Binary(string='File', attachment=True)
     file_name = fields.Char(string='File Name')
     description = fields.Text(string='Description')
     issue_date = fields.Date(string='Issue Date')
     expiry_date = fields.Date(string='Expiry Date')
     is_confidential = fields.Boolean(string='Confidential', default=False)
-    property_id = fields.Many2one('real.estate.property', string='Property', ondelete='cascade', required=True)
+    property_id = fields.Many2one('real.estate.property', string='Property', ondelete='cascade')
     sequence = fields.Integer(string='Sequence', default=10)
     active = fields.Boolean(default=True)
+
+    @api.constrains('file', 'file_name')
+    def _check_file_constraints(self):
+        """Valida tamanho e extensão do arquivo usando FileValidator"""
+        for document in self:
+            if document.file and document.file_name:
+                FileValidator.validate_document(document.file, document.file_name)
+
+    @api.model
+    def create(self, vals):
+        """Garante que property_id seja preenchido do contexto"""
+        if not vals.get('property_id') and self._context.get('default_property_id'):
+            vals['property_id'] = self._context.get('default_property_id')
+        
+        # Validação: property_id é obrigatório
+        if not vals.get('property_id'):
+            raise ValidationError('O documento deve estar associado a uma propriedade.')
+        
+        return super(PropertyDocument, self).create(vals)
