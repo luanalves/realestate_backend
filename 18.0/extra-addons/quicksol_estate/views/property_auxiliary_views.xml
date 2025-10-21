@@ -221,6 +221,13 @@
         <field name="arch" type="xml">
             <form string="Property Photo">
                 <sheet>
+                    <div class="alert alert-info" role="alert">
+                        <strong>Upload Requirements:</strong>
+                        <ul>
+                            <li>Maximum size: <strong>5MB</strong></li>
+                            <li>Allowed formats: <strong>.png, .jpeg, .jpg</strong></li>
+                        </ul>
+                    </div>
                     <field name="image" widget="image" class="oe_avatar"/>
                     <group>
                         <field name="name"/>
@@ -243,6 +250,13 @@
         <field name="arch" type="xml">
             <form string="Property Document">
                 <sheet>
+                    <div class="alert alert-info" role="alert">
+                        <strong>Upload Requirements:</strong>
+                        <ul>
+                            <li>Maximum size: <strong>5MB</strong></li>
+                            <li>Allowed formats: <strong>.png, .jpeg, .jpg, .txt, .xls, .xlsx, .doc, .docx, .pdf, .ppt, .pptx, .zip, .msg, .kmz</strong></li>
+                        </ul>
+                    </div>
                     <group>
                         <group>
                             <field name="name"/>

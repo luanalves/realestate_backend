@@ -69,7 +69,7 @@
                     <!-- Main Notebook with 13 Tabs -->
                     <notebook>
                         <!-- TAB 1: OWNER DATA -->
-                        <page string="Owner Data" name="owner_data">
+                        <page string="Dados do Proprietário" name="owner_data">
                             <group>
                                 <group>
                                     <field name="owner_id" context="{'form_view_ref': 'quicksol_estate.view_property_owner_form'}"/>
@@ -370,7 +370,7 @@
                                 </group>
                             </group>
                             
-                            <field name="document_ids" nolabel="1">
+                            <field name="document_ids" nolabel="1" context="{'default_property_id': id}">
                                 <list>
                                     <field name="sequence" widget="handle"/>
                                     <field name="name"/>
@@ -380,16 +380,39 @@
                                     <field name="is_confidential" widget="boolean"/>
                                     <field name="file_name"/>
                                 </list>
+                                <form string="Property Document (Quick)">
+                                    <sheet>
+                                        <div class="alert alert-info" role="alert">
+                                            <strong>Upload Requirements:</strong>
+                                            <ul>
+                                                <li>Maximum size: <strong>5MB</strong></li>
+                                                <li>Allowed formats: <strong>.png, .jpeg, .jpg, .txt, .xls, .xlsx, .doc, .docx, .pdf, .ppt, .pptx, .zip, .msg, .kmz</strong></li>
+                                            </ul>
+                                        </div>
+                                        <group>
+                                            <field name="name"/>
+                                        </group>
+                                        <group string="File">
+                                            <field name="file" filename="file_name"/>
+                                            <field name="file_name" invisible="1"/>
+                                        </group>
+                                        <group string="Description">
+                                            <field name="description" nolabel="1"/>
+                                        </group>
+                                    </sheet>
+                                </form>
                             </field>
                         </page>
                     </notebook>
                 </sheet>
                 
-                <!-- Chatter -->
+                <!-- Chatter (temporarily disabled while we stabilize document popup) -->
+                <!--
                 <div class="oe_chatter">
                     <field name="message_follower_ids" groups="base.group_user"/>
                     <field name="message_ids"/>
                 </div>
+                -->
             </form>
         </field>
     </record>
