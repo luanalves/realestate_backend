@@ -1,6 +1,6 @@
 {
     'name': 'Real Estate Management - Kenlo Imóveis Edition',
-    'version': '2.0.0',
+    'version': '2.0.1',
     'category': 'Real Estate',
     'summary': 'Complete property management system following Kenlo Imóveis standards',
     'description': """
