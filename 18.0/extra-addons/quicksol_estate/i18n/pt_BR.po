@@ -45,6 +45,72 @@ msgstr "Vendas"
 msgid "Companies"
 msgstr "Empresas"
 
+#. module: quicksol_estate
+#. module: quicksol_estate
+#: model_terms:ir.ui.view,arch_db:quicksol_estate.view_property_form
+msgid "Owner Data"
+msgstr "Dados do Proprietário"
+
+#. module: quicksol_estate
+#: model_terms:ir.ui.view,arch_db:quicksol_estate.view_property_form
+msgid "Structure"
+msgstr "Estrutura"
+
+#. module: quicksol_estate
+#: model_terms:ir.ui.view,arch_db:quicksol_estate.view_property_form
+msgid "Location"
+msgstr "Localização"
+
+#. module: quicksol_estate
+#: model_terms:ir.ui.view,arch_db:quicksol_estate.view_property_form
+msgid "Primary Data"
+msgstr "Dados Principais"
+
+#. module: quicksol_estate
+#: model_terms:ir.ui.view,arch_db:quicksol_estate.view_property_form
+msgid "Features"
+msgstr "Características"
+
+#. module: quicksol_estate
+#: model_terms:ir.ui.view,arch_db:quicksol_estate.view_property_form
+msgid "Zoning"
+msgstr "Zoneamento"
+
+#. module: quicksol_estate
+#: model_terms:ir.ui.view,arch_db:quicksol_estate.view_property_form
+msgid "Tags"
+msgstr "Etiquetas"
+
+#. module: quicksol_estate
+#: model_terms:ir.ui.view,arch_db:quicksol_estate.view_property_form
+msgid "Key Control"
+msgstr "Controle de Chaves"
+
+#. module: quicksol_estate
+#: model_terms:ir.ui.view,arch_db:quicksol_estate.view_property_form
+msgid "Photos"
+msgstr "Fotos"
+
+#. module: quicksol_estate
+#: model_terms:ir.ui.view,arch_db:quicksol_estate.view_property_form
+msgid "Web Publishing"
+msgstr "Publicação Web"
+
+#. module: quicksol_estate
+#: model_terms:ir.ui.view,arch_db:quicksol_estate.view_property_form
+msgid "Signs"
+msgstr "Placas"
+
+#. module: quicksol_estate
+#: model_terms:ir.ui.view,arch_db:quicksol_estate.view_property_form
+msgid "Commissions"
+msgstr "Comissões"
+
+#. module: quicksol_estate
+#: model_terms:ir.ui.view,arch_db:quicksol_estate.view_property_form
+msgid "Documents"
+msgstr "Documentos"
+
 # ========== PROPERTY FIELDS - BASIC INFO ==========
 
 #. module: quicksol_estate
@@ -947,3 +1013,33 @@ msgstr "Período de Autorização"
 #: model:ir.ui.menu,name:quicksol_estate.menu_sales
 msgid "Sales"
 msgstr "Vendas"
+
+#. module: quicksol_estate
+#: model_terms:ir.ui.view,arch_db:quicksol_estate.view_property_photo_form
+msgid "Upload Requirements:"
+msgstr "Requisitos de Upload:"
+
+#. module: quicksol_estate
+#: model_terms:ir.ui.view,arch_db:quicksol_estate.view_property_photo_form
+msgid "Maximum size:"
+msgstr "Tamanho máximo:"
+
+#. module: quicksol_estate
+#: model_terms:ir.ui.view,arch_db:quicksol_estate.view_property_photo_form
+msgid "Allowed formats:"
+msgstr "Formatos permitidos:"
+
+#. module: quicksol_estate
+#: model_terms:ir.ui.view,arch_db:quicksol_estate.view_property_document_form
+msgid "Upload Requirements:"
+msgstr "Requisitos de Upload:"
+
+#. module: quicksol_estate
+#: model_terms:ir.ui.view,arch_db:quicksol_estate.view_property_document_form
+msgid "Maximum size:"
+msgstr "Tamanho máximo:"
+
+#. module: quicksol_estate
+#: model_terms:ir.ui.view,arch_db:quicksol_estate.view_property_document_form
+msgid "Allowed formats:"
+msgstr "Formatos permitidos:"
