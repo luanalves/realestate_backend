@@ -1,18 +1,22 @@
 /** @odoo-module **/
 
-// Normalização de e-mail - aplicada via DOM events
+// Email normalization - applied via DOM events
 document.addEventListener('DOMContentLoaded', function() {
     applyEmailNormalization();
 });
 
-// Também aplica quando o Odoo carrega novos elementos dinamicamente
+// Also applies when Odoo dynamically loads new elements
 if (typeof window.addEventListener !== 'undefined') {
     window.addEventListener('load', function() {
         setTimeout(applyEmailNormalization, 500);
         
-        // Reaplica quando há mudanças no DOM (list view editable)
+        // Reapply when there are DOM changes (editable list view)
+        let debounceTimer = null;
         const observer = new MutationObserver(function(mutations) {
-            applyEmailNormalization();
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(function() {
+                applyEmailNormalization();
+            }, 200);
         });
         
         observer.observe(document.body, {
@@ -23,15 +27,18 @@ if (typeof window.addEventListener !== 'undefined') {
 }
 
 function applyEmailNormalization() {
-    // Busca todos os inputs de email no modelo PropertyEmail
+    // Find all email inputs in the PropertyEmail model
     const emailInputs = document.querySelectorAll('div[name="email"] input.o_input, td[name="email"] input.o_input');
     
     emailInputs.forEach(function(input) {
-        // Evita aplicar múltiplas vezes no mesmo input
+        // Avoid applying multiple times to the same input
         if (input.dataset.emailNormalizationApplied) return;
         input.dataset.emailNormalizationApplied = 'true';
         
-        // Bloqueia espaços em branco
+        // Add CSS to display in lowercase (visual only)
+        input.style.textTransform = 'lowercase';
+        
+        // Block whitespace characters
         input.addEventListener('keypress', function(e) {
             const char = String.fromCharCode(e.which || e.keyCode);
             if (char === ' ') {
@@ -40,41 +47,24 @@ function applyEmailNormalization() {
             }
         });
         
-        // Força minúsculas enquanto digita
-        input.addEventListener('keydown', function(e) {
-            // Se for uma letra maiúscula (A-Z)
-            if (e.key && e.key.length === 1 && e.key >= 'A' && e.key <= 'Z' && !e.ctrlKey && !e.metaKey) {
-                e.preventDefault();
-                // Insere a letra minúscula no lugar
-                const start = e.target.selectionStart;
-                const end = e.target.selectionEnd;
-                const value = e.target.value;
-                e.target.value = value.substring(0, start) + e.key.toLowerCase() + value.substring(end);
-                e.target.selectionStart = e.target.selectionEnd = start + 1;
-                
-                // Dispara evento input para o Odoo detectar
-                const inputEvent = new Event('input', { bubbles: true });
-                e.target.dispatchEvent(inputEvent);
-            }
-        });
-        
-        // Normaliza o email ao sair do campo (blur)
+        // Normalize email when leaving the field (blur)
+        // Remove spaces and convert to lowercase only when user finishes typing
         input.addEventListener('blur', function(e) {
             if (e.target.value) {
-                // Remove espaços e converte para minúsculas
+                // Remove spaces and convert to lowercase
                 const normalizedEmail = e.target.value.trim().toLowerCase();
                 
                 if (e.target.value !== normalizedEmail) {
                     e.target.value = normalizedEmail;
                     
-                    // Dispara evento change para o Odoo detectar a mudança
+                    // Trigger change event for Odoo to detect the change
                     const event = new Event('change', { bubbles: true });
                     e.target.dispatchEvent(event);
                 }
             }
         });
         
-        // Normaliza email existente (ao carregar)
+        // Normalize existing email (on load)
         if (input.value) {
             input.value = input.value.trim().toLowerCase();
         }

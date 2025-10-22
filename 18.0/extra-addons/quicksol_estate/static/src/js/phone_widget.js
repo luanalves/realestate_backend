@@ -19,6 +19,11 @@ if (typeof window.addEventListener !== 'undefined') {
             childList: true,
             subtree: true
         });
+        
+        // Cleanup on page unload to prevent memory leaks
+        window.addEventListener('beforeunload', function() {
+            observer.disconnect();
+        });
     });
 }
 
