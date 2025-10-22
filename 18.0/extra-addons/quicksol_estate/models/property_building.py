@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from odoo import models, fields
+from odoo import models, fields, api
 
 
 class PropertyBuilding(models.Model):
@@ -46,6 +46,7 @@ class PropertyBuilding(models.Model):
     property_ids = fields.One2many('real.estate.property', 'building_id', string='Properties')
     property_count = fields.Integer(string='Property Count', compute='_compute_property_count')
 
+    @api.depends('property_ids')
     def _compute_property_count(self):
         for building in self:
             building.property_count = len(building.property_ids)

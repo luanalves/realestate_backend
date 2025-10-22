@@ -78,6 +78,11 @@ class PropertyCommission(models.Model):
                     commission.commission_amount = (commission.property_id.price or 0) * commission.value / 100
                 elif commission.applies_to == 'rent':
                     commission.commission_amount = (commission.property_id.rent_price or 0) * commission.value / 100
+                elif commission.applies_to == 'both':
+                    # Compute both components and sum them
+                    sale_component = (commission.property_id.price or 0) * commission.value / 100
+                    rent_component = (commission.property_id.rent_price or 0) * commission.value / 100
+                    commission.commission_amount = sale_component + rent_component
                 else:
                     commission.commission_amount = 0
             else:
