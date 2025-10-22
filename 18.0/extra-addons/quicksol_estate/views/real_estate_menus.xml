@@ -1,8 +1,8 @@
 <odoo>
-    <!-- Menu Principal - sequence controla posição na barra principal -->
+    <!-- Main Menu - sequence controls position in the main bar -->
     <menuitem id="menu_real_estate_root" name="Real Estate" sequence="15" web_icon="quicksol_estate,static/description/icon.png"/>
     
-    <!-- Submenus - sequence controla ordem dentro do menu -->
+    <!-- Submenus - sequence controls order within the menu -->
     <menuitem id="menu_real_estate_company" name="Real Estate Companies" parent="menu_real_estate_root" sequence="5" action="action_company"/>
     <menuitem id="menu_real_estate_property" name="Properties" parent="menu_real_estate_root" sequence="10" action="action_property"/>
     <menuitem id="menu_real_estate_agent" name="Agents" parent="menu_real_estate_root" sequence="20" action="action_agent"/>
