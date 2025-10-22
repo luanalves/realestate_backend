@@ -104,3 +104,9 @@ docker volume rm odoo18-data odoo18-db
 - Official image: https://hub.docker.com/_/odoo
 - Docker source: https://github.com/odoo/docker
 - Documentation: https://github.com/docker-library/docs/tree/master/odoo
+
+
+# Update module
+```bash
+docker exec odoo18 odoo -d realestate -u quicksol_estate --stop-after-init
+```

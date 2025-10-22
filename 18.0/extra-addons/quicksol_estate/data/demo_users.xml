@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        
+        <!-- Demo Real Estate Manager -->
+        <record id="user_estate_manager_demo" model="res.users">
+            <field name="name">Maria Silva (Manager)</field>
+            <field name="login">manager@imobiliaria.com</field>
+            <field name="password">manager123</field>
+            <field name="email">manager@imobiliaria.com</field>
+            <field name="groups_id" eval="[(6, 0, [
+                ref('base.group_user'),
+                ref('quicksol_estate.group_real_estate_manager')
+            ])]"/>
+            <field name="estate_company_ids" eval="[(6, 0, [
+                ref('quicksol_estate.company_quicksol_real_estate'),
+                ref('quicksol_estate.company_urban_properties')
+            ])]"/>
+            <field name="main_estate_company_id" ref="quicksol_estate.company_quicksol_real_estate"/>
+        </record>
+
+        <!-- Demo Company User 1 -->
+        <record id="user_estate_user1_demo" model="res.users">
+            <field name="name">João Santos (User)</field>
+            <field name="login">joao@imobiliaria.com</field>
+            <field name="password">user123</field>
+            <field name="email">joao@imobiliaria.com</field>
+            <field name="groups_id" eval="[(6, 0, [
+                ref('base.group_user'),
+                ref('quicksol_estate.group_real_estate_user')
+            ])]"/>
+            <field name="estate_company_ids" eval="[(6, 0, [
+                ref('quicksol_estate.company_quicksol_real_estate')
+            ])]"/>
+            <field name="main_estate_company_id" ref="quicksol_estate.company_quicksol_real_estate"/>
+        </record>
+
+        <!-- Demo Company User 2 -->
+        <record id="user_estate_user2_demo" model="res.users">
+            <field name="name">Ana Costa (User)</field>
+            <field name="login">ana@luxurygroup.com</field>
+            <field name="password">user123</field>
+            <field name="email">ana@luxurygroup.com</field>
+            <field name="groups_id" eval="[(6, 0, [
+                ref('base.group_user'),
+                ref('quicksol_estate.group_real_estate_user')
+            ])]"/>
+            <field name="estate_company_ids" eval="[(6, 0, [
+                ref('quicksol_estate.company_urban_properties')
+            ])]"/>
+            <field name="main_estate_company_id" ref="quicksol_estate.company_urban_properties"/>
+        </record>
+
+        <!-- Demo Agent 1 -->
+        <record id="user_estate_agent1_demo" model="res.users">
+            <field name="name">Pedro Oliveira (Agent)</field>
+            <field name="login">pedro@imobiliaria.com</field>
+            <field name="password">agent123</field>
+            <field name="email">pedro@imobiliaria.com</field>
+            <field name="groups_id" eval="[(6, 0, [
+                ref('base.group_user'),
+                ref('quicksol_estate.group_real_estate_agent')
+            ])]"/>
+            <field name="estate_company_ids" eval="[(6, 0, [
+                ref('quicksol_estate.company_quicksol_real_estate')
+            ])]"/>
+            <field name="main_estate_company_id" ref="quicksol_estate.company_quicksol_real_estate"/>
+        </record>
+
+        <!-- Demo Agent 2 -->
+        <record id="user_estate_agent2_demo" model="res.users">
+            <field name="name">Carmen Rodriguez (Agent)</field>
+            <field name="login">carmen@luxurygroup.com</field>
+            <field name="password">agent123</field>
+            <field name="email">carmen@luxurygroup.com</field>
+            <field name="groups_id" eval="[(6, 0, [
+                ref('base.group_user'),
+                ref('quicksol_estate.group_real_estate_agent')
+            ])]"/>
+            <field name="estate_company_ids" eval="[(6, 0, [
+                ref('quicksol_estate.company_urban_properties')
+            ])]"/>
+            <field name="main_estate_company_id" ref="quicksol_estate.company_urban_properties"/>
+        </record>
+
+        <!-- Demo Portal User -->
+        <record id="user_estate_portal_demo" model="res.users">
+            <field name="name">Carlos Cliente (Portal)</field>
+            <field name="login">cliente@email.com</field>
+            <field name="password">portal123</field>
+            <field name="email">cliente@email.com</field>
+            <field name="groups_id" eval="[(6, 0, [
+                ref('base.group_portal')
+            ])]"/>
+        </record>
+
+        <!-- Create corresponding agent records for agent users -->
+        <record id="agent_pedro_demo" model="real.estate.agent">
+            <field name="name">Pedro Oliveira</field>
+            <field name="user_id" ref="user_estate_agent1_demo"/>
+            <field name="phone">(11) 99999-1234</field>
+            <field name="email">pedro@imobiliaria.com</field>
+            <field name="years_experience">5</field>
+            <field name="agency_name">Quicksol Real Estate</field>
+            <field name="company_ids" eval="[(6, 0, [
+                ref('quicksol_estate.company_quicksol_real_estate')
+            ])]"/>
+        </record>
+
+        <record id="agent_carmen_demo" model="real.estate.agent">
+            <field name="name">Carmen Rodriguez</field>
+            <field name="user_id" ref="user_estate_agent2_demo"/>
+            <field name="phone">(11) 88888-5678</field>
+            <field name="email">carmen@luxurygroup.com</field>
+            <field name="years_experience">8</field>
+            <field name="agency_name">Urban Properties</field>
+            <field name="company_ids" eval="[(6, 0, [
+                ref('quicksol_estate.company_urban_properties')
+            ])]"/>
+        </record>
+
+        <!-- Demo properties for testing access control -->
+        <record id="demo_property_quicksol" model="real.estate.property">
+            <field name="name">Casa Demo Quicksol</field>
+            <field name="address">Rua das Flores, 123 - São Paulo, SP</field>
+            <field name="price">500000.00</field>
+            <field name="num_rooms">3</field>
+            <field name="num_bathrooms">2</field>
+            <field name="area">150</field>
+            <field name="property_type_id" ref="quicksol_estate.property_type_house"/>
+            <field name="agent_id" ref="agent_pedro_demo"/>
+            <field name="company_ids" eval="[(6, 0, [
+                ref('quicksol_estate.company_quicksol_real_estate')
+            ])]"/>
+            <field name="status">available</field>
+            <field name="condition">good</field>
+        </record>
+
+        <record id="demo_property_urban" model="real.estate.property">
+            <field name="name">Apartamento Demo Urban</field>
+            <field name="address">Av. Paulista, 456 - São Paulo, SP</field>
+            <field name="price">800000.00</field>
+            <field name="num_rooms">4</field>
+            <field name="num_bathrooms">3</field>
+            <field name="area">200</field>
+            <field name="property_type_id" ref="quicksol_estate.property_type_apartment"/>
+            <field name="agent_id" ref="agent_carmen_demo"/>
+            <field name="company_ids" eval="[(6, 0, [
+                ref('quicksol_estate.company_urban_properties')
+            ])]"/>
+            <field name="status">available</field>
+            <field name="condition">new</field>
+        </record>
+
+    </data>
+</odoo>

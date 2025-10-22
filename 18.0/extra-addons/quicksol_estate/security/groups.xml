@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Categoria para Real Estate -->
+        <record id="module_category_real_estate" model="ir.module.category">
+            <field name="name">Real Estate</field>
+            <field name="description">Real Estate Management</field>
+            <field name="sequence">10</field>
+        </record>
+
+        <!-- Company Manager - Acesso total à sua imobiliária -->
+        <record id="group_real_estate_manager" model="res.groups">
+            <field name="name">Real Estate Company Manager</field>
+            <field name="category_id" ref="module_category_real_estate"/>
+            <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+            <field name="comment">Pode gerenciar completamente sua imobiliária: criar, editar, excluir propriedades, agentes, contratos e inquilinos</field>
+        </record>
+
+        <!-- Company User - Acesso limitado à sua imobiliária -->
+        <record id="group_real_estate_user" model="res.groups">
+            <field name="name">Real Estate Company User</field>
+            <field name="category_id" ref="module_category_real_estate"/>
+            <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+            <field name="comment">Pode visualizar e editar registros de sua imobiliária, mas não pode excluir</field>
+        </record>
+
+        <!-- Company Agent - Corretor da imobiliária -->
+        <record id="group_real_estate_agent" model="res.groups">
+            <field name="name">Real Estate Agent</field>
+            <field name="category_id" ref="module_category_real_estate"/>
+            <field name="implied_ids" eval="[(4, ref('group_real_estate_user'))]"/>
+            <field name="comment">Corretor com acesso limitado às suas próprias propriedades e contratos</field>
+        </record>
+
+        <!-- Portal User - Cliente/Inquilino -->
+        <record id="group_real_estate_portal_user" model="res.groups">
+            <field name="name">Real Estate Portal User</field>
+            <field name="category_id" ref="module_category_real_estate"/>
+            <field name="implied_ids" eval="[(4, ref('base.group_portal'))]"/>
+            <field name="comment">Cliente/Inquilino com acesso limitado apenas aos seus próprios registros</field>
+        </record>
+
+    </data>
+</odoo>

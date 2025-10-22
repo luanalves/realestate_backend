@@ -1,0 +1,89 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_system_admin_estate_company,System Admin: Estate Companies,model_thedevkitchen_estate_company,base.group_system,1,1,1,1
+access_system_admin_property,System Admin: Properties,model_real_estate_property,base.group_system,1,1,1,1
+access_system_admin_agent,System Admin: Agents,model_real_estate_agent,base.group_system,1,1,1,1
+access_system_admin_lease,System Admin: Leases,model_real_estate_lease,base.group_system,1,1,1,1
+access_system_admin_sale,System Admin: Sales,model_real_estate_sale,base.group_system,1,1,1,1
+access_system_admin_tenant,System Admin: Tenants,model_real_estate_tenant,base.group_system,1,1,1,1
+access_system_admin_property_type,System Admin: Property Types,model_real_estate_property_type,base.group_system,1,1,1,1
+access_system_admin_amenity,System Admin: Amenities,model_real_estate_amenity,base.group_system,1,1,1,1
+access_system_admin_property_image,System Admin: Property Images,model_real_estate_property_image,base.group_system,1,1,1,1
+access_system_admin_property_owner,System Admin: Property Owners,model_real_estate_property_owner,base.group_system,1,1,1,1
+access_system_admin_property_building,System Admin: Property Buildings,model_real_estate_property_building,base.group_system,1,1,1,1
+access_system_admin_property_phone,System Admin: Property Phones,model_real_estate_property_phone,base.group_system,1,1,1,1
+access_system_admin_property_email,System Admin: Property Emails,model_real_estate_property_email,base.group_system,1,1,1,1
+access_system_admin_property_photo,System Admin: Property Photos,model_real_estate_property_photo,base.group_system,1,1,1,1
+access_system_admin_property_document,System Admin: Property Documents,model_real_estate_property_document,base.group_system,1,1,1,1
+access_system_admin_property_key,System Admin: Property Keys,model_real_estate_property_key,base.group_system,1,1,1,1
+access_system_admin_property_commission,System Admin: Property Commissions,model_real_estate_property_commission,base.group_system,1,1,1,1
+access_system_admin_property_tag,System Admin: Property Tags,model_real_estate_property_tag,base.group_system,1,1,1,1
+access_company_manager_estate_company,Company Manager: Estate Companies,model_thedevkitchen_estate_company,group_real_estate_manager,1,1,1,1
+access_company_manager_property,Company Manager: Properties,model_real_estate_property,group_real_estate_manager,1,1,1,1
+access_company_manager_agent,Company Manager: Agents,model_real_estate_agent,group_real_estate_manager,1,1,1,1
+access_company_manager_lease,Company Manager: Leases,model_real_estate_lease,group_real_estate_manager,1,1,1,1
+access_company_manager_sale,Company Manager: Sales,model_real_estate_sale,group_real_estate_manager,1,1,1,1
+access_company_manager_tenant,Company Manager: Tenants,model_real_estate_tenant,group_real_estate_manager,1,1,1,1
+access_company_manager_property_type,Company Manager: Property Types,model_real_estate_property_type,group_real_estate_manager,1,1,1,1
+access_company_manager_amenity,Company Manager: Amenities,model_real_estate_amenity,group_real_estate_manager,1,1,1,1
+access_company_manager_property_image,Company Manager: Property Images,model_real_estate_property_image,group_real_estate_manager,1,1,1,1
+access_company_manager_property_owner,Company Manager: Property Owners,model_real_estate_property_owner,group_real_estate_manager,1,1,1,1
+access_company_manager_property_building,Company Manager: Property Buildings,model_real_estate_property_building,group_real_estate_manager,1,1,1,1
+access_company_manager_property_phone,Company Manager: Property Phones,model_real_estate_property_phone,group_real_estate_manager,1,1,1,1
+access_company_manager_property_email,Company Manager: Property Emails,model_real_estate_property_email,group_real_estate_manager,1,1,1,1
+access_company_manager_property_photo,Company Manager: Property Photos,model_real_estate_property_photo,group_real_estate_manager,1,1,1,1
+access_company_manager_property_document,Company Manager: Property Documents,model_real_estate_property_document,group_real_estate_manager,1,1,1,1
+access_company_manager_property_key,Company Manager: Property Keys,model_real_estate_property_key,group_real_estate_manager,1,1,1,1
+access_company_manager_property_commission,Company Manager: Property Commissions,model_real_estate_property_commission,group_real_estate_manager,1,1,1,1
+access_company_manager_property_tag,Company Manager: Property Tags,model_real_estate_property_tag,group_real_estate_manager,1,1,1,1
+access_company_user_estate_company,Company User: Estate Companies,model_thedevkitchen_estate_company,group_real_estate_user,1,0,0,0
+access_company_user_property,Company User: Properties,model_real_estate_property,group_real_estate_user,1,1,1,0
+access_company_user_agent,Company User: Agents,model_real_estate_agent,group_real_estate_user,1,1,0,0
+access_company_user_lease,Company User: Leases,model_real_estate_lease,group_real_estate_user,1,1,1,0
+access_company_user_sale,Company User: Sales,model_real_estate_sale,group_real_estate_user,1,1,1,0
+access_company_user_tenant,Company User: Tenants,model_real_estate_tenant,group_real_estate_user,1,1,1,0
+access_company_user_property_type,Company User: Property Types,model_real_estate_property_type,group_real_estate_user,1,0,0,0
+access_company_user_amenity,Company User: Amenities,model_real_estate_amenity,group_real_estate_user,1,0,0,0
+access_company_user_property_image,Company User: Property Images,model_real_estate_property_image,group_real_estate_user,1,1,1,1
+access_company_user_property_owner,Company User: Property Owners,model_real_estate_property_owner,group_real_estate_user,1,1,1,0
+access_company_user_property_building,Company User: Property Buildings,model_real_estate_property_building,group_real_estate_user,1,1,1,0
+access_company_user_property_phone,Company User: Property Phones,model_real_estate_property_phone,group_real_estate_user,1,1,1,1
+access_company_user_property_email,Company User: Property Emails,model_real_estate_property_email,group_real_estate_user,1,1,1,1
+access_company_user_property_photo,Company User: Property Photos,model_real_estate_property_photo,group_real_estate_user,1,1,1,1
+access_company_user_property_document,Company User: Property Documents,model_real_estate_property_document,group_real_estate_user,1,1,1,1
+access_company_user_property_key,Company User: Property Keys,model_real_estate_property_key,group_real_estate_user,1,1,1,0
+access_company_user_property_commission,Company User: Property Commissions,model_real_estate_property_commission,group_real_estate_user,1,1,1,0
+access_company_user_property_tag,Company User: Property Tags,model_real_estate_property_tag,group_real_estate_user,1,0,0,0
+access_agent_estate_company,Agent: Estate Companies,model_thedevkitchen_estate_company,group_real_estate_agent,1,0,0,0
+access_agent_property,Agent: Properties,model_real_estate_property,group_real_estate_agent,1,1,0,0
+access_agent_agent,Agent: Agents,model_real_estate_agent,group_real_estate_agent,1,1,0,0
+access_agent_lease,Agent: Leases,model_real_estate_lease,group_real_estate_agent,1,1,0,0
+access_agent_sale,Agent: Sales,model_real_estate_sale,group_real_estate_agent,1,1,0,0
+access_agent_tenant,Agent: Tenants,model_real_estate_tenant,group_real_estate_agent,1,0,0,0
+access_agent_property_type,Agent: Property Types,model_real_estate_property_type,group_real_estate_agent,1,0,0,0
+access_agent_amenity,Agent: Amenities,model_real_estate_amenity,group_real_estate_agent,1,0,0,0
+access_agent_property_image,Agent: Property Images,model_real_estate_property_image,group_real_estate_agent,1,1,1,1
+access_agent_property_owner,Agent: Property Owners,model_real_estate_property_owner,group_real_estate_agent,1,0,0,0
+access_agent_property_building,Agent: Property Buildings,model_real_estate_property_building,group_real_estate_agent,1,0,0,0
+access_agent_property_phone,Agent: Property Phones,model_real_estate_property_phone,group_real_estate_agent,1,1,1,1
+access_agent_property_email,Agent: Property Emails,model_real_estate_property_email,group_real_estate_agent,1,1,1,1
+access_agent_property_photo,Agent: Property Photos,model_real_estate_property_photo,group_real_estate_agent,1,1,1,1
+access_agent_property_document,Agent: Property Documents,model_real_estate_property_document,group_real_estate_agent,1,1,1,0
+access_agent_property_key,Agent: Property Keys,model_real_estate_property_key,group_real_estate_agent,1,1,0,0
+access_agent_property_commission,Agent: Property Commissions,model_real_estate_property_commission,group_real_estate_agent,1,0,0,0
+access_agent_property_tag,Agent: Property Tags,model_real_estate_property_tag,group_real_estate_agent,1,0,0,0
+access_portal_estate_company,Portal: Estate Companies,model_thedevkitchen_estate_company,base.group_portal,1,0,0,0
+access_portal_property,Portal: Properties,model_real_estate_property,base.group_portal,1,0,0,0
+access_portal_agent,Portal: Agents,model_real_estate_agent,base.group_portal,1,0,0,0
+access_portal_property_type,Portal: Property Types,model_real_estate_property_type,base.group_portal,1,0,0,0
+access_portal_amenity,Portal: Amenities,model_real_estate_amenity,base.group_portal,1,0,0,0
+access_portal_property_image,Portal: Property Images,model_real_estate_property_image,base.group_portal,1,0,0,0
+access_portal_property_owner,Portal: Property Owners,model_real_estate_property_owner,base.group_portal,1,0,0,0
+access_portal_property_building,Portal: Property Buildings,model_real_estate_property_building,base.group_portal,1,0,0,0
+access_portal_property_photo,Portal: Property Photos,model_real_estate_property_photo,base.group_portal,1,0,0,0
+access_portal_property_tag,Portal: Property Tags,model_real_estate_property_tag,base.group_portal,1,0,0,0
+access_public_property,Public: Properties,model_real_estate_property,base.group_public,1,0,0,0
+access_public_property_type,Public: Property Types,model_real_estate_property_type,base.group_public,1,0,0,0
+access_public_amenity,Public: Amenities,model_real_estate_amenity,base.group_public,1,0,0,0
+access_public_property_image,Public: Property Images,model_real_estate_property_image,base.group_public,1,0,0,0
+access_public_property_photo,Public: Property Photos,model_real_estate_property_photo,base.group_public,1,0,0,0
+access_public_property_tag,Public: Property Tags,model_real_estate_property_tag,base.group_public,1,0,0,0
