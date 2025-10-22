@@ -292,33 +292,31 @@ from . import property_auxiliary  # Loaded too late
 </record>
 ```
 
-#### 10. **INTERFACE STANDARDS**
-
-#### 7. **VALIDATION REQUIREMENTS**
+#### 10. **VALIDATION REQUIREMENTS**
 - All required fields must have proper validation
 - Implement `@api.constrains` for business rules
 - Format validations (email, CNPJ, phone, etc.)
 - Clear, translated error messages
 
-#### 10. **INTERFACE STANDARDS**
+#### 11. **INTERFACE STANDARDS**
 - **FOLLOW Odoo layout patterns** (don't replicate external designs exactly)
 - Use native components: `<form>`, `<list>`, `<search>`, `<kanban>`
 - Apply Odoo CSS classes: `oe_title`, `oe_edit_only`, etc.
 - Organize complex forms with tabs: `<notebook><page>`
 
-#### 11. **INTERNATIONALIZATION (i18n)**
+#### 12. **INTERNATIONALIZATION (i18n)**
 - All code in English (variables, methods, comments)
 - Create Portuguese translations file
 - Translate: labels, help texts, error messages, menu items
 - Translate demo data when applicable
 
-#### 12. **DATABASE DESIGN**
+#### 13. **DATABASE DESIGN**
 - Define fields with correct types
 - Create indexes when necessary
 - Proper relationships: Many2one, One2many, Many2many
 - Consider performance for large data volumes
 
-#### 13. **TESTING REQUIREMENTS**
+#### 14. **TESTING REQUIREMENTS**
 - Test creation, editing, validations
 - Test error scenarios
 - Test demo data loading

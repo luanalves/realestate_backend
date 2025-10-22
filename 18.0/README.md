@@ -106,6 +106,7 @@ docker volume rm odoo18-data odoo18-db
 - Documentation: https://github.com/docker-library/docs/tree/master/odoo
 
 
-# Atualizar módulo  
- docker compose exec odoo bash
-./odoo -d realestate -u quicksol_estate --stop-after-init
+# Update module
+```bash
+docker exec odoo18 odoo -d realestate -u quicksol_estate --stop-after-init
+```
