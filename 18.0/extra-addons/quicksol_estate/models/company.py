@@ -77,13 +77,27 @@ class RealEstateCompany(models.Model):
                 raise ValidationError('Invalid CNPJ format. Please use: XX.XXX.XXX/XXXX-XX')
 
     def _validate_cnpj(self, cnpj):
-        """Basic CNPJ format validation"""
+        """Full CNPJ format and check digit validation"""
         if not cnpj:
             return True
         # Remove any formatting
         cnpj_clean = re.sub(r'[^0-9]', '', cnpj)
         # Check if it has 14 digits
-        return len(cnpj_clean) == 14
+        if len(cnpj_clean) != 14:
+            return False
+        # Check for sequence of same digit (invalid CNPJ)
+        if cnpj_clean == cnpj_clean[0] * 14:
+            return False
+        # Calculate first check digit
+        def calculate_digit(cnpj, weights):
+            total = sum(int(digit) * weight for digit, weight in zip(cnpj, weights))
+            remainder = total % 11
+            return '0' if remainder < 2 else str(11 - remainder)
+        weights_first = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
+        weights_second = [6] + weights_first
+        first_digit = calculate_digit(cnpj_clean[:12], weights_first)
+        second_digit = calculate_digit(cnpj_clean[:12] + first_digit, weights_second)
+        return cnpj_clean[-2:] == first_digit + second_digit
 
     @api.onchange('cnpj')
     def _onchange_cnpj(self):
