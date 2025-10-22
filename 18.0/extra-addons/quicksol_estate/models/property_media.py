@@ -32,21 +32,22 @@ class PropertyPhoto(models.Model):
             photo.image_medium = photo.image
             photo.image_small = photo.image
     
-    @api.model
-    def create(self, vals):
-        """Garante que property_id seja preenchido do contexto"""
-        if not vals.get('property_id') and self._context.get('default_property_id'):
-            vals['property_id'] = self._context.get('default_property_id')
-        
-        # Validação: property_id é obrigatório
-        if not vals.get('property_id'):
-            raise ValidationError('A foto deve estar associada a uma propriedade.')
-        
-        return super(PropertyPhoto, self).create(vals)
-
     @api.model_create_multi
     def create(self, vals_list):
+        """Ensures property_id is filled from context and enforces is_main uniqueness"""
+        # Process each vals dict to set property_id from context if missing
+        for vals in vals_list:
+            if not vals.get('property_id') and self._context.get('default_property_id'):
+                vals['property_id'] = self._context.get('default_property_id')
+            
+            # Validation: property_id is mandatory
+            if not vals.get('property_id'):
+                raise ValidationError('A foto deve estar associada a uma propriedade.')
+        
+        # Create the photos
         photos = super().create(vals_list)
+        
+        # Enforce is_main uniqueness for each photo
         for photo in photos:
             if photo.is_main and photo.property_id:
                 # Remove main flag from other photos
@@ -55,6 +56,7 @@ class PropertyPhoto(models.Model):
                     ('id', '!=', photo.id),
                     ('is_main', '=', True)
                 ]).write({'is_main': False})
+        
         return photos
 
     def write(self, vals):
