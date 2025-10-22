@@ -14,10 +14,7 @@ Test Structure:
 - test_validations.py: Email, date, and CNPJ validation tests
 - test_company_unit.py: Company model unit tests
 - test_agent_unit.py: Agent model unit tests
-- test_tenant_unit.py: Tenant model unit tests
-- test_lease_unit.py: Lease model unit tests
-- test_sale_unit.py: Sale model unit tests
-- test_access_control.py: Access control and security tests
+- test_odoo_bridge.py: Odoo bridge integration tests
 """
 
 from . import base_validation_test
