@@ -6,6 +6,7 @@ from odoo.exceptions import ValidationError
 class PropertyOwner(models.Model):
     _name = 'real.estate.property.owner'
     _description = 'Property Owner'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _rec_name = 'name'
 
     name = fields.Char(string='Owner Name', required=True, tracking=True)

@@ -5,6 +5,7 @@ from odoo import models, fields, api
 class PropertyBuilding(models.Model):
     _name = 'real.estate.property.building'
     _description = 'Building/Condominium'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _rec_name = 'name'
 
     name = fields.Char(string='Building Name', required=True, tracking=True)

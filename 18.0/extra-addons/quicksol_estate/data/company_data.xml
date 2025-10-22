@@ -5,7 +5,7 @@
         
         <record id="company_quicksol_real_estate" model="thedevkitchen.estate.company">
             <field name="name">Quicksol Real Estate</field>
-            <field name="cnpj">12.345.678/0001-90</field>
+            <field name="cnpj">11.222.333/0001-81</field>
             <field name="email">contato@quicksolrealestate.com</field>
             <field name="phone">(11) 9999-8888</field>
             <field name="website">https://quicksolrealestate.com</field>
@@ -18,7 +18,7 @@
 
         <record id="company_urban_properties" model="thedevkitchen.estate.company">
             <field name="name">Urban Properties Ltda</field>
-            <field name="cnpj">98.765.432/0001-10</field>
+            <field name="cnpj">11.444.777/0001-61</field>
             <field name="email">info@urbanproperties.com.br</field>
             <field name="phone">(21) 3456-7890</field>
             <field name="website">https://urbanproperties.com.br</field>
@@ -31,7 +31,7 @@
 
         <record id="company_coastal_realty" model="thedevkitchen.estate.company">
             <field name="name">Coastal Realty</field>
-            <field name="cnpj">11.222.333/0001-44</field>
+            <field name="cnpj">34.028.316/0001-03</field>
             <field name="email">vendas@coastalrealty.com.br</field>
             <field name="phone">(85) 2222-3333</field>
             <field name="website">https://coastalrealty.com.br</field>
