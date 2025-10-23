@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from odoo import models, fields, api
 from odoo.exceptions import ValidationError
+from odoo.tools.image import image_process
 from .file_validator import FileValidator
 
 
@@ -29,8 +30,13 @@ class PropertyPhoto(models.Model):
     @api.depends('image')
     def _compute_images(self):
         for photo in self:
-            photo.image_medium = photo.image
-            photo.image_small = photo.image
+            if photo.image:
+                # Resize to medium (max 512x512) and small (max 256x256) dimensions
+                photo.image_medium = image_process(photo.image, size=(512, 512))
+                photo.image_small = image_process(photo.image, size=(256, 256))
+            else:
+                photo.image_medium = False
+                photo.image_small = False
     
     @api.model_create_multi
     def create(self, vals_list):
