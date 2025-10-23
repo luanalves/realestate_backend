@@ -88,7 +88,7 @@ class PropertyCommission(models.Model):
             else:
                 commission.commission_amount = 0
 
-    @api.constrains('value')
+    @api.constrains('value', 'commission_type')
     def _check_value(self):
         for commission in self:
             if commission.commission_type == 'percentage' and (commission.value < 0 or commission.value > 100):

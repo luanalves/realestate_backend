@@ -7,7 +7,7 @@
             <field name="name">Quicksol Real Estate</field>
             <field name="cnpj">11.222.333/0001-81</field>
             <field name="email">contato@quicksolrealestate.com</field>
-            <field name="phone">(11) 9999-8888</field>
+            <field name="phone">(11) 99999-8888</field>
             <field name="website">https://quicksolrealestate.com</field>
             <field name="street">Rua das Palmeiras, 123</field>
             <field name="city">São Paulo</field>
