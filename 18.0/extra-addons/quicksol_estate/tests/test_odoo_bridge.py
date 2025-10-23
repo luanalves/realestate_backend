@@ -29,6 +29,14 @@ class TestQuicksolEstate(TransactionCase):
         suite.addTests(loader.loadTestsFromTestCase(test_validations.TestCnpjValidations))
         suite.addTests(loader.loadTestsFromTestCase(test_validations.TestFieldRequiredValidations))
         
+        # Inject Odoo environment into all test instances
+        for test_group in suite:
+            if hasattr(test_group, '__iter__'):
+                for test in test_group:
+                    test.env = self.env
+            else:
+                test_group.env = self.env
+        
         # Run tests
         runner = unittest.TextTestRunner(verbosity=2, buffer=True)
         result = runner.run(suite)
