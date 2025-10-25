@@ -20,6 +20,22 @@ Cypress.Commands.add('odooLogin', (username = 'admin', password = 'admin') => {
 })
 
 /**
+ * Comando customizado para fazer login com sessão persistente
+ * Mantém o login entre os testes para melhor performance
+ */
+Cypress.Commands.add('odooLoginSession', (username = 'admin', password = 'admin') => {
+  cy.session([username, password], () => {
+    cy.visit('/web/login')
+    cy.get('input[name="login"]').type(username)
+    cy.get('input[name="password"]').type(password)
+    cy.get('button[type="submit"]').click()
+    cy.get('.o_user_menu', { timeout: 10000 }).should('be.visible')
+  })
+  // Após restaurar a sessão, navega para a home
+  cy.visit('/web')
+})
+
+/**
  * Comando customizado para fazer logout do Odoo
  */
 Cypress.Commands.add('odooLogout', () => {
