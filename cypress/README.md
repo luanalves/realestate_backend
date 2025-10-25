@@ -93,12 +93,88 @@ cy.odooLogin()
 cy.odooLogin('outro_usuario', 'outra_senha')
 ```
 
+### cy.odooLoginSession(username, password)
+
+Realiza login com sessão persistente (muito mais rápido para múltiplos testes).
+
+```javascript
+// Mantém o login entre os testes
+beforeEach(() => {
+  cy.odooLoginSession()
+})
+```
+
 ### cy.odooLogout()
 
 Realiza logout do Odoo.
 
 ```javascript
 cy.odooLogout()
+```
+
+## 🔗 Conectando Testes
+
+### Opção 1: Testes Independentes (Recomendado)
+
+Cada teste começa do zero, garantindo isolamento:
+
+```javascript
+describe('Listagem de Imóveis', () => {
+  beforeEach(() => {
+    cy.odooLogin() // Login antes de cada teste
+  })
+
+  it('Deve visualizar a listagem', () => {
+    cy.contains('Real Estate').click()
+    cy.get('.o_list_view').should('be.visible')
+  })
+
+  it('Deve criar novo imóvel', () => {
+    // Já está logado por causa do beforeEach
+    cy.contains('Real Estate').click()
+    cy.get('.o_list_button_add').click()
+  })
+})
+```
+
+### Opção 2: Testes Conectados (Fluxo)
+
+Testes dependem uns dos outros, executam em sequência:
+
+```javascript
+describe('Fluxo Completo', () => {
+  let imovelId
+  
+  before(() => {
+    cy.odooLoginSession() // Login uma vez
+  })
+
+  it('1. Criar imóvel', () => {
+    // ... código ...
+    cy.url().then((url) => {
+      imovelId = url.match(/id=(\d+)/)[1]
+    })
+  })
+
+  it('2. Editar imóvel', () => {
+    // Usa o imovelId do teste anterior
+    cy.visit(`/web#id=${imovelId}&model=estate.property`)
+  })
+})
+```
+
+### Opção 3: Sessões (Performance)
+
+Mantém login entre testes para execução mais rápida:
+
+```javascript
+describe('Testes Rápidos', () => {
+  beforeEach(() => {
+    cy.odooLoginSession() // Reutiliza sessão
+  })
+
+  // Testes executam muito mais rápido!
+})
 ```
 
 ## 📝 Exemplo de Teste
