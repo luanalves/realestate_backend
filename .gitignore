@@ -17,6 +17,13 @@ __pycache__/
 # Odoo filestore (imagens e arquivos anexados)
 */filestore/
 
+# Node modules e Cypress
+node_modules/
+npm-debug.log*
+cypress/videos/
+cypress/screenshots/
+cypress/downloads/
+
 # OS specific
 .DS_Store
 .DS_Store
