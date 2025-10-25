@@ -23,6 +23,9 @@ npm-debug.log*
 cypress/videos/
 cypress/screenshots/
 cypress/downloads/
+18.0/cypress/screenshots/
+18.0/cypress/videos/
+18.0/cypress/downloads/
 
 # OS specific
 .DS_Store
