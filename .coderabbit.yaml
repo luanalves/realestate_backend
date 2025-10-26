@@ -286,7 +286,7 @@ reviews:
     # Default: {}
     ruff:
 
-      # Enable Ruff - Ruff is a Python linter and code formatter. - Enable Ruff integration. - v0.14.0
+      # Enable Ruff - Ruff is a Python linter and code formatter. - Enable Ruff integration. - v0.14.1
       # Default: true
       enabled: true
 
@@ -528,7 +528,7 @@ reviews:
     # Default: {}
     sqlfluff:
 
-      # Enable SQLFluff - SQLFluff is an open source, dialect-flexible and configurable SQL linter. - v3.4.2
+      # Enable SQLFluff - SQLFluff is an open source, dialect-flexible and configurable SQL linter. - v3.5.0
       # Default: true
       enabled: true
 
@@ -544,7 +544,7 @@ reviews:
     # Default: {}
     pylint:
 
-      # Enable Pylint - Pylint is a Python static code analysis tool. - v4.0.0
+      # Enable Pylint - Pylint is a Python static code analysis tool. - v4.0.1
       # Default: true
       enabled: true
 
@@ -552,7 +552,7 @@ reviews:
     # Default: {}
     oxc:
 
-      # Enable Oxlint - Oxlint is a JavaScript/TypeScript linter for OXC written in Rust. - v1.22.0
+      # Enable Oxlint - Oxlint is a JavaScript/TypeScript linter for OXC written in Rust. - v1.23.0
       # Default: true
       enabled: true
 
