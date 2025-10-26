@@ -30,12 +30,13 @@ class TestQuicksolEstate(TransactionCase):
         suite.addTests(loader.loadTestsFromTestCase(test_validations.TestFieldRequiredValidations))
         
         # Inject Odoo environment into all test instances
-        for test_group in suite:
-            if hasattr(test_group, '__iter__'):
-                for test in test_group:
-                    test.env = self.env
-            else:
-                test_group.env = self.env
+        def inject_env(tests):
+            for item in tests:
+                if hasattr(item, '__iter__'):
+                    inject_env(item)
+                elif hasattr(item, 'env'):
+                    item.env = self.env
+        inject_env(suite)
         
         # Run tests
         runner = unittest.TextTestRunner(verbosity=2, buffer=True)
@@ -51,8 +52,9 @@ class TestQuicksolEstate(TransactionCase):
             print(f"\n❌ Validation test errors ({len(result.errors)}):")
             for test, error in result.errors:
                 print(f"  - {test}: {error.strip()}")
-                
-        # For now, just ensure no errors (failures will be fixed separately)
+        # Ensure both no errors and no failures
+        self.assertEqual(result.errors, [], f"Validation test errors: {result.errors}")
+        self.assertEqual(result.failures, [], f"Validation test failures: {result.failures}")
         self.assertEqual(result.errors, [], f"Validation test errors: {result.errors}")
         print(f"✅ Validation tests completed: {result.testsRun} tests run, {len(result.failures)} failures, {len(result.errors)} errors")
 
