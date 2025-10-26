@@ -113,8 +113,8 @@
             <field name="condominium_fee">1200.00</field>
             <field name="property_status">available</field>
             <field name="accepts_financing">True</field>
-            <field name="authorization_start_date" eval="(DateTime.now() - timedelta(days=30)).strftime('%Y-%m-%d')"/>
-            <field name="authorization_end_date" eval="(DateTime.now() + timedelta(days=335)).strftime('%Y-%m-%d')"/>
+            <field name="authorization_start_date" eval="(datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')"/>
+            <field name="authorization_end_date" eval="(datetime.now() + timedelta(days=335)).strftime('%Y-%m-%d')"/>
             
             <!-- Features -->
             <field name="area">180.00</field>
