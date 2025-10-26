@@ -180,7 +180,7 @@ Se retornar 0, o campo não foi renderizado ainda. O MutationObserver vai detect
 
 ---
 
-## � Histórico de Tentativas
+## 📋 Histórico de Tentativas
 
 1. ❌ Widget OWL customizado - Conflito com props.record
 2. ❌ Extensão do CharField - Erro de template
