@@ -5,7 +5,7 @@ import copy
 import logging
 from collections import defaultdict
 
-from odoo import Command, _, api, fields, models, SUPERUSER_ID
+from odoo import Command, _, api, fields, models, SUPERUSER_ID, tools
 from odoo.exceptions import UserError
 from odoo.tools.misc import OrderedSet
 
@@ -222,6 +222,11 @@ class AuditlogRule(models.Model):
         """Automatically create audit rules for all business models."""
         # Skip during module uninstall
         if self.env.context.get('module_uninstall'):
+            return
+        
+        # Skip during tests
+        if tools.config['test_enable'] or self.env.context.get('tracking_disable'):
+            _logger.debug("Skipping auto-create rules during tests")
             return
             
         try:
