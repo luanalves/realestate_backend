@@ -38,9 +38,6 @@
         <field name="res_model">res.users</field>
         <field name="view_mode">list,form</field>
         <field name="domain">[('estate_company_ids', '!=', False)]</field>
-        <field name="context">{
-            'default_groups_id': [(4, ref('quicksol_estate.group_real_estate_user'))]
-        }</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
                 Create users for the real estate system

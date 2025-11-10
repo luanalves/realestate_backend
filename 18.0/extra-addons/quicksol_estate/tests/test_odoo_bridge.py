@@ -55,7 +55,6 @@ class TestQuicksolEstate(TransactionCase):
         # Ensure both no errors and no failures
         self.assertEqual(result.errors, [], f"Validation test errors: {result.errors}")
         self.assertEqual(result.failures, [], f"Validation test failures: {result.failures}")
-        self.assertEqual(result.errors, [], f"Validation test errors: {result.errors}")
         print(f"✅ Validation tests completed: {result.testsRun} tests run, {len(result.failures)} failures, {len(result.errors)} errors")
 
     def test_run_company_tests(self):

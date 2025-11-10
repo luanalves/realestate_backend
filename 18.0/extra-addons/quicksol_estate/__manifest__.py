@@ -60,9 +60,9 @@ Property Form Sections:
         'data/property_demo_data.xml',
         
         # Views (actions must be loaded before menus that reference them)
-        'views/property_auxiliary_views.xml',
         'views/company_views.xml',
         'views/property_views.xml',
+        'views/property_auxiliary_views.xml',
         'views/agent_views.xml',
         'views/lease_views.xml',
         'views/sale_views.xml',

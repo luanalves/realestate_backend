@@ -38,8 +38,8 @@ class Agent(models.Model):
                 self.name = self.user_id.name
             if not self.email:
                 self.email = self.user_id.email
-            # Sync companies from user to agent
-            if self.user_id.estate_company_ids:
+            # Sync companies from user to agent (only if agent has no companies yet)
+            if self.user_id.estate_company_ids and not self.company_ids:
                 self.company_ids = self.user_id.estate_company_ids
 
     @api.model

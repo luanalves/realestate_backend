@@ -32,7 +32,7 @@ class AuditlogHTTPRequest(models.Model):
             )
 
     def name_get(self):
-        return [(request.id, request.display_name) for request in self]
+        return [(rec.id, rec.display_name) for rec in self]
 
     @api.model
     def current_http_request(self):
