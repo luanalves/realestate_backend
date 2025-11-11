@@ -35,7 +35,10 @@ reviews:
     skepticism: 3
     depth: 5
     formality: 3
-
+  review_status:
+    enabled: true
+    auto_update: true
+    
 # Configurações para destacar tipos específicos de code smells
 highlights:
   # Atenção especial para problemas de segurança 
