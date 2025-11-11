@@ -5,6 +5,7 @@ from odoo import models, fields, api
 class PropertyBuilding(models.Model):
     _name = 'real.estate.property.building'
     _description = 'Building/Condominium'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _rec_name = 'name'
 
     name = fields.Char(string='Building Name', required=True, tracking=True)
@@ -12,7 +13,7 @@ class PropertyBuilding(models.Model):
     city = fields.Char(string='City')
     state = fields.Char(string='State')
     zip_code = fields.Char(string='CEP')
-    country_id = fields.Many2one('res.country', string='Country', default=lambda self: self.env.ref('base.br').id)
+    country_id = fields.Many2one('res.country', string='Country', default=lambda self: self.env['res.country'].search([('code', '=', 'BR')], limit=1).id)
     
     # Building Details
     total_floors = fields.Integer(string='Total Floors')

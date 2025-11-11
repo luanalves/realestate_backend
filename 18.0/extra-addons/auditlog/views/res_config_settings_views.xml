@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <!-- Add Auditlog settings to General Settings -->
+    <record id="res_config_settings_view_form" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.auditlog</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base.res_config_settings_view_form" />
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app
+                    string="Audit Log"
+                    name="auditlog"
+                    groups="base.group_system"
+                >
+                    <block title="Automatic Audit Rules">
+                        <setting
+                            id="auditlog_auto_log"
+                            help="Automatically create audit rules for all business models"
+                        >
+                            <field name="auditlog_auto_log" />
+                            <div class="text-muted">
+                                Enable automatic audit logging for all models in the system
+                            </div>
+                        </setting>
+                        <setting
+                            id="auditlog_auto_log_create_field"
+                            invisible="not auditlog_auto_log"
+                        >
+                            <field name="auditlog_auto_log_create" />
+                            <label for="auditlog_auto_log_create" />
+                        </setting>
+                        <setting
+                            id="auditlog_auto_log_write_field"
+                            invisible="not auditlog_auto_log"
+                        >
+                            <field name="auditlog_auto_log_write" />
+                            <label for="auditlog_auto_log_write" />
+                        </setting>
+                        <setting
+                            id="auditlog_auto_log_unlink_field"
+                            invisible="not auditlog_auto_log"
+                        >
+                            <field name="auditlog_auto_log_unlink" />
+                            <label for="auditlog_auto_log_unlink" />
+                        </setting>
+                        <setting
+                            id="auditlog_auto_log_read_field"
+                            invisible="not auditlog_auto_log"
+                        >
+                            <field name="auditlog_auto_log_read" />
+                            <label for="auditlog_auto_log_read" />
+                        </setting>
+                        <setting
+                            id="auditlog_excluded_models"
+                            invisible="not auditlog_auto_log"
+                            help="Comma-separated list of model patterns to exclude (e.g., ir.%,base.%)"
+                        >
+                            <label for="auditlog_excluded_models" string="Excluded Models" />
+                            <div class="text-muted">
+                                Use % as wildcard. Example: ir.%, base.%, mail.%
+                            </div>
+                            <field
+                                name="auditlog_excluded_models"
+                                class="oe_inline"
+                                placeholder="ir.%,base.%,mail.%,bus.%,web.%"
+                            />
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+</odoo>

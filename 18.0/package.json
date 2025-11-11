@@ -1,0 +1,18 @@
+{
+  "name": "18.0",
+  "version": "1.0.0",
+  "description": "This directory contains instructions to quickly launch an Odoo 18.0 environment with Postgres using Docker, without changing the repository.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "cypress:open": "cypress open",
+    "cypress:run": "cypress run",
+    "cypress:headless": "cypress run --headless"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "cypress": "^15.5.0"
+  }
+}

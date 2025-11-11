@@ -6,6 +6,7 @@ from odoo.exceptions import ValidationError
 class PropertyOwner(models.Model):
     _name = 'real.estate.property.owner'
     _description = 'Property Owner'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _rec_name = 'name'
 
     name = fields.Char(string='Owner Name', required=True, tracking=True)
@@ -20,7 +21,7 @@ class PropertyOwner(models.Model):
     city = fields.Char(string='City')
     state = fields.Char(string='State')
     zip_code = fields.Char(string='CEP')
-    country_id = fields.Many2one('res.country', string='Country', default=lambda self: self.env.ref('base.br').id)
+    country_id = fields.Many2one('res.country', string='Country', default=lambda self: self.env['res.country'].search([('code', '=', 'BR')], limit=1).id)
     birth_date = fields.Date(string='Birth Date')
     marital_status = fields.Selection([
         ('single', 'Single'),

@@ -5,6 +5,14 @@ from unittest.mock import Mock, patch, MagicMock
 import re
 from datetime import date
 
+try:
+    from odoo.exceptions import ValidationError
+    ODOO_AVAILABLE = True
+except ImportError:
+    # Fallback for standalone unittest execution
+    ValidationError = Exception
+    ODOO_AVAILABLE = False
+
 from .base_validation_test import BaseValidationTest
 
 
@@ -395,13 +403,19 @@ class TestFieldRequiredValidations(BaseValidationTest):
         company = self.create_mock_record('thedevkitchen.estate.company', valid_data)
         self.assertTrue(company.name, "Company name should be present")
         
-        # Test missing required field should be caught by Odoo's validation
-        # (We simulate this since we can't test Odoo's built-in validation directly)
-        invalid_data = {'email': 'test@company.com'}  # Missing required 'name'
-        with self.assertRaises(KeyError):
-            # This simulates what would happen if we try to access required field that's missing
-            company = Mock()
-            company.name = invalid_data['name']  # This should raise KeyError
+        # Test missing required field - use actual Odoo validation if available
+        if ODOO_AVAILABLE and hasattr(self, 'env'):
+            # Real Odoo validation test
+            invalid_data = {'email': 'test@company.com'}  # Missing required 'name'
+            with self.assertRaises(ValidationError):
+                self.env['thedevkitchen.estate.company'].create(invalid_data)
+        else:
+            # Fallback for mock-based testing
+            invalid_data = {'email': 'test@company.com'}  # Missing required 'name'
+            with self.assertRaises(KeyError):
+                # This simulates what would happen if we try to access required field that's missing
+                company = Mock()
+                company.name = invalid_data['name']  # This should raise KeyError
     
     def test_agent_required_fields(self):
         """Test Agent model required fields"""

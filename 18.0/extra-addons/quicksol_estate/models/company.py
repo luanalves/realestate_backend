@@ -62,6 +62,7 @@ class RealEstateCompany(models.Model):
         for record in self:
             record.display_name = record.legal_name or record.name
 
+    @api.depends('property_ids', 'agent_ids', 'tenant_ids', 'lease_ids', 'sale_ids')
     def _compute_counts(self):
         for record in self:
             record.property_count = len(record.property_ids)

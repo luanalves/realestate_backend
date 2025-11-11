@@ -11,8 +11,10 @@ if (typeof window.addEventListener !== 'undefined') {
         setTimeout(applyPhoneMask, 500);
         
         // Reaplica quando há mudanças no DOM (list view editable)
+        let debounceTimer;
         const observer = new MutationObserver(function(mutations) {
-            applyPhoneMask();
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(applyPhoneMask, 150);
         });
         
         observer.observe(document.body, {
