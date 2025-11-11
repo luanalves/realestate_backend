@@ -38,7 +38,11 @@ reviews:
   review_status:
     enabled: true
     auto_update: true
-    
+    review_status: true
+    auto_review:
+      enabled: true
+      drafts: false
+
 # Configurações para destacar tipos específicos de code smells
 highlights:
   # Atenção especial para problemas de segurança 
