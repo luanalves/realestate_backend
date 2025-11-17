@@ -35,6 +35,7 @@ services:
       USER: odoo
       PASSWORD: odoo
       DB_NAME: realestate
+      JWT_ISSUER: thedevkitchen-api-gateway
     volumes:
       - odoo18-data:/var/lib/odoo
       - ./filestore:/var/lib/odoo/filestore
