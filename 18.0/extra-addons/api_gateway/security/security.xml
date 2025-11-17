@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+        
+        <!-- Category -->
+        <record id="module_category_api_gateway" model="ir.module.category">
+            <field name="name">API Gateway</field>
+            <field name="description">Manage API Gateway and OAuth 2.0</field>
+            <field name="sequence">100</field>
+        </record>
+
+        <!-- Groups -->
+        <record id="group_api_gateway_manager" model="res.groups">
+            <field name="name">API Gateway Manager</field>
+            <field name="category_id" ref="module_category_api_gateway"/>
+            <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+        </record>
+
+    </data>
+</odoo>

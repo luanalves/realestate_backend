@@ -1,0 +1,9 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_oauth_application_manager,oauth.application.manager,model_oauth_application,group_api_gateway_manager,1,1,1,1
+access_oauth_token_manager,oauth.token.manager,model_oauth_token,group_api_gateway_manager,1,1,1,1
+access_oauth_application_admin,oauth.application.admin,model_oauth_application,base.group_system,1,1,1,1
+access_oauth_token_admin,oauth.token.admin,model_oauth_token,base.group_system,1,1,1,1
+access_api_endpoint_manager,api.endpoint.manager,model_api_endpoint,group_api_gateway_manager,1,1,1,1
+access_api_endpoint_admin,api.endpoint.admin,model_api_endpoint,base.group_system,1,1,1,1
+access_api_access_log_manager,api.access.log.manager,model_api_access_log,group_api_gateway_manager,1,1,1,1
+access_api_access_log_admin,api.access.log.admin,model_api_access_log,base.group_system,1,1,1,1
