@@ -1,244 +1,112 @@
-# Testes E2E com Cypress - Odoo Real Estate
+# Testes Cypress para Odoo
 
-## 📋 Pré-requisitos
+Este diretório contém testes E2E (End-to-End) usando Cypress para o sistema Odoo.
 
-- Node.js 20.x instalado
-- Odoo rodando em `http://localhost:8069`
-- Credenciais de acesso configuradas
+## 📚 Documentação Importante
 
-## 🚀 Como executar os testes
-
-### 1. Certifique-se que o Odoo está rodando
-
-```bash
-cd 18.0
-docker compose up -d
-```
-
-### 2. Execute os testes em modo interativo
-
-```bash
-npm run cypress:open
-```
-
-Ou usando npx diretamente:
-
-```bash
-npx cypress open
-```
-
-### 3. Execute os testes em modo headless
-
-```bash
-npm run cypress:run
-```
-
-## 📁 Estrutura dos Testes
-
-```
-cypress/
-├── e2e/
-│   ├── login-teste.cy.js           # Testes completos de login
-│   └── login-custom-command.cy.js  # Exemplos usando comandos customizados
-├── fixtures/
-│   └── example.json                # Dados de teste
-├── support/
-│   ├── commands.js                 # Comandos customizados
-│   └── e2e.js                      # Configurações globais
-└── cypress.config.js               # Configuração do Cypress
-```
+- **[Comandos Customizados](./COMANDOS_CUSTOMIZADOS.md)** ⭐ **LEIA PRIMEIRO!**
+  - `cy.odooLoginSession()` - Login com cache (3x mais rápido!)
+  - `cy.odooNavigateTo()` - Navegação direta para menus
+  - Boas práticas e exemplos de uso
+  - Como migrar testes antigos
 
 ## 🧪 Testes Disponíveis
 
-### login-teste.cy.js
+### API Gateway
+- **`api-gateway.cy.js`** - Testes de interface (20 testes)
+  - Criação/edição de OAuth Applications
+  - Gerenciamento de tokens
+  - Validações de campos
+  - UI/UX
 
-Contém 4 testes principais:
+- **`api-gateway-integration.cy.js`** - Testes de integração (12 testes)
+  - Fluxo completo: UI → API → UI
+  - OAuth 2.0 Client Credentials
+  - Revogação de tokens
+  - Validações de segurança
 
-1. **Login com sucesso** - Testa login com credenciais válidas
-2. **Erro com credenciais inválidas** - Verifica mensagens de erro
-3. **Validação de campos obrigatórios** - Testa campos vazios
-4. **Logout após login** - Testa o fluxo completo de login/logout
+### Outros Módulos
+- `imoveis-*.cy.js` - Testes do módulo de imóveis
+- `login-custom-command.cy.js` - Exemplo de comando customizado
 
-### login-custom-command.cy.js
+## 🚀 Como Executar
 
-Demonstra o uso dos comandos customizados:
-- `cy.odooLogin()` - Login rápido
-- `cy.odooLogout()` - Logout rápido
+### Pré-requisitos
+```bash
+# 1. Odoo rodando
+cd /opt/homebrew/var/www/realestate/odoo-docker/18.0
+docker compose up -d
 
-## 🔐 Credenciais
-
-As credenciais padrão estão configuradas em `cypress.env.json`:
-
-```json
-{
-  "ODOO_USERNAME": "admin",
-  "ODOO_PASSWORD": "admin",
-  "ODOO_BASE_URL": "http://localhost:8069"
-}
+# 2. Módulo api_gateway instalado
+docker compose exec odoo odoo -d realestate -i api_gateway --stop-after-init
+docker compose restart odoo
 ```
 
-Para usar credenciais diferentes, edite o arquivo `cypress.env.json`.
+### Modo Interativo (Recomendado)
+```bash
+cd /opt/homebrew/var/www/realestate/odoo-docker
+npx cypress open
+```
+Depois selecione o teste desejado.
 
-## 🛠️ Comandos Customizados
+### Modo Headless (CI/CD)
+```bash
+# Todos os testes
+npx cypress run
 
-### cy.odooLogin(username, password)
+# Apenas API Gateway
+npx cypress run --spec "cypress/e2e/api-gateway*.cy.js"
 
-Realiza login no Odoo de forma simplificada.
+# Apenas frontend
+npx cypress run --spec "cypress/e2e/api-gateway.cy.js"
 
-```javascript
-// Login com credenciais padrão (admin/admin)
-cy.odooLogin()
-
-// Login com credenciais específicas
-cy.odooLogin('outro_usuario', 'outra_senha')
+# Apenas integração
+npx cypress run --spec "cypress/e2e/api-gateway-integration.cy.js"
 ```
 
-### cy.odooLoginSession(username, password)
-
-Realiza login com sessão persistente (muito mais rápido para múltiplos testes).
-
-```javascript
-// Mantém o login entre os testes
-beforeEach(() => {
-  cy.odooLoginSession()
-})
-```
-
-### cy.odooLogout()
-
-Realiza logout do Odoo.
-
-```javascript
-cy.odooLogout()
-```
-
-## 🔗 Conectando Testes
-
-### Opção 1: Testes Independentes (Recomendado)
-
-Cada teste começa do zero, garantindo isolamento:
-
-```javascript
-describe('Listagem de Imóveis', () => {
-  beforeEach(() => {
-    cy.odooLogin() // Login antes de cada teste
-  })
-
-  it('Deve visualizar a listagem', () => {
-    cy.contains('Real Estate').click()
-    cy.get('.o_list_view').should('be.visible')
-  })
-
-  it('Deve criar novo imóvel', () => {
-    // Já está logado por causa do beforeEach
-    cy.contains('Real Estate').click()
-    cy.get('.o_list_button_add').click()
-  })
-})
-```
-
-### Opção 2: Testes Conectados (Fluxo)
-
-Testes dependem uns dos outros, executam em sequência:
-
-```javascript
-describe('Fluxo Completo', () => {
-  let imovelId
-  
-  before(() => {
-    cy.odooLoginSession() // Login uma vez
-  })
-
-  it('1. Criar imóvel', () => {
-    // ... código ...
-    cy.url().then((url) => {
-      imovelId = url.match(/id=(\d+)/)[1]
-    })
-  })
-
-  it('2. Editar imóvel', () => {
-    // Usa o imovelId do teste anterior
-    cy.visit(`/web#id=${imovelId}&model=estate.property`)
-  })
-})
-```
-
-### Opção 3: Sessões (Performance)
-
-Mantém login entre testes para execução mais rápida:
-
-```javascript
-describe('Testes Rápidos', () => {
-  beforeEach(() => {
-    cy.odooLoginSession() // Reutiliza sessão
-  })
-
-  // Testes executam muito mais rápido!
-})
-```
-
-## 📝 Exemplo de Teste
+## ✅ Exemplo de Uso
 
 ```javascript
 describe('Meu Teste', () => {
-  it('Deve acessar o sistema', () => {
-    // Faz login
-    cy.odooLogin()
+  beforeEach(() => {
+    // ✅ Use cy.odooLoginSession() - MUITO MAIS RÁPIDO!
+    cy.odooLoginSession()
+  })
+  
+  it('Deve criar aplicação', () => {
+    // ✅ Use cy.odooNavigateTo() - Navegação direta
+    cy.odooNavigateTo('api_gateway.action_oauth_application', 'oauth.application')
     
-    // Navega para algum lugar
-    cy.visit('/web#menu_id=123')
-    
-    // Faz suas verificações
-    cy.get('.o_form_view').should('be.visible')
-    
-    // Faz logout
-    cy.odooLogout()
+    cy.get('button.o_list_button_add').click()
+    cy.get('input[name="name"]').type('Test App')
+    cy.get('button.o_form_button_save').click()
   })
 })
 ```
 
-## 🔍 Seletores Úteis do Odoo
+## 📖 Recursos
 
-- `.o_user_menu` - Menu do usuário
-- `.o_apps` - Menu de aplicativos
-- `.o_form_view` - Visualização de formulário
-- `.o_list_view` - Visualização de lista
-- `.o_kanban_view` - Visualização kanban
-- `input[name="login"]` - Campo de login
-- `input[name="password"]` - Campo de senha
-- `button[type="submit"]` - Botão de submit
+- [Comandos Customizados](./COMANDOS_CUSTOMIZADOS.md) - **Leia para testes 3x mais rápidos!**
+- [Cypress Docs](https://docs.cypress.io/)
+- [Best Practices](https://docs.cypress.io/guides/references/best-practices)
 
-## 📊 Relatórios
+## 🤝 Contribuindo
 
-Os relatórios de execução são salvos em:
-- Screenshots: `cypress/screenshots/`
-- Vídeos: `cypress/videos/`
+Ao adicionar novos testes:
 
-## ⚙️ Configurações
+1. **Use comandos customizados:**
+   ```javascript
+   cy.odooLoginSession() // ✅ Ao invés de login manual
+   cy.odooNavigateTo(...) // ✅ Ao invés de clicar em menus
+   ```
 
-O arquivo `cypress.config.js` contém as configurações principais:
+2. **Nomeie descritivamente:**
+   ```javascript
+   it('Deve criar OAuth Application com nome e descrição', () => {
+   ```
 
-- `baseUrl`: URL base do Odoo
-- `viewportWidth`: Largura da viewport (1280px)
-- `viewportHeight`: Altura da viewport (720px)
-- `defaultCommandTimeout`: Timeout padrão (10000ms)
+3. **Adicione ao README** se criar novos módulos de teste
 
-## 🐛 Troubleshooting
+## 📝 Licença
 
-### Erro: "Timed out retrying"
-
-- Verifique se o Odoo está rodando
-- Aumente o timeout no `cypress.config.js`
-- Verifique se a URL está correta
-
-### Erro: "Element not visible"
-
-- Use `{ timeout: 10000 }` para aguardar elementos
-- Verifique se o seletor CSS está correto
-- Use `cy.wait()` se necessário
-
-### Testes passam no modo interativo mas falham no headless
-
-- Adicione esperas explícitas com `cy.wait()`
-- Use `cy.get('.elemento', { timeout: 10000 })`
-- Verifique a velocidade de execução
+LGPL-3
