@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from odoo.tests.common import TransactionCase
-from datetime import datetime, timedelta
+from odoo import fields
+from datetime import timedelta
 
 
 class TestOAuthToken(TransactionCase):
@@ -30,25 +31,25 @@ class TestOAuthToken(TransactionCase):
         self.assertFalse(token.revoked, "Token should not be revoked by default")
 
     def test_token_expiration(self):
-        """Test token expiration"""
-        # Create expired token
+        """Test token expiration using UTC-aware datetimes"""
+        # Create expired token (UTC-aware)
         expired_token = self.Token.create({
             'application_id': self.app.id,
             'access_token': 'expired_token',
             'token_type': 'Bearer',
-            'expires_at': datetime.now() - timedelta(hours=1),
+            'expires_at': fields.Datetime.now() - timedelta(hours=1),
         })
         
-        # Create valid token
+        # Create valid token (UTC-aware)
         valid_token = self.Token.create({
             'application_id': self.app.id,
             'access_token': 'valid_token',
             'token_type': 'Bearer',
-            'expires_at': datetime.now() + timedelta(hours=1),
+            'expires_at': fields.Datetime.now() + timedelta(hours=1),
         })
         
-        self.assertTrue(expired_token.expires_at < datetime.now())
-        self.assertTrue(valid_token.expires_at > datetime.now())
+        self.assertTrue(expired_token.expires_at < fields.Datetime.now())
+        self.assertTrue(valid_token.expires_at > fields.Datetime.now())
 
     def test_action_revoke(self):
         """Test revoking a token"""
@@ -97,8 +98,8 @@ class TestOAuthToken(TransactionCase):
         
         self.assertFalse(token.last_used, "last_used should be False initially")
         
-        # Update last_used
-        token.write({'last_used': datetime.now()})
+        # Update last_used (UTC-aware)
+        token.write({'last_used': fields.Datetime.now()})
         
         self.assertTrue(token.last_used, "last_used should be set")
 

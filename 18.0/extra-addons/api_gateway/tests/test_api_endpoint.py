@@ -9,6 +9,8 @@ class TestApiEndpoint(TransactionCase):
     def setUp(self):
         super(TestApiEndpoint, self).setUp()
         self.Endpoint = self.env['api.endpoint']
+        # Clean existing endpoints to avoid unique constraint violations
+        self.Endpoint.search([]).unlink()
 
     def test_create_endpoint(self):
         """Test creating an API endpoint"""

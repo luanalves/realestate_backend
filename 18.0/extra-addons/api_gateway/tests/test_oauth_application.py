@@ -19,6 +19,9 @@ class TestOAuthApplication(TransactionCase):
         
         self.assertTrue(app.client_id, "Client ID should be generated")
         self.assertTrue(app.client_secret, "Client Secret should be generated")
+        # Verify client_secret is hashed (bcrypt format)
+        self.assertTrue(app.client_secret.startswith('$2b$'), "Client Secret should be bcrypt hashed")
+        self.assertEqual(len(app.client_secret), 60, "Bcrypt hash should be 60 characters")
         self.assertTrue(app.active, "Application should be active by default")
         self.assertEqual(app.name, 'Test Application')
 
@@ -42,10 +45,16 @@ class TestOAuthApplication(TransactionCase):
         })
         
         old_secret = app.client_secret
+        # Verify it's a bcrypt hash
+        self.assertTrue(old_secret.startswith('$2b$'))
+        
         app.action_regenerate_secret()
         
         self.assertNotEqual(app.client_secret, old_secret, "Secret should be different after regeneration")
         self.assertTrue(app.client_secret, "New secret should be generated")
+        # Verify new secret is also bcrypt hashed
+        self.assertTrue(app.client_secret.startswith('$2b$'))
+        self.assertEqual(len(app.client_secret), 60)
 
     def test_token_count(self):
         """Test token count computation"""
@@ -79,11 +88,15 @@ class TestOAuthApplication(TransactionCase):
         self.assertEqual(action['res_model'], 'oauth.token')
 
     def test_application_name_required(self):
-        """Test that name is required"""
-        with self.assertRaises(Exception):
-            self.Application.create({
-                'description': 'No name provided'
-            })
+        """Test that name has a default value"""
+        # Criar aplicação sem nome - deve usar valor padrão
+        app = self.Application.create({
+            'description': 'No name provided'
+        })
+        
+        # Verificar que o nome foi definido automaticamente
+        self.assertTrue(app.name, "Name should have a default value")
+        self.assertEqual(app.name, 'OAuth Application', "Name should be 'OAuth Application'")
 
     def test_deactivate_application(self):
         """Test deactivating an application"""
