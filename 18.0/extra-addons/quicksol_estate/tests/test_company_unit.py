@@ -161,8 +161,7 @@ class TestCompanyUnit(BaseCompanyTest):
                 self.assertEqual(formatted_cnpj, expected_formatted,
                     f"CNPJ {raw_cnpj} should be formatted to {expected_formatted}")
     
-    @patch('odoo.exceptions.ValidationError')
-    def test_company_cnpj_validation_invalid(self, mock_validation_error):
+    def test_company_cnpj_validation_invalid(self):
         """Test CNPJ validation for invalid formats"""
         
         invalid_cnpjs = [
@@ -190,7 +189,6 @@ class TestCompanyUnit(BaseCompanyTest):
                 # Assert
                 if invalid_cnpj and invalid_cnpj != '':  # Empty is allowed
                     self.assertTrue(should_raise_error, f"Invalid CNPJ {invalid_cnpj} should trigger validation error")
-    
     def test_company_action_view_properties(self):
         """Test action_view_properties method"""
         

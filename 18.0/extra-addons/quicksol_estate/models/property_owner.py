@@ -46,10 +46,10 @@ class PropertyOwner(models.Model):
     def _check_cpf(self):
         for owner in self:
             if owner.cpf and len(owner.cpf.replace('.', '').replace('-', '')) != 11:
-                raise ValidationError('CPF deve conter 11 dígitos.')
+                raise ValidationError('CPF must contain 11 digits.')
 
     @api.constrains('cnpj')
     def _check_cnpj(self):
         for owner in self:
             if owner.cnpj and len(owner.cnpj.replace('.', '').replace('/', '').replace('-', '')) != 14:
-                raise ValidationError('CNPJ deve conter 14 dígitos.')
+                raise ValidationError('CNPJ must contain 14 digits.')

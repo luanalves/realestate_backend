@@ -489,13 +489,13 @@ msgstr "Área total não pode ser menor que área construída."
 #. module: quicksol_estate
 #: code:addons/quicksol_estate/models/property.py:0
 #, python-format
-msgid "CPF deve conter 11 dígitos."
+msgid "CPF must contain 11 digits."
 msgstr "CPF deve conter 11 dígitos."
 
 #. module: quicksol_estate
 #: code:addons/quicksol_estate/models/property.py:0
 #, python-format
-msgid "CNPJ deve conter 14 dígitos."
+msgid "CNPJ must contain 14 digits."
 msgstr "CNPJ deve conter 14 dígitos."
 
 # ========== VIEW TAB NAMES ==========
