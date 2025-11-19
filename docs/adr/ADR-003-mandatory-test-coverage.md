@@ -344,13 +344,11 @@ npx cypress run --spec "cypress/e2e/api-gateway.cy.js"
 
 ---
 
-## Decisão
+## Apêndice A: Template de Teste Unitário
 
-**Todos os módulos desenvolvidos neste projeto DEVEM ter:**
-
-### 1. Testes Unitários com 100% de Cobertura
-
-**Obrigatório:**
+```python
+# -*- coding: utf-8 -*-
+"""
 - ✅ Cobertura de 100% da lógica de negócio
 - ✅ Testes puros usando mocks (sem banco de dados)
 - ✅ Execução rápida (< 1 segundo para suite completa)
