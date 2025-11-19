@@ -42,6 +42,10 @@ from test_models_unit import (
     TestMiddlewareFunctions,
 )
 
+from test_bcrypt_unit import (
+    TestBcryptHashing,
+)
+
 
 def run_all_tests():
     """Run all unit tests and display summary"""
@@ -75,6 +79,9 @@ def run_all_tests():
         TestAPIAccessLogModel,
         TestJSONSchemaValidation,
         TestMiddlewareFunctions,
+        
+        # From test_bcrypt_unit.py
+        TestBcryptHashing,
     ]
     
     for test_class in test_classes:
