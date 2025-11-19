@@ -83,6 +83,7 @@ RUN curl -o odoo.deb -sSL http://nightly.odoo.com/${ODOO_VERSION}/nightly/deb/od
 RUN pip3 install --break-system-packages \
     authlib==1.6.5 \
     PyJWT==2.10.1 \
+    bcrypt==4.2.1 \
     cryptography==41.0.7 \
     jsonschema==4.23.0
 

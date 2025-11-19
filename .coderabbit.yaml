@@ -6,7 +6,7 @@ reviews:
   # Usar as instruções do Copilot como base para as revisões
   path_instructions:
     - path: "**"
-      instructions_path: ".github/copilot-instructions.md"
+      instructions: "Follow the guidelines in .github/copilot-instructions.md"
   
   # Configurações para verificação de qualidade do código
   checks:
@@ -25,23 +25,11 @@ reviews:
       override_limit: true # Permite revisar PRs que excedem o limite de arquivos
   
   # Configuração de estilo de comentários e solicitações de alteração
-  drafts: true
   request_changes_workflow: false
   collapse_walkthrough: false
-  
-  # Estilo de comunicação
-  style:
-    openness: 5
-    skepticism: 3
-    depth: 5
-    formality: 3
-  review_status:
-    enabled: true
-    auto_update: true
-    review_status: true
-    auto_review:
-      enabled: true
-      drafts: false
+  review_status: true
+  auto_review:
+    drafts: true
 
 # Configurações para destacar tipos específicos de code smells
 highlights:
