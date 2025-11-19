@@ -37,7 +37,7 @@ class OAuthToken(models.Model):
     expires_at = fields.Datetime(
         string='Expires At',
         readonly=True,
-        default=lambda self: datetime.now() + timedelta(hours=1),
+        default=lambda self: fields.Datetime.now() + timedelta(hours=1),
         help='When the access token expires (default: 1 hour)'
     )
     scope = fields.Char(

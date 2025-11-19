@@ -53,15 +53,15 @@ class AuthController(http.Controller):
             if not client_id or not client_secret:
                 return self._error_response('invalid_request', 'client_id and client_secret are required')
 
-            # Find application
+            # Find application by client_id only (we'll verify secret separately)
             Application = request.env['oauth.application'].sudo()
             application = Application.search([
                 ('client_id', '=', client_id),
-                ('client_secret', '=', client_secret),
                 ('active', '=', True),
             ], limit=1)
 
-            if not application:
+            # Verify client secret using bcrypt hash comparison
+            if not application or not application.verify_secret(client_secret):
                 return self._error_response('invalid_client', 'Invalid client credentials')
 
             # Generate tokens
@@ -202,10 +202,10 @@ class AuthController(http.Controller):
             if token_record.revoked:
                 return self._error_response('invalid_grant', 'Refresh token has been revoked')
 
-            # Validate client credentials if provided
+            # Validate client credentials if provided (verify secret using bcrypt)
             application = token_record.application_id
             if client_id and client_secret:
-                if application.client_id != client_id or application.client_secret != client_secret:
+                if application.client_id != client_id or not application.verify_secret(client_secret):
                     return self._error_response('invalid_client', 'Invalid client credentials')
 
             # Check if application is still active

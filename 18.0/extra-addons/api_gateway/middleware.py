@@ -10,7 +10,7 @@ import jwt
 import json
 import functools
 from datetime import datetime
-from odoo import http
+from odoo import http, fields
 from odoo.http import request
 
 
@@ -57,8 +57,8 @@ def require_jwt(func):
         if not token_record:
             return _error_response(401, 'invalid_token', 'Token not found or invalid')
         
-        # Check if token is expired
-        if token_record.expires_at and token_record.expires_at < datetime.now():
+        # Check if token is expired (compare UTC-aware datetimes)
+        if token_record.expires_at and token_record.expires_at < fields.Datetime.now():
             return _error_response(401, 'token_expired', 'Token has expired')
         
         # Check if token is revoked
