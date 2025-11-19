@@ -410,10 +410,19 @@ msgid "Whether the token is still valid"
 msgstr "Se o token ainda é válido"
 
 #. module: api_gateway
-#: model_terms:ir.ui.view,arch_db:api_gateway.view_oauth_application_form
-msgid ""
-"⚠️ Keep this secret secure! Never share it publicly. \n"
-"                                            If compromised, regenerate immediately."
-msgstr ""
-"⚠️ Mantenha esta chave secreta segura! Nunca a compartilhe publicamente. \n"
-"                                            Se comprometida, regenere imediatamente."
+#: model:ir.model.fields,help:api_gateway.field_oauth_application__client_secret_info
+msgid "Secret is shown only once after creation via notification. If lost, use Regenerate Secret button."
+msgstr "O segredo é exibido apenas uma vez após a criação via notificação. Se perdido, use o botão Regenerar Segredo."
+
+#. module: api_gateway
+#: code:addons/api_gateway/models/oauth_application.py:0
+#, python-format
+msgid "Secret shown only once after save. Lost? Use \"Regenerate Secret\"."
+msgstr "Segredo exibido apenas uma vez após salvar. Perdeu? Use \"Regenerar Segredo\"."
+
+#. module: api_gateway
+#: code:addons/api_gateway/models/oauth_application.py:0
+#, python-format
+msgid "Secret will be generated automatically on save."
+msgstr "O segredo será gerado automaticamente ao salvar."
+

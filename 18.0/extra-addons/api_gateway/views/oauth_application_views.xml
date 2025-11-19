@@ -51,7 +51,7 @@
                             <field name="active"/>
                         </group>
                         <group>
-                            <field name="client_secret" readonly="1" widget="CopyClipboardChar" password="0"/>
+                            <field name="client_secret_info" readonly="1"/>
                             <field name="created_date" readonly="1"/>
                         </group>
                     </group>
