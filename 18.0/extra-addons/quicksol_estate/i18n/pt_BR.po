@@ -456,8 +456,7 @@ msgstr "Preço de venda deve ser maior que zero quando o imóvel está à venda.
 #: code:addons/quicksol_estate/models/property.py:0
 #, python-format
 msgid "Rent price must be greater than zero when property is for rent."
-msgstr ""
-"Valor do aluguel deve ser maior que zero quando o imóvel está para alugar."
+msgstr "Valor do aluguel deve ser maior que zero quando o imóvel está para alugar."
 
 #. module: quicksol_estate
 #: code:addons/quicksol_estate/models/property.py:0

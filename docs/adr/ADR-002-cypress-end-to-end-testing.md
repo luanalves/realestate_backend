@@ -44,7 +44,7 @@ Durante o desenvolvimento do sistema Odoo (Real Estate Management e API Gateway)
 
 ### Diretório Principal
 ```
-/opt/homebrew/var/www/realestate/odoo-docker/cypress/
+<project-root>/cypress/
 ```
 
 ### Organização
@@ -169,7 +169,7 @@ describe('Módulo: Funcionalidade', () => {
 
 ### Modo Interativo (Desenvolvimento)
 ```bash
-cd /opt/homebrew/var/www/realestate/odoo-docker
+cd <project-root>
 npx cypress open
 ```
 

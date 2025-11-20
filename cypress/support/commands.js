@@ -63,5 +63,10 @@ Cypress.Commands.add('odooLogout', () => {
  */
 Cypress.Commands.add('odooNavigateTo', (action, model, viewType = 'list') => {
   cy.visit(`/web#action=${action}&model=${model}&view_type=${viewType}`)
-  cy.wait(1500) // Aguardar carregamento
+  // Aguardar carregamento baseado no tipo de view
+  if (viewType === 'form') {
+    cy.get('.o_form_view', { timeout: 10000 }).should('be.visible')
+  } else {
+    cy.get('.o_list_view', { timeout: 10000 }).should('be.visible')
+  }
 })
