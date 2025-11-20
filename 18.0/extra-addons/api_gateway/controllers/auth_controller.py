@@ -218,8 +218,8 @@ class AuthController(http.Controller):
             # Update token record with new access token
             token_record.write({
                 'access_token': access_token,
-                'expires_at': datetime.now() + timedelta(seconds=expires_in),
-                'last_used': datetime.now(),
+                'expires_at': datetime.utcnow() + timedelta(seconds=expires_in),
+                'last_used': datetime.utcnow(),
             })
 
             # Return new access token
