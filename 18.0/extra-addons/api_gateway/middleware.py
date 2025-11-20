@@ -8,10 +8,13 @@ with JWT authentication.
 
 import jwt
 import json
+import logging
 import functools
 from datetime import datetime
 from odoo import http, fields
 from odoo.http import request
+
+_logger = logging.getLogger(__name__)
 
 
 def require_jwt(func):
@@ -172,7 +175,7 @@ def log_api_access(endpoint_path, method, status_code, response_time=None):
         
     except Exception as e:
         # Don't let logging errors break the API
-        pass
+        _logger.exception("Error creating API access log: %s", str(e))
 
 
 def _error_response(status_code, error_code, error_description):
