@@ -7,7 +7,6 @@ from odoo.http import request
 
 class AuditlogHTTPSession(models.Model):
     _name = "auditlog.http.session"
-    _name = "auditlog.http.session"
     _description = "Auditlog - HTTP User session log"
     _order = "create_date DESC"
 
