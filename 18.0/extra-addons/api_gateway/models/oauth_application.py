@@ -1,8 +1,12 @@
 import secrets
 import string
 import bcrypt
+from datetime import datetime, timedelta
 from odoo import models, fields, api
 from odoo.exceptions import UserError
+
+# Global cache for plaintext secrets (temporary storage for E2E tests)
+_PLAINTEXT_CACHE = {}
 
 
 class OAuthApplication(models.Model):
@@ -34,6 +38,12 @@ class OAuthApplication(models.Model):
         compute='_compute_secret_info',
         store=False,
         help='Secret is shown only once after creation via notification. If lost, use Regenerate Secret button.'
+    )
+    client_secret_plaintext = fields.Char(
+        string='Client Secret Plaintext (Temporary)',
+        compute='_compute_secret_plaintext',
+        store=False,
+        help='Plaintext secret available only immediately after creation/regeneration (stored in cache for 60 seconds)'
     )
     active = fields.Boolean(
         string='Active',
@@ -90,9 +100,11 @@ class OAuthApplication(models.Model):
         # Create records
         records = super(OAuthApplication, self).create(vals_list)
         
-        # Display notification for first record with plaintext
-        if len(records) == 1 and plaintext_secrets[0]:
-            records._show_secret_notification(plaintext_secrets[0])
+        # Display notification and cache plaintext for first record
+        for i, record in enumerate(records):
+            if plaintext_secrets[i]:
+                record._show_secret_notification(plaintext_secrets[i])
+                record._cache_plaintext_secret(plaintext_secrets[i])
         
         return records
     
@@ -128,6 +140,31 @@ Copy it NOW or use "Regenerate Secret" to get a new one.'''
                 record.client_secret_info = 'Secret shown only once after save. Lost? Use "Regenerate Secret".'
             else:
                 record.client_secret_info = 'Secret will be generated automatically on save.'
+    
+    def _compute_secret_plaintext(self):
+        """Retrieve plaintext secret from cache if available"""
+        for record in self:
+            cache_key = f'oauth_app_{record.id}_plaintext'
+            cached_data = _PLAINTEXT_CACHE.get(cache_key)
+            
+            if cached_data:
+                secret, expiry = cached_data
+                # Check if expired
+                if datetime.now() < expiry:
+                    record.client_secret_plaintext = secret
+                else:
+                    # Expired, remove from cache
+                    _PLAINTEXT_CACHE.pop(cache_key, None)
+                    record.client_secret_plaintext = False
+            else:
+                record.client_secret_plaintext = False
+    
+    def _cache_plaintext_secret(self, plaintext_secret, ttl_seconds=300):
+        """Store plaintext secret in memory cache for limited time (5 minutes default)"""
+        self.ensure_one()
+        cache_key = f'oauth_app_{self.id}_plaintext'
+        expiry = datetime.now() + timedelta(seconds=ttl_seconds)
+        _PLAINTEXT_CACHE[cache_key] = (plaintext_secret, expiry)
 
     @api.depends('token_ids', 'token_ids.active')
     def _compute_token_count(self):
@@ -196,6 +233,9 @@ Copy it NOW or use "Regenerate Secret" to get a new one.'''
         # Force write to database
         self.write({'client_secret': new_hash})
         _logger.info(f"After write, client_secret is: {self.client_secret}")
+        
+        # Cache plaintext secret for E2E tests
+        self._cache_plaintext_secret(new_plaintext)
         
         return {
             'type': 'ir.actions.client',

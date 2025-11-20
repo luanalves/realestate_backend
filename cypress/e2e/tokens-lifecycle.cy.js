@@ -21,33 +21,66 @@ describe('Tokens Lifecycle - OAuth 2.0', () => {
     // Login apenas uma vez para configuração inicial
     cy.odooLoginSession();
 
-    // Criar nova aplicação OAuth via UI para capturar o secret da notificação
+    // Criar nova aplicação OAuth via JSON-RPC API
     const appName = `Lifecycle Test ${Date.now()}`;
     
-    cy.visit('/web#action=api_gateway.action_oauth_application&model=oauth.application&view_type=list');
-    cy.wait(2000);
-    
-    cy.get('button.o_list_button_add, button.o-kanban-button-new').first().click();
-    cy.wait(1000);
-    
-    cy.get('input[name="name"]').clear().type(appName);
-    cy.get('button.o_form_button_save').click();
-    cy.wait(2000);
-    
-    // Capturar Client ID da UI
-    cy.get('input[name="client_id"]').invoke('val').then((val) => {
-      clientId = val;
-      cy.log('Client ID:', clientId);
-    });
-    
-    // Capturar o secret da notificação que aparece após salvar
-    cy.get('.o_notification_body, .o_notification_content').should('be.visible').invoke('text').then((text) => {
-      // O secret está na notificação - extrair usando regex
-      const match = text.match(/([A-Za-z0-9_-]{64})/);
-      if (match) {
-        clientSecret = match[1];
-        cy.log('Client Secret capturado da notificação:', clientSecret);
+    cy.request({
+      method: 'POST',
+      url: '/web/dataset/call_kw/oauth.application/create',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: {
+        jsonrpc: '2.0',
+        method: 'call',
+        params: {
+          model: 'oauth.application',
+          method: 'create',
+          args: [{
+            name: appName,
+            description: 'Aplicação para testes de ciclo de vida de tokens',
+            active: true
+          }],
+          kwargs: {}
+        },
+        id: Date.now()
       }
+    }).then((response) => {
+      expect(response.status).to.eq(200);
+      const appId = response.body.result;
+      cy.log(`Aplicação criada com ID: ${appId}`);
+
+      // Buscar credenciais da aplicação criada (agora com client_secret_plaintext)
+      cy.request({
+        method: 'POST',
+        url: '/web/dataset/call_kw/oauth.application/read',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: {
+          jsonrpc: '2.0',
+          method: 'call',
+          params: {
+            model: 'oauth.application',
+            method: 'read',
+            args: [[appId], ['client_id', 'client_secret_plaintext']],
+            kwargs: {}
+          },
+          id: Date.now()
+        }
+      }).then((readResponse) => {
+        expect(readResponse.status).to.eq(200);
+        const appData = readResponse.body.result[0];
+        clientId = appData.client_id;
+        clientSecret = appData.client_secret_plaintext;
+        
+        expect(clientId).to.be.a('string').and.not.be.empty;
+        expect(clientSecret).to.be.a('string').and.not.be.empty;
+        expect(clientSecret).to.have.length(64);
+        
+        cy.log('Client ID:', clientId);
+        cy.log('Client Secret (plaintext):', clientSecret);
+      });
     });
   });
 

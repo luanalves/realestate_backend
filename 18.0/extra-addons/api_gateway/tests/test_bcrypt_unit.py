@@ -73,10 +73,12 @@ class TestBcryptHashing(unittest.TestCase):
     def test_07_bcrypt_handles_long_passwords(self):
         """Test that bcrypt handles long passwords (bcrypt truncates at 72 bytes)."""
         plaintext = 'a' * 100  # 100 characters
+        # Bcrypt 5.0+ requires manual truncation
+        plaintext_bytes = plaintext.encode('utf-8')[:72]
         salt = bcrypt.gensalt(rounds=12)
-        hashed = bcrypt.hashpw(plaintext.encode('utf-8'), salt)
+        hashed = bcrypt.hashpw(plaintext_bytes, salt)
         
-        result = bcrypt.checkpw(plaintext.encode('utf-8'), hashed)
+        result = bcrypt.checkpw(plaintext_bytes, hashed)
         self.assertTrue(result)
 
     def test_08_bcrypt_constant_time_property(self):
@@ -86,8 +88,9 @@ class TestBcryptHashing(unittest.TestCase):
         hashed = bcrypt.hashpw(correct.encode('utf-8'), salt)
         
         # Both should return False (bcrypt uses constant time internally)
+        # Bcrypt 5.0+ requires passwords <= 72 bytes
         result1 = bcrypt.checkpw(b'x', hashed)
-        result2 = bcrypt.checkpw(b'x' * 100, hashed)
+        result2 = bcrypt.checkpw((b'x' * 72), hashed)  # Use 72 bytes max
         
         self.assertFalse(result1)
         self.assertFalse(result2)
