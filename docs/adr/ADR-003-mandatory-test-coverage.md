@@ -201,18 +201,6 @@ Para cada módulo:
 
 O módulo `api_gateway` serve como referência:
 
-```
-api_gateway/
-├── tests/
-│   ├── run_unit_tests.py              # 76 testes
-│   ├── test_oauth_application_unit.py # 19 testes
-│   ├── test_jwt_unit.py               # 25 testes
-│   ├── test_models_unit.py            # 32 testes
-│   └── UNIT_TESTS.md                  # Documentação
-cypress/e2e/
-└── api-gateway.cy.js                   # 22 testes E2E
-```
-
 **Execução:**
 ```bash
 # Unit tests
