@@ -120,8 +120,6 @@ Copy it NOW or use "Regenerate Secret" to get a new one.'''
                 'sticky': True,
             }
         )
-        
-        return records
 
     def _compute_secret_info(self):
         """Display informative message about secret"""
@@ -177,22 +175,34 @@ Copy it NOW or use "Regenerate Secret" to get a new one.'''
 
     def action_regenerate_secret(self):
         """Regenerate client secret and revoke all tokens"""
+        import logging
+        _logger = logging.getLogger(__name__)
+        
         self.ensure_one()
         # Revoke all existing tokens
         self.token_ids.action_revoke()
         
         # Generate new plaintext secret
         new_plaintext = self._generate_client_secret()
+        _logger.info(f"Generated plaintext secret: {new_plaintext}")
         
         # Hash and store
-        self.client_secret = self._hash_secret(new_plaintext)
+        new_hash = self._hash_secret(new_plaintext)
+        _logger.info(f"Generated hash: {new_hash}")
+        
+        self.client_secret = new_hash
+        _logger.info(f"Assigned to self.client_secret: {self.client_secret}")
+        
+        # Force write to database
+        self.write({'client_secret': new_hash})
+        _logger.info(f"After write, client_secret is: {self.client_secret}")
         
         return {
             'type': 'ir.actions.client',
             'tag': 'display_notification',
             'params': {
                 'title': 'Secret Regenerated',
-                'message': f'All tokens revoked. New secret (SAVE NOW - shown only once): {new_plaintext}',
+                'message': f'All tokens revoked. New secret (SAVE NOW - shown only once):\n{new_plaintext}',
                 'type': 'warning',
                 'sticky': True,
             }
