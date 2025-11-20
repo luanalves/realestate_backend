@@ -38,7 +38,8 @@ class AuthController(http.Controller):
             if request.httprequest.content_type == 'application/json':
                 try:
                     data = json.loads(request.httprequest.data.decode('utf-8'))
-                except:
+                except (json.JSONDecodeError, ValueError, UnicodeDecodeError):
+                    # Fall back to kwargs if JSON parsing fails
                     pass
             
             grant_type = data.get('grant_type')
@@ -113,7 +114,8 @@ class AuthController(http.Controller):
             if request.httprequest.content_type == 'application/json':
                 try:
                     data = json.loads(request.httprequest.data.decode('utf-8'))
-                except:
+                except (json.JSONDecodeError, ValueError, UnicodeDecodeError):
+                    # Fall back to kwargs if JSON parsing fails
                     pass
             
             # Try to get token from body first, then from Authorization header
@@ -173,7 +175,8 @@ class AuthController(http.Controller):
             if request.httprequest.content_type == 'application/json':
                 try:
                     data = json.loads(request.httprequest.data.decode('utf-8'))
-                except:
+                except (json.JSONDecodeError, ValueError, UnicodeDecodeError):
+                    # Fall back to kwargs if JSON parsing fails
                     pass
             
             grant_type = data.get('grant_type', 'refresh_token')  # Default to refresh_token
@@ -236,6 +239,15 @@ class AuthController(http.Controller):
     def _generate_access_token(self, application):
         """Generate JWT access token"""
         import secrets
+        
+        # Get JWT secret from environment variable
+        secret = os.getenv('JWT_SECRET')
+        
+        if not secret:
+            raise ValueError(
+                'JWT secret not configured. Please set the environment variable: JWT_SECRET'
+            )
+        
         expires_in = 3600  # 1 hour
         payload = {
             'client_id': application.client_id,
@@ -245,8 +257,7 @@ class AuthController(http.Controller):
             'sub': application.client_id,
             'jti': secrets.token_urlsafe(16),  # JWT ID único para evitar duplicatas
         }
-        # TODO: Use proper secret from config
-        secret = 'your-secret-key-change-this'
+        
         token = jwt.encode(payload, secret, algorithm='HS256')
         return token, expires_in
 
