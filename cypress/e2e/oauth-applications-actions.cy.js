@@ -29,11 +29,11 @@ describe('OAuth Applications - Actions Menu', () => {
   describe('Preparação - Criar Aplicação de Teste', () => {
     it('Deve criar uma aplicação para testes de ações', () => {
       cy.visit('/web#action=api_gateway.action_oauth_application');
-      cy.wait(2000);
+      cy.get('.o_list_view', { timeout: 10000 }).should('be.visible');
 
       // Clicar em criar
       cy.get('button.o_list_button_add, button.o-list-button-add').first().click();
-      cy.wait(2000);
+      cy.get('.o_form_view', { timeout: 10000 }).should('be.visible');
 
       // Preencher nome
       cy.get('.o_field_widget[name="name"] input, input[name="name"], div[name="name"] input')
@@ -43,7 +43,7 @@ describe('OAuth Applications - Actions Menu', () => {
 
       // Salvar
       cy.get('button.o_form_button_save').click();
-      cy.wait(2000);
+      cy.get('.o_field_widget[name="name"]', { timeout: 10000 }).should('contain', testAppName);
 
       // Capturar ID da aplicação criada
       cy.url().then((url) => {
@@ -110,7 +110,7 @@ describe('OAuth Applications - Actions Menu', () => {
       cy.wait(500);
 
       // Abrir menu Actions
-      cy.get('button').click();
+      cy.contains('button', 'Actions').click();
       cy.wait(500);
 
       // Verificar que Duplicate existe
