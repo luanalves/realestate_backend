@@ -26,7 +26,7 @@ describe('Tokens Lifecycle - OAuth 2.0', () => {
     
     cy.request({
       method: 'POST',
-      url: '/web/dataset/call_kw/oauth.application/create',
+      url: '/web/dataset/call_kw/thedevkitchen.oauth.application/create',
       headers: {
         'Content-Type': 'application/json'
       },
@@ -34,7 +34,7 @@ describe('Tokens Lifecycle - OAuth 2.0', () => {
         jsonrpc: '2.0',
         method: 'call',
         params: {
-          model: 'oauth.application',
+          model: 'thedevkitchen.oauth.application',
           method: 'create',
           args: [{
             name: appName,
@@ -53,7 +53,7 @@ describe('Tokens Lifecycle - OAuth 2.0', () => {
       // Buscar credenciais da aplicação criada (agora com client_secret_plaintext)
       cy.request({
         method: 'POST',
-        url: '/web/dataset/call_kw/oauth.application/read',
+        url: '/web/dataset/call_kw/thedevkitchen.oauth.application/read',
         headers: {
           'Content-Type': 'application/json'
         },
@@ -61,7 +61,7 @@ describe('Tokens Lifecycle - OAuth 2.0', () => {
           jsonrpc: '2.0',
           method: 'call',
           params: {
-            model: 'oauth.application',
+            model: 'thedevkitchen.oauth.application',
             method: 'read',
             args: [[appId], ['client_id', 'client_secret_plaintext']],
             kwargs: {}
@@ -552,7 +552,7 @@ describe('Tokens Lifecycle - OAuth 2.0', () => {
       cy.wait(2000);
       
       // Navegar para Active Tokens via URL direta
-      cy.visit('/web#action=api_gateway.action_oauth_token');
+      cy.visit('/web#action=thedevkitchen_apigateway.action_oauth_token');
       cy.wait(2000);
 
       // Verificar que existem tokens listados

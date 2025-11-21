@@ -20,7 +20,7 @@ describe('Exemplo: Boas Práticas com Comandos Customizados', () => {
   it('✅ Exemplo 1: Navegação direta com cy.odooNavigateTo()', () => {
     // Navega diretamente para a lista de aplicações OAuth
     // Muito mais rápido do que clicar em menus!
-    cy.odooNavigateTo('api_gateway.action_oauth_application', 'oauth.application')
+    cy.odooNavigateTo('thedevkitchen_apigateway.action_oauth_application', 'thedevkitchen.oauth.application')
     
     // Verifica que a lista está visível
     cy.get('.o_list_view').should('be.visible')
@@ -28,7 +28,7 @@ describe('Exemplo: Boas Práticas com Comandos Customizados', () => {
 
   it('✅ Exemplo 2: Criar registro usando comandos customizados', () => {
     // Navega para lista
-    cy.odooNavigateTo('api_gateway.action_oauth_application', 'oauth.application')
+    cy.odooNavigateTo('thedevkitchen_apigateway.action_oauth_application', 'thedevkitchen.oauth.application')
     
     // Cria novo registro
     cy.get('button.o_list_button_add').first().click()
@@ -57,14 +57,14 @@ describe('Exemplo: Boas Práticas com Comandos Customizados', () => {
   })
 
   it('✅ Exemplo 4: Aguardar elementos com timeout apropriado', () => {
-    cy.odooNavigateTo('api_gateway.action_oauth_application', 'oauth.application')
+    cy.odooNavigateTo('thedevkitchen_apigateway.action_oauth_application', 'thedevkitchen.oauth.application')
     
     // ✅ BOA PRÁTICA: Especificar timeout para elementos que podem demorar
     cy.get('.o_list_view', { timeout: 10000 }).should('be.visible')
   })
 
   it('✅ Exemplo 5: Verificações condicionais', () => {
-    cy.odooNavigateTo('api_gateway.action_oauth_application', 'oauth.application')
+    cy.odooNavigateTo('thedevkitchen_apigateway.action_oauth_application', 'thedevkitchen.oauth.application')
     
     // Verificar se há registros antes de tentar clicar
     cy.get('body').then($body => {
@@ -78,7 +78,7 @@ describe('Exemplo: Boas Práticas com Comandos Customizados', () => {
   })
 
   it('✅ Exemplo 6: Capturar valores para usar em outros testes', () => {
-    cy.odooNavigateTo('api_gateway.action_oauth_application', 'oauth.application')
+    cy.odooNavigateTo('thedevkitchen_apigateway.action_oauth_application', 'thedevkitchen.oauth.application')
     
     cy.get('button.o_list_button_add').first().click()
     cy.wait(1000)
@@ -119,12 +119,12 @@ describe('❌ ANTI-PADRÕES: O que NÃO fazer', () => {
     // cy.contains('API Gateway').click()
     
     // ✅ CORRETO: Navegação direta
-    cy.odooNavigateTo('api_gateway.action_oauth_application', 'oauth.application')
+    cy.odooNavigateTo('thedevkitchen_apigateway.action_oauth_application', 'thedevkitchen.oauth.application')
   })
 
   it('❌ NÃO FAÇA: Usar cy.wait() com tempos fixos', () => {
     cy.odooLoginSession()
-    cy.odooNavigateTo('api_gateway.action_oauth_application', 'oauth.application')
+    cy.odooNavigateTo('thedevkitchen_apigateway.action_oauth_application', 'thedevkitchen.oauth.application')
     
     // ❌ RUIM: Tempo fixo desnecessário
     // cy.wait(5000)
@@ -154,7 +154,7 @@ describe('🚀 COMPARAÇÃO DE PERFORMANCE', () => {
     cy.get('input[name="password"]').type('admin')
     cy.get('button[type="submit"]').click()
     cy.wait(2000)
-    cy.visit('/web#action=api_gateway.action_oauth_application')
+    cy.visit('/web#action=thedevkitchen_apigateway.action_oauth_application')
     cy.wait(2000)
     
     const endTime = Date.now()
@@ -165,7 +165,7 @@ describe('🚀 COMPARAÇÃO DE PERFORMANCE', () => {
     const startTime = Date.now()
     
     cy.odooLoginSession()
-    cy.odooNavigateTo('api_gateway.action_oauth_application', 'oauth.application')
+    cy.odooNavigateTo('thedevkitchen_apigateway.action_oauth_application', 'thedevkitchen.oauth.application')
     
     const endTime = Date.now()
     cy.log(`Tempo: ${endTime - startTime}ms`)
@@ -178,7 +178,7 @@ describe('📖 RECURSOS ÚTEIS', () => {
     cy.odooLoginSession()
     
     cy.log('Navegando para aplicações OAuth')
-    cy.odooNavigateTo('api_gateway.action_oauth_application', 'oauth.application')
+    cy.odooNavigateTo('thedevkitchen_apigateway.action_oauth_application', 'thedevkitchen.oauth.application')
     
     cy.log('Verificando lista')
     cy.get('.o_list_view').should('be.visible')
@@ -188,7 +188,7 @@ describe('📖 RECURSOS ÚTEIS', () => {
 
   it('Exemplo: Capturar screenshots', () => {
     cy.odooLoginSession()
-    cy.odooNavigateTo('api_gateway.action_oauth_application', 'oauth.application')
+    cy.odooNavigateTo('thedevkitchen_apigateway.action_oauth_application', 'thedevkitchen.oauth.application')
     
     // Captura screenshot para documentação
     cy.screenshot('oauth-applications-list')

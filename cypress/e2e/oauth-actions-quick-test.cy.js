@@ -13,7 +13,7 @@ describe('OAuth Applications - Quick Actions Test', () => {
 
   it('Deve validar todas as ações disponíveis no menu', () => {
     // 1. Criar uma aplicação de teste
-    cy.visit('/web#action=api_gateway.action_oauth_application');
+    cy.visit('/web#action=thedevkitchen_apigateway.action_oauth_application');
     cy.wait(2000);
 
     cy.get('button.o_list_button_add').first().click();

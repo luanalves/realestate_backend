@@ -28,7 +28,7 @@ describe('OAuth Applications - Actions Menu', () => {
 
   describe('Preparação - Criar Aplicação de Teste', () => {
     it('Deve criar uma aplicação para testes de ações', () => {
-      cy.visit('/web#action=api_gateway.action_oauth_application');
+      cy.visit('/web#action=thedevkitchen_apigateway.action_oauth_application');
       cy.wait(2000);
 
       // Clicar em criar
@@ -62,7 +62,7 @@ describe('OAuth Applications - Actions Menu', () => {
 
   describe('Action: Export', () => {
     it('Deve selecionar uma aplicação e exportar', () => {
-      cy.visit('/web#action=api_gateway.action_oauth_application');
+      cy.visit('/web#action=thedevkitchen_apigateway.action_oauth_application');
       cy.wait(2000);
 
       // Selecionar a aplicação de teste
@@ -99,7 +99,7 @@ describe('OAuth Applications - Actions Menu', () => {
 
   describe('Action: Duplicate', () => {
     it('Deve duplicar uma aplicação', () => {
-      cy.visit('/web#action=api_gateway.action_oauth_application');
+      cy.visit('/web#action=thedevkitchen_apigateway.action_oauth_application');
       cy.wait(2000);
 
       // Selecionar a aplicação
@@ -139,7 +139,7 @@ describe('OAuth Applications - Actions Menu', () => {
 
   describe('Action: Archive', () => {
     it('Deve arquivar uma aplicação', () => {
-      cy.visit('/web#action=api_gateway.action_oauth_application');
+      cy.visit('/web#action=thedevkitchen_apigateway.action_oauth_application');
       cy.wait(2000);
 
       // Contar quantas aplicações existem antes
@@ -183,7 +183,7 @@ describe('OAuth Applications - Actions Menu', () => {
 
   describe('Action: Unarchive', () => {
     it('Deve desarquivar a aplicação', () => {
-      cy.visit('/web#action=api_gateway.action_oauth_application');
+      cy.visit('/web#action=thedevkitchen_apigateway.action_oauth_application');
       cy.wait(2000);
 
       // Ativar filtro de arquivados
@@ -205,7 +205,7 @@ describe('OAuth Applications - Actions Menu', () => {
       });
 
       // Alternativamente, ir direto para URL com filtro de arquivados
-      cy.visit('/web#action=api_gateway.action_oauth_application&active_test=false');
+      cy.visit('/web#action=thedevkitchen_apigateway.action_oauth_application&active_test=false');
       cy.wait(2000);
 
       // Procurar pela aplicação arquivada
@@ -230,7 +230,7 @@ describe('OAuth Applications - Actions Menu', () => {
           cy.wait(1000);
 
           // Voltar para lista normal
-          cy.visit('/web#action=api_gateway.action_oauth_application');
+          cy.visit('/web#action=thedevkitchen_apigateway.action_oauth_application');
           cy.wait(2000);
 
           // Verificar que a aplicação voltou
@@ -244,7 +244,7 @@ describe('OAuth Applications - Actions Menu', () => {
 
   describe('Action: Delete', () => {
     it('Deve deletar a aplicação de teste', () => {
-      cy.visit('/web#action=api_gateway.action_oauth_application');
+      cy.visit('/web#action=thedevkitchen_apigateway.action_oauth_application');
       cy.wait(2000);
 
       // Selecionar a aplicação
@@ -283,7 +283,7 @@ describe('OAuth Applications - Actions Menu', () => {
       const app2 = `Batch Test 2 ${Date.now()}`;
 
       // Criar primeira aplicação
-      cy.visit('/web#action=api_gateway.action_oauth_application');
+      cy.visit('/web#action=thedevkitchen_apigateway.action_oauth_application');
       cy.wait(2000);
       cy.get('button.o_list_button_add').first().click();
       cy.wait(2000);
