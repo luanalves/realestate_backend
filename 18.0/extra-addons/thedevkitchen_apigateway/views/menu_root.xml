@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <!-- Main Menu: API Gateway (under Technical) -->
+    <menuitem id="menu_api_gateway_root"
+              name="API Gateway"
+              parent="base.menu_custom"
+              groups="base.group_no_one"
+              sequence="100"/>
+
+</odoo>

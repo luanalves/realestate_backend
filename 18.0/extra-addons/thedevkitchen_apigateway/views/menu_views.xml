@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <!-- Submenu: OAuth Applications -->
+    <menuitem id="menu_oauth_applications"
+              name="OAuth Applications"
+              parent="menu_api_gateway_root"
+              action="action_oauth_application"
+              sequence="10"/>
+
+    <!-- Submenu: Active Tokens -->
+    <menuitem id="menu_oauth_tokens"
+              name="Active Tokens"
+              parent="menu_api_gateway_root"
+              action="action_oauth_token"
+              sequence="20"/>
+
+</odoo>
