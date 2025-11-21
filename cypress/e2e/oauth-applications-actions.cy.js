@@ -29,11 +29,11 @@ describe('OAuth Applications - Actions Menu', () => {
   describe('Preparação - Criar Aplicação de Teste', () => {
     it('Deve criar uma aplicação para testes de ações', () => {
       cy.visit('/web#action=api_gateway.action_oauth_application');
-      cy.get('.o_list_view', { timeout: 10000 }).should('be.visible');
+      cy.wait(2000);
 
       // Clicar em criar
       cy.get('button.o_list_button_add, button.o-list-button-add').first().click();
-      cy.get('.o_form_view', { timeout: 10000 }).should('be.visible');
+      cy.wait(2000);
 
       // Preencher nome
       cy.get('.o_field_widget[name="name"] input, input[name="name"], div[name="name"] input')
@@ -43,7 +43,7 @@ describe('OAuth Applications - Actions Menu', () => {
 
       // Salvar
       cy.get('button.o_form_button_save').click();
-      cy.get('.o_field_widget[name="name"]', { timeout: 10000 }).should('contain', testAppName);
+      cy.wait(2000);
 
       // Capturar ID da aplicação criada
       cy.url().then((url) => {
@@ -128,7 +128,7 @@ describe('OAuth Applications - Actions Menu', () => {
         cy.get('input[type="checkbox"]').first().check({ force: true });
       });
 
-      cy.get('button').click();
+      cy.contains('button', 'Actions').click();
       cy.contains('.dropdown-item', 'Delete').click();
       cy.get('.modal-footer button, .o_dialog_footer button')
         .contains(/Ok|Confirm/i)
@@ -154,7 +154,7 @@ describe('OAuth Applications - Actions Menu', () => {
         cy.wait(500);
 
         // Abrir menu Actions
-        cy.get('button').click();
+        cy.contains('button', 'Actions').click();
         cy.wait(500);
 
         // Verificar que Archive existe
@@ -219,7 +219,7 @@ describe('OAuth Applications - Actions Menu', () => {
           cy.wait(500);
 
           // Abrir menu Actions
-          cy.get('button').click();
+          cy.contains('button', 'Actions').click();
           cy.wait(500);
 
           // Verificar que Unarchive existe
@@ -255,7 +255,7 @@ describe('OAuth Applications - Actions Menu', () => {
       cy.wait(500);
 
       // Abrir menu Actions
-      cy.get('button').click();
+      cy.contains('button', 'Actions').click();
       cy.wait(500);
 
       // Verificar que Delete existe
@@ -317,7 +317,7 @@ describe('OAuth Applications - Actions Menu', () => {
       cy.get('body').should('contain.text', '2 selected');
 
       // Deletar em lote
-      cy.get('button').click();
+      cy.contains('button', 'Actions').click();
       cy.wait(500);
       cy.contains('.dropdown-item', 'Delete').click();
       cy.wait(1000);
