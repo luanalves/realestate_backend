@@ -19,7 +19,10 @@ services:
       retries: 5
 
   odoo:
-    image: odoo:18.0
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: custom-odoo:18.0
     container_name: odoo18
     depends_on:
       db:
@@ -35,6 +38,8 @@ services:
       USER: odoo
       PASSWORD: odoo
       DB_NAME: realestate
+      JWT_ISSUER: thedevkitchen-api-gateway
+      JWT_SECRET: thedevkitchen-jwt-secret
     volumes:
       - odoo18-data:/var/lib/odoo
       - ./filestore:/var/lib/odoo/filestore

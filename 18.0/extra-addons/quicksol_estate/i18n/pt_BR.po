@@ -112,7 +112,6 @@ msgid "Documents"
 msgstr "Documentos"
 
 # ========== PROPERTY FIELDS - BASIC INFO ==========
-
 #. module: quicksol_estate
 #: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__name
 msgid "Property Name"
@@ -129,7 +128,6 @@ msgid "Active"
 msgstr "Ativo"
 
 # ========== OWNER DATA ==========
-
 #. module: quicksol_estate
 #: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__owner_id
 msgid "Owner"
@@ -161,7 +159,6 @@ msgid "Activity Notification"
 msgstr "Notificações de Atividade"
 
 # ========== STRUCTURE ==========
-
 #. module: quicksol_estate
 #: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__property_purpose
 msgid "Purpose"
@@ -188,7 +185,6 @@ msgid "Unit Number"
 msgstr "Número da Unidade"
 
 # ========== LOCATION ==========
-
 #. module: quicksol_estate
 #: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__zip_code
 msgid "CEP"
@@ -245,7 +241,6 @@ msgid "Longitude"
 msgstr "Longitude"
 
 # ========== PRICING ==========
-
 #. module: quicksol_estate
 #: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__for_sale
 msgid "For Sale"
@@ -287,7 +282,6 @@ msgid "Condominium Fee"
 msgstr "Taxa de Condomínio"
 
 # ========== STATUS ==========
-
 #. module: quicksol_estate
 #: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__property_status
 msgid "Property Status"
@@ -329,7 +323,6 @@ msgid "Accepts Financing"
 msgstr "Aceita Financiamento"
 
 # ========== FEATURES ==========
-
 #. module: quicksol_estate
 #: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__area
 msgid "Built Area (m²)"
@@ -391,7 +384,6 @@ msgid "Amenities"
 msgstr "Comodidades"
 
 # ========== WEB PUBLISHING ==========
-
 #. module: quicksol_estate
 #: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__publish_website
 msgid "Publish on Website"
@@ -437,13 +429,6 @@ msgstr "Descrição do Imóvel"
 msgid "Short Description"
 msgstr "Descrição Resumida"
 
-# ========== DOCUMENTS ==========
-
-#. module: quicksol_estate
-#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__document_ids
-msgid "Documents"
-msgstr "Documentos"
-
 #. module: quicksol_estate
 #: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__matricula_number
 msgid "Matrícula Number"
@@ -455,7 +440,6 @@ msgid "IPTU Code"
 msgstr "Código IPTU"
 
 # ========== VALIDATION MESSAGES ==========
-
 #. module: quicksol_estate
 #: code:addons/quicksol_estate/models/property.py:0
 #, python-format
@@ -489,99 +473,16 @@ msgstr "Área total não pode ser menor que área construída."
 #. module: quicksol_estate
 #: code:addons/quicksol_estate/models/property.py:0
 #, python-format
-msgid "CPF deve conter 11 dígitos."
+msgid "CPF must contain 11 digits."
 msgstr "CPF deve conter 11 dígitos."
 
 #. module: quicksol_estate
 #: code:addons/quicksol_estate/models/property.py:0
 #, python-format
-msgid "CNPJ deve conter 14 dígitos."
+msgid "CNPJ must contain 14 digits."
 msgstr "CNPJ deve conter 14 dígitos."
 
-# ========== VIEW TAB NAMES ==========
-
-#. module: quicksol_estate
-#: model:ir.ui.view,arch_db:quicksol_estate.view_property_form
-msgid "Owner Data"
-msgstr "Dados do Proprietário"
-
-#. module: quicksol_estate
-#: model:ir.ui.view,arch_db:quicksol_estate.view_property_form
-msgid "Structure"
-msgstr "Estrutura"
-
-#. module: quicksol_estate
-#: model:ir.ui.view,arch_db:quicksol_estate.view_property_form
-msgid "Location"
-msgstr "Localização"
-
-#. module: quicksol_estate
-#: model:ir.ui.view,arch_db:quicksol_estate.view_property_form
-msgid "Primary Data"
-msgstr "Dados Primários"
-
-#. module: quicksol_estate
-#: model:ir.ui.view,arch_db:quicksol_estate.view_property_form
-msgid "Features"
-msgstr "Características"
-
-#. module: quicksol_estate
-#: model:ir.ui.view,arch_db:quicksol_estate.view_property_form
-msgid "Zoning"
-msgstr "Zoneamento"
-
-#. module: quicksol_estate
-#: model:ir.ui.view,arch_db:quicksol_estate.view_property_form
-msgid "Tags"
-msgstr "Etiquetas"
-
-#. module: quicksol_estate
-#: model:ir.ui.view,arch_db:quicksol_estate.view_property_form
-msgid "Key Control"
-msgstr "Controle de Chaves"
-
-#. module: quicksol_estate
-#: model:ir.ui.view,arch_db:quicksol_estate.view_property_form
-msgid "Photos"
-msgstr "Fotos"
-
-#. module: quicksol_estate
-#: model:ir.ui.view,arch_db:quicksol_estate.view_property_form
-msgid "Web Publishing"
-msgstr "Publicação Web"
-
-#. module: quicksol_estate
-#: model:ir.ui.view,arch_db:quicksol_estate.view_property_form
-msgid "Signs"
-msgstr "Placas"
-
-#. module: quicksol_estate
-#: model:ir.ui.view,arch_db:quicksol_estate.view_property_form
-msgid "Commissions"
-msgstr "Comissões"
-
-#. module: quicksol_estate
-#: model:ir.ui.view,arch_db:quicksol_estate.view_property_form
-msgid "Pricing"
-msgstr "Precificação"
-
-#. module: quicksol_estate
-#: model:ir.ui.view,arch_db:quicksol_estate.view_property_form
-msgid "Taxes &amp; Fees"
-msgstr "Impostos e Taxas"
-
-#. module: quicksol_estate
-#: model:ir.ui.view,arch_db:quicksol_estate.view_property_form
-msgid "Publishing Options"
-msgstr "Opções de Publicação"
-
-#. module: quicksol_estate
-#: model:ir.ui.view,arch_db:quicksol_estate.view_property_form
-msgid "Financial Options"
-msgstr "Opções Financeiras"
-
 # ========== SELECTION VALUES - PROPERTY PURPOSE ==========
-
 #. module: quicksol_estate
 #: selection:real.estate.property,property_purpose:0
 msgid "Residential"
@@ -603,7 +504,6 @@ msgid "Rural"
 msgstr "Rural"
 
 # ========== SELECTION VALUES - PROPERTY STATUS ==========
-
 #. module: quicksol_estate
 #: selection:real.estate.property,property_status:0
 msgid "Available"
@@ -630,7 +530,6 @@ msgid "Inactive"
 msgstr "Inativo"
 
 # ========== SELECTION VALUES - CONDITION ==========
-
 #. module: quicksol_estate
 #: selection:real.estate.property,condition:0
 msgid "New"
@@ -657,7 +556,6 @@ msgid "Needs Renovation"
 msgstr "Precisa Reforma"
 
 # ========== SELECTION VALUES - LOCATION TYPE ==========
-
 #. module: quicksol_estate
 #: selection:real.estate.property,location_type:0
 msgid "Urban"
@@ -679,7 +577,6 @@ msgid "Mountain"
 msgstr "Montanha"
 
 # ========== SELECTION VALUES - ORIGIN MEDIA ==========
-
 #. module: quicksol_estate
 #: selection:real.estate.property,origin_media:0
 msgid "Website"
@@ -711,16 +608,10 @@ msgid "Social Media"
 msgstr "Redes Sociais"
 
 # ========== AUXILIARY MODELS ==========
-
 #. module: quicksol_estate
 #: model:ir.model,name:quicksol_estate.model_real_estate_property_owner
 msgid "Property Owner"
 msgstr "Proprietário do Imóvel"
-
-#. module: quicksol_estate
-#: model:ir.model,name:quicksol_estate.model_real_estate_property_building
-msgid "Building/Condominium"
-msgstr "Edifício/Condomínio"
 
 #. module: quicksol_estate
 #: model:ir.model,name:quicksol_estate.model_real_estate_property_phone
@@ -758,7 +649,6 @@ msgid "Property Tag"
 msgstr "Etiqueta do Imóvel"
 
 # ========== PROPERTY OWNER FIELDS ==========
-
 #. module: quicksol_estate
 #: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property_owner__name
 msgid "Full Name"
@@ -790,7 +680,6 @@ msgid "Company"
 msgstr "Pessoa Jurídica"
 
 # ========== PROPERTY BUILDING FIELDS ==========
-
 #. module: quicksol_estate
 #: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property_building__name
 msgid "Building Name"
@@ -812,7 +701,6 @@ msgid "Has Elevator"
 msgstr "Possui Elevador"
 
 # ========== PROPERTY PHONE FIELDS ==========
-
 #. module: quicksol_estate
 #: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property_phone__phone
 msgid "Phone Number"
@@ -839,7 +727,6 @@ msgid "Work"
 msgstr "Comercial"
 
 # ========== PROPERTY EMAIL FIELDS ==========
-
 #. module: quicksol_estate
 #: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property_email__email
 msgid "Email Address"
@@ -851,7 +738,6 @@ msgid "Primary Email"
 msgstr "E-mail Principal"
 
 # ========== PROPERTY PHOTO FIELDS ==========
-
 #. module: quicksol_estate
 #: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property_photo__name
 msgid "Photo Name"
@@ -873,7 +759,6 @@ msgid "Main Photo"
 msgstr "Foto Principal"
 
 # ========== PROPERTY DOCUMENT FIELDS ==========
-
 #. module: quicksol_estate
 #: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property_document__name
 msgid "Document Name"
@@ -915,7 +800,6 @@ msgid "Other"
 msgstr "Outro"
 
 # ========== PROPERTY KEY FIELDS ==========
-
 #. module: quicksol_estate
 #: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property_key__key_number
 msgid "Key Number"
@@ -932,7 +816,6 @@ msgid "Responsible"
 msgstr "Responsável"
 
 # ========== PROPERTY COMMISSION FIELDS ==========
-
 #. module: quicksol_estate
 #: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property_commission__agent_id
 msgid "Agent"
@@ -949,7 +832,6 @@ msgid "Commission Amount"
 msgstr "Valor da Comissão"
 
 # ========== PROPERTY TAG FIELDS ==========
-
 #. module: quicksol_estate
 #: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property_tag__name
 msgid "Tag Name"
@@ -961,7 +843,6 @@ msgid "Color"
 msgstr "Cor"
 
 # ========== AMENITIES ==========
-
 #. module: quicksol_estate
 #: model:ir.model,name:quicksol_estate.model_real_estate_amenity
 msgid "Amenity"
@@ -973,7 +854,6 @@ msgid "Amenity Name"
 msgstr "Nome da Comodidade"
 
 # ========== COMMON LABELS ==========
-
 #. module: quicksol_estate
 #: model:ir.ui.view,arch_db:quicksol_estate.view_property_form
 msgid "Contact Information"
@@ -1010,11 +890,6 @@ msgid "Authorization Period"
 msgstr "Período de Autorização"
 
 #. module: quicksol_estate
-#: model:ir.ui.menu,name:quicksol_estate.menu_sales
-msgid "Sales"
-msgstr "Vendas"
-
-#. module: quicksol_estate
 #: model_terms:ir.ui.view,arch_db:quicksol_estate.view_property_photo_form
 msgid "Upload Requirements:"
 msgstr "Requisitos de Upload:"
@@ -1026,20 +901,5 @@ msgstr "Tamanho máximo:"
 
 #. module: quicksol_estate
 #: model_terms:ir.ui.view,arch_db:quicksol_estate.view_property_photo_form
-msgid "Allowed formats:"
-msgstr "Formatos permitidos:"
-
-#. module: quicksol_estate
-#: model_terms:ir.ui.view,arch_db:quicksol_estate.view_property_document_form
-msgid "Upload Requirements:"
-msgstr "Requisitos de Upload:"
-
-#. module: quicksol_estate
-#: model_terms:ir.ui.view,arch_db:quicksol_estate.view_property_document_form
-msgid "Maximum size:"
-msgstr "Tamanho máximo:"
-
-#. module: quicksol_estate
-#: model_terms:ir.ui.view,arch_db:quicksol_estate.view_property_document_form
 msgid "Allowed formats:"
 msgstr "Formatos permitidos:"

@@ -7,6 +7,8 @@ Este diretório contém as decisões arquiteturais do projeto Real Estate Manage
 | ADR | Título | Status | Data |
 |-----|--------|--------|------|
 | [ADR-001](./ADR-001-development-guidelines-for-odoo-screens.md) | Development Guidelines for Odoo Screens and Features | Accepted | 2025-10-14 |
+| [ADR-002](./ADR-002-cypress-end-to-end-testing.md) | Uso do Cypress para Testes End-to-End | Accepted | 2025-11-15 |
+| [ADR-003](./ADR-003-mandatory-test-coverage.md) | Cobertura de Testes Obrigatória para Todos os Módulos | Accepted | 2025-11-16 |
 
 ## Como usar as ADRs
 

@@ -13,7 +13,13 @@ class PropertyBuilding(models.Model):
     city = fields.Char(string='City')
     state = fields.Char(string='State')
     zip_code = fields.Char(string='CEP')
-    country_id = fields.Many2one('res.country', string='Country', default=lambda self: self.env['res.country'].search([('code', '=', 'BR')], limit=1).id)
+    country_id = fields.Many2one(
+        'res.country',
+        string='Country',
+        default=lambda self: self.env['res.country'].search(
+            [('code', '=', 'BR')], limit=1
+        ).id or False
+    )
     
     # Building Details
     total_floors = fields.Integer(string='Total Floors')
