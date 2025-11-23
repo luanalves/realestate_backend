@@ -1,1 +1,32 @@
-.idea
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Odoo specific
+*.pyc
+.idea/
+.vscode/
+*.log
+
+# Docker/Database
+*.sql
+.env
+
+# Odoo filestore (imagens e arquivos anexados)
+*/filestore/
+
+# Node modules e Cypress
+node_modules/
+npm-debug.log*
+cypress/videos/
+cypress/screenshots/
+cypress/downloads/
+18.0/cypress/screenshots/
+18.0/cypress/videos/
+18.0/cypress/downloads/
+
+# OS specific
+.DS_Store
+Thumbs.db

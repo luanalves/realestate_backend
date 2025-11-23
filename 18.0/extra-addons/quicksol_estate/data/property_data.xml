@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Sequence for Property Reference Code -->
+        <record id="seq_real_estate_property" model="ir.sequence">
+            <field name="name">Property Reference</field>
+            <field name="code">real.estate.property</field>
+            <field name="prefix">PROP-</field>
+            <field name="padding">5</field>
+            <field name="number_next">1</field>
+            <field name="number_increment">1</field>
+        </record>
+
+        <!-- Property Types -->
+        <record id="property_type_apartment" model="real.estate.property.type">
+            <field name="name">Apartment</field>
+        </record>
+
+        <record id="property_type_house" model="real.estate.property.type">
+            <field name="name">House</field>
+        </record>
+
+        <record id="property_type_condo" model="real.estate.property.type">
+            <field name="name">Condominium</field>
+        </record>
+
+        <record id="property_type_commercial" model="real.estate.property.type">
+            <field name="name">Commercial Building</field>
+        </record>
+
+        <record id="property_type_land" model="real.estate.property.type">
+            <field name="name">Land</field>
+        </record>
+
+        <record id="property_type_farm" model="real.estate.property.type">
+            <field name="name">Farm/Ranch</field>
+        </record>
+
+        <record id="property_type_office" model="real.estate.property.type">
+            <field name="name">Office</field>
+        </record>
+
+        <record id="property_type_store" model="real.estate.property.type">
+            <field name="name">Store/Shop</field>
+        </record>
+
+        <record id="property_type_warehouse" model="real.estate.property.type">
+            <field name="name">Warehouse</field>
+        </record>
+
+        <record id="property_type_penthouse" model="real.estate.property.type">
+            <field name="name">Penthouse</field>
+        </record>
+
+        <record id="property_type_studio" model="real.estate.property.type">
+            <field name="name">Studio</field>
+        </record>
+
+        <record id="property_type_duplex" model="real.estate.property.type">
+            <field name="name">Duplex</field>
+        </record>
+
+        <record id="property_type_triplex" model="real.estate.property.type">
+            <field name="name">Triplex</field>
+        </record>
+
+        <record id="property_type_loft" model="real.estate.property.type">
+            <field name="name">Loft</field>
+        </record>
+
+        <record id="property_type_cottage" model="real.estate.property.type">
+            <field name="name">Cottage/Beach House</field>
+        </record>
+
+        <!-- Property Tags -->
+        <record id="property_tag_luxury" model="real.estate.property.tag">
+            <field name="name">Luxury</field>
+            <field name="color">5</field>
+        </record>
+
+        <record id="property_tag_new_construction" model="real.estate.property.tag">
+            <field name="name">New Construction</field>
+            <field name="color">3</field>
+        </record>
+
+        <record id="property_tag_ocean_view" model="real.estate.property.tag">
+            <field name="name">Ocean View</field>
+            <field name="color">1</field>
+        </record>
+
+        <record id="property_tag_furnished" model="real.estate.property.tag">
+            <field name="name">Furnished</field>
+            <field name="color">4</field>
+        </record>
+
+        <record id="property_tag_pet_friendly" model="real.estate.property.tag">
+            <field name="name">Pet Friendly</field>
+            <field name="color">6</field>
+        </record>
+
+        <record id="property_tag_pool" model="real.estate.property.tag">
+            <field name="name">Pool</field>
+            <field name="color">2</field>
+        </record>
+
+        <record id="property_tag_gated_community" model="real.estate.property.tag">
+            <field name="name">Gated Community</field>
+            <field name="color">8</field>
+        </record>
+
+        <record id="property_tag_smart_home" model="real.estate.property.tag">
+            <field name="name">Smart Home</field>
+            <field name="color">7</field>
+        </record>
+    </data>
+</odoo>

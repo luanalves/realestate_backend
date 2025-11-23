@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Inherit the user form view to add real estate company fields -->
+    <record id="view_users_form_estate_companies" model="ir.ui.view">
+        <field name="name">res.users.form.estate.companies</field>
+        <field name="model">res.users</field>
+        <field name="inherit_id" ref="base.view_users_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='preferences']" position="after">
+                <group string="Real Estate Companies" name="estate_companies">
+                    <field name="estate_company_ids" widget="many2many_tags" 
+                           options="{'color_field': 'color'}"
+                           context="{'form_view_ref': 'quicksol_estate.view_company_form'}"/>
+                    <field name="main_estate_company_id" 
+                           domain="[('id', 'in', estate_company_ids)]"
+                           invisible="not estate_company_ids"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Inherit the user list view to show estate companies -->
+    <record id="view_users_tree_estate_companies" model="ir.ui.view">
+        <field name="name">res.users.tree.estate.companies</field>
+        <field name="model">res.users</field>
+        <field name="inherit_id" ref="base.view_users_tree"/>
+        <field name="arch" type="xml">
+            <field name="login" position="after">
+                <field name="estate_company_ids" widget="many2many_tags" optional="hide"/>
+                <field name="main_estate_company_id" optional="hide"/>
+            </field>
+        </field>
+    </record>
+
+    <!-- Create a new action for Real Estate Users management -->
+    <record id="action_estate_users" model="ir.actions.act_window">
+        <field name="name">Real Estate Users</field>
+        <field name="res_model">res.users</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('estate_company_ids', '!=', False)]</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create users for the real estate system
+            </p>
+            <p>
+                Users with access to real estate companies can manage properties, 
+                agents, and other real estate data within their assigned companies.
+            </p>
+        </field>
+    </record>
+
+    <!-- Add search view for estate users -->
+    <record id="view_estate_users_search" model="ir.ui.view">
+        <field name="name">res.users.search.estate</field>
+        <field name="model">res.users</field>
+        <field name="inherit_id" ref="base.view_users_search"/>
+        <field name="arch" type="xml">
+            <field name="name" position="after">
+                <field name="estate_company_ids"/>
+                <field name="main_estate_company_id"/>
+            </field>
+            <search position="inside">
+                <separator/>
+                <filter name="has_estate_companies" string="Has Estate Companies"
+                        domain="[('estate_company_ids', '!=', False)]"/>
+                <filter name="estate_managers" string="Estate Managers"
+                        domain="[('groups_id', 'in', [ref('quicksol_estate.group_real_estate_manager')])]"/>
+                <filter name="estate_users" string="Estate Users"
+                        domain="[('groups_id', 'in', [ref('quicksol_estate.group_real_estate_user')])]"/>
+                <filter name="estate_agents" string="Estate Agents"
+                        domain="[('groups_id', 'in', [ref('quicksol_estate.group_real_estate_agent')])]"/>
+                <group name="group_by" string="Group By">
+                    <filter name="group_by_main_company" string="Main Estate Company"
+                            context="{'group_by': 'main_estate_company_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Add menu item for Real Estate Users -->
+    <menuitem id="menu_estate_users"
+              name="Users"
+              parent="menu_real_estate_root"
+              action="action_estate_users"
+              sequence="90"
+              groups="base.group_system,quicksol_estate.group_real_estate_manager"/>
+
+</odoo>

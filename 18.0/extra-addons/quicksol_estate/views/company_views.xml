@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Real Estate Company Views -->
+    
+    <!-- Tree View -->
+    <record id="view_company_tree" model="ir.ui.view">
+        <field name="name">thedevkitchen.estate.company.tree</field>
+        <field name="model">thedevkitchen.estate.company</field>
+        <field name="arch" type="xml">
+            <list string="Real Estate Companies">
+                <field name="name"/>
+                <field name="cnpj"/>
+                <field name="phone"/>
+                <field name="email"/>
+                <field name="city"/>
+                <field name="state"/>
+                <field name="property_count"/>
+                <field name="agent_count"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_company_form" model="ir.ui.view">
+        <field name="name">thedevkitchen.estate.company.form</field>
+        <field name="model">thedevkitchen.estate.company</field>
+        <field name="arch" type="xml">
+            <form string="Real Estate Company">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button type="object" name="action_view_properties" class="oe_stat_button" icon="fa-building">
+                            <field name="property_count" widget="statinfo" string="Properties"/>
+                        </button>
+                        <button type="object" name="action_view_agents" class="oe_stat_button" icon="fa-users">
+                            <field name="agent_count" widget="statinfo" string="Agents"/>
+                        </button>
+                        <button type="object" name="action_view_tenants" class="oe_stat_button" icon="fa-user">
+                            <field name="tenant_count" widget="statinfo" string="Tenants"/>
+                        </button>
+                        <button type="object" name="action_view_leases" class="oe_stat_button" icon="fa-file-text">
+                            <field name="lease_count" widget="statinfo" string="Leases"/>
+                        </button>
+                        <button type="object" name="action_view_sales" class="oe_stat_button" icon="fa-dollar">
+                            <field name="sale_count" widget="statinfo" string="Sales"/>
+                        </button>
+                    </div>
+                    
+                    <widget name="web_ribbon" title="Archived" bg_color="bg-danger" invisible="active"/>
+                    
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Company Name"/>
+                        </h1>
+                    </div>
+                    
+                    <group>
+                        <group name="company_info">
+                            <field name="cnpj"/>
+                            <field name="email" widget="email"/>
+                            <field name="phone" widget="phone"/>
+                            <field name="website" widget="url"/>
+                            <field name="active" invisible="1"/>
+                        </group>
+                        <group name="address_info">
+                            <field name="street"/>
+                            <field name="street2"/>
+                            <field name="city"/>
+                            <field name="state"/>
+                            <field name="zip_code"/>
+                            <field name="country_id"/>
+                        </group>
+                    </group>
+                    
+                    <notebook>
+                        <page string="Properties" name="properties">
+                            <field name="property_ids">
+                                <list string="Properties" editable="bottom">
+                                    <field name="name"/>
+                                    <field name="property_type_id"/>
+                                    <field name="num_rooms"/>
+                                    <field name="num_bathrooms"/>
+                                    <field name="area"/>
+                                    <field name="price"/>
+                                    <field name="status"/>
+                                </list>
+                            </field>
+                        </page>
+                        
+                        <page string="Agents" name="agents">
+                            <field name="agent_ids">
+                                <list string="Agents" editable="bottom">
+                                    <field name="name"/>
+                                    <field name="email"/>
+                                    <field name="phone"/>
+                                    <field name="years_experience"/>
+                                </list>
+                            </field>
+                        </page>
+                        
+                        <page string="Tenants" name="tenants">
+                            <field name="tenant_ids">
+                                <list string="Tenants" editable="bottom">
+                                    <field name="name"/>
+                                    <field name="email"/>
+                                    <field name="phone"/>
+                                    <field name="occupation"/>
+                                </list>
+                            </field>
+                        </page>
+                        
+                        <page string="Leases" name="leases">
+                            <field name="lease_ids">
+                                <list string="Leases">
+                                    <field name="property_id"/>
+                                    <field name="tenant_id"/>
+                                    <field name="start_date"/>
+                                    <field name="end_date"/>
+                                    <field name="rent_amount"/>
+                                </list>
+                            </field>
+                        </page>
+                        
+                        <page string="Sales" name="sales">
+                            <field name="sale_ids">
+                                <list string="Sales">
+                                    <field name="property_id"/>
+                                    <field name="buyer_name"/>
+                                    <field name="sale_date"/>
+                                    <field name="sale_price"/>
+                                </list>
+                            </field>
+                        </page>
+                        
+
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="view_company_search" model="ir.ui.view">
+        <field name="name">thedevkitchen.estate.company.search</field>
+        <field name="model">thedevkitchen.estate.company</field>
+        <field name="arch" type="xml">
+            <search string="Real Estate Companies">
+                <field name="name" string="Company Name"/>
+                <field name="cnpj"/>
+                <field name="email"/>
+                <field name="city"/>
+                <field name="state"/>
+                <filter name="active" string="Active" domain="[('active', '=', True)]"/>
+                <filter name="inactive" string="Archived" domain="[('active', '=', False)]"/>
+                <separator/>
+                <group expand="0" string="Group By">
+                    <filter name="group_by_city" string="City" context="{'group_by': 'city'}"/>
+                    <filter name="group_by_state" string="State" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_company" model="ir.actions.act_window">
+        <field name="name">Real Estate Companies</field>
+        <field name="res_model">thedevkitchen.estate.company</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_company_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first Real Estate Company!
+            </p>
+            <p>
+                Manage your real estate companies and their properties, agents, tenants, leases and sales.
+            </p>
+        </field>
+    </record>
+
+</odoo>

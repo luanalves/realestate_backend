@@ -1,0 +1,170 @@
+language: "pt-BR"
+early_access: true
+
+# Configuração de análise de código e revisões
+reviews:
+  # Usar as instruções do Copilot como base para as revisões
+  path_instructions:
+    - path: "**"
+      instructions: "Follow the guidelines in .github/copilot-instructions.md"
+  
+  # Configurações para verificação de qualidade do código
+  checks:
+    # Verificar testes unitários
+    require_tests: true
+  
+  # Configurações gerais de revisão
+  auto_review:
+    enabled: true
+    drafts: true # Revisar também PRs em rascunho
+    ignore_title_keywords: [] # Não ignorar nenhum PR por palavras-chave no título
+    base_branches: [] # Revisar todos os branches base
+  
+  # Configuração de estilo de comentários e solicitações de alteração
+  request_changes_workflow: false
+  collapse_walkthrough: false
+  review_status: true
+  
+  # Configuração para permitir PRs com grande número de arquivos
+  high_level_summary: true
+  high_level_summary_placeholder: "@coderabbitai summary"
+  poem: false
+  review_status: true
+  collapse_walkthrough: false
+  auto_title_placeholder: "@coderabbitai title"
+
+# Configurações para destacar tipos específicos de code smells
+highlights:
+  # Atenção especial para problemas de segurança 
+  security: true
+  # Destacar problemas de qualidade de código
+  code_quality: true
+  # Identificar problemas de desempenho
+  performance: true
+  # Destacar práticas não idiomáticas
+  non_idiomatic: true
+  # Destacar redundâncias
+  redundancy: true
+  # Destacar problemas de documentação
+  documentation: true
+  # Destacar problemas em testes
+  test_issues: true
+  # Destacar cobertura de testes insuficiente
+  test_coverage: true
+  
+# Configuração para o chat do CodeRabbit
+chat:
+  auto_reply: true
+  
+# Configurações para testes unitários
+tests:
+  require_tests: true
+  coverage:
+    minimum: 70  # Cobertura mínima de 70% (ajustado para projeto Odoo)
+  naming_convention: "test*"  # Padrão de nomenclatura para testes
+  directories:
+    - "18.0/extra-addons/*/tests"
+    - "17.0/extra-addons/*/tests"
+    - "16.0/extra-addons/*/tests"
+
+  
+# Configurações para lidar com PRs grandes
+# Não pular review de PRs grandes
+tools:
+  shellcheck:
+    enabled: true
+  
+  gitleaks:
+    enabled: true
+  
+  languagetool:
+    enabled: true
+    enabled_only: false
+    level: "default"# Configurações específicas para a linguagem do projeto
+language_settings:
+  python:
+    dialect: "Python 3.12"
+    framework: "odoo"
+    tools:
+      # Pylint para análise estática de código Python
+      pylint:
+        enabled: true
+        config_file: ".pylintrc"
+      
+      # Flake8 para verificação de estilo de código
+      flake8:
+        enabled: true
+        max_line_length: 120
+        ignore:
+          - "E501"  # Line too long (Odoo permite linhas mais longas)
+          - "W503"  # Line break before binary operator
+      
+      # Black para formatação automática de código
+      black:
+        enabled: false  # Odoo tem seu próprio estilo
+        
+      # isort para organização de imports
+      isort:
+        enabled: true
+        profile: "black"
+        
+      # mypy para verificação de tipos
+      mypy:
+        enabled: false  # Odoo não usa type hints extensivamente
+        
+      # pytest para testes unitários
+      pytest:
+        enabled: true
+        test_directories:
+          - "18.0/extra-addons/*/tests"
+          - "17.0/extra-addons/*/tests"
+          - "16.0/extra-addons/*/tests"
+  
+  javascript:
+    dialect: "ES6+"
+    framework: "odoo"
+    tools:
+      # ESLint para análise de código JavaScript
+      eslint:
+        enabled: true
+        config_file: ".eslintrc.json"
+      
+      # Verificação de compatibilidade com Odoo OWL framework
+      owl:
+        enabled: true
+        
+  xml:
+    # Configurações para arquivos XML do Odoo (views, data, security)
+    validation:
+      enabled: true
+      check_syntax: true
+      check_odoo_structure: true
+      
+# Configurações específicas para Odoo
+odoo:
+  # Versões suportadas no projeto
+  versions:
+    - "16.0"
+    - "17.0"
+    - "18.0"
+  
+  # Diretórios de módulos customizados
+  custom_addons:
+    - "18.0/extra-addons"
+    - "17.0/extra-addons"
+    - "16.0/extra-addons"
+  
+  # Verificações específicas do Odoo
+  checks:
+    # Verificar estrutura de manifesto
+    manifest_structure: true
+    # Verificar dependências de módulos
+    module_dependencies: true
+    # Verificar estrutura de views XML
+    view_inheritance: true
+    # Verificar regras de segurança
+    security_rules: true
+    # Verificar traduções
+    translations: false  # Desabilitado pois removemos os arquivos .po
+    # Verificar dados demo
+    demo_data: true

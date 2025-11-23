@@ -79,6 +79,14 @@ RUN curl -o odoo.deb -sSL http://nightly.odoo.com/${ODOO_VERSION}/nightly/deb/od
     && apt-get -y install --no-install-recommends ./odoo.deb \
     && rm -rf /var/lib/apt/lists/* odoo.deb
 
+# Install Python dependencies for api_gateway module
+RUN pip3 install --break-system-packages --ignore-installed \
+    authlib==1.6.5 \
+    PyJWT==2.10.1 \
+    bcrypt==5.0.0 \
+    cryptography==46.0.3 \
+    jsonschema==4.25.1
+
 # Copy entrypoint script and Odoo configuration file
 COPY ./entrypoint.sh /
 COPY ./odoo.conf /etc/odoo/

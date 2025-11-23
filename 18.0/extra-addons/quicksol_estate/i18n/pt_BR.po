@@ -1,0 +1,905 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+#   * quicksol_estate
+#
+msgid ""
+msgstr ""
+"Language: pt_BR\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#. module: quicksol_estate
+#: model:ir.ui.menu,name:quicksol_estate.menu_real_estate_root
+msgid "Real Estate"
+msgstr "Imobiliária"
+
+#. module: quicksol_estate
+#: model:ir.ui.menu,name:quicksol_estate.menu_real_estate_property
+msgid "Properties"
+msgstr "Propriedades"
+
+#. module: quicksol_estate
+#: model:ir.ui.menu,name:quicksol_estate.menu_real_estate_agent
+msgid "Agents"
+msgstr "Corretores"
+
+#. module: quicksol_estate
+#: model:ir.ui.menu,name:quicksol_estate.menu_real_estate_tenant
+msgid "Tenants"
+msgstr "Inquilinos"
+
+#. module: quicksol_estate
+#: model:ir.ui.menu,name:quicksol_estate.menu_real_estate_lease
+msgid "Leases"
+msgstr "Aluguéis"
+
+#. module: quicksol_estate
+#: model:ir.ui.menu,name:quicksol_estate.menu_real_estate_sale
+msgid "Sales"
+msgstr "Vendas"
+
+#. module: quicksol_estate
+#: model:ir.ui.menu,name:quicksol_estate.menu_real_estate_company
+msgid "Companies"
+msgstr "Empresas"
+
+#. module: quicksol_estate
+#. module: quicksol_estate
+#: model_terms:ir.ui.view,arch_db:quicksol_estate.view_property_form
+msgid "Owner Data"
+msgstr "Dados do Proprietário"
+
+#. module: quicksol_estate
+#: model_terms:ir.ui.view,arch_db:quicksol_estate.view_property_form
+msgid "Structure"
+msgstr "Estrutura"
+
+#. module: quicksol_estate
+#: model_terms:ir.ui.view,arch_db:quicksol_estate.view_property_form
+msgid "Location"
+msgstr "Localização"
+
+#. module: quicksol_estate
+#: model_terms:ir.ui.view,arch_db:quicksol_estate.view_property_form
+msgid "Primary Data"
+msgstr "Dados Principais"
+
+#. module: quicksol_estate
+#: model_terms:ir.ui.view,arch_db:quicksol_estate.view_property_form
+msgid "Features"
+msgstr "Características"
+
+#. module: quicksol_estate
+#: model_terms:ir.ui.view,arch_db:quicksol_estate.view_property_form
+msgid "Zoning"
+msgstr "Zoneamento"
+
+#. module: quicksol_estate
+#: model_terms:ir.ui.view,arch_db:quicksol_estate.view_property_form
+msgid "Tags"
+msgstr "Etiquetas"
+
+#. module: quicksol_estate
+#: model_terms:ir.ui.view,arch_db:quicksol_estate.view_property_form
+msgid "Key Control"
+msgstr "Controle de Chaves"
+
+#. module: quicksol_estate
+#: model_terms:ir.ui.view,arch_db:quicksol_estate.view_property_form
+msgid "Photos"
+msgstr "Fotos"
+
+#. module: quicksol_estate
+#: model_terms:ir.ui.view,arch_db:quicksol_estate.view_property_form
+msgid "Web Publishing"
+msgstr "Publicação Web"
+
+#. module: quicksol_estate
+#: model_terms:ir.ui.view,arch_db:quicksol_estate.view_property_form
+msgid "Signs"
+msgstr "Placas"
+
+#. module: quicksol_estate
+#: model_terms:ir.ui.view,arch_db:quicksol_estate.view_property_form
+msgid "Commissions"
+msgstr "Comissões"
+
+#. module: quicksol_estate
+#: model_terms:ir.ui.view,arch_db:quicksol_estate.view_property_form
+msgid "Documents"
+msgstr "Documentos"
+
+# ========== PROPERTY FIELDS - BASIC INFO ==========
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__name
+msgid "Property Name"
+msgstr "Nome do Imóvel"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__reference_code
+msgid "Reference Code"
+msgstr "Código de Referência"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__active
+msgid "Active"
+msgstr "Ativo"
+
+# ========== OWNER DATA ==========
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__owner_id
+msgid "Owner"
+msgstr "Proprietário"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__owner_name
+msgid "Owner Name"
+msgstr "Nome do Proprietário"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__phone_ids
+msgid "Contact Phones"
+msgstr "Telefones de Contato"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__email_ids
+msgid "Contact Emails"
+msgstr "Emails de Contato"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__origin_media
+msgid "Origin Media"
+msgstr "Origem do Contato"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__activity_notification
+msgid "Activity Notification"
+msgstr "Notificações de Atividade"
+
+# ========== STRUCTURE ==========
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__property_purpose
+msgid "Purpose"
+msgstr "Finalidade"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__property_type_id
+msgid "Property Type"
+msgstr "Tipo de Imóvel"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__building_id
+msgid "Building/Condominium"
+msgstr "Edifício/Condomínio"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__floor_number
+msgid "Floor Number"
+msgstr "Andar"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__unit_number
+msgid "Unit Number"
+msgstr "Número da Unidade"
+
+# ========== LOCATION ==========
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__zip_code
+msgid "CEP"
+msgstr "CEP"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__country_id
+msgid "Country"
+msgstr "País"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__state
+msgid "State"
+msgstr "Estado"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__city
+msgid "City"
+msgstr "Cidade"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__neighborhood
+msgid "Neighborhood"
+msgstr "Bairro"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__street
+msgid "Street"
+msgstr "Rua"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__street_number
+msgid "Number"
+msgstr "Número"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__complement
+msgid "Complement"
+msgstr "Complemento"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__address
+msgid "Complete Address"
+msgstr "Endereço Completo"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__latitude
+msgid "Latitude"
+msgstr "Latitude"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__longitude
+msgid "Longitude"
+msgstr "Longitude"
+
+# ========== PRICING ==========
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__for_sale
+msgid "For Sale"
+msgstr "À Venda"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__for_rent
+msgid "For Rent"
+msgstr "Para Alugar"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__price
+msgid "Sale Price"
+msgstr "Preço de Venda"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__rent_price
+msgid "Rent Price"
+msgstr "Valor do Aluguel"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__iptu_annual
+msgid "IPTU Annual"
+msgstr "IPTU Anual"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__iptu_monthly
+msgid "IPTU Monthly"
+msgstr "IPTU Mensal"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__insurance_value
+msgid "Insurance Value"
+msgstr "Valor do Seguro"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__condominium_fee
+msgid "Condominium Fee"
+msgstr "Taxa de Condomínio"
+
+# ========== STATUS ==========
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__property_status
+msgid "Property Status"
+msgstr "Status do Imóvel"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__condition
+msgid "Condition"
+msgstr "Estado de Conservação"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__location_type
+msgid "Location Type"
+msgstr "Tipo de Localização"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__authorization_start_date
+msgid "Authorization Start Date"
+msgstr "Data Início Autorização"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__authorization_end_date
+msgid "Authorization End Date"
+msgstr "Data Fim Autorização"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__authorization_active
+msgid "Authorization Active"
+msgstr "Autorização Ativa"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__accepts_fgts
+msgid "Accepts FGTS"
+msgstr "Aceita FGTS"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__accepts_financing
+msgid "Accepts Financing"
+msgstr "Aceita Financiamento"
+
+# ========== FEATURES ==========
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__area
+msgid "Built Area (m²)"
+msgstr "Área Construída (m²)"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__total_area
+msgid "Total Area (m²)"
+msgstr "Área Total (m²)"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__private_area
+msgid "Private Area (m²)"
+msgstr "Área Privativa (m²)"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__land_area
+msgid "Land Area (m²)"
+msgstr "Área do Terreno (m²)"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__num_rooms
+msgid "Bedrooms"
+msgstr "Quartos"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__num_suites
+msgid "Suites"
+msgstr "Suítes"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__num_bathrooms
+msgid "Bathrooms"
+msgstr "Banheiros"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__num_parking
+msgid "Parking Spaces"
+msgstr "Vagas de Garagem"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__construction_year
+msgid "Construction Year"
+msgstr "Ano de Construção"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__reform_year
+msgid "Reform Year"
+msgstr "Ano de Reforma"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__property_age
+msgid "Property Age (years)"
+msgstr "Idade do Imóvel (anos)"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__amenities
+msgid "Amenities"
+msgstr "Comodidades"
+
+# ========== WEB PUBLISHING ==========
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__publish_website
+msgid "Publish on Website"
+msgstr "Publicar no Site"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__publish_featured
+msgid "Featured Property"
+msgstr "Imóvel em Destaque"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__publish_super_featured
+msgid "Super Featured"
+msgstr "Super Destaque"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__youtube_video_url
+msgid "YouTube Video URL"
+msgstr "URL do Vídeo YouTube"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__virtual_tour_url
+msgid "Virtual Tour URL"
+msgstr "URL do Tour Virtual"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__meta_title
+msgid "Meta Title"
+msgstr "Título SEO"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__meta_description
+msgid "Meta Description"
+msgstr "Descrição SEO"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__description
+msgid "Property Description"
+msgstr "Descrição do Imóvel"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__description_short
+msgid "Short Description"
+msgstr "Descrição Resumida"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__matricula_number
+msgid "Matrícula Number"
+msgstr "Número da Matrícula"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__iptu_code
+msgid "IPTU Code"
+msgstr "Código IPTU"
+
+# ========== VALIDATION MESSAGES ==========
+#. module: quicksol_estate
+#: code:addons/quicksol_estate/models/property.py:0
+#, python-format
+msgid "Property must be for sale, for rent, or both."
+msgstr "Imóvel deve estar à venda, para alugar, ou ambos."
+
+#. module: quicksol_estate
+#: code:addons/quicksol_estate/models/property.py:0
+#, python-format
+msgid "Sale price must be greater than zero when property is for sale."
+msgstr "Preço de venda deve ser maior que zero quando o imóvel está à venda."
+
+#. module: quicksol_estate
+#: code:addons/quicksol_estate/models/property.py:0
+#, python-format
+msgid "Rent price must be greater than zero when property is for rent."
+msgstr "Valor do aluguel deve ser maior que zero quando o imóvel está para alugar."
+
+#. module: quicksol_estate
+#: code:addons/quicksol_estate/models/property.py:0
+#, python-format
+msgid "Built area must be greater than zero."
+msgstr "Área construída deve ser maior que zero."
+
+#. module: quicksol_estate
+#: code:addons/quicksol_estate/models/property.py:0
+#, python-format
+msgid "Total area cannot be less than built area."
+msgstr "Área total não pode ser menor que área construída."
+
+#. module: quicksol_estate
+#: code:addons/quicksol_estate/models/property.py:0
+#, python-format
+msgid "CPF must contain 11 digits."
+msgstr "CPF deve conter 11 dígitos."
+
+#. module: quicksol_estate
+#: code:addons/quicksol_estate/models/property.py:0
+#, python-format
+msgid "CNPJ must contain 14 digits."
+msgstr "CNPJ deve conter 14 dígitos."
+
+# ========== SELECTION VALUES - PROPERTY PURPOSE ==========
+#. module: quicksol_estate
+#: selection:real.estate.property,property_purpose:0
+msgid "Residential"
+msgstr "Residencial"
+
+#. module: quicksol_estate
+#: selection:real.estate.property,property_purpose:0
+msgid "Commercial"
+msgstr "Comercial"
+
+#. module: quicksol_estate
+#: selection:real.estate.property,property_purpose:0
+msgid "Industrial"
+msgstr "Industrial"
+
+#. module: quicksol_estate
+#: selection:real.estate.property,property_purpose:0
+msgid "Rural"
+msgstr "Rural"
+
+# ========== SELECTION VALUES - PROPERTY STATUS ==========
+#. module: quicksol_estate
+#: selection:real.estate.property,property_status:0
+msgid "Available"
+msgstr "Disponível"
+
+#. module: quicksol_estate
+#: selection:real.estate.property,property_status:0
+msgid "Reserved"
+msgstr "Reservado"
+
+#. module: quicksol_estate
+#: selection:real.estate.property,property_status:0
+msgid "Sold"
+msgstr "Vendido"
+
+#. module: quicksol_estate
+#: selection:real.estate.property,property_status:0
+msgid "Rented"
+msgstr "Alugado"
+
+#. module: quicksol_estate
+#: selection:real.estate.property,property_status:0
+msgid "Inactive"
+msgstr "Inativo"
+
+# ========== SELECTION VALUES - CONDITION ==========
+#. module: quicksol_estate
+#: selection:real.estate.property,condition:0
+msgid "New"
+msgstr "Novo"
+
+#. module: quicksol_estate
+#: selection:real.estate.property,condition:0
+msgid "Excellent"
+msgstr "Excelente"
+
+#. module: quicksol_estate
+#: selection:real.estate.property,condition:0
+msgid "Good"
+msgstr "Bom"
+
+#. module: quicksol_estate
+#: selection:real.estate.property,condition:0
+msgid "Fair"
+msgstr "Regular"
+
+#. module: quicksol_estate
+#: selection:real.estate.property,condition:0
+msgid "Needs Renovation"
+msgstr "Precisa Reforma"
+
+# ========== SELECTION VALUES - LOCATION TYPE ==========
+#. module: quicksol_estate
+#: selection:real.estate.property,location_type:0
+msgid "Urban"
+msgstr "Urbano"
+
+#. module: quicksol_estate
+#: selection:real.estate.property,location_type:0
+msgid "Beach"
+msgstr "Praia"
+
+#. module: quicksol_estate
+#: selection:real.estate.property,location_type:0
+msgid "Countryside"
+msgstr "Campo"
+
+#. module: quicksol_estate
+#: selection:real.estate.property,location_type:0
+msgid "Mountain"
+msgstr "Montanha"
+
+# ========== SELECTION VALUES - ORIGIN MEDIA ==========
+#. module: quicksol_estate
+#: selection:real.estate.property,origin_media:0
+msgid "Website"
+msgstr "Site"
+
+#. module: quicksol_estate
+#: selection:real.estate.property,origin_media:0
+msgid "Phone"
+msgstr "Telefone"
+
+#. module: quicksol_estate
+#: selection:real.estate.property,origin_media:0
+msgid "Email"
+msgstr "E-mail"
+
+#. module: quicksol_estate
+#: selection:real.estate.property,origin_media:0
+msgid "Walk-in"
+msgstr "Presencial"
+
+#. module: quicksol_estate
+#: selection:real.estate.property,origin_media:0
+msgid "Referral"
+msgstr "Indicação"
+
+#. module: quicksol_estate
+#: selection:real.estate.property,origin_media:0
+msgid "Social Media"
+msgstr "Redes Sociais"
+
+# ========== AUXILIARY MODELS ==========
+#. module: quicksol_estate
+#: model:ir.model,name:quicksol_estate.model_real_estate_property_owner
+msgid "Property Owner"
+msgstr "Proprietário do Imóvel"
+
+#. module: quicksol_estate
+#: model:ir.model,name:quicksol_estate.model_real_estate_property_phone
+msgid "Property Phone"
+msgstr "Telefone do Imóvel"
+
+#. module: quicksol_estate
+#: model:ir.model,name:quicksol_estate.model_real_estate_property_email
+msgid "Property Email"
+msgstr "E-mail do Imóvel"
+
+#. module: quicksol_estate
+#: model:ir.model,name:quicksol_estate.model_real_estate_property_photo
+msgid "Property Photo"
+msgstr "Foto do Imóvel"
+
+#. module: quicksol_estate
+#: model:ir.model,name:quicksol_estate.model_real_estate_property_document
+msgid "Property Document"
+msgstr "Documento do Imóvel"
+
+#. module: quicksol_estate
+#: model:ir.model,name:quicksol_estate.model_real_estate_property_key
+msgid "Property Key"
+msgstr "Chave do Imóvel"
+
+#. module: quicksol_estate
+#: model:ir.model,name:quicksol_estate.model_real_estate_property_commission
+msgid "Property Commission"
+msgstr "Comissão do Imóvel"
+
+#. module: quicksol_estate
+#: model:ir.model,name:quicksol_estate.model_real_estate_property_tag
+msgid "Property Tag"
+msgstr "Etiqueta do Imóvel"
+
+# ========== PROPERTY OWNER FIELDS ==========
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property_owner__name
+msgid "Full Name"
+msgstr "Nome Completo"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property_owner__owner_type
+msgid "Owner Type"
+msgstr "Tipo de Proprietário"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property_owner__cpf
+msgid "CPF"
+msgstr "CPF"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property_owner__cnpj
+msgid "CNPJ"
+msgstr "CNPJ"
+
+#. module: quicksol_estate
+#: selection:real.estate.property.owner,owner_type:0
+msgid "Individual"
+msgstr "Pessoa Física"
+
+#. module: quicksol_estate
+#: selection:real.estate.property.owner,owner_type:0
+msgid "Company"
+msgstr "Pessoa Jurídica"
+
+# ========== PROPERTY BUILDING FIELDS ==========
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property_building__name
+msgid "Building Name"
+msgstr "Nome do Edifício"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property_building__total_floors
+msgid "Total Floors"
+msgstr "Total de Andares"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property_building__total_units
+msgid "Total Units"
+msgstr "Total de Unidades"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property_building__elevator
+msgid "Has Elevator"
+msgstr "Possui Elevador"
+
+# ========== PROPERTY PHONE FIELDS ==========
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property_phone__phone
+msgid "Phone Number"
+msgstr "Número de Telefone"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property_phone__phone_type
+msgid "Phone Type"
+msgstr "Tipo de Telefone"
+
+#. module: quicksol_estate
+#: selection:real.estate.property.phone,phone_type:0
+msgid "Mobile"
+msgstr "Celular"
+
+#. module: quicksol_estate
+#: selection:real.estate.property.phone,phone_type:0
+msgid "Home"
+msgstr "Residencial"
+
+#. module: quicksol_estate
+#: selection:real.estate.property.phone,phone_type:0
+msgid "Work"
+msgstr "Comercial"
+
+# ========== PROPERTY EMAIL FIELDS ==========
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property_email__email
+msgid "Email Address"
+msgstr "Endereço de E-mail"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property_email__primary
+msgid "Primary Email"
+msgstr "E-mail Principal"
+
+# ========== PROPERTY PHOTO FIELDS ==========
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property_photo__name
+msgid "Photo Name"
+msgstr "Nome da Foto"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property_photo__image
+msgid "Image"
+msgstr "Imagem"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property_photo__sequence
+msgid "Sequence"
+msgstr "Sequência"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property_photo__is_main
+msgid "Main Photo"
+msgstr "Foto Principal"
+
+# ========== PROPERTY DOCUMENT FIELDS ==========
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property_document__name
+msgid "Document Name"
+msgstr "Nome do Documento"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property_document__document_type
+msgid "Document Type"
+msgstr "Tipo de Documento"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property_document__file
+msgid "File"
+msgstr "Arquivo"
+
+#. module: quicksol_estate
+#: selection:real.estate.property.document,document_type:0
+msgid "Deed"
+msgstr "Escritura"
+
+#. module: quicksol_estate
+#: selection:real.estate.property.document,document_type:0
+msgid "IPTU"
+msgstr "IPTU"
+
+#. module: quicksol_estate
+#: selection:real.estate.property.document,document_type:0
+msgid "Registration"
+msgstr "Matrícula"
+
+#. module: quicksol_estate
+#: selection:real.estate.property.document,document_type:0
+msgid "Contract"
+msgstr "Contrato"
+
+#. module: quicksol_estate
+#: selection:real.estate.property.document,document_type:0
+msgid "Other"
+msgstr "Outro"
+
+# ========== PROPERTY KEY FIELDS ==========
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property_key__key_number
+msgid "Key Number"
+msgstr "Número da Chave"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property_key__location
+msgid "Key Location"
+msgstr "Localização da Chave"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property_key__responsible
+msgid "Responsible"
+msgstr "Responsável"
+
+# ========== PROPERTY COMMISSION FIELDS ==========
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property_commission__agent_id
+msgid "Agent"
+msgstr "Corretor"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property_commission__percentage
+msgid "Commission %"
+msgstr "% Comissão"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property_commission__amount
+msgid "Commission Amount"
+msgstr "Valor da Comissão"
+
+# ========== PROPERTY TAG FIELDS ==========
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property_tag__name
+msgid "Tag Name"
+msgstr "Nome da Etiqueta"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property_tag__color
+msgid "Color"
+msgstr "Cor"
+
+# ========== AMENITIES ==========
+#. module: quicksol_estate
+#: model:ir.model,name:quicksol_estate.model_real_estate_amenity
+msgid "Amenity"
+msgstr "Comodidade"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_amenity__name
+msgid "Amenity Name"
+msgstr "Nome da Comodidade"
+
+# ========== COMMON LABELS ==========
+#. module: quicksol_estate
+#: model:ir.ui.view,arch_db:quicksol_estate.view_property_form
+msgid "Contact Information"
+msgstr "Informações de Contato"
+
+#. module: quicksol_estate
+#: model:ir.ui.view,arch_db:quicksol_estate.view_property_form
+msgid "Address Details"
+msgstr "Detalhes do Endereço"
+
+#. module: quicksol_estate
+#: model:ir.ui.view,arch_db:quicksol_estate.view_property_form
+msgid "Property Information"
+msgstr "Informações do Imóvel"
+
+#. module: quicksol_estate
+#: model:ir.ui.view,arch_db:quicksol_estate.view_property_form
+msgid "Dimensions"
+msgstr "Dimensões"
+
+#. module: quicksol_estate
+#: model:ir.ui.view,arch_db:quicksol_estate.view_property_form
+msgid "Room Distribution"
+msgstr "Distribuição de Cômodos"
+
+#. module: quicksol_estate
+#: model:ir.ui.view,arch_db:quicksol_estate.view_property_form
+msgid "Building Information"
+msgstr "Informações da Edificação"
+
+#. module: quicksol_estate
+#: model:ir.ui.view,arch_db:quicksol_estate.view_property_form
+msgid "Authorization Period"
+msgstr "Período de Autorização"
+
+#. module: quicksol_estate
+#: model_terms:ir.ui.view,arch_db:quicksol_estate.view_property_photo_form
+msgid "Upload Requirements:"
+msgstr "Requisitos de Upload:"
+
+#. module: quicksol_estate
+#: model_terms:ir.ui.view,arch_db:quicksol_estate.view_property_photo_form
+msgid "Maximum size:"
+msgstr "Tamanho máximo:"
+
+#. module: quicksol_estate
+#: model_terms:ir.ui.view,arch_db:quicksol_estate.view_property_photo_form
+msgid "Allowed formats:"
+msgstr "Formatos permitidos:"

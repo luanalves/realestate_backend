@@ -1,0 +1,319 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Demo Property Owners -->
+        <record id="demo_owner_1" model="real.estate.property.owner">
+            <field name="name">João da Silva Santos</field>
+            <field name="cpf">123.456.789-00</field>
+            <field name="email">joao.silva@example.com</field>
+            <field name="phone">(21) 3456-7890</field>
+            <field name="mobile">(21) 98765-4321</field>
+            <field name="whatsapp">(21) 98765-4321</field>
+            <field name="zip_code">22040-020</field>
+            <field name="state">RJ</field>
+            <field name="city">Rio de Janeiro</field>
+            <field name="address">Av. Atlântica, 1234 - Copacabana</field>
+            <field name="marital_status">married</field>
+        </record>
+
+        <record id="demo_owner_2" model="real.estate.property.owner">
+            <field name="name">Maria Fernanda Oliveira</field>
+            <field name="cpf">987.654.321-00</field>
+            <field name="email">maria.oliveira@example.com</field>
+            <field name="phone">(11) 3210-9876</field>
+            <field name="mobile">(11) 91234-5678</field>
+            <field name="whatsapp">(11) 91234-5678</field>
+            <field name="zip_code">01310-100</field>
+            <field name="state">SP</field>
+            <field name="city">São Paulo</field>
+            <field name="address">Av. Paulista, 1578 - Bela Vista</field>
+            <field name="marital_status">single</field>
+        </record>
+
+        <record id="demo_owner_3" model="real.estate.property.owner">
+            <field name="name">Imobiliária Tropical LTDA</field>
+            <field name="cnpj">12.345.678/0001-90</field>
+            <field name="email">contato@tropicalimob.com.br</field>
+            <field name="phone">(21) 2222-3333</field>
+            <field name="mobile">(21) 99999-8888</field>
+            <field name="zip_code">22250-040</field>
+            <field name="state">RJ</field>
+            <field name="city">Rio de Janeiro</field>
+            <field name="address">Rua Visconde de Pirajá, 550 - Ipanema</field>
+        </record>
+
+        <!-- Demo Buildings -->
+        <record id="demo_building_1" model="real.estate.property.building">
+            <field name="name">Edifício Atlântico</field>
+            <field name="zip_code">22040-020</field>
+            <field name="state">RJ</field>
+            <field name="city">Rio de Janeiro</field>
+            <field name="address">Av. Atlântica, 1234 - Copacabana</field>
+            <field name="total_floors">20</field>
+            <field name="total_units">80</field>
+            <field name="construction_year">2015</field>
+            <field name="monthly_fee">1200.00</field>
+            <field name="has_elevator">True</field>
+            <field name="has_security">True</field>
+            <field name="has_pool">True</field>
+            <field name="has_gym">True</field>
+            <field name="has_party_room">True</field>
+            <field name="administrator_name">Administradora Rio Mar</field>
+            <field name="administrator_phone">(21) 3333-4444</field>
+            <field name="administrator_email">contato@riomar.com.br</field>
+        </record>
+
+        <record id="demo_building_2" model="real.estate.property.building">
+            <field name="name">Condomínio Jardim Europa</field>
+            <field name="zip_code">01452-000</field>
+            <field name="state">SP</field>
+            <field name="city">São Paulo</field>
+            <field name="address">Rua Europa, 789 - Jardim Europa</field>
+            <field name="total_floors">15</field>
+            <field name="total_units">60</field>
+            <field name="construction_year">2018</field>
+            <field name="monthly_fee">2500.00</field>
+            <field name="has_elevator">True</field>
+            <field name="has_security">True</field>
+            <field name="has_pool">True</field>
+            <field name="has_gym">True</field>
+            <field name="has_playground">True</field>
+            <field name="has_sports_court">True</field>
+            <field name="administrator_name">Condominium Services</field>
+            <field name="administrator_phone">(11) 5555-6666</field>
+        </record>
+
+        <!-- Demo Properties -->
+        <record id="demo_property_1" model="real.estate.property">
+            <field name="name">Apartamento Luxo Vista Mar Copacabana</field>
+            <field name="property_purpose">residential</field>
+            <field name="property_type_id" ref="property_type_apartment"/>
+            <field name="owner_id" ref="demo_owner_1"/>
+            <field name="building_id" ref="demo_building_1"/>
+            <field name="floor_number">15</field>
+            <field name="unit_number">1502</field>
+            <field name="origin_media">website</field>
+            
+            <!-- Location -->
+            <field name="zip_code">22040-020</field>
+            <field name="state">RJ</field>
+            <field name="city">Rio de Janeiro</field>
+            <field name="neighborhood">Copacabana</field>
+            <field name="street">Av. Atlântica</field>
+            <field name="street_number">1234</field>
+            <field name="location_type">urban</field>
+            <field name="latitude">-22.9711</field>
+            <field name="longitude">-43.1825</field>
+            
+            <!-- Primary Data -->
+            <field name="for_sale">True</field>
+            <field name="price">2500000.00</field>
+            <field name="iptu_annual">12000.00</field>
+            <field name="insurance_value">15000.00</field>
+            <field name="condominium_fee">1200.00</field>
+            <field name="property_status">available</field>
+            <field name="accepts_financing">True</field>
+            <field name="authorization_start_date" eval="(datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')"/>
+            <field name="authorization_end_date" eval="(datetime.now() + timedelta(days=335)).strftime('%Y-%m-%d')"/>
+            
+            <!-- Features -->
+            <field name="area">180.00</field>
+            <field name="total_area">220.00</field>
+            <field name="private_area">160.00</field>
+            <field name="num_rooms">3</field>
+            <field name="num_suites">2</field>
+            <field name="num_bathrooms">3</field>
+            <field name="num_parking">2</field>
+            <field name="construction_year">2015</field>
+            <field name="condition">excellent</field>
+            
+            <!-- Web Publishing -->
+            <field name="publish_website">True</field>
+            <field name="publish_featured">True</field>
+            <field name="description_short">Apartamento de luxo com vista frontal para o mar em Copacabana. 3 quartos, 2 suítes, 180m².</field>
+            <field name="description"><![CDATA[
+                <p><strong>Apartamento de Alto Padrão em Copacabana</strong></p>
+                <p>Apartamento espetacular com vista frontal para o mar, localizado em um dos edifícios mais cobiçados de Copacabana.</p>
+                <ul>
+                    <li>3 quartos sendo 2 suítes</li>
+                    <li>3 banheiros completos</li>
+                    <li>Sala ampla com varanda gourmet</li>
+                    <li>Cozinha americana moderna</li>
+                    <li>2 vagas de garagem cobertas</li>
+                    <li>Armários planejados em todos os cômodos</li>
+                </ul>
+                <p>Condomínio completo com piscina, sauna, salão de festas, academia e segurança 24h.</p>
+            ]]></field>
+            <field name="meta_title">Apartamento Luxo Vista Mar Copacabana - 3 Quartos</field>
+            <field name="meta_description">Apartamento de 180m² com vista mar em Copacabana. 3 quartos, 2 suítes, 2 vagas. Condomínio completo. R$ 2.500.000</field>
+        </record>
+
+        <record id="demo_property_2" model="real.estate.property">
+            <field name="name">Casa Moderna Jardim Europa</field>
+            <field name="property_purpose">residential</field>
+            <field name="property_type_id" ref="property_type_house"/>
+            <field name="owner_id" ref="demo_owner_2"/>
+            <field name="origin_media">referral</field>
+            
+            <!-- Location -->
+            <field name="zip_code">01452-000</field>
+            <field name="state">SP</field>
+            <field name="city">São Paulo</field>
+            <field name="neighborhood">Jardim Europa</field>
+            <field name="street">Rua Europa</field>
+            <field name="street_number">789</field>
+            <field name="location_type">urban</field>
+            <field name="latitude">-23.5733</field>
+            <field name="longitude">-46.6776</field>
+            
+            <!-- Primary Data -->
+            <field name="for_sale">True</field>
+            <field name="for_rent">True</field>
+            <field name="price">5800000.00</field>
+            <field name="rent_price">18000.00</field>
+            <field name="iptu_annual">48000.00</field>
+            <field name="insurance_value">35000.00</field>
+            <field name="property_status">available</field>
+            <field name="accepts_financing">True</field>
+            <field name="accepts_fgts">False</field>
+            
+            <!-- Features -->
+            <field name="area">420.00</field>
+            <field name="total_area">650.00</field>
+            <field name="land_area">650.00</field>
+            <field name="num_rooms">5</field>
+            <field name="num_suites">4</field>
+            <field name="num_bathrooms">6</field>
+            <field name="num_parking">4</field>
+            <field name="num_floors">2</field>
+            <field name="construction_year">2020</field>
+            <field name="condition">new</field>
+            
+            <!-- Web Publishing -->
+            <field name="publish_website">True</field>
+            <field name="publish_super_featured">True</field>
+            <field name="description_short">Casa moderna de alto padrão no Jardim Europa. 5 quartos, 4 suítes, piscina, área gourmet. 420m² construídos.</field>
+            <field name="description"><![CDATA[
+                <p><strong>Casa de Luxo no Jardim Europa</strong></p>
+                <p>Casa moderna de altíssimo padrão em uma das localizações mais nobres de São Paulo.</p>
+                <ul>
+                    <li>5 quartos sendo 4 suítes com closet</li>
+                    <li>6 banheiros de alto padrão</li>
+                    <li>Ampla sala de estar e jantar integradas</li>
+                    <li>Cozinha gourmet com ilha central</li>
+                    <li>Home theater e escritório</li>
+                    <li>Piscina aquecida com deck</li>
+                    <li>Área gourmet com churrasqueira</li>
+                    <li>4 vagas de garagem</li>
+                    <li>Sistema de automação completo</li>
+                    <li>Painéis solares</li>
+                </ul>
+                <p>Arquitetura contemporânea com acabamentos premium e tecnologia de ponta.</p>
+            ]]></field>
+            <field name="meta_title">Casa Moderna Jardim Europa - 5 Quartos Alto Padrão</field>
+            <field name="meta_description">Casa de luxo 420m² no Jardim Europa. 5 quartos, 4 suítes, piscina, área gourmet, automação. R$ 5.800.000</field>
+        </record>
+
+        <record id="demo_property_3" model="real.estate.property">
+            <field name="name">Sala Comercial Av. Paulista</field>
+            <field name="property_purpose">commercial</field>
+            <field name="property_type_id" ref="property_type_office"/>
+            <field name="owner_id" ref="demo_owner_3"/>
+            <field name="origin_media">partner</field>
+            
+            <!-- Location -->
+            <field name="zip_code">01310-100</field>
+            <field name="state">SP</field>
+            <field name="city">São Paulo</field>
+            <field name="neighborhood">Bela Vista</field>
+            <field name="street">Av. Paulista</field>
+            <field name="street_number">1578</field>
+            <field name="floor_number">10</field>
+            <field name="unit_number">1001</field>
+            <field name="location_type">urban</field>
+            
+            <!-- Primary Data -->
+            <field name="for_sale">False</field>
+            <field name="for_rent">True</field>
+            <field name="rent_price">12000.00</field>
+            <field name="iptu_annual">9600.00</field>
+            <field name="condominium_fee">2800.00</field>
+            <field name="property_status">available</field>
+            
+            <!-- Features -->
+            <field name="area">95.00</field>
+            <field name="total_area">95.00</field>
+            <field name="num_bathrooms">2</field>
+            <field name="num_parking">2</field>
+            <field name="construction_year">2010</field>
+            <field name="reform_year">2022</field>
+            <field name="condition">excellent</field>
+            
+            <!-- Web Publishing -->
+            <field name="publish_website">True</field>
+            <field name="description_short">Sala comercial na Av. Paulista, 95m², reformada, pronta para uso. Excelente localização.</field>
+            <field name="description"><![CDATA[
+                <p><strong>Sala Comercial Premium na Av. Paulista</strong></p>
+                <p>Sala comercial totalmente reformada em edifício de alto padrão na Av. Paulista.</p>
+                <ul>
+                    <li>95m² de área útil</li>
+                    <li>2 banheiros privativos</li>
+                    <li>2 vagas de garagem</li>
+                    <li>Ar condicionado</li>
+                    <li>Piso elevado com passagem de cabeamento</li>
+                    <li>Divisórias em vidro temperado</li>
+                    <li>Copa</li>
+                </ul>
+                <p>Edifício com segurança 24h, elevadores modernos e portaria. Localização privilegiada próxima ao metrô.</p>
+            ]]></field>
+        </record>
+
+        <!-- Demo Property Phones -->
+        <record id="demo_phone_1_1" model="real.estate.property.phone">
+            <field name="property_id" ref="demo_property_1"/>
+            <field name="phone">(21) 98765-4321</field>
+            <field name="phone_type">mobile</field>
+            <field name="sequence">1</field>
+        </record>
+
+        <record id="demo_phone_1_2" model="real.estate.property.phone">
+            <field name="property_id" ref="demo_property_1"/>
+            <field name="phone">(21) 3456-7890</field>
+            <field name="phone_type">residential</field>
+            <field name="sequence">2</field>
+        </record>
+
+        <!-- Demo Property Emails -->
+        <record id="demo_email_1_1" model="real.estate.property.email">
+            <field name="property_id" ref="demo_property_1"/>
+            <field name="email">joao.silva@example.com</field>
+            <field name="email_type">personal</field>
+            <field name="sequence">1</field>
+        </record>
+
+        <!-- Demo Commissions -->
+        <record id="demo_commission_1" model="real.estate.property.commission">
+            <field name="property_id" ref="demo_property_1"/>
+            <field name="name">Comissão de Venda</field>
+            <field name="commission_type">percentage</field>
+            <field name="value">6.0</field>
+            <field name="applies_to">sale</field>
+        </record>
+
+        <record id="demo_commission_2" model="real.estate.property.commission">
+            <field name="property_id" ref="demo_property_2"/>
+            <field name="name">Comissão de Venda</field>
+            <field name="commission_type">percentage</field>
+            <field name="value">5.0</field>
+            <field name="applies_to">sale</field>
+        </record>
+
+        <record id="demo_commission_3" model="real.estate.property.commission">
+            <field name="property_id" ref="demo_property_2"/>
+            <field name="name">Comissão de Locação</field>
+            <field name="commission_type">fixed</field>
+            <field name="value">18000.00</field>
+            <field name="applies_to">rent</field>
+        </record>
+    </data>
+</odoo>
