@@ -16,20 +16,22 @@ reviews:
   # Configurações gerais de revisão
   auto_review:
     enabled: true
-    ignore_title_patterns:
-      - "^WIP:.*" # Ignorar PRs marcados como Work In Progress
-      - "^DRAFT:.*"
-    # Configuração para permitir PRs com grande número de arquivos
-    file_limit:
-      max_files: 500 # Aumentar o limite padrão de 150 para 500 arquivos
-      override_limit: true # Permite revisar PRs que excedem o limite de arquivos
+    drafts: true # Revisar também PRs em rascunho
+    ignore_title_keywords: [] # Não ignorar nenhum PR por palavras-chave no título
+    base_branches: [] # Revisar todos os branches base
   
   # Configuração de estilo de comentários e solicitações de alteração
   request_changes_workflow: false
   collapse_walkthrough: false
   review_status: true
-  auto_review:
-    drafts: true
+  
+  # Configuração para permitir PRs com grande número de arquivos
+  high_level_summary: true
+  high_level_summary_placeholder: "@coderabbitai summary"
+  poem: false
+  review_status: true
+  collapse_walkthrough: false
+  auto_title_placeholder: "@coderabbitai title"
 
 # Configurações para destacar tipos específicos de code smells
 highlights:
@@ -65,12 +67,20 @@ tests:
     - "17.0/extra-addons/*/tests"
     - "16.0/extra-addons/*/tests"
 
-# Configurações para lidar com PRs grandes
-large_pull_requests:
-  max_files: 500 # Número máximo de arquivos que serão analisados
-  strategy: "analyze-most-changed" # Estratégia para lidar com PRs grandes
   
-# Configurações específicas para a linguagem do projeto
+# Configurações para lidar com PRs grandes
+# Não pular review de PRs grandes
+tools:
+  shellcheck:
+    enabled: true
+  
+  gitleaks:
+    enabled: true
+  
+  languagetool:
+    enabled: true
+    enabled_only: false
+    level: "default"# Configurações específicas para a linguagem do projeto
 language_settings:
   python:
     dialect: "Python 3.12"
