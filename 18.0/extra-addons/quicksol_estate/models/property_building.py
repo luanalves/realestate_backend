@@ -11,7 +11,7 @@ class PropertyBuilding(models.Model):
     name = fields.Char(string='Building Name', required=True, tracking=True)
     address = fields.Text(string='Address')
     city = fields.Char(string='City')
-    state = fields.Char(string='State')
+    state_id = fields.Many2one('real.estate.state', string='State')
     zip_code = fields.Char(string='CEP')
     country_id = fields.Many2one(
         'res.country',

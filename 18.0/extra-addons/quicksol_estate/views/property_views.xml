@@ -131,7 +131,7 @@
                                 <group string="Address">
                                     <field name="zip_code" placeholder="00000-000"/>
                                     <field name="country_id"/>
-                                    <field name="state"/>
+                                    <field name="state_id"/>
                                     <field name="city"/>
                                     <field name="neighborhood"/>
                                 </group>
@@ -139,7 +139,7 @@
                                     <field name="street"/>
                                     <field name="street_number"/>
                                     <field name="complement"/>
-                                    <field name="location_type"/>
+                                    <field name="location_type_id"/>
                                 </group>
                             </group>
                             
