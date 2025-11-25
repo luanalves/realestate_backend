@@ -1,0 +1,568 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        
+        <!-- Property API Endpoints -->
+        
+        <record id="api_endpoint_create_property" model="thedevkitchen.api.endpoint">
+            <field name="name">Create Property</field>
+            <field name="path">/api/v1/properties</field>
+            <field name="method">POST</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Properties</field>
+            <field name="summary">Create a new property</field>
+            <field name="description">Creates a new property in the database.
+
+**Access Control:**
+- **System Admin**: Full access
+- **Real Estate Manager**: Can create properties
+- **Real Estate User**: No access (403)
+- **Real Estate Agent**: No access (403)
+- **Portal User**: No access (401)
+
+**Required Fields:**
+- `name`: Property name (string)
+- `property_type_id`: Property type ID (integer, use GET /api/v1/property-types)
+- `area`: Built area in m² (float)
+- `zip_code`: ZIP/CEP code (string, format: 12345-678)
+- `state_id`: State ID (integer, use GET /api/v1/states?country_id=31)
+- `city`: City name (string)
+- `street`: Street name (string)
+- `street_number`: Street number (string)
+- `location_type_id`: Location type ID (integer, use GET /api/v1/location-types)
+
+**Optional Fields:**
+- `description`: Property description (HTML string)
+- `price`: Sale price (float)
+- `rent_price`: Rent price (float)
+- `property_status`: Status (string: available/occupied/rented/reserved/sold/under_construction/maintenance)
+- `property_purpose`: Purpose (string: residential/commercial/industrial/rural/vacation/corporate)
+- `num_rooms`: Number of bedrooms (integer)
+- `num_suites`: Number of suites (integer)
+- `num_bathrooms`: Number of bathrooms (integer)
+- `num_parking`: Number of parking spaces (integer)
+- `total_area`: Total area in m² (float)
+- `agent_id`: Responsible agent ID (integer)
+- `owner_id`: Property owner ID (integer)
+- `company_ids`: List of company IDs (array of integers)
+- `street`: Street name (string)
+- `street_number`: Street number (string)
+- `complement`: Address complement (string)
+- `neighborhood`: Neighborhood (string)
+- `city`: City (string)
+- `state`: State (string)
+- `zip_code`: ZIP/CEP code (string)
+- `latitude`: Latitude (float)
+- `longitude`: Longitude (float)
+- `condition`: Condition (string: new/excellent/good/fair/needs_renovation/under_construction)
+- `construction_year`: Construction year (integer)
+- `for_sale`: Available for sale (boolean)
+- `for_rent`: Available for rent (boolean)
+- `accepts_financing`: Accepts financing (boolean)
+- `accepts_fgts`: Accepts FGTS (boolean)
+
+**Request Example:**
+```json
+{
+  "name": "Casa Moderna em São José dos Campos",
+  "property_type_id": 2,
+  "area": 180.5,
+  "zip_code": "12245-000",
+  "state_id": 25,
+  "city": "São José dos Campos",
+  "street": "Rua das Flores",
+  "street_number": "123",
+  "location_type_id": 1,
+  "price": 850000,
+  "num_rooms": 4,
+  "num_bathrooms": 3,
+  "num_parking": 2,
+  "neighborhood": "Jardim Aquarius",
+  "for_sale": true
+}
+```
+
+**Response Format (201 Created):**
+```json
+{
+  "id": 17,
+  "name": "Casa Moderna em São José dos Campos",
+  "description": "",
+  "price": 850000.0,
+  "price_formatted": "R$ 850.000,00",
+  "status": "available",
+  "property_type": {
+    "id": 2,
+    "name": "House"
+  },
+  "agent": null,
+  "company": {
+    "id": 1,
+    "name": "Quicksol Real Estate"
+  },
+  "address": {
+    "street": "Rua das Flores",
+    "number": "123",
+    "complement": "",
+    "neighborhood": "Jardim Aquarius",
+    "city": "São José dos Campos",
+    "state": {
+      "id": 25,
+      "name": "São Paulo",
+      "code": "SP"
+    },
+    "zip_code": "12245-000",
+    "location_type": {
+      "id": 1,
+      "name": "Urbano",
+      "code": "urban"
+    }
+  },
+  "features": {
+    "bedrooms": 4,
+    "suites": 0,
+    "bathrooms": 3,
+    "parking_spaces": 2,
+    "area": 180.5,
+    "total_area": 0.0
+  },
+  "created_date": "2025-11-24T12:45:00.123456",
+  "updated_date": "2025-11-24T12:45:00.123456"
+}
+```
+
+**Error Responses:**
+- **400 Bad Request**: Missing required fields or validation error
+  - Missing required fields: name, property_type_id, area, zip_code, state_id, city, street, street_number, location_type_id
+- **401 Unauthorized**: Invalid or missing JWT token
+- **403 Forbidden**: User doesn't have permission to create properties</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_get_property" model="thedevkitchen.api.endpoint">
+            <field name="name">Get Property</field>
+            <field name="path">/api/v1/properties/{id}</field>
+            <field name="method">GET</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Properties</field>
+            <field name="summary">Get property details by ID</field>
+            <field name="description">Returns detailed information about a specific property.
+
+**Access Control:**
+- **System Admin**: Full access to all properties
+- **Real Estate Manager**: Access to properties of their companies
+- **Real Estate User**: Access to properties of their companies (read-only)
+- **Real Estate Agent**: Access only to properties assigned to them
+- **Portal User**: No access (401)
+
+**Path Parameters:**
+- `id`: Property ID (integer, e.g., 2)
+
+**Testing Example:**
+Try with property ID = 2 (Apartamento Demo Urban)
+
+**Response Format (200 OK):**
+```json
+{
+  "id": 2,
+  "name": "Apartamento Demo Urban - updated",
+  "description": "&lt;p&gt;lorem ipsum xpto&lt;/p&gt;",
+  "price": 800000.0,
+  "price_formatted": "R$ 800.000,00",
+  "status": "available",
+  "property_type": {
+    "id": 1,
+    "name": "Apartment"
+  },
+  "agent": {
+    "id": 2,
+    "name": "Carmen Rodriguez",
+    "email": "carmen@luxurygroup.com"
+  },
+  "company": {
+    "id": 2,
+    "name": "Urban Properties Ltda"
+  },
+  "address": {
+    "street": "",
+    "number": "",
+    "complement": "",
+    "neighborhood": "",
+    "city": "",
+    "state": "",
+    "zip_code": ""
+  },
+  "features": {
+    "bedrooms": 4,
+    "suites": 0,
+    "bathrooms": 3,
+    "parking_spaces": 0,
+    "area": 200.0,
+    "total_area": 0.0
+  },
+  "created_date": "2025-11-17T14:48:58.686818",
+  "updated_date": "2025-11-17T14:48:58.686818"
+}
+```
+
+**Error Responses:**
+- **401 Unauthorized**: Invalid or missing JWT token
+- **403 Forbidden**: User doesn't have access to this property
+- **404 Not Found**: Property doesn't exist</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_update_property" model="thedevkitchen.api.endpoint">
+            <field name="name">Update Property</field>
+            <field name="path">/api/v1/properties/{id}</field>
+            <field name="method">PUT</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Properties</field>
+            <field name="summary">Update property information</field>
+            <field name="description">Updates allowed fields of a property.
+
+**Access Control:**
+- **System Admin**: Can update all properties
+- **Real Estate Manager**: Can update properties of their companies
+- **Real Estate User**: Can update properties of their companies
+- **Real Estate Agent**: Can update only properties assigned to them
+- **Portal User**: No access (401)
+
+**Path Parameters:**
+- `id`: Property ID (integer, e.g., 2)
+
+**Allowed Fields:**
+- `name`: Property name (string)
+- `description`: Property description (HTML string)
+- `price`: Sale price (float)
+- `rent_price`: Rent price (float)
+- `property_status`: Status (string)
+- `num_rooms`: Number of bedrooms (integer)
+- `num_suites`: Number of suites (integer)
+- `num_bathrooms`: Number of bathrooms (integer)
+- `num_parking`: Number of parking spaces (integer)
+- `area`: Built area in m² (float)
+- `total_area`: Total area in m² (float)
+- `street`: Street name (string)
+- `street_number`: Street number (string)
+- `city`: City (string)
+- `state`: State (string)
+- `zip_code`: ZIP code (string)
+- `property_type_id`: Property type ID (integer)
+- `agent_id`: Agent ID (integer)
+
+**Request Example:**
+```json
+{
+  "name": "Apartamento Atualizado Via API",
+  "price": 850000,
+  "num_rooms": 4,
+  "description": "&lt;p&gt;Descrição atualizada&lt;/p&gt;"
+}
+```
+
+**Testing Example:**
+Update property ID = 2 with new name and price
+
+**Response Format (200 OK):**
+Returns the updated property object (same format as GET)
+
+**Error Responses:**
+- **400 Bad Request**: Invalid field values
+- **401 Unauthorized**: Invalid or missing JWT token
+- **403 Forbidden**: User doesn't have permission to update this property
+- **404 Not Found**: Property doesn't exist</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_delete_property" model="thedevkitchen.api.endpoint">
+            <field name="name">Delete Property</field>
+            <field name="path">/api/v1/properties/{id}</field>
+            <field name="method">DELETE</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Properties</field>
+            <field name="summary">Delete property (Manager only)</field>
+            <field name="description">Deletes a property from the database.
+
+**Access Control:**
+- **System Admin**: Can delete all properties
+- **Real Estate Manager**: Can delete properties of their companies
+- **Real Estate User**: No access (403)
+- **Real Estate Agent**: No access (403)
+- **Portal User**: No access (401)
+
+**Path Parameters:**
+- `id`: Property ID (integer, e.g., 16)
+
+**Testing Example:**
+Delete property ID = 16 (Casa Teste API created earlier)
+
+**Important Notes:**
+- This operation is **irreversible**
+- Only users in the "Real Estate Manager" or higher groups can delete properties
+- Use with caution in production environments
+
+**Response Format (200 OK):**
+```json
+{
+  "message": "Property deleted successfully",
+  "id": 16,
+  "name": "Casa Teste API"
+}
+```
+
+**Error Responses:**
+- **401 Unauthorized**: Invalid or missing JWT token
+- **403 Forbidden**: User doesn't have permission to delete properties
+- **404 Not Found**: Property doesn't exist</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_list_property_types" model="thedevkitchen.api.endpoint">
+            <field name="name">List Property Types</field>
+            <field name="path">/api/v1/property-types</field>
+            <field name="method">GET</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Property Types</field>
+            <field name="summary">List all property types</field>
+            <field name="description">Returns a list of all available property types for use in property creation.
+
+**Access Control:**
+- Requires valid JWT token (all authenticated users)
+
+**No Parameters Required**
+
+**Use Case:**
+Use this endpoint to get available property type IDs before creating a property. The `property_type_id` is required when creating properties via POST /api/v1/properties.
+
+**Response Format (200 OK):**
+```json
+[
+  {
+    "id": 1,
+    "name": "Apartment"
+  },
+  {
+    "id": 2,
+    "name": "House"
+  },
+  {
+    "id": 3,
+    "name": "Condominium"
+  },
+  {
+    "id": 4,
+    "name": "Commercial Building"
+  },
+  {
+    "id": 5,
+    "name": "Land"
+  },
+  {
+    "id": 6,
+    "name": "Farm/Ranch"
+  },
+  {
+    "id": 7,
+    "name": "Office"
+  },
+  {
+    "id": 8,
+    "name": "Store/Shop"
+  },
+  {
+    "id": 9,
+    "name": "Warehouse"
+  },
+  {
+    "id": 10,
+    "name": "Penthouse"
+  },
+  {
+    "id": 11,
+    "name": "Studio"
+  },
+  {
+    "id": 12,
+    "name": "Duplex"
+  },
+  {
+    "id": 13,
+    "name": "Triplex"
+  },
+  {
+    "id": 14,
+    "name": "Loft"
+  },
+  {
+    "id": 15,
+    "name": "Cottage/Beach House"
+  }
+]
+```
+
+**Testing Example:**
+```bash
+curl 'http://localhost:8069/api/v1/property-types' \
+  -H 'Authorization: Bearer [your_token]'
+```
+
+**Error Responses:**
+- **401 Unauthorized**: Invalid or missing JWT token
+- **500 Internal Server Error**: Server error</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_list_states" model="thedevkitchen.api.endpoint">
+            <field name="name">List States/Provinces</field>
+            <field name="path">/api/v1/states</field>
+            <field name="method">GET</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Master Data</field>
+            <field name="summary">List all states/provinces</field>
+            <field name="description">Returns a list of all available states/provinces with country information.
+
+**Access Control:**
+- All authenticated users can access this endpoint
+
+**Query Parameters:**
+- `country_id` (optional): Filter states by country ID (integer)
+  - Example: `?country_id=31` returns only Brazilian states
+
+**Response Format:**
+```json
+[
+  {
+    "id": 1,
+    "name": "Acre",
+    "code": "AC",
+    "country": {
+      "id": 31,
+      "name": "Brazil",
+      "code": "BR"
+    }
+  },
+  {
+    "id": 25,
+    "name": "São Paulo",
+    "code": "SP",
+    "country": {
+      "id": 31,
+      "name": "Brazil",
+      "code": "BR"
+    }
+  }
+]
+```
+
+**Available States:**
+All 27 Brazilian states are pre-loaded:
+- Acre (AC), Alagoas (AL), Amapá (AP), Amazonas (AM), Bahia (BA)
+- Ceará (CE), Distrito Federal (DF), Espírito Santo (ES), Goiás (GO)
+- Maranhão (MA), Mato Grosso (MT), Mato Grosso do Sul (MS)
+- Minas Gerais (MG), Pará (PA), Paraíba (PB), Paraná (PR)
+- Pernambuco (PE), Piauí (PI), Rio de Janeiro (RJ)
+- Rio Grande do Norte (RN), Rio Grande do Sul (RS), Rondônia (RO)
+- Roraima (RR), Santa Catarina (SC), São Paulo (SP), Sergipe (SE)
+- Tocantins (TO)
+
+**Testing Examples:**
+```bash
+# List all states
+curl 'http://localhost:8069/api/v1/states' \
+  -H 'Authorization: Bearer [your_token]'
+
+# Filter by Brazil (country_id=31)
+curl 'http://localhost:8069/api/v1/states?country_id=31' \
+  -H 'Authorization: Bearer [your_token]'
+```
+
+**Error Responses:**
+- **401 Unauthorized**: Invalid or missing JWT token
+- **500 Internal Server Error**: Server error</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_list_location_types" model="thedevkitchen.api.endpoint">
+            <field name="name">List Location Types</field>
+            <field name="path">/api/v1/location-types</field>
+            <field name="method">GET</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Master Data</field>
+            <field name="summary">List all location types</field>
+            <field name="description">Returns a list of all available location types in Portuguese.
+
+**Access Control:**
+- All authenticated users can access this endpoint
+
+**Response Format:**
+```json
+[
+  {
+    "id": 1,
+    "name": "Urbano",
+    "code": "urban"
+  },
+  {
+    "id": 2,
+    "name": "Suburbano",
+    "code": "suburban"
+  },
+  {
+    "id": 3,
+    "name": "Rural",
+    "code": "rural"
+  },
+  {
+    "id": 4,
+    "name": "Praia",
+    "code": "beach"
+  },
+  {
+    "id": 5,
+    "name": "Montanha",
+    "code": "mountain"
+  }
+]
+```
+
+**Available Location Types:**
+- **Urbano** (urban): Urban areas
+- **Suburbano** (suburban): Suburban areas
+- **Rural** (rural): Rural/countryside areas
+- **Praia** (beach): Beach/coastal areas
+- **Montanha** (mountain): Mountain/highland areas
+
+**Usage in Property Creation:**
+Use the `location_type_id` field when creating or updating properties:
+```json
+{
+  "name": "Casa na Praia",
+  "property_type_id": 2,
+  "area": 150,
+  "location_type_id": 4,
+  ...
+}
+```
+
+**Testing Example:**
+```bash
+curl 'http://localhost:8069/api/v1/location-types' \
+  -H 'Authorization: Bearer [your_token]'
+```
+
+**Error Responses:**
+- **401 Unauthorized**: Invalid or missing JWT token
+- **500 Internal Server Error**: Server error</field>
+            <field name="active" eval="True"/>
+        </record>
+
+    </data>
+</odoo>
