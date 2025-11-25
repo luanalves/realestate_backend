@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        
+        <!-- Brazilian States (Country code: BR = Brazil) -->
+        <!-- ref('base.br') references Brazil from Odoo's base module -->
+        
+        <record id="state_ac" model="real.estate.state">
+            <field name="name">Acre</field>
+            <field name="code">AC</field>
+            <field name="country_id" eval="31"/>
+        </record>
+        
+        <record id="state_al" model="real.estate.state">
+            <field name="name">Alagoas</field>
+            <field name="code">AL</field>
+            <field name="country_id" eval="31"/>
+        </record>
+        
+        <record id="state_ap" model="real.estate.state">
+            <field name="name">Amapá</field>
+            <field name="code">AP</field>
+            <field name="country_id" eval="31"/>
+        </record>
+        
+        <record id="state_am" model="real.estate.state">
+            <field name="name">Amazonas</field>
+            <field name="code">AM</field>
+            <field name="country_id" eval="31"/>
+        </record>
+        
+        <record id="state_ba" model="real.estate.state">
+            <field name="name">Bahia</field>
+            <field name="code">BA</field>
+            <field name="country_id" eval="31"/>
+        </record>
+        
+        <record id="state_ce" model="real.estate.state">
+            <field name="name">Ceará</field>
+            <field name="code">CE</field>
+            <field name="country_id" eval="31"/>
+        </record>
+        
+        <record id="state_df" model="real.estate.state">
+            <field name="name">Distrito Federal</field>
+            <field name="code">DF</field>
+            <field name="country_id" eval="31"/>
+        </record>
+        
+        <record id="state_es" model="real.estate.state">
+            <field name="name">Espírito Santo</field>
+            <field name="code">ES</field>
+            <field name="country_id" eval="31"/>
+        </record>
+        
+        <record id="state_go" model="real.estate.state">
+            <field name="name">Goiás</field>
+            <field name="code">GO</field>
+            <field name="country_id" eval="31"/>
+        </record>
+        
+        <record id="state_ma" model="real.estate.state">
+            <field name="name">Maranhão</field>
+            <field name="code">MA</field>
+            <field name="country_id" eval="31"/>
+        </record>
+        
+        <record id="state_mt" model="real.estate.state">
+            <field name="name">Mato Grosso</field>
+            <field name="code">MT</field>
+            <field name="country_id" eval="31"/>
+        </record>
+        
+        <record id="state_ms" model="real.estate.state">
+            <field name="name">Mato Grosso do Sul</field>
+            <field name="code">MS</field>
+            <field name="country_id" eval="31"/>
+        </record>
+        
+        <record id="state_mg" model="real.estate.state">
+            <field name="name">Minas Gerais</field>
+            <field name="code">MG</field>
+            <field name="country_id" eval="31"/>
+        </record>
+        
+        <record id="state_pa" model="real.estate.state">
+            <field name="name">Pará</field>
+            <field name="code">PA</field>
+            <field name="country_id" eval="31"/>
+        </record>
+        
+        <record id="state_pb" model="real.estate.state">
+            <field name="name">Paraíba</field>
+            <field name="code">PB</field>
+            <field name="country_id" eval="31"/>
+        </record>
+        
+        <record id="state_pr" model="real.estate.state">
+            <field name="name">Paraná</field>
+            <field name="code">PR</field>
+            <field name="country_id" eval="31"/>
+        </record>
+        
+        <record id="state_pe" model="real.estate.state">
+            <field name="name">Pernambuco</field>
+            <field name="code">PE</field>
+            <field name="country_id" eval="31"/>
+        </record>
+        
+        <record id="state_pi" model="real.estate.state">
+            <field name="name">Piauí</field>
+            <field name="code">PI</field>
+            <field name="country_id" eval="31"/>
+        </record>
+        
+        <record id="state_rj" model="real.estate.state">
+            <field name="name">Rio de Janeiro</field>
+            <field name="code">RJ</field>
+            <field name="country_id" eval="31"/>
+        </record>
+        
+        <record id="state_rn" model="real.estate.state">
+            <field name="name">Rio Grande do Norte</field>
+            <field name="code">RN</field>
+            <field name="country_id" eval="31"/>
+        </record>
+        
+        <record id="state_rs" model="real.estate.state">
+            <field name="name">Rio Grande do Sul</field>
+            <field name="code">RS</field>
+            <field name="country_id" eval="31"/>
+        </record>
+        
+        <record id="state_ro" model="real.estate.state">
+            <field name="name">Rondônia</field>
+            <field name="code">RO</field>
+            <field name="country_id" eval="31"/>
+        </record>
+        
+        <record id="state_rr" model="real.estate.state">
+            <field name="name">Roraima</field>
+            <field name="code">RR</field>
+            <field name="country_id" eval="31"/>
+        </record>
+        
+        <record id="state_sc" model="real.estate.state">
+            <field name="name">Santa Catarina</field>
+            <field name="code">SC</field>
+            <field name="country_id" eval="31"/>
+        </record>
+        
+        <record id="state_sp" model="real.estate.state">
+            <field name="name">São Paulo</field>
+            <field name="code">SP</field>
+            <field name="country_id" eval="31"/>
+        </record>
+        
+        <record id="state_se" model="real.estate.state">
+            <field name="name">Sergipe</field>
+            <field name="code">SE</field>
+            <field name="country_id" eval="31"/>
+        </record>
+        
+        <record id="state_to" model="real.estate.state">
+            <field name="name">Tocantins</field>
+            <field name="code">TO</field>
+            <field name="country_id" eval="31"/>
+        </record>
+        
+    </data>
+</odoo>

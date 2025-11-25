@@ -2,6 +2,8 @@
 from . import file_validator
 
 # Import auxiliary models FIRST (before property)
+from . import state
+from . import location_type
 from . import amenity
 from . import property_owner
 from . import property_building

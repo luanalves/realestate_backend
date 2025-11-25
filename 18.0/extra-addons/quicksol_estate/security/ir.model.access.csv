@@ -6,6 +6,8 @@ access_system_admin_lease,System Admin: Leases,model_real_estate_lease,base.grou
 access_system_admin_sale,System Admin: Sales,model_real_estate_sale,base.group_system,1,1,1,1
 access_system_admin_tenant,System Admin: Tenants,model_real_estate_tenant,base.group_system,1,1,1,1
 access_system_admin_property_type,System Admin: Property Types,model_real_estate_property_type,base.group_system,1,1,1,1
+access_system_admin_state,System Admin: States,model_real_estate_state,base.group_system,1,1,1,1
+access_system_admin_location_type,System Admin: Location Types,model_real_estate_location_type,base.group_system,1,1,1,1
 access_system_admin_amenity,System Admin: Amenities,model_real_estate_amenity,base.group_system,1,1,1,1
 access_system_admin_property_image,System Admin: Property Images,model_real_estate_property_image,base.group_system,1,1,1,1
 access_system_admin_property_owner,System Admin: Property Owners,model_real_estate_property_owner,base.group_system,1,1,1,1
@@ -24,6 +26,8 @@ access_company_manager_lease,Company Manager: Leases,model_real_estate_lease,gro
 access_company_manager_sale,Company Manager: Sales,model_real_estate_sale,group_real_estate_manager,1,1,1,1
 access_company_manager_tenant,Company Manager: Tenants,model_real_estate_tenant,group_real_estate_manager,1,1,1,1
 access_company_manager_property_type,Company Manager: Property Types,model_real_estate_property_type,group_real_estate_manager,1,1,1,1
+access_company_manager_state,Company Manager: States,model_real_estate_state,group_real_estate_manager,1,1,1,1
+access_company_manager_location_type,Company Manager: Location Types,model_real_estate_location_type,group_real_estate_manager,1,1,1,1
 access_company_manager_amenity,Company Manager: Amenities,model_real_estate_amenity,group_real_estate_manager,1,1,1,1
 access_company_manager_property_image,Company Manager: Property Images,model_real_estate_property_image,group_real_estate_manager,1,1,1,1
 access_company_manager_property_owner,Company Manager: Property Owners,model_real_estate_property_owner,group_real_estate_manager,1,1,1,1
@@ -42,6 +46,8 @@ access_company_user_lease,Company User: Leases,model_real_estate_lease,group_rea
 access_company_user_sale,Company User: Sales,model_real_estate_sale,group_real_estate_user,1,1,1,0
 access_company_user_tenant,Company User: Tenants,model_real_estate_tenant,group_real_estate_user,1,1,1,0
 access_company_user_property_type,Company User: Property Types,model_real_estate_property_type,group_real_estate_user,1,0,0,0
+access_company_user_state,Company User: States,model_real_estate_state,group_real_estate_user,1,0,0,0
+access_company_user_location_type,Company User: Location Types,model_real_estate_location_type,group_real_estate_user,1,0,0,0
 access_company_user_amenity,Company User: Amenities,model_real_estate_amenity,group_real_estate_user,1,0,0,0
 access_company_user_property_image,Company User: Property Images,model_real_estate_property_image,group_real_estate_user,1,1,1,1
 access_company_user_property_owner,Company User: Property Owners,model_real_estate_property_owner,group_real_estate_user,1,1,1,0
@@ -60,6 +66,8 @@ access_agent_lease,Agent: Leases,model_real_estate_lease,group_real_estate_agent
 access_agent_sale,Agent: Sales,model_real_estate_sale,group_real_estate_agent,1,1,0,0
 access_agent_tenant,Agent: Tenants,model_real_estate_tenant,group_real_estate_agent,1,0,0,0
 access_agent_property_type,Agent: Property Types,model_real_estate_property_type,group_real_estate_agent,1,0,0,0
+access_agent_state,Agent: States,model_real_estate_state,group_real_estate_agent,1,0,0,0
+access_agent_location_type,Agent: Location Types,model_real_estate_location_type,group_real_estate_agent,1,0,0,0
 access_agent_amenity,Agent: Amenities,model_real_estate_amenity,group_real_estate_agent,1,0,0,0
 access_agent_property_image,Agent: Property Images,model_real_estate_property_image,group_real_estate_agent,1,1,1,1
 access_agent_property_owner,Agent: Property Owners,model_real_estate_property_owner,group_real_estate_agent,1,0,0,0
@@ -87,3 +95,5 @@ access_public_amenity,Public: Amenities,model_real_estate_amenity,base.group_pub
 access_public_property_image,Public: Property Images,model_real_estate_property_image,base.group_public,1,0,0,0
 access_public_property_photo,Public: Property Photos,model_real_estate_property_photo,base.group_public,1,0,0,0
 access_public_property_tag,Public: Property Tags,model_real_estate_property_tag,base.group_public,1,0,0,0
+access_public_state,Public: States,model_real_estate_state,base.group_public,1,0,0,0
+access_public_location_type,Public: Location Types,model_real_estate_location_type,base.group_public,1,0,0,0
