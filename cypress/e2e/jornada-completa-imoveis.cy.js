@@ -126,7 +126,7 @@ describe('Jornada Completa do Usuário - Gestão de Imóveis', () => {
             }
           })
         } else {
-          cy.log('Nenhum registro encontrado na lista')
+          throw new Error('Nenhum registro encontrado na lista')
         }
       })
     })
