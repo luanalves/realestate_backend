@@ -54,13 +54,13 @@ class Property(models.Model):
     
     # ========== LOCATION ==========
     # CEP and Address
-    zip_code = fields.Char(string='CEP', size=9, tracking=True)
-    country_id = fields.Many2one('res.country', string='Country', default=lambda self: self.env.ref('base.br').id, tracking=True)
-    state = fields.Char(string='State', tracking=True)
-    city = fields.Char(string='City', tracking=True)
+    zip_code = fields.Char(string='CEP', size=9, required=True, tracking=True)
+    country_id = fields.Many2one('res.country', string='Country', default=lambda self: self.env.ref('base.br').id, required=True, tracking=True)
+    state_id = fields.Many2one('real.estate.state', string='State', required=True, tracking=True)
+    city = fields.Char(string='City', required=True, tracking=True)
     neighborhood = fields.Char(string='Neighborhood', tracking=True)
-    street = fields.Char(string='Street', tracking=True)
-    street_number = fields.Char(string='Number')
+    street = fields.Char(string='Street', required=True, tracking=True)
+    street_number = fields.Char(string='Number', required=True)
     complement = fields.Char(string='Complement')
     address = fields.Text(string='Complete Address', compute='_compute_address', store=True)
     
@@ -99,13 +99,7 @@ class Property(models.Model):
         ('maintenance', 'Under Maintenance'),
     ], string='Property Status', required=True, default='available', tracking=True)
     
-    location_type = fields.Selection([
-        ('urban', 'Urban'),
-        ('suburban', 'Suburban'),
-        ('rural', 'Rural'),
-        ('beach', 'Beach'),
-        ('mountain', 'Mountain'),
-    ], string='Location Type', default='urban')
+    location_type_id = fields.Many2one('real.estate.location.type', string='Location Type', required=True, tracking=True)
     
     # Authorization
     authorization_start_date = fields.Date(string='Authorization Start Date', tracking=True)
@@ -226,7 +220,7 @@ class Property(models.Model):
     ], string='Status (Legacy)', default='available')
     
     # ========== COMPUTED FIELDS ==========
-    @api.depends('street', 'street_number', 'complement', 'neighborhood', 'city', 'state', 'zip_code', 'country_id')
+    @api.depends('street', 'street_number', 'complement', 'neighborhood', 'city', 'state_id', 'zip_code', 'country_id')
     def _compute_address(self):
         for prop in self:
             address_parts = []
@@ -241,8 +235,8 @@ class Property(models.Model):
                 address_parts.append(prop.neighborhood)
             if prop.city:
                 city_state = prop.city
-                if prop.state:
-                    city_state += f' - {prop.state}'
+                if prop.state_id:
+                    city_state += f' - {prop.state_id.code}'
                 address_parts.append(city_state)
             if prop.zip_code:
                 address_parts.append(f'CEP: {prop.zip_code}')

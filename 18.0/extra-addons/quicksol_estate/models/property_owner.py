@@ -19,7 +19,7 @@ class PropertyOwner(models.Model):
     whatsapp = fields.Char(string='WhatsApp')
     address = fields.Text(string='Address')
     city = fields.Char(string='City')
-    state = fields.Char(string='State')
+    state_id = fields.Many2one('real.estate.state', string='State')
     zip_code = fields.Char(string='CEP')
     country_id = fields.Many2one('res.country', string='Country', default=lambda self: self.env['res.country'].search([('code', '=', 'BR')], limit=1).id)
     birth_date = fields.Date(string='Birth Date')

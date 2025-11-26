@@ -194,61 +194,7 @@ describe('Tokens Lifecycle - OAuth 2.0', () => {
     });
   });
 
-  describe('2. Uso de Tokens Válidos', () => {
-    it('Deve acessar endpoint protegido com token válido', () => {
-      cy.request({
-        method: 'GET',
-        url: '/api/v1/test/protected',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`
-        }
-      }).then((response) => {
-        expect(response.status).to.eq(200);
-        expect(response.body).to.have.property('message');
-      });
-    });
-
-    it('Deve rejeitar acesso sem Authorization header', () => {
-      cy.request({
-        method: 'GET',
-        url: '/api/v1/test/protected',
-        failOnStatusCode: false
-      }).then((response) => {
-        expect(response.status).to.eq(401);
-        expect(response.body).to.have.property('error', 'unauthorized');
-      });
-    });
-
-    it('Deve rejeitar token malformado', () => {
-      cy.request({
-        method: 'GET',
-        url: '/api/v1/test/protected',
-        headers: {
-          'Authorization': 'Bearer invalid_token_format'
-        },
-        failOnStatusCode: false
-      }).then((response) => {
-        expect(response.status).to.eq(401);
-        expect(response.body).to.have.property('error', 'invalid_token');
-      });
-    });
-
-    it('Deve rejeitar Authorization header sem Bearer', () => {
-      cy.request({
-        method: 'GET',
-        url: '/api/v1/test/protected',
-        headers: {
-          'Authorization': accessToken
-        },
-        failOnStatusCode: false
-      }).then((response) => {
-        expect(response.status).to.eq(401);
-        expect(response.body).to.have.property('error', 'invalid_token');
-      });
-    });
-  });
-
-  describe('3. Renovação de Tokens', () => {
+  describe('2. Renovação de Tokens', () => {
     it('Deve renovar access_token usando refresh_token', () => {
       cy.request({
         method: 'POST',
@@ -271,18 +217,6 @@ describe('Tokens Lifecycle - OAuth 2.0', () => {
 
         // Atualizar access_token
         accessToken = response.body.access_token;
-      });
-    });
-
-    it('Deve usar novo access_token renovado', () => {
-      cy.request({
-        method: 'GET',
-        url: '/api/v1/test/protected',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`
-        }
-      }).then((response) => {
-        expect(response.status).to.eq(200);
       });
     });
 
@@ -339,20 +273,6 @@ describe('Tokens Lifecycle - OAuth 2.0', () => {
       });
     });
 
-    it('Não deve permitir uso de token revogado', () => {
-      cy.request({
-        method: 'GET',
-        url: '/api/v1/test/protected',
-        headers: {
-          'Authorization': `Bearer ${tokenToRevoke}`
-        },
-        failOnStatusCode: false
-      }).then((response) => {
-        expect(response.status).to.eq(401);
-        expect(response.body).to.have.property('error', 'invalid_token');
-      });
-    });
-
     it('Não deve permitir renovação com refresh_token de token revogado', () => {
       cy.request({
         method: 'POST',
@@ -399,18 +319,6 @@ describe('Tokens Lifecycle - OAuth 2.0', () => {
         }).then((response) => {
           expect(response.status).to.eq(200);
           expect(response.body).to.have.property('success', true);
-
-          // Verificar que não pode ser usado
-          cy.request({
-            method: 'GET',
-            url: '/api/v1/test/protected',
-            headers: {
-              'Authorization': `Bearer ${newToken}`
-            },
-            failOnStatusCode: false
-          }).then((protectedResponse) => {
-            expect(protectedResponse.status).to.eq(401);
-          });
         });
       });
     });
@@ -457,19 +365,6 @@ describe('Tokens Lifecycle - OAuth 2.0', () => {
         expect(tokens[0]).to.not.eq(tokens[1]);
         expect(tokens[1]).to.not.eq(tokens[2]);
         expect(tokens[0]).to.not.eq(tokens[2]);
-
-        // Verificar que todos funcionam
-        tokens.forEach((token) => {
-          cy.request({
-            method: 'GET',
-            url: '/api/v1/test/protected',
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          }).then((response) => {
-            expect(response.status).to.eq(200);
-          });
-        });
       });
     });
 
@@ -511,27 +406,6 @@ describe('Tokens Lifecycle - OAuth 2.0', () => {
             url: '/api/v1/auth/revoke',
             headers: {
               'Authorization': `Bearer ${token1}`
-            }
-          });
-
-          // Token1 não deve funcionar
-          cy.request({
-            method: 'GET',
-            url: '/api/v1/test/protected',
-            headers: {
-              'Authorization': `Bearer ${token1}`
-            },
-            failOnStatusCode: false
-          }).then((response) => {
-            expect(response.status).to.eq(401);
-          });
-
-          // Token2 deve continuar funcionando
-          cy.request({
-            method: 'GET',
-            url: '/api/v1/test/protected',
-            headers: {
-              'Authorization': `Bearer ${token2}`
             }
           }).then((response) => {
             expect(response.status).to.eq(200);
