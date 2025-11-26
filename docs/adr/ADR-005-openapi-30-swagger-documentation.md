@@ -28,7 +28,7 @@ A API REST do projeto utiliza documentação Swagger/OpenAPI para documentar os 
 
 Todos os endpoints da API devem seguir o padrão OpenAPI 3.0 completo com as seguintes exigências obrigatórias:
 
-Todos os endpoints da API devem seguir o padrão OpenAPI 3.0 completo com as seguintes exigências obrigatórias:
+### 1. Responses Documentadas
 
 ### 1. Responses Documentadas
 
