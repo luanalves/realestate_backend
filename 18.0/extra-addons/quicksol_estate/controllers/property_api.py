@@ -258,10 +258,6 @@ class PropertyApiController(http.Controller):
                     return error_response(400, "Invalid reference ID. One or more related records do not exist.", 'foreign_key_violation')
             
             return error_response(500, f'Internal server error: {str(e)}', 'internal_error')
-            return error_response(400, error_msg, 'value_error')
-        except Exception as e:
-            _logger.error(f"Unexpected error in create_property: {e}", exc_info=True)
-            return error_response(500, f'Internal server error: {str(e)}', 'internal_error')
     
     @http.route('/api/v1/properties/<int:property_id>', 
                 type='http', auth='none', methods=['GET'], csrf=False, cors='*')
