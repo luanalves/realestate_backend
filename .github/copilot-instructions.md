@@ -53,3 +53,16 @@ docker compose exec db psql -U odoo -d realestate
 - External database access is available via localhost:5432
 
 When providing assistance, assume the user is working within the 18.0 directory context unless otherwise specified.
+
+## Architecture Decision Records (ADRs)
+
+This project follows documented architectural decisions. **Always consult the ADR directory** for guidelines on:
+- Development patterns and best practices
+- Testing standards and requirements
+- Naming conventions
+- API documentation standards
+- Git workflow and branching strategy
+
+**ADR Directory:** [docs/adr](../docs/adr/)
+
+**Important:** When writing code, creating tests, documenting APIs, naming modules/tables, or making architectural decisions, always check the ADR directory for relevant guidelines. If there's a conflict between a request and an ADR, mention the ADR guideline and ask for clarification.

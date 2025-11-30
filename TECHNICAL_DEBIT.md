@@ -8,3 +8,4 @@ Documentar endpoints incrementalmente, priorizando os mais utilizados
 Criar funções auxiliares para gerar schemas comuns automaticamente
 Considerar modularização em múltiplos arquivos se necessário
 Validar sincronização entre documentação e implementação via testes automatizados
+- integrar modulo de imobiliaria com company do odoo
