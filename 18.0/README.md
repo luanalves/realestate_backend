@@ -100,6 +100,74 @@ docker volume rm odoo18-data odoo18-db
 
 ---
 
+## Code Quality and Linting
+
+This project uses **Flake8** and other Python linting tools to ensure code quality and adherence to PEP 8 standards.
+
+### Available Linting Tools
+
+The following tools are installed in the Docker container:
+- **Flake8** (v7.1.1) - Style guide enforcement
+- **Black** (v24.10.0) - Code formatter
+- **isort** (v5.13.2) - Import sorting
+- **Pylint** (v3.3.1) - Advanced static analysis
+- **mypy** (v1.13.0) - Type checking
+
+### Running Flake8
+
+#### From the Host Machine
+
+Check all custom addons:
+```bash
+docker compose exec odoo flake8 /mnt/extra-addons
+```
+
+Check a specific addon:
+```bash
+docker compose exec odoo flake8 /mnt/extra-addons/quicksol_estate
+```
+
+Using the lint script:
+```bash
+# Check all addons
+docker compose exec odoo bash /mnt/extra-addons/../lint.sh
+
+# Check specific addon
+docker compose exec odoo bash /mnt/extra-addons/../lint.sh quicksol_estate
+```
+
+#### Inside the Container
+
+```bash
+# Enter the container
+docker compose exec odoo bash
+
+# Run flake8
+flake8 /mnt/extra-addons
+
+# Or use the lint script
+./lint.sh
+./lint.sh quicksol_estate
+```
+
+### Configuration
+
+Flake8 configuration is stored in `.flake8` with the following key settings:
+- Maximum line length: 88 characters (Black compatible)
+- Maximum complexity: 10
+- Excludes: migrations, static files, i18n, tests, etc.
+- Compatible with Black formatter
+
+### Pre-commit Checklist
+
+Before committing code, ensure:
+1. Run `black .` to format code
+2. Run `isort .` to sort imports
+3. Run `flake8 .` to check style compliance
+4. Fix any reported issues
+
+---
+
 ## References
 - Official image: https://hub.docker.com/_/odoo
 - Docker source: https://github.com/odoo/docker
