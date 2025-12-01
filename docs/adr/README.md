@@ -13,6 +13,8 @@ Este diretório contém as decisões arquiteturais do projeto Real Estate Manage
 | [ADR-005](./ADR-005-openapi-30-swagger-documentation.md) | OpenAPI 3.0 com Request Body e Response Schemas Obrigatórios | Accepted | 2025-11-18 |
 | [ADR-006](./ADR-006-git-flow-workflow.md) | Git Flow Workflow | Accepted | 2025-11-19 |
 | [ADR-007](./ADR-007-hateoas-hypermedia-rest-api.md) | HATEOAS (Hypermedia as the Engine of Application State) para APIs REST | Accepted | 2025-11-30 |
+| [ADR-008](./ADR-008-api-security-multi-tenancy.md) | **Segurança de APIs em Ambiente Multi-Tenancy** | **Accepted** | **2025-11-30** |
+| [ADR-009](./ADR-009-headless-authentication-user-context.md) | **Autenticação Headless com Contexto de Usuário** | **Proposed** | **2025-11-30** |
 
 ## Como usar as ADRs
 
