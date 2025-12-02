@@ -230,22 +230,157 @@ class UserAuthController(http.Controller):
                 }
             }
 
+    @http.route('/api/v1/users/profile', type='json', auth='none', methods=['PATCH'], csrf=False, cors='*')
+    @require_jwt
+    def update_profile(self):
+        try:
+            user = request.env.user
+            data = request.get_json_data()
+            ip_address = request.httprequest.remote_addr
+            
+            updates = {}
+            
+            if 'email' in data:
+                email = str(data['email']).strip().lower()
+                if '@' not in email or '.' not in email.split('@')[1]:
+                    return {'error': {'status': 400, 'message': 'Invalid email format'}}
+                
+                existing = request.env['res.users'].search([
+                    ('email', '=', email),
+                    ('id', '!=', user.id),
+                    ('active', '=', True)
+                ], limit=1)
+                
+                if existing:
+                    return {'error': {'status': 409, 'message': 'Email already in use'}}
+                
+                updates['email'] = email
+            
+            if 'phone' in data:
+                updates['phone'] = str(data['phone']).strip() or False
+            
+            if 'mobile' in data:
+                updates['mobile'] = str(data['mobile']).strip() or False
+            
+            if not updates:
+                return {'error': {'status': 400, 'message': 'No fields to update'}}
+            
+            user.write(updates)
+            AuditLogger.log_successful_login(ip_address, user.email or user.login, user.id)
+            
+            return {
+                'user': self._build_user_response(user),
+                'message': 'Profile updated successfully'
+            }
+
+        except Exception as e:
+            _logger.error(f"Profile update error: {e}", exc_info=True)
+            return {'error': {'status': 500, 'message': 'Internal server error'}}
+
+    @http.route('/api/v1/users/change-password', type='json', auth='none', methods=['POST'], csrf=False, cors='*')
+    @require_jwt
+    def change_password(self):
+        try:
+            # Obter a sessão da API e encontrar o usuário
+            session_id = request.get_json_data().get('session_id')
+            data = request.get_json_data()
+            ip_address = request.httprequest.remote_addr
+            
+            if not session_id:
+                _logger.warning(f"Change password failed: no session_id provided")
+                return {'error': {'status': 400, 'message': 'session_id is required'}}
+            
+            # Buscar a sessão da API
+            api_session = request.env['thedevkitchen.api.session'].sudo().search([
+                ('session_id', '=', session_id),
+                ('is_active', '=', True)
+            ], limit=1)
+            
+            if not api_session:
+                _logger.warning(f"Change password failed: Invalid or inactive session {session_id}")
+                return {'error': {'status': 401, 'message': 'Invalid session'}}
+            
+            user = api_session.user_id
+            _logger.info(f"Change password request for user: {user.email or user.login}")
+            
+            # Validação de campos vazios
+            current_password = data.get('current_password', '').strip() if data.get('current_password') else ''
+            new_password = data.get('new_password', '').strip() if data.get('new_password') else ''
+            confirm_password = data.get('confirm_password', '').strip() if data.get('confirm_password') else ''
+            
+            # Validação 1: Campos obrigatórios
+            if not current_password:
+                _logger.warning(f"Change password failed: current_password is empty for {user.email or user.login}")
+                return {'error': {'status': 400, 'message': 'Current password is required'}}
+            
+            if not new_password:
+                _logger.warning(f"Change password failed: new_password is empty for {user.email or user.login}")
+                return {'error': {'status': 400, 'message': 'New password is required'}}
+            
+            if not confirm_password:
+                _logger.warning(f"Change password failed: confirm_password is empty for {user.email or user.login}")
+                return {'error': {'status': 400, 'message': 'Password confirmation is required'}}
+            
+            # Validação 2: Passwords coincidem
+            if new_password != confirm_password:
+                _logger.warning(f"Change password failed: Passwords do not match for {user.email or user.login}")
+                return {'error': {'status': 400, 'message': 'New password and confirmation do not match'}}
+            
+            # Validação 3: Comprimento mínimo
+            if len(new_password) < 8:
+                _logger.warning(f"Change password failed: Password too short ({len(new_password)} chars) for {user.email or user.login}")
+                return {'error': {'status': 400, 'message': 'Password must be at least 8 characters long'}}
+            
+            # Validação 4: Verificar senha atual
+            # Usa o método padrão de autenticação do Odoo
+            try:
+                # Tenta autenticar o usuário com a senha fornecida
+                user_id = request.env['res.users'].authenticate(
+                    request.env.cr.dbname,  # database name
+                    user.login,
+                    current_password
+                )
+                
+                if not user_id or user_id != user.id:
+                    _logger.warning(f"Change password failed: Invalid current password for {user.email or user.login}")
+                    AuditLogger.log_failed_login(ip_address, user.email or user.login, 'Invalid current password during change')
+                    return {'error': {'status': 401, 'message': 'Current password is incorrect'}}
+            except Exception as cred_error:
+                _logger.error(f"Error checking credentials for {user.email or user.login}: {cred_error}", exc_info=True)
+                return {'error': {'status': 401, 'message': 'Failed to verify current password'}}
+            
+            # Atualizar password
+            try:
+                user.write({'password': new_password})
+                _logger.info(f"Password changed successfully for {user.email or user.login}")
+                AuditLogger.log_successful_login(ip_address, user.email or user.login, user.id)
+                return {'message': 'Password changed successfully'}
+            except Exception as write_error:
+                _logger.error(f"Error writing new password for {user.email or user.login}: {write_error}", exc_info=True)
+                return {'error': {'status': 500, 'message': 'Failed to update password in database'}}
+
+        except Exception as e:
+            _logger.error(f"Unexpected error in change_password: {e}", exc_info=True)
+            return {'error': {'status': 500, 'message': f'Internal server error'}}
+
     def _build_user_response(self, user):
         return {
             'id': user.id,
             'name': user.name,
             'email': user.email or user.login,
+            'phone': user.phone or '',
+            'mobile': user.mobile or '',
             'companies': [
                 {
                     'id': c.id,
                     'name': c.name,
-                    'cnpj': getattr(c, 'cnpj', None)
+                    'cnpj': getattr(c, 'vat', None)
                 }
                 for c in user.estate_company_ids
             ],
             'default_company_id': (
-                user.main_estate_company_id.id
-                if user.main_estate_company_id
+                user.company_id.id
+                if user.company_id
                 else (user.estate_company_ids[0].id if user.estate_company_ids else None)
             )
         }

@@ -1098,6 +1098,150 @@ class SwaggerController(http.Controller):
             }
         }
         
+        spec["paths"]["/api/v1/users/profile"] = {
+            "patch": {
+                "tags": ["User Authentication"],
+                "summary": "Update user profile",
+                "description": "Partially update logged-in user profile (email, phone, mobile). Requires Bearer token. Only own profile can be updated.",
+                "operationId": "patchUserProfile",
+                "requestBody": {
+                    "required": True,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "description": "User email (must be unique)",
+                                        "example": "joao.silva@example.com"
+                                    },
+                                    "phone": {
+                                        "type": "string",
+                                        "description": "User phone number",
+                                        "example": "1133334444"
+                                    },
+                                    "mobile": {
+                                        "type": "string",
+                                        "description": "User mobile number",
+                                        "example": "11999998888"
+                                    }
+                                },
+                                "description": "At least one field must be provided"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Profile updated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "user": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {"type": "integer"},
+                                                "name": {"type": "string"},
+                                                "email": {"type": "string"},
+                                                "phone": {"type": "string"},
+                                                "mobile": {"type": "string"},
+                                                "companies": {"type": "array"},
+                                                "default_company_id": {"type": "integer"}
+                                            }
+                                        },
+                                        "message": {"type": "string"}
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid input",
+                        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+                    },
+                    "409": {
+                        "description": "Conflict - Email already in use",
+                        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+                    }
+                }
+            }
+        }
+        
+        spec["paths"]["/api/v1/users/change-password"] = {
+            "post": {
+                "tags": ["User Authentication"],
+                "summary": "Change user password",
+                "description": "Change logged-in user password. Requires current password and new password confirmation. Min 8 characters.",
+                "operationId": "changeUserPassword",
+                "requestBody": {
+                    "required": True,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": ["current_password", "new_password", "confirm_password"],
+                                "properties": {
+                                    "current_password": {
+                                        "type": "string",
+                                        "format": "password",
+                                        "description": "Current user password",
+                                        "example": "OldPass123!@"
+                                    },
+                                    "new_password": {
+                                        "type": "string",
+                                        "format": "password",
+                                        "description": "New password (min 8 characters)",
+                                        "example": "NewPass123!@"
+                                    },
+                                    "confirm_password": {
+                                        "type": "string",
+                                        "format": "password",
+                                        "description": "Confirm new password (must match new_password)",
+                                        "example": "NewPass123!@"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Password changed successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {"type": "string", "example": "Password changed successfully"}
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid input - Missing fields, passwords don't match, or too short",
+                        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+                    },
+                    "401": {
+                        "description": "Unauthorized - Current password incorrect or invalid token",
+                        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+                    }
+                }
+            }
+        }
+        
         # Merge master data endpoints into spec
         for path, methods in master_data_endpoints.items():
             if path not in spec["paths"]:
