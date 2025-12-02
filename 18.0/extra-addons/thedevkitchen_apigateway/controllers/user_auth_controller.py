@@ -22,8 +22,10 @@ class UserAuthController(http.Controller):
         try:
             _logger.info(f"Login attempt: {email} from {ip_address} by app: {application.name}")
 
+            # IMPORTANTE: auth='none' significa env.uid=None, então precisamos .sudo() para buscar usuários
             _logger.info(f"Searching for user: {email}")
             users = request.env['res.users'].sudo().search([('login', '=', email)], limit=1)
+            _logger.info(f"Search result: {users}, count: {len(users) if users else 0}")
 
             if not users:
                 _logger.warning(f"User not found: {email}")
@@ -106,29 +108,40 @@ class UserAuthController(http.Controller):
             session_id = request.session.sid
             _logger.info(f"Creating API session for user {email}, session_id: {session_id}")
 
-            old_sessions = request.env['thedevkitchen.api.session'].search([
-                ('user_id', '=', user.id),
-                ('is_active', '=', True),
-            ])
-            for old_session in old_sessions:
-                _logger.info(f"Invalidating previous session {old_session.session_id} for user {email}")
-                old_session.write({
-                    'is_active': False,
-                    'logout_at': fields.Datetime.now()
-                })
-                AuditLogger.log_logout(ip_address, email, user.id)
+            # Usar .sudo() para operações de API session porque:
+            # 1. É uma operação de sistema (registrar sessões), não do usuário
+            # 2. O usuário não deve precisar de permissão explícita para o sistema registrar sua própria sessão
+            # 3. Evita problemas de cache de permissões após autenticação
+            try:
+                old_sessions = request.env['thedevkitchen.api.session'].sudo().search([
+                    ('user_id', '=', user.id),
+                    ('is_active', '=', True),
+                ])
+                for old_session in old_sessions:
+                    _logger.info(f"Invalidating previous session {old_session.session_id} for user {email}")
+                    old_session.write({
+                        'is_active': False,
+                        'logout_at': fields.Datetime.now()
+                    })
+                    AuditLogger.log_logout(ip_address, email, user.id)
+            except Exception as session_error:
+                _logger.error(f"Error invalidating old sessions: {type(session_error).__name__}: {session_error}", exc_info=True)
+                raise
 
-            request.env['thedevkitchen.api.session'].create({
-                'session_id': session_id,
-                'user_id': user.id,
-                'ip_address': ip_address,
-                'user_agent': user_agent,
-            })
+            try:
+                request.env['thedevkitchen.api.session'].sudo().create({
+                    'session_id': session_id,
+                    'user_id': user.id,
+                    'ip_address': ip_address,
+                    'user_agent': user_agent,
+                })
+            except Exception as create_error:
+                _logger.error(f"Error creating API session: {type(create_error).__name__}: {create_error}", exc_info=True)
+                raise
 
             AuditLogger.log_successful_login(ip_address, email, user.id)
 
             _logger.info(f"Login successful for {email}")
-            _logger.info(f"Building user response...")
 
             try:
                 user_response = self._build_user_response(user)
@@ -170,10 +183,15 @@ class UserAuthController(http.Controller):
                 }
 
             # Find and validate API session
-            api_session = request.env['thedevkitchen.api.session'].search([
-                ('session_id', '=', session_id),
-                ('is_active', '=', True)
-            ], limit=1)
+            # Usar .sudo() pois logout é operação de sistema
+            try:
+                api_session = request.env['thedevkitchen.api.session'].sudo().search([
+                    ('session_id', '=', session_id),
+                    ('is_active', '=', True)
+                ], limit=1)
+            except Exception as search_error:
+                _logger.error(f"Error searching for session: {type(search_error).__name__}: {search_error}", exc_info=True)
+                raise
 
             if not api_session:
                 _logger.warning(f"Logout failed: no active session found for {session_id}")
@@ -189,10 +207,14 @@ class UserAuthController(http.Controller):
             _logger.info(f"Logging out user: {user.login}")
 
             # Deactivate session
-            api_session.write({
-                'is_active': False,
-                'logout_at': fields.Datetime.now()
-            })
+            try:
+                api_session.write({
+                    'is_active': False,
+                    'logout_at': fields.Datetime.now()
+                })
+            except Exception as write_error:
+                _logger.error(f"Error deactivating session: {type(write_error).__name__}: {write_error}", exc_info=True)
+                raise
 
             AuditLogger.log_logout(ip_address, user.email or user.login, user.id)
             _logger.info(f"Logout successful for {user.login}")
@@ -200,6 +222,7 @@ class UserAuthController(http.Controller):
             return {'message': 'Logged out successfully'}
 
         except Exception as e:
+            _logger.error(f"Logout error: {str(e)}", exc_info=True)
             return {
                 'error': {
                     'status': 500,
