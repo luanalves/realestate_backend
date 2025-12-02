@@ -51,7 +51,7 @@ def require_jwt(func):
         token = parts[1]
         
         # Validate token
-        Token = request.env['oauth.token'].sudo()
+        Token = request.env['thedevkitchen.oauth.token'].sudo()
         token_record = Token.search([
             ('access_token', '=', token),
             ('token_type', '=', 'Bearer'),
@@ -200,48 +200,45 @@ def _error_response(status_code, error_code, error_description):
 
 
 def validate_json_schema(schema):
-    """
-    Decorator to validate request JSON against a schema
-    
-    Usage:
-        @http.route('/api/v1/properties', auth='none', methods=['POST'], csrf=False)
-        @require_jwt
-        @validate_json_schema({
-            'type': 'object',
-            'required': ['name', 'price'],
-            'properties': {
-                'name': {'type': 'string'},
-                'price': {'type': 'number'}
-            }
-        })
-        def create_property(self, **kwargs):
-            data = request.jsonrequest
-            # data is already validated
-            return {'id': 123}
-    
-    Args:
-        schema: JSON Schema dictionary
-    
-    Returns:
-        - 400 if validation fails
-        - Original function result if validation passes
-    """
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             try:
-                # Get JSON data from request
                 if not request.jsonrequest:
                     return _error_response(400, 'invalid_request', 'Request body must be JSON')
-                
-                # TODO: Implement JSON schema validation
-                # For now, just pass through
-                # In production, use cerberus or jsonschema library
-                
+
                 return func(*args, **kwargs)
-                
+
             except Exception as e:
                 return _error_response(400, 'validation_error', str(e))
-        
+
         return wrapper
     return decorator
+
+
+def require_session(func):
+    from .services.session_validator import SessionValidator
+
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        session_id = (
+            request.httprequest.headers.get('X-Openerp-Session-Id') or
+            request.httprequest.cookies.get('session_id') or
+            request.session.sid
+        )
+
+        valid, user, error_msg = SessionValidator.validate(session_id)
+
+        if not valid:
+            return {
+                'error': {
+                    'status': 401,
+                    'message': error_msg or 'Unauthorized'
+                }
+            }
+
+        request.env = request.env(user=user)
+        return func(*args, **kwargs)
+
+    return wrapper
+
