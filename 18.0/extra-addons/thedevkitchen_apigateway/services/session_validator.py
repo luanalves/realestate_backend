@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta
 from odoo import fields
-from odoo.http import request
 import logging
 
 _logger = logging.getLogger(__name__)
@@ -9,11 +8,15 @@ _logger = logging.getLogger(__name__)
 class SessionValidator:
 
     @staticmethod
-    def validate(session_id):
+    def validate(session_id, env=None):
         if not session_id:
             return False, None, 'No session ID provided'
 
-        APISession = request.env['thedevkitchen.api.session'].sudo()
+        if env is None:
+            from odoo.http import request
+            env = request.env
+
+        APISession = env['thedevkitchen.api.session']
         api_session = APISession.search([
             ('session_id', '=', session_id),
             ('is_active', '=', True)
@@ -37,9 +40,13 @@ class SessionValidator:
         return True, user, None
 
     @staticmethod
-    def cleanup_expired(days=7):
+    def cleanup_expired(env=None, days=7):
+        if env is None:
+            from odoo.http import request
+            env = request.env
+
         cutoff = datetime.now() - timedelta(days=days)
-        APISession = request.env['thedevkitchen.api.session'].sudo()
+        APISession = env['thedevkitchen.api.session']
 
         expired = APISession.search([
             ('last_activity', '<', cutoff),
