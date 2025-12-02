@@ -243,21 +243,6 @@ describe('Meu Módulo - CRUD', () => {
   });
 });
 ```
-
-### 4. Métricas Mínimas Exigidas
-
-| Métrica | Valor Mínimo | Ideal |
-|---------|--------------|-------|
-| **Flake8 Linting** | 0 erros | 0 erros/warnings |
-| **PEP 8 Compliance** | 100% | 100% |
-| Cobertura de Testes Unitários | 100% da lógica | 100% |
-| Testes E2E por Feature | 1 teste | 3-5 testes |
-| Taxa de Sucesso (Unit) | 100% | 100% |
-| Taxa de Sucesso (E2E) | 95% | 100% |
-| Tempo de Execução (Unit) | < 1s | < 0.5s |
-| Tempo de Execução (E2E) | < 5min | < 3min |
-| **Tempo de Linting** | < 10s | < 5s |
-
 ### 5. Processo de Pull Request
 
 **Checklist obrigatório antes de abrir PR:**

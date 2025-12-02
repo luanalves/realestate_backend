@@ -15,16 +15,16 @@
 
 ## 📋 Checklist Geral
 
-- [ ] **Passo 1:** Criar modelo de API Session
-- [ ] **Passo 2:** Criar serviço de Rate Limiter
-- [ ] **Passo 3:** Criar serviço de Session Validator
-- [ ] **Passo 4:** Criar serviço de Audit Logger
-- [ ] **Passo 5:** Criar endpoint de Login de Usuários
-- [ ] **Passo 6:** Criar endpoint de Logout
-- [ ] **Passo 7:** Criar decorator de validação de sessão
-- [ ] **Passo 8:** Escrever testes unitários
-- [ ] **Passo 9:** Escrever testes de API
-- [ ] **Passo 10:** Validar e documentar
+- [x] **Passo 1:** Criar modelo de API Session ✅ ENTREGUE
+- [x] **Passo 2:** Criar serviço de Rate Limiter ✅ ENTREGUE
+- [x] **Passo 3:** Criar serviço de Session Validator ✅ ENTREGUE (estrutura)
+- [x] **Passo 4:** Criar serviço de Audit Logger ✅ ENTREGUE
+- [x] **Passo 5:** Criar endpoint de Login de Usuários ✅ ENTREGUE E TESTADO
+- [x] **Passo 6:** Criar endpoint de Logout ✅ ENTREGUE E TESTADO
+- [ ] **Passo 7:** Criar decorator de validação de sessão ⏳ PENDENTE
+- [ ] **Passo 8:** Escrever testes unitários ⏳ PENDENTE
+- [ ] **Passo 9:** Escrever testes de API (Cypress) ⏳ PENDENTE
+- [ ] **Passo 10:** Validar e documentar ⏳ PENDENTE
 
 ---
 
@@ -528,6 +528,43 @@ class UserAuthController(http.Controller):
             }
 ```
 
+### 🔐 Regra de Segurança: Sem Duplicidade de Sessões
+
+⚠️ **IMPORTANTE:** Quando um usuário faz login via API, todas as suas sessões anteriores **DEVEM** ser automaticamente invalidadas.
+
+**Razão:** 
+- Previne múltiplas sessões ativas para o mesmo usuário
+- Aumenta segurança (evita roubo de sessão)
+- Força logout automático em login anterior
+
+**Comportamento esperado:**
+```
+1. Usuário faz login via API (primeira vez) → session_id_1 criada
+2. Usuário faz login via API novamente (sem fazer logout) → session_id_1 é marcada como inativa + session_id_2 criada
+3. Tentativa de usar session_id_1 → erro 401 (sessão inativa)
+4. Apenas session_id_2 está ativa
+```
+
+**Implementação no endpoint de login:**
+```python
+# Logout automático de outras sessões do mesmo usuário
+old_sessions = request.env['thedevkitchen.api.session'].sudo().search([
+    ('user_id', '=', user.id),
+    ('is_active', '=', True),
+])
+for old_session in old_sessions:
+    old_session.write({
+        'is_active': False,
+        'logout_at': fields.Datetime.now()
+    })
+    AuditLogger.log_logout(ip_address, email, user.id)
+```
+
+**Auditoria:**
+- Evento registrado em `ir.logging` para cada logout automático
+- Facilita rastreamento de tentativas de login
+- Permite investigação de segurança
+
 ### 📂 Atualizar `__init__.py`
 
 `18.0/extra-addons/thedevkitchen_apigateway/controllers/__init__.py`
@@ -885,4 +922,111 @@ docker compose exec odoo odoo --test-enable --stop-after-init \
 
 ---
 
-**Pronto para implementar! 🚀**
+## 📊 IMPLEMENTATION REPORT - Status Atual (2025-12-02)
+
+### ✅ ENTREGUE E TESTADO
+
+#### 1. Modelo `thedevkitchen.api.session`
+- **Status**: ✅ IMPLEMENTADO
+- **Localização**: `18.0/extra-addons/thedevkitchen_apigateway/models/api_session.py`
+- **Campos**: session_id, user_id, ip_address, user_agent, is_active, login_at, logout_at, last_activity
+- **Teste**: Tabela criada no banco de dados, migrations funcionando
+- **Observação**: Admin (sem empresas) agora pode fazer login com sucesso
+
+#### 2. Service `RateLimiter`
+- **Status**: ✅ IMPLEMENTADO
+- **Localização**: `18.0/extra-addons/thedevkitchen_apigateway/services/rate_limiter.py`
+- **Funcionalidade**: Limita 5 tentativas de login por IP/email a cada 15 minutos
+- **Teste Manual**: ✅ Passa (6ª tentativa retorna 429)
+
+#### 3. Service `AuditLogger`
+- **Status**: ✅ IMPLEMENTADO
+- **Localização**: `18.0/extra-addons/thedevkitchen_apigateway/services/audit_logger.py`
+- **Funcionalidade**: Log de eventos (login/logout/erro) em `ir.logging`
+- **Campos**: path, func, line, message (conforme ADR-001)
+- **Teste**: Logs capturando eventos corretamente
+
+#### 4. Endpoint POST `/api/v1/users/login` ✅ TESTADO
+- **Status**: ✅ IMPLEMENTADO E TESTADO
+- **Autenticação**: `auth='public'` (permite database access com `.sudo()`)
+- **Fluxo**: Rate limit → Search → Authenticate → Validate → Create session → Return
+- **Teste com usuário real**: ✅ PASSOU
+  ```json
+  {
+    "session_id": "HP_Z_RlS6Y4APZWM99gWfq53...",
+    "user": {
+      "id": 142,
+      "name": "João Santos (User)",
+      "email": "joao@imobiliaria.com",
+      "companies": [{"id": 1, "name": "Quicksol Real Estate", "cnpj": "11.222.333/0001-81"}],
+      "default_company_id": 1
+    }
+  }
+  ```
+- **Teste com admin**: ✅ PASSOU (sem empresas, default_company_id=null)
+- **Teste rate limiter**: ✅ PASSOU (6ª tentativa retorna 429)
+
+#### 5. Endpoint POST `/api/v1/users/logout` ✅ TESTADO
+- **Status**: ✅ IMPLEMENTADO E TESTADO
+- **Autenticação**: `auth='public'` (session_id vem no body JSON)
+- **Teste**: ✅ PASSOU
+  ```json
+  {"message": "Logged out successfully"}
+  ```
+- **Validação**: Session marcada como `is_active=false` com `logout_at` preenchido
+
+---
+
+### 🔧 CORREÇÕES REALIZADAS DURANTE IMPLEMENTAÇÃO
+
+#### Erro 1: `AttributeError: 'res.users' object has no attribute 'estate_default_company_id'`
+- **Problema**: Campo não existe (foi nomeado `main_estate_company_id`)
+- **Solução**: ✅ Corrigido em `user_auth_controller.py`
+
+#### Erro 2: `TypeError: Session.authenticate() takes 3 positional arguments but 4 were given`
+- **Problema**: Assinatura do método não era clara
+- **Solução**: ✅ Descoberto que é `authenticate(dbname, credential_dict)` onde `credential_dict={'type': 'password', 'login': email, 'password': password}`
+
+#### Erro 3: `Expected singleton: res.users()` (empty search)
+- **Problema**: `auth='none'` não permitia queries ao banco
+- **Solução**: ✅ Mudado para `auth='public'` com `.sudo().search()`
+
+#### Erro 4: `odoo.http.SessionExpiredException` no logout
+- **Problema**: `auth='user'` esperava sessão web válida no cookie
+- **Solução**: ✅ Mudado para `auth='public'` com `session_id` no body JSON
+
+#### Erro 5: Admin rejeitado por não ter empresas
+- **Problema**: Lógica checava apenas `user.estate_company_ids`
+- **Solução**: ✅ Adicionado check para `user.has_group('base.group_system')`
+
+---
+
+### ⏳ PRÓXIMOS PASSOS
+
+| Passo | Descrição | Prioridade | Status |
+|-------|-----------|-----------|--------|
+| 7 | Decorator `@require_session` | 🔴 ALTA | ⏳ PENDENTE |
+| 8 | Testes Unitários | 🟡 MÉDIA | ⏳ PENDENTE |
+| 9 | Testes E2E (Cypress) | 🟡 MÉDIA | ⏳ PENDENTE |
+| 10 | Documentação (OpenAPI) | 🟢 BAIXA | ⏳ PENDENTE |
+
+---
+
+**Status Geral**: 60% completo ✅
+**Próxima Fase**: Implementar decorator `@require_session`
+
+🚀 **Pronto para próximos passos!**
+- Quantidade de retentativas deve ser variavel.
+- A quantidade de tempo para bloqueio também deve ser configuravel.
+- O deadline para liberar o bloqueio também deve ser configuravel.
+- Esses parametros devem ser criados na parte web e persistidos na base de dados.
+- O serviço de Rate Limiter deve ser atualizado para buscar esses parametros na base de dados.
+- O endpoint de login deve ser atualizado para usar o serviço de Rate Limiter com os novos parametros.
+- Testes unitarios devem ser criados para validar o novo comportamento do Rate Limiter.
+- Testes de integração devem ser criados para validar o endpoint de login com o novo Rate Limiter.
+
+- O tempo da sessão deve ser configuravel.
+- O serviço de Session Validator deve ser atualizado para considerar o tempo de expiração da sessão.
+- O endpoint de login deve ser atualizado para criar sessões com o tempo de expiração configurado.
+- Testes unitarios devem ser criados para validar o novo comportamento do Session Validator.
+- Testes de integração devem ser criados para validar o endpoint de login com o novo tempo de sessão.
