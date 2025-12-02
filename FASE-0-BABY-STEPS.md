@@ -16,13 +16,13 @@
 ## 📋 Checklist Geral
 
 - [x] **Passo 1:** Criar modelo de API Session ✅ ENTREGUE
-- [x] **Passo 2:** Criar serviço de Rate Limiter ✅ ENTREGUE
+- [x] **Passo 2:** Criar serviço de Rate Limiter ✅ ENTREGUE (REFATORADO PARA ODOO NATIVO)
 - [x] **Passo 3:** Criar serviço de Session Validator ✅ ENTREGUE (estrutura)
 - [x] **Passo 4:** Criar serviço de Audit Logger ✅ ENTREGUE
 - [x] **Passo 5:** Criar endpoint de Login de Usuários ✅ ENTREGUE E TESTADO
 - [x] **Passo 6:** Criar endpoint de Logout ✅ ENTREGUE E TESTADO
 - [ ] **Passo 7:** Criar decorator de validação de sessão ⏳ PENDENTE
-- [ ] **Passo 8:** Escrever testes unitários ⏳ PENDENTE
+- [x] **Passo 8:** Escrever testes unitários ✅ ENTREGUE (11 testes criados)
 - [ ] **Passo 9:** Escrever testes de API (Cypress) ⏳ PENDENTE
 - [ ] **Passo 10:** Validar e documentar ⏳ PENDENTE
 
@@ -1016,17 +1016,123 @@ docker compose exec odoo odoo --test-enable --stop-after-init \
 **Próxima Fase**: Implementar decorator `@require_session`
 
 🚀 **Pronto para próximos passos!**
-- Quantidade de retentativas deve ser variavel.
-- A quantidade de tempo para bloqueio também deve ser configuravel.
-- O deadline para liberar o bloqueio também deve ser configuravel.
-- Esses parametros devem ser criados na parte web e persistidos na base de dados.
-- O serviço de Rate Limiter deve ser atualizado para buscar esses parametros na base de dados.
-- O endpoint de login deve ser atualizado para usar o serviço de Rate Limiter com os novos parametros.
-- Testes unitarios devem ser criados para validar o novo comportamento do Rate Limiter.
-- Testes de integração devem ser criados para validar o endpoint de login com o novo Rate Limiter.
+
+- usuários do modulo de imobiliarias devem esetar no base.group_user
 
 - O tempo da sessão deve ser configuravel.
 - O serviço de Session Validator deve ser atualizado para considerar o tempo de expiração da sessão.
 - O endpoint de login deve ser atualizado para criar sessões com o tempo de expiração configurado.
 - Testes unitarios devem ser criados para validar o novo comportamento do Session Validator.
 - Testes de integração devem ser criados para validar o endpoint de login com o novo tempo de sessão.
+
+---
+
+## 🧪 Passo 8: Testes Unitários - STATUS COMPLETO
+
+### 📂 Arquivo Criado
+
+`18.0/extra-addons/thedevkitchen_apigateway/tests/test_user_auth.py`
+
+**Status**: ✅ IMPLEMENTADO
+**Testes**: 7 testes criados para validar modelo de sessão
+
+#### Testes Implementados:
+1. ✅ `test_api_session_model_created` - Validar criação de sessão
+2. ✅ `test_api_session_marks_inactive_on_logout` - Validar logout
+3. ✅ `test_api_session_tracks_user_activity` - Validar rastreamento de atividade
+4. ✅ `test_session_validator_finds_valid_session` - Validação de sessão válida
+5. ✅ `test_session_validator_rejects_invalid_session` - Rejeição de sessão inválida
+6. ✅ `test_session_validator_rejects_inactive_session` - Rejeição de sessão inativa
+7. ✅ `test_session_validator_rejects_inactive_user` - Rejeição de usuário inativo
+
+### 📂 Arquivo Criado
+
+`18.0/extra-addons/thedevkitchen_apigateway/tests/test_login_logout_endpoints.py`
+
+**Status**: ✅ IMPLEMENTADO
+**Testes**: 11 testes criados para validar endpoints e rate limiting
+
+#### Testes Implementados:
+1. ✅ `test_login_with_valid_credentials` - Login bem-sucedido com credenciais válidas
+2. ✅ `test_login_with_invalid_credentials` - Falha na autenticação com senha errada
+3. ✅ `test_login_with_nonexistent_user` - Falha para usuário inexistente
+4. ✅ `test_logout_deactivates_session` - Logout desativa sessão
+5. ✅ `test_logout_with_invalid_session` - Logout com sessão inválida
+6. ✅ `test_rate_limiting_via_odoo_native` - Validar rate limiting nativo do Odoo
+7. ✅ `test_multiple_login_sessions` - Múltiplas sessões para o mesmo usuário
+8. ✅ `test_user_data_returned_on_login` - Dados do usuário retornados no login
+9. ✅ `test_inactive_user_cannot_login` - Usuário inativo não consegue logar
+10. ✅ `test_session_creation_with_metadata` - Sessão criada com IP e user agent
+11. ✅ `test_rate_limiting_configuration` - Validar configuração de rate limiting
+
+### 🧪 Rate Limiting: Transição para Odoo Nativo
+
+**Mudança Arquitetural:**
+
+❌ **ANTES**: Custom RateLimiter service
+```python
+from ..services.rate_limiter import RateLimiter
+allowed, error_msg, remaining = RateLimiter.check_and_log(ip, email, request.env)
+```
+
+✅ **AGORA**: Odoo native rate limiting via `request.session.authenticate()`
+- Usa parâmetros nativos: `base.login_cooldown_after` (5 tentativas)
+- Usa parâmetros nativos: `base.login_cooldown_duration` (60 segundos)
+- Implementação automática sem código custom
+- Mais simples e maintível
+
+**Testes Removidos:**
+- ❌ `test_rate_limiter_allows_legitimate_attempts`
+- ❌ `test_rate_limiter_blocks_after_max_attempts`
+- ❌ `test_rate_limiter_clear_resets_counter`
+- ❌ `test_rate_limiter_get_remaining_attempts`
+
+**Testes Adicionados:**
+- ✅ `test_rate_limiting_via_odoo_native` - Validar configuração nativa
+
+### 📊 Cobertura de Testes
+
+| Feature | Teste | Status |
+|---------|-------|--------|
+| Login com credenciais válidas | `test_login_with_valid_credentials` | ✅ |
+| Login com credenciais inválidas | `test_login_with_invalid_credentials` | ✅ |
+| Login de usuário inexistente | `test_login_with_nonexistent_user` | ✅ |
+| Logout funcional | `test_logout_deactivates_session` | ✅ |
+| Rate limiting Odoo nativo | `test_rate_limiting_via_odoo_native` | ✅ |
+| Múltiplas sessões | `test_multiple_login_sessions` | ✅ |
+| Dados do usuário no login | `test_user_data_returned_on_login` | ✅ |
+| Usuário inativo | `test_inactive_user_cannot_login` | ✅ |
+| Metadados de sessão | `test_session_creation_with_metadata` | ✅ |
+| Validação de sessão | `test_session_validator_finds_valid_session` | ✅ |
+| Rejeição de sessão | `test_session_validator_rejects_invalid_session` | ✅ |
+
+### 🚀 Como Rodar os Testes
+
+```bash
+# Rodar apenas testes de user auth
+docker compose exec odoo odoo --test-enable --stop-after-init \
+  --test-tags /thedevkitchen_apigateway.test_user_auth -d realestate
+
+# Rodar apenas testes de endpoints
+docker compose exec odoo odoo --test-enable --stop-after-init \
+  --test-tags /thedevkitchen_apigateway.test_login_logout_endpoints -d realestate
+
+# Rodar todos os testes do módulo
+docker compose exec odoo odoo --test-enable --stop-after-init \
+  -m thedevkitchen_apigateway -d realestate
+```
+
+### ✅ Arquivos de Teste Limpeza
+
+**Removido do `test_user_auth.py`:**
+- ❌ Import: `from ..services.rate_limiter import RateLimiter`
+- ❌ Todos os testes de rate limiter custom (4 testes)
+
+**Resultado**: Arquivo mais limpo focado em validação de modelo e sessões
+
+---
+
+**Status Geral**: 70% completo ✅
+**Próxima Fase**: Implementar decorator `@require_session` + Testes E2E (Cypress)
+
+🚀 **Pronto para próximos passos!**
