@@ -332,6 +332,176 @@ class SwaggerController(http.Controller):
             }
         }
         
+        # User Authentication endpoints
+        spec["paths"]["/api/v1/users/login"] = {
+            "post": {
+                "tags": ["User Authentication"],
+                "summary": "User login",
+                "description": "Authenticate user with email and password. Requires valid OAuth 2.0 Bearer token (app must be registered).",
+                "operationId": "userLogin",
+                "requestBody": {
+                    "required": True,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": ["email", "password"],
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "description": "User email",
+                                        "example": "joao@imobiliaria.com"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "format": "password",
+                                        "description": "User password",
+                                        "example": "joao123"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Login successful",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "session_id": {
+                                            "type": "string",
+                                            "description": "Session ID for subsequent API requests"
+                                        },
+                                        "user": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {"type": "integer", "description": "User ID"},
+                                                "name": {"type": "string", "description": "User full name"},
+                                                "email": {"type": "string", "description": "User email"},
+                                                "companies": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "id": {"type": "integer"},
+                                                            "name": {"type": "string"},
+                                                            "cnpj": {"type": "string"}
+                                                        }
+                                                    },
+                                                    "description": "List of companies assigned to user"
+                                                },
+                                                "default_company_id": {
+                                                    "type": "integer",
+                                                    "description": "Default company ID"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid input",
+                        "content": {
+                            "application/json": {
+                                "schema": {"$ref": "#/components/schemas/Error"}
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - Invalid credentials or missing Bearer token",
+                        "content": {
+                            "application/json": {
+                                "schema": {"$ref": "#/components/schemas/Error"}
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - User inactive or no companies assigned",
+                        "content": {
+                            "application/json": {
+                                "schema": {"$ref": "#/components/schemas/Error"}
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests - Rate limit exceeded (5 attempts per 15 minutes)",
+                        "content": {
+                            "application/json": {
+                                "schema": {"$ref": "#/components/schemas/Error"}
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        spec["paths"]["/api/v1/users/logout"] = {
+            "post": {
+                "tags": ["User Authentication"],
+                "summary": "User logout",
+                "description": "Logout user and invalidate session. Requires valid OAuth 2.0 Bearer token (app must be registered).",
+                "operationId": "userLogout",
+                "requestBody": {
+                    "required": True,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": ["session_id"],
+                                "properties": {
+                                    "session_id": {
+                                        "type": "string",
+                                        "description": "Session ID from login response",
+                                        "example": "HP_Z_RlS6Y4APZWM99gWfq53aezjyBCSwW46UDVC5Wn2xlzruc6cU0bpgJzHCRH0Z8"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Logout successful",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Logged out successfully"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid input - Missing session_id",
+                        "content": {
+                            "application/json": {
+                                "schema": {"$ref": "#/components/schemas/Error"}
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - Invalid session or missing Bearer token",
+                        "content": {
+                            "application/json": {
+                                "schema": {"$ref": "#/components/schemas/Error"}
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
         # Add registered endpoints
         for endpoint in endpoints:
             path = endpoint.path
