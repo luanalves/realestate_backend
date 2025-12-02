@@ -1,6 +1,5 @@
 from odoo import http, fields
 from odoo.http import request
-from ..services.rate_limiter import RateLimiter
 from ..services.audit_logger import AuditLogger
 from ..middleware import require_jwt
 import logging
@@ -22,20 +21,9 @@ class UserAuthController(http.Controller):
 
         try:
             _logger.info(f"Login attempt: {email} from {ip_address} by app: {application.name}")
-            
-            if not RateLimiter.check(ip_address, email):
-                _logger.warning(f"Rate limit exceeded for {email}")
-                AuditLogger.log_failed_login(ip_address, email, 'Rate limit exceeded')
-                return {
-                    'error': {
-                        'status': 429,
-                        'message': 'Too many login attempts. Try again in 15 minutes.'
-                    }
-                }
 
             _logger.info(f"Searching for user: {email}")
             users = request.env['res.users'].sudo().search([('login', '=', email)], limit=1)
-            _logger.info(f"Search result: {users}")
 
             if not users:
                 _logger.warning(f"User not found: {email}")
@@ -61,11 +49,8 @@ class UserAuthController(http.Controller):
                 }
 
             _logger.info(f"Authenticating user: {email}")
-            
-            # Usar a validação nativa do Odoo
+
             try:
-                # Odoo's Session.authenticate(dbname, credential_dict)
-                # credential_dict must have 'type' key with authentication method
                 credential = {
                     'type': 'password',
                     'login': email,
@@ -73,7 +58,7 @@ class UserAuthController(http.Controller):
                 }
                 auth_info = request.session.authenticate(request.env.cr.dbname, credential)
                 _logger.info(f"Authentication result: uid={auth_info.get('uid')}")
-                
+
                 uid = auth_info.get('uid')
                 if not uid or uid == -1:
                     _logger.warning(f"Auth failed for {email}: uid={uid}")
@@ -84,7 +69,7 @@ class UserAuthController(http.Controller):
                             'message': 'Invalid credentials'
                         }
                     }
-                
+
                 if not uid:
                     _logger.warning(f"Auth failed for {email}: authentication returned False")
                     AuditLogger.log_failed_login(ip_address, email)
@@ -107,8 +92,7 @@ class UserAuthController(http.Controller):
             _logger.info(f"Checking companies for user {email}")
             has_companies = bool(user.estate_company_ids)
             is_system_admin = user.has_group('base.group_system')
-            _logger.info(f"User {email}: has_companies={has_companies}, is_system_admin={is_system_admin}")
-            
+
             if not has_companies and not is_system_admin:
                 _logger.warning(f"User has no companies: {email}")
                 AuditLogger.log_failed_login(ip_address, email, 'No companies')
@@ -122,7 +106,19 @@ class UserAuthController(http.Controller):
             session_id = request.session.sid
             _logger.info(f"Creating API session for user {email}, session_id: {session_id}")
 
-            request.env['thedevkitchen.api.session'].sudo().create({
+            old_sessions = request.env['thedevkitchen.api.session'].search([
+                ('user_id', '=', user.id),
+                ('is_active', '=', True),
+            ])
+            for old_session in old_sessions:
+                _logger.info(f"Invalidating previous session {old_session.session_id} for user {email}")
+                old_session.write({
+                    'is_active': False,
+                    'logout_at': fields.Datetime.now()
+                })
+                AuditLogger.log_logout(ip_address, email, user.id)
+
+            request.env['thedevkitchen.api.session'].create({
                 'session_id': session_id,
                 'user_id': user.id,
                 'ip_address': ip_address,
@@ -130,18 +126,17 @@ class UserAuthController(http.Controller):
             })
 
             AuditLogger.log_successful_login(ip_address, email, user.id)
-            RateLimiter.clear(ip_address, email)
 
             _logger.info(f"Login successful for {email}")
             _logger.info(f"Building user response...")
-            
+
             try:
                 user_response = self._build_user_response(user)
                 _logger.info(f"User response built: {user_response}")
             except Exception as build_error:
                 _logger.error(f"Error building user response: {type(build_error).__name__}: {build_error}", exc_info=True)
                 raise
-            
+
             return {
                 'session_id': session_id,
                 'user': user_response
@@ -175,7 +170,7 @@ class UserAuthController(http.Controller):
                 }
 
             # Find and validate API session
-            api_session = request.env['thedevkitchen.api.session'].sudo().search([
+            api_session = request.env['thedevkitchen.api.session'].search([
                 ('session_id', '=', session_id),
                 ('is_active', '=', True)
             ], limit=1)
