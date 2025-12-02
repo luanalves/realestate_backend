@@ -14,40 +14,41 @@ def require_jwt(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         auth_header = request.httprequest.headers.get('Authorization')
+        is_json = request.httprequest.method in ('POST', 'PUT', 'PATCH') and 'json' in request.httprequest.content_type.lower()
         
         if not auth_header:
-            return _error_response(401, 'unauthorized', 'Authorization header is required')
+            error_dict = {'error': {'code': 'unauthorized', 'message': 'Authorization header is required'}}
+            return error_dict if is_json else _error_response(401, 'unauthorized', 'Authorization header is required')
         
-        # Extract token from "Bearer <token>"
         parts = auth_header.split()
         if len(parts) != 2 or parts[0].lower() != 'bearer':
-            return _error_response(401, 'invalid_token', 'Authorization header must be "Bearer <token>"')
+            error_dict = {'error': {'code': 'invalid_token', 'message': 'Authorization header must be "Bearer <token>"'}}
+            return error_dict if is_json else _error_response(401, 'invalid_token', 'Authorization header must be "Bearer <token>"')
         
         token = parts[1]
         
-        # Validate token
         Token = request.env['thedevkitchen.oauth.token'].sudo()
-        token_record = Token.search([
-            ('access_token', '=', token),
-            ('token_type', '=', 'Bearer'),
-        ], limit=1)
+        token_record = Token.search([('access_token', '=', token)], limit=1)
         
         if not token_record:
-            return _error_response(401, 'invalid_token', 'Token not found or invalid')
+            error_dict = {'error': {'code': 'invalid_token', 'message': 'Token not found or invalid'}}
+            return error_dict if is_json else _error_response(401, 'invalid_token', 'Token not found or invalid')
         
-        # Check if token is expired (compare UTC-aware datetimes)
+        if token_record.token_type != 'Bearer':
+            error_dict = {'error': {'code': 'invalid_token', 'message': 'Token type must be Bearer'}}
+            return error_dict if is_json else _error_response(401, 'invalid_token', 'Token type must be Bearer')
+        
         if token_record.expires_at and token_record.expires_at < fields.Datetime.now():
-            return _error_response(401, 'token_expired', 'Token has expired')
+            error_dict = {'error': {'code': 'token_expired', 'message': 'Token has expired'}}
+            return error_dict if is_json else _error_response(401, 'token_expired', 'Token has expired')
         
-        # Check if token is revoked
         if token_record.revoked:
-            return _error_response(401, 'token_revoked', 'Token has been revoked')
+            error_dict = {'error': {'code': 'token_revoked', 'message': 'Token has been revoked'}}
+            return error_dict if is_json else _error_response(401, 'token_revoked', 'Token has been revoked')
         
-        # Token is valid - attach to request for use in endpoint
         request.jwt_token = token_record
         request.jwt_application = token_record.application_id
         
-        # Call the original function
         return func(*args, **kwargs)
     
     return wrapper
