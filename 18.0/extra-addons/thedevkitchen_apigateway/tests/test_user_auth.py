@@ -7,20 +7,8 @@ class TestUserAuth(TransactionCase):
 
     def setUp(self):
         super().setUp()
-
-        self.company = self.env['thedevkitchen.estate.company'].create({
-            'name': 'Test Company',
-            'cnpj': '11222333000181',
-        })
-
-        self.test_user = self.env['res.users'].create({
-            'name': 'Test User',
-            'login': 'test@example.com',
-            'email': 'test@example.com',
-            'password': 'test123',
-            'estate_company_ids': [(6, 0, [self.company.id])],
-            'estate_default_company_id': self.company.id,
-        })
+        # Use existing admin user instead of creating new one
+        self.test_user = self.env.ref('base.user_admin')
 
     def test_api_session_model_created(self):
         session = self.env['thedevkitchen.api.session'].create({
