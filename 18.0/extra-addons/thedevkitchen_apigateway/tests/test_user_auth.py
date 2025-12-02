@@ -1,4 +1,6 @@
 from odoo.tests.common import TransactionCase
+from ..services.session_validator import SessionValidator
+from odoo import fields
 
 
 class TestUserAuth(TransactionCase):
@@ -49,3 +51,46 @@ class TestUserAuth(TransactionCase):
 
         self.assertIsNotNone(session.login_at)
         self.assertIsNone(session.logout_at)
+
+    def test_session_validator_finds_valid_session(self):
+        session = self.env['thedevkitchen.api.session'].create({
+            'session_id': 'valid-session-123',
+            'user_id': self.test_user.id,
+            'ip_address': '127.0.0.1',
+        })
+
+        valid, user, error = SessionValidator.validate('valid-session-123')
+        self.assertTrue(valid, 'Valid session should pass validation')
+        self.assertEqual(user.id, self.test_user.id)
+        self.assertIsNone(error)
+
+    def test_session_validator_rejects_invalid_session(self):
+        valid, user, error = SessionValidator.validate('invalid-session')
+        self.assertFalse(valid, 'Invalid session should fail validation')
+        self.assertIsNone(user)
+        self.assertIsNotNone(error)
+
+    def test_session_validator_rejects_inactive_session(self):
+        session = self.env['thedevkitchen.api.session'].create({
+            'session_id': 'inactive-session-123',
+            'user_id': self.test_user.id,
+            'is_active': False,
+        })
+
+        valid, user, error = SessionValidator.validate('inactive-session-123')
+        self.assertFalse(valid, 'Inactive session should fail validation')
+
+    def test_session_validator_rejects_inactive_user(self):
+        self.test_user.active = False
+        session = self.env['thedevkitchen.api.session'].create({
+            'session_id': 'user-inactive-session',
+            'user_id': self.test_user.id,
+        })
+
+        valid, user, error = SessionValidator.validate('user-inactive-session')
+        self.assertFalse(valid, 'Session for inactive user should fail')
+
+        session_after = self.env['thedevkitchen.api.session'].search([
+            ('session_id', '=', 'user-inactive-session')
+        ])
+        self.assertFalse(session_after.is_active, 'Session should be marked inactive')
