@@ -101,7 +101,7 @@
             <field name="neighborhood">Copacabana</field>
             <field name="street">Av. Atlântica</field>
             <field name="street_number">1234</field>
-            <field name="location_type">urban</field>
+            <field name="location_type_id" ref="location_type_urban"/>
             <field name="latitude">-22.9711</field>
             <field name="longitude">-43.1825</field>
             
@@ -162,7 +162,7 @@
             <field name="neighborhood">Jardim Europa</field>
             <field name="street">Rua Europa</field>
             <field name="street_number">789</field>
-            <field name="location_type">urban</field>
+            <field name="location_type_id" ref="location_type_urban"/>
             <field name="latitude">-23.5733</field>
             <field name="longitude">-46.6776</field>
             
@@ -230,7 +230,7 @@
             <field name="street_number">1578</field>
             <field name="floor_number">10</field>
             <field name="unit_number">1001</field>
-            <field name="location_type">urban</field>
+            <field name="location_type_id" ref="location_type_urban"/>
             
             <!-- Primary Data -->
             <field name="for_sale">False</field>
