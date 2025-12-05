@@ -47,6 +47,12 @@ docker run -d --name odoo18 --network odoo-net \
 - **Username:** `odoo`
 - **Password:** `odoo`
 
+#### Redis Cache Access (Optional)
+- **Host:** `localhost`
+- **Port:** `6379`
+- **DB Index:** `1` (configured in odoo.conf)
+- **No password required** (local development)
+
 ---
 
 ## Extras
@@ -97,6 +103,58 @@ docker rm odoo18 db
 docker rm -f odoo18 db
 docker volume rm odoo18-data odoo18-db
 ```
+
+---
+
+## Redis Cache Integration
+
+This setup includes **Redis 7** for session storage and caching, using **Odoo's native Redis support**.
+
+### What Redis is Used For
+
+- **HTTP Session Storage**: Stores user sessions (faster than database)
+- **ORM Cache**: Caches database queries and model data
+- **Asset Cache**: Caches static assets and compiled resources
+- **Message Bus**: Improves longpolling performance
+
+### Redis Configuration
+
+Redis is configured in `odoo.conf` with:
+```ini
+enable_redis = True
+redis_host = redis
+redis_port = 6379
+redis_dbindex = 1
+```
+
+### Monitoring Redis
+
+Check Redis status:
+```bash
+docker compose exec redis redis-cli ping
+# Expected output: PONG
+```
+
+Monitor Redis operations:
+```bash
+docker compose exec redis redis-cli MONITOR
+```
+
+View Redis statistics:
+```bash
+docker compose exec redis redis-cli INFO stats
+```
+
+Check memory usage:
+```bash
+docker compose exec redis redis-cli INFO memory
+```
+
+### Redis Data Persistence
+
+- Data is persisted in the `odoo18-redis` Docker volume
+- Uses AOF (Append Only File) for durability
+- Memory limit: 256MB with LRU eviction policy
 
 ---
 

@@ -18,6 +18,22 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"  # Exposta para acesso externo (opcional)
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - odoo18-redis:/data
+    networks:
+      - odoo-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
   odoo:
     build:
       context: .
@@ -26,6 +42,8 @@ services:
     container_name: odoo18
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     ports:
       - "8069:8069"   # HTTP
@@ -52,6 +70,7 @@ services:
 volumes:
   odoo18-db:
   odoo18-data:
+  odoo18-redis:
 
 networks:
   odoo-net:
