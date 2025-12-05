@@ -8,6 +8,7 @@ from odoo.exceptions import AccessError, UserError, ValidationError
 from .utils.auth import require_jwt
 from .utils.response import error_response, success_response
 from .utils.serializers import serialize_property, validate_property_access
+from odoo.addons.thedevkitchen_apigateway.middleware import require_session
 
 _logger = logging.getLogger(__name__)
 
@@ -18,6 +19,7 @@ class PropertyApiController(http.Controller):
     @http.route('/api/v1/properties', 
                 type='http', auth='none', methods=['POST'], csrf=False, cors='*')
     @require_jwt
+    @require_session
     def create_property(self, **kwargs):
         """
         Create a new property.
@@ -262,6 +264,7 @@ class PropertyApiController(http.Controller):
     @http.route('/api/v1/properties/<int:property_id>', 
                 type='http', auth='none', methods=['GET'], csrf=False, cors='*')
     @require_jwt
+    @require_session
     def get_property(self, property_id, **kwargs):
         """
         Get property details by ID.
@@ -299,6 +302,7 @@ class PropertyApiController(http.Controller):
     @http.route('/api/v1/properties/<int:property_id>', 
                 type='http', auth='none', methods=['PUT'], csrf=False, cors='*')
     @require_jwt
+    @require_session
     def update_property(self, property_id, **kwargs):
         """
         Update property by ID.
@@ -390,6 +394,7 @@ class PropertyApiController(http.Controller):
     @http.route('/api/v1/properties/<int:property_id>', 
                 type='http', auth='none', methods=['DELETE'], csrf=False, cors='*')
     @require_jwt
+    @require_session
     def delete_property(self, property_id, **kwargs):
         """
         Delete property by ID.

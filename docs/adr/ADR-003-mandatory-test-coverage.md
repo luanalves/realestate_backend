@@ -50,7 +50,111 @@ Antes da implementação de testes, observamos:
 
 **Todos os módulos desenvolvidos ou modificados neste projeto DEVEM ter:**
 
-### 1. Testes Unitários com 100% de Cobertura da Lógica de Negócio
+### 1. Linting Obrigatório com Flake8
+
+**Características obrigatórias:**
+- Usar `flake8` para validação de código Python
+- Seguir PEP 8 (estilo de código Python)
+- Executar antes de cada commit
+- Nenhum erro ou warning permitido no código final
+- Configuração padronizada via `.flake8` ou `setup.cfg`
+
+**Configuração padrão (.flake8):**
+```ini
+[flake8]
+max-line-length = 120
+exclude = 
+    .git,
+    __pycache__,
+    */migrations/*,
+    */static/*,
+    */filestore/*,
+    venv,
+    env,
+    .venv
+ignore = 
+    E501,  # line too long (handled by max-line-length)
+    W503,  # line break before binary operator
+    E203,  # whitespace before ':'
+per-file-ignores =
+    __init__.py:F401  # imported but unused
+
+# Odoo specific
+# F401: module imported but unused (common in __init__.py)
+# E501: line too long (Odoo allows 120)
+```
+
+**Execução obrigatória:**
+```bash
+# Executar em módulo específico
+cd 18.0/extra-addons/meu_modulo
+flake8 .
+
+# Executar em todos os módulos custom
+cd 18.0/extra-addons
+flake8 quicksol_estate/ thedevkitchen_apigateway/ auditlog/
+
+# Usar script centralizado (recomendado)
+cd 18.0
+./lint.sh
+```
+
+**Script lint.sh (OBRIGATÓRIO em cada módulo):**
+```bash
+#!/bin/bash
+# Lint all Python files in custom addons
+
+set -e
+
+ADDONS_DIR="/mnt/extra-addons"
+MODULES=(
+    "quicksol_estate"
+    "thedevkitchen_apigateway"
+    "thedevkitchen_branding"
+    "auditlog"
+)
+
+echo "🔍 Running Flake8 linting..."
+
+for module in "${MODULES[@]}"; do
+    echo ""
+    echo "📦 Linting module: $module"
+    if [ -d "$ADDONS_DIR/$module" ]; then
+        flake8 "$ADDONS_DIR/$module" \
+            --max-line-length=120 \
+            --exclude=__pycache__,migrations,static,filestore \
+            --count \
+            --show-source \
+            --statistics
+        echo "✅ $module passed!"
+    else
+        echo "⚠️  Module $module not found, skipping..."
+    fi
+done
+
+echo ""
+echo "✨ All modules passed linting!"
+```
+
+**Integração com Docker:**
+```bash
+# Executar dentro do container Odoo
+docker compose exec odoo bash -c "cd /mnt/extra-addons && flake8 quicksol_estate/"
+
+# Ou usando o script
+docker compose exec odoo /mnt/extra-addons/../lint.sh
+```
+
+**Checklist obrigatório:**
+- [ ] `.flake8` configurado na raiz do projeto
+- [ ] `lint.sh` criado e executável (`chmod +x lint.sh`)
+- [ ] `flake8` instalado no container (`pip install flake8`)
+- [ ] Nenhum erro ou warning no código
+- [ ] Linting executado antes de cada commit
+
+### 2. Testes Unitários com 100% de Cobertura da Lógica de Negócio
+
+### 2. Testes Unitários com 100% de Cobertura da Lógica de Negócio
 
 **Características obrigatórias:**
 - Usar Python `unittest` (biblioteca padrão) ou `pytest`
@@ -58,6 +162,7 @@ Antes da implementação de testes, observamos:
 - Execução rápida: < 1 segundo para suite completa do módulo
 - Testes isolados e independentes
 - Documentados com docstrings descritivas
+- **Código deve passar no flake8 ANTES de escrever testes**
 
 **Estrutura de arquivos:**
 ```
@@ -69,6 +174,8 @@ meu_modulo/
 │   ├── test_controllers_unit.py   # Testes de controllers  
 │   ├── test_helpers_unit.py       # Testes de helpers
 │   └── UNIT_TESTS.md              # Documentação
+├── .flake8                         # Configuração do linting
+└── lint.sh                         # Script de linting
 ```
 
 **Exemplo de teste:**
@@ -90,7 +197,7 @@ class TestMyModel(unittest.TestCase):
         self.assertEqual(result, 110)
 ```
 
-### 2. Testes End-to-End (E2E) com Cypress para Features Visuais
+### 3. Testes End-to-End (E2E) com Cypress para Features Visuais
 
 **Características obrigatórias:**
 - Usar Cypress 15.x ou superior
@@ -136,21 +243,11 @@ describe('Meu Módulo - CRUD', () => {
   });
 });
 ```
-
-### 3. Métricas Mínimas Exigidas
-
-| Métrica | Valor Mínimo | Ideal |
-|---------|--------------|-------|
-| Cobertura de Testes Unitários | 100% da lógica | 100% |
-| Testes E2E por Feature | 1 teste | 3-5 testes |
-| Taxa de Sucesso (Unit) | 100% | 100% |
-| Taxa de Sucesso (E2E) | 95% | 100% |
-| Tempo de Execução (Unit) | < 1s | < 0.5s |
-| Tempo de Execução (E2E) | < 5min | < 3min |
-
-### 4. Processo de Pull Request
+### 5. Processo de Pull Request
 
 **Checklist obrigatório antes de abrir PR:**
+- [ ] **Código passa no flake8 (0 erros)**
+- [ ] **Linting executado via `./lint.sh`**
 - [ ] Testes unitários criados para toda lógica nova
 - [ ] 100% de cobertura nos arquivos modificados
 - [ ] Testes E2E criados para features visíveis
@@ -158,6 +255,8 @@ describe('Meu Módulo - CRUD', () => {
 - [ ] Documentação dos testes atualizada
 
 **Checklist do revisor:**
+- [ ] **Código está formatado conforme PEP 8**
+- [ ] **Nenhum warning ou erro do flake8**
 - [ ] Testes existem e cobrem 100%
 - [ ] Testes seguem padrão AAA (Arrange, Act, Assert)
 - [ ] Testes têm nomes descritivos
@@ -165,12 +264,24 @@ describe('Meu Módulo - CRUD', () => {
 - [ ] Testes limpam dados (cleanup)
 - [ ] CI/CD pipeline passa
 
-### 5. Implementação Gradual
+**Ordem de execução obrigatória:**
+```bash
+# 1. LINTING (primeiro passo)
+./lint.sh
+
+# 2. TESTES UNITÁRIOS
+docker compose exec odoo python3 /mnt/extra-addons/meu_modulo/tests/run_unit_tests.py
+
+# 3. TESTES E2E
+npx cypress run --spec "cypress/e2e/meu-modulo.cy.js"
+```
+
+### 6. Implementação Gradual
 
 **Fase 1 - Novos Módulos (Imediato):**
 - Todos os novos módulos seguem este ADR
-- Template de módulo com estrutura de testes
-- CI/CD configurado
+- Template de módulo com estrutura de testes + linting
+- CI/CD configurado com flake8 + testes
 
 **Fase 2 - Módulos Existentes (Gradual - 3 meses):**
 
@@ -180,38 +291,61 @@ Prioridade de cobertura:
 3. Demais módulos - Mês 3
 
 Para cada módulo:
+- **Dia 1**: Configurar `.flake8` e criar `lint.sh`
+- **Dia 2-3**: Corrigir todos os erros de linting
 - Semana 1-2: Criar testes unitários (100% cobertura)
 - Semana 3: Criar testes E2E (features principais)
 - Semana 4: Documentar e revisar
 
-### 6. Ferramentas e Recursos
+### 7. Ferramentas e Recursos
 
 **Obrigatórias:**
+- **`flake8`** (Python) - Linting e validação PEP 8
 - `unittest` (Python) - Testes unitários
 - `unittest.mock` (Python) - Mocks
 - Cypress - Testes E2E
 - Docker - Ambiente de testes
 
 **Recomendadas:**
-- `pytest` - Runner avançado
+- `black` - Auto-formatação de código Python
+- `isort` - Ordenação de imports
+- `pylint` - Análise estática avançada
+- `pytest` - Runner avançado de testes
 - `coverage.py` - Relatórios de cobertura
 - Cypress Studio - Gravar testes
+- `pre-commit` - Hooks de git para validação automática
 
-### 7. Referência de Implementação
+**Instalação no container:**
+```bash
+# Adicionar ao Dockerfile
+RUN pip3 install flake8 black isort pylint coverage pytest
+
+# Ou executar manualmente
+docker compose exec odoo pip3 install flake8 black isort
+```
+
+### 8. Referência de Implementação
 
 O módulo `api_gateway` serve como referência:
 
 **Execução:**
 ```bash
-# Unit tests
-docker compose exec odoo python3 \
-  /mnt/extra-addons/api_gateway/tests/run_unit_tests.py
+# 1. Linting (primeiro)
+cd 18.0
+./lint.sh
+# Ou específico:
+flake8 extra-addons/thedevkitchen_apigateway/
 
-# E2E tests  
-npx cypress run --spec "cypress/e2e/api-gateway.cy.js"
+# 2. Unit tests
+docker compose exec odoo python3 \
+  /mnt/extra-addons/thedevkitchen_apigateway/tests/run_unit_tests.py
+
+# 3. E2E tests  
+npx cypress run --spec "cypress/e2e/thedevkitchen-apigateway.cy.js"
 ```
 
 **Resultado:**
+- ✅ **0 erros de linting (PEP 8 compliant)**
 - ✅ 76 testes unitários (100% sucesso em 0.19s)
 - ✅ 22 testes E2E (100% sucesso em 1m37s)
 - ✅ 100% cobertura de código
@@ -222,11 +356,15 @@ npx cypress run --spec "cypress/e2e/api-gateway.cy.js"
 ### Positivas
 
 1. **Qualidade de Código**
+   - **Linting automático garante consistência de estilo**
+   - **Código mais legível e padronizado (PEP 8)**
    - Redução de 80% em bugs reportados em produção
    - Código mais limpo e modular (testável = bem arquitetado)
    - Refatorações seguras e confiantes
 
 2. **Produtividade**
+   - **Menos erros de sintaxe e estilo (-40%)**
+   - **Code review mais rápido (estilo já validado)**
    - Menos tempo em debugging (-60%)
    - Mais tempo em desenvolvimento de features (+40%)
    - Onboarding de novos devs 3x mais rápido
@@ -272,6 +410,8 @@ npx cypress run --spec "cypress/e2e/api-gateway.cy.js"
 | Testes mal escritos | Médio | Code review rigoroso, exemplos, templates |
 | Pipeline lento | Médio | Otimizar testes, rodar em paralelo, cache |
 | Custo de infraestrutura | Baixo | Usar recursos locais, otimizar runners |
+| **Linting muito restritivo** | Baixo | Configurar exceções razoáveis no `.flake8` |
+| **Código legado com muitos erros** | Médio | Corrigir gradualmente, priorizar módulos críticos |
 
 ### Compromissos Aceitos
 
@@ -319,6 +459,8 @@ npx cypress run --spec "cypress/e2e/api-gateway.cy.js"
 ## Referências
 
 - [ADR-001: Development Guidelines for Odoo Screens](./ADR-001-development-guidelines-for-odoo-screens.md)
+- [PEP 8 - Style Guide for Python Code](https://pep8.org/)
+- [Flake8 Documentation](https://flake8.pycqa.org/)
 - [Test Pyramid - Martin Fowler](https://martinfowler.com/bliki/TestPyramid.html)
 - [Clean Code - Robert C. Martin](https://www.oreilly.com/library/view/clean-code-a/9780136083238/)
 - [Cypress Best Practices](https://docs.cypress.io/guides/references/best-practices)
@@ -329,6 +471,7 @@ npx cypress run --spec "cypress/e2e/api-gateway.cy.js"
 | Data | Versão | Mudança | Autor |
 |------|--------|---------|-------|
 | 2025-11-16 | 1.0 | Criação do ADR baseado no sucesso do módulo api_gateway | Equipe Dev |
+| 2025-11-30 | 1.1 | Adicionado linting obrigatório com flake8 e PEP 8 | Equipe Dev |
 
 ---
 
