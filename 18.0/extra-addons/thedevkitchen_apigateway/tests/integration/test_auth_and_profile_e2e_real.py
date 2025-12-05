@@ -1002,3 +1002,224 @@ class TestSessionIsolationE2EReal(HttpCase):
         _logger.info(f"✅ Atualizações foram isoladas")
         _logger.info(f"   User 1 phone: {new_phone_user1}")
         _logger.info(f"   User 2 phone: {new_phone_user2}")
+
+
+# ═════════════════════════════════════════════════════════════════
+# 🔐 TESTES: @require_session DECORATOR
+# ═════════════════════════════════════════════════════════════════
+
+class TestRequireSessionDecorator(HttpCase):
+    """
+    Testes E2E para o decorator @require_session
+    Valida que endpoints protegidos requerem session_id válido
+    """
+    
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        
+        cls.user1_email = "joao@imobiliaria.com"
+        cls.user1_password = "joao123"
+        
+        cls.base_url = cls.env['ir.config_parameter'].sudo().get_param('web.base.url', 'http://localhost:8069')
+        
+        # Autenticar e obter session_id
+        cls.session_id = cls._get_session_id(cls.user1_email, cls.user1_password)
+    
+    @staticmethod
+    def _get_session_id(email, password):
+        """Helper para obter session_id via login"""
+        from urllib.request import urlopen, Request
+        
+        base_url = 'http://localhost:8069'
+        login_url = f"{base_url}/api/v1/users/login"
+        
+        payload = json.dumps({
+            "email": email,
+            "password": password
+        })
+        
+        request = Request(
+            login_url,
+            data=payload.encode('utf-8'),
+            headers={'Content-Type': 'application/json'},
+            method='POST'
+        )
+        
+        try:
+            response = urlopen(request)
+            data = json.loads(response.read().decode('utf-8'))
+            return data.get('result', {}).get('session_id')
+        except Exception as e:
+            _logger.error(f"Erro ao obter session_id: {e}")
+            return None
+    
+    def test_require_session_accepts_valid_session_id(self):
+        """Test que @require_session aceita session_id válido"""
+        _logger.info("=" * 70)
+        _logger.info("🔐 TESTE: @require_session com session_id válido")
+        _logger.info("=" * 70)
+        
+        headers = {
+            'Content-Type': 'application/json',
+            'X-Openerp-Session-Id': self.session_id
+        }
+        
+        # Tentar acessar endpoint protegido com session_id válido
+        url = f"{self.base_url}/api/v1/users/profile"
+        response = self.opener.patch(
+            url,
+            data=json.dumps({"phone": "11999999999"}),
+            headers=headers,
+            content_type='application/json'
+        )
+        
+        self.assertEqual(
+            response.status_code,
+            200,
+            f"@require_session deve aceitar session_id válido (got {response.status_code})"
+        )
+        _logger.info("✅ Session válida foi aceita")
+    
+    def test_require_session_rejects_missing_session_id(self):
+        """Test que @require_session rejeita requisições sem session_id"""
+        _logger.info("=" * 70)
+        _logger.info("🔐 TESTE: @require_session SEM session_id")
+        _logger.info("=" * 70)
+        
+        headers = {
+            'Content-Type': 'application/json'
+            # Sem X-Openerp-Session-Id
+        }
+        
+        # Tentar acessar endpoint protegido SEM session_id
+        url = f"{self.base_url}/api/v1/users/profile"
+        response = self.opener.patch(
+            url,
+            data=json.dumps({"phone": "11999999999"}),
+            headers=headers,
+            content_type='application/json'
+        )
+        
+        self.assertEqual(
+            response.status_code,
+            401,
+            f"@require_session deve rejeitar sem session_id (got {response.status_code})"
+        )
+        
+        try:
+            data = json.loads(response.text)
+            self.assertIn('error', data)
+            _logger.info(f"✅ Session ausente foi rejeitada com 401")
+        except json.JSONDecodeError:
+            _logger.info(f"✅ Session ausente foi rejeitada com 401 (resposta não JSON)")
+    
+    def test_require_session_rejects_invalid_session_id(self):
+        """Test que @require_session rejeita session_id inválido"""
+        _logger.info("=" * 70)
+        _logger.info("🔐 TESTE: @require_session com session_id INVÁLIDO")
+        _logger.info("=" * 70)
+        
+        headers = {
+            'Content-Type': 'application/json',
+            'X-Openerp-Session-Id': 'invalid-session-xyz-123'
+        }
+        
+        # Tentar acessar endpoint protegido com session_id inválido
+        url = f"{self.base_url}/api/v1/users/profile"
+        response = self.opener.patch(
+            url,
+            data=json.dumps({"phone": "11999999999"}),
+            headers=headers,
+            content_type='application/json'
+        )
+        
+        self.assertEqual(
+            response.status_code,
+            401,
+            f"@require_session deve rejeitar session_id inválido (got {response.status_code})"
+        )
+        
+        try:
+            data = json.loads(response.text)
+            self.assertIn('error', data)
+            _logger.info(f"✅ Session inválida foi rejeitada com 401")
+        except json.JSONDecodeError:
+            _logger.info(f"✅ Session inválida foi rejeitada com 401 (resposta não JSON)")
+    
+    def test_require_session_protects_profile_endpoint(self):
+        """Test que /api/v1/users/profile está protegido por @require_session"""
+        _logger.info("=" * 70)
+        _logger.info("🔐 TESTE: /api/v1/users/profile está protegido")
+        _logger.info("=" * 70)
+        
+        # Tentar SEM session_id - deve falhar
+        response_no_session = self.opener.patch(
+            f"{self.base_url}/api/v1/users/profile",
+            data=json.dumps({"phone": "11999999999"}),
+            headers={'Content-Type': 'application/json'},
+            content_type='application/json'
+        )
+        
+        # Tentar COM session_id válido - deve funcionar
+        response_with_session = self.opener.patch(
+            f"{self.base_url}/api/v1/users/profile",
+            data=json.dumps({"phone": "11999999999"}),
+            headers={
+                'Content-Type': 'application/json',
+                'X-Openerp-Session-Id': self.session_id
+            },
+            content_type='application/json'
+        )
+        
+        self.assertEqual(response_no_session.status_code, 401)
+        self.assertEqual(response_with_session.status_code, 200)
+        
+        _logger.info("✅ /api/v1/users/profile está corretamente protegido")
+    
+    def test_require_session_protects_change_password_endpoint(self):
+        """Test que /api/v1/users/change-password está protegido por @require_session"""
+        _logger.info("=" * 70)
+        _logger.info("🔐 TESTE: /api/v1/users/change-password está protegido")
+        _logger.info("=" * 70)
+        
+        payload = {
+            "current_password": "joao123",
+            "new_password": "newpass123!",
+            "confirm_password": "newpass123!"
+        }
+        
+        # Tentar SEM session_id - deve falhar
+        response_no_session = self.opener.post(
+            f"{self.base_url}/api/v1/users/change-password",
+            data=json.dumps(payload),
+            headers={'Content-Type': 'application/json'},
+            content_type='application/json'
+        )
+        
+        # Tentar COM session_id válido - deve processar (pode falhar por validação, mas não 401)
+        response_with_session = self.opener.post(
+            f"{self.base_url}/api/v1/users/change-password",
+            data=json.dumps(payload),
+            headers={
+                'Content-Type': 'application/json',
+                'X-Openerp-Session-Id': self.session_id
+            },
+            content_type='application/json'
+        )
+        
+        self.assertEqual(
+            response_no_session.status_code,
+            401,
+            "Sem session_id deve retornar 401"
+        )
+        
+        # Com session_id, pode ser 200 (sucesso) ou outro código (falha de validação), 
+        # mas NÃO pode ser 401
+        self.assertNotEqual(
+            response_with_session.status_code,
+            401,
+            "Com session_id válido não deve retornar 401"
+        )
+        
+        _logger.info("✅ /api/v1/users/change-password está corretamente protegido")

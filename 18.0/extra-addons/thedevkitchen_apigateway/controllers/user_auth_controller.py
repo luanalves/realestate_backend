@@ -1,7 +1,7 @@
 from odoo import http, fields
 from odoo.http import request
 from ..services.audit_logger import AuditLogger
-from ..middleware import require_jwt
+from ..middleware import require_jwt, require_session
 import logging
 
 _logger = logging.getLogger(__name__)
@@ -232,6 +232,7 @@ class UserAuthController(http.Controller):
 
     @http.route('/api/v1/users/profile', type='json', auth='none', methods=['PATCH'], csrf=False, cors='*')
     @require_jwt
+    @require_session
     def update_profile(self):
         try:
             user = request.env.user
@@ -279,6 +280,7 @@ class UserAuthController(http.Controller):
 
     @http.route('/api/v1/users/change-password', type='json', auth='none', methods=['POST'], csrf=False, cors='*')
     @require_jwt
+    @require_session
     def change_password(self):
         try:
             # Obter a sessão da API e encontrar o usuário

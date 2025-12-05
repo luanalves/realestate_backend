@@ -4,6 +4,7 @@ from odoo import http
 from odoo.http import request
 from .utils.auth import require_jwt
 from .utils.response import error_response, success_response
+from odoo.addons.thedevkitchen_apigateway.middleware import require_session
 
 _logger = logging.getLogger(__name__)
 
@@ -14,6 +15,7 @@ class MasterDataApiController(http.Controller):
     @http.route('/api/v1/property-types', 
                 type='http', auth='none', methods=['GET'], csrf=False, cors='*')
     @require_jwt
+    @require_session
     def list_property_types(self, **kwargs):
         """
         List all available property types.
@@ -43,6 +45,7 @@ class MasterDataApiController(http.Controller):
     @http.route('/api/v1/location-types', 
                 type='http', auth='none', methods=['GET'], csrf=False, cors='*')
     @require_jwt
+    @require_session
     def list_location_types(self, **kwargs):
         """
         List all available location types.
@@ -71,6 +74,7 @@ class MasterDataApiController(http.Controller):
     @http.route('/api/v1/states', 
                 type='http', auth='none', methods=['GET'], csrf=False, cors='*')
     @require_jwt
+    @require_session
     def list_states(self, **kwargs):
         """
         List all states/provinces.
@@ -112,6 +116,7 @@ class MasterDataApiController(http.Controller):
     @http.route('/api/v1/agents', 
                 type='http', auth='none', methods=['GET'], csrf=False, cors='*')
     @require_jwt
+    @require_session
     def list_agents(self, **kwargs):
         """
         List all real estate agents.
@@ -141,6 +146,7 @@ class MasterDataApiController(http.Controller):
     @http.route('/api/v1/owners', 
                 type='http', auth='none', methods=['GET'], csrf=False, cors='*')
     @require_jwt
+    @require_session
     def list_owners(self, **kwargs):
         """
         List all property owners.
@@ -173,6 +179,7 @@ class MasterDataApiController(http.Controller):
     @http.route('/api/v1/companies', 
                 type='http', auth='none', methods=['GET'], csrf=False, cors='*')
     @require_jwt
+    @require_session
     def list_companies(self, **kwargs):
         """
         List all real estate companies.
@@ -203,6 +210,7 @@ class MasterDataApiController(http.Controller):
     @http.route('/api/v1/tags', 
                 type='http', auth='none', methods=['GET'], csrf=False, cors='*')
     @require_jwt
+    @require_session
     def list_tags(self, **kwargs):
         """
         List all property tags.
@@ -231,6 +239,7 @@ class MasterDataApiController(http.Controller):
     @http.route('/api/v1/amenities', 
                 type='http', auth='none', methods=['GET'], csrf=False, cors='*')
     @require_jwt
+    @require_session
     def list_amenities(self, **kwargs):
         """
         List all property amenities.

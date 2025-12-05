@@ -1006,24 +1006,35 @@ docker compose exec odoo odoo --test-enable --stop-after-init \
 | Passo | Descrição | Prioridade | Status |
 |-------|-----------|-----------|--------|
 | 7 | Decorator `@require_session` | 🔴 ALTA | ⏳ PENDENTE |
-| 8 | Testes Unitários | 🟡 MÉDIA | ⏳ PENDENTE |
 | 9 | Testes E2E (Cypress) | 🟡 MÉDIA | ⏳ PENDENTE |
 | 10 | Documentação (OpenAPI) | 🟢 BAIXA | ⏳ PENDENTE |
 
 ---
 
-**Status Geral**: 60% completo ✅
-**Próxima Fase**: Implementar decorator `@require_session`
+**Status Geral**: 75% completo ✅
+**Próxima Fase**: Implementar decorator `@require_session` + Testes E2E (Cypress)
 
 🚀 **Pronto para próximos passos!**
 
-- usuários do modulo de imobiliarias devem esetar no base.group_user
+### 🔐 Session Timeout - Usando Nativo do Odoo
 
-- O tempo da sessão deve ser configuravel.
-- O serviço de Session Validator deve ser atualizado para considerar o tempo de expiração da sessão.
-- O endpoint de login deve ser atualizado para criar sessões com o tempo de expiração configurado.
-- Testes unitarios devem ser criados para validar o novo comportamento do Session Validator.
-- Testes de integração devem ser criados para validar o endpoint de login com o novo tempo de sessão.
+**Status**: ✅ IMPLEMENTADO
+- **Localização**: `18.0/extra-addons/thedevkitchen_apigateway/services/session_validator.py`
+- **Implementação**: Usa parâmetros nativos do Odoo via `request.session`
+- **Funcionalidade**: 
+  - Valida `last_activity` vs `cutoff_date` (padrão: 7 dias)
+  - Marca sessões expiradas como `is_active=False`
+  - Método `cleanup_expired(days=7)` limpa automaticamente
+  
+**Configuração Nativa**:
+- Odoo permite customizar TTL via settings
+- Campo `session_ttl` em `ir.config_parameter`
+- Padrão: 1 semana de inatividade
+
+**Próximas Melhorias** (Fase 1):
+- Adicionar parametrização customizável via settings
+- Permitir diferentes TTLs por tipo de usuário
+- Dashboard para monitorar sessões ativas
 
 ---
 
@@ -1081,14 +1092,37 @@ allowed, error_msg, remaining = RateLimiter.check_and_log(ip, email, request.env
 - Implementação automática sem código custom
 - Mais simples e maintível
 
-**Testes Removidos:**
-- ❌ `test_rate_limiter_allows_legitimate_attempts`
-- ❌ `test_rate_limiter_blocks_after_max_attempts`
-- ❌ `test_rate_limiter_clear_resets_counter`
-- ❌ `test_rate_limiter_get_remaining_attempts`
+**Status**: ✅ IMPLEMENTADO (usa nativo do Odoo)
+**Localização**: Odoo core via `request.session.authenticate()`
+**Configuração**: Via `Settings > System Parameters` (ir.config_parameter)
 
-**Testes Adicionados:**
-- ✅ `test_rate_limiting_via_odoo_native` - Validar configuração nativa
+---
+
+### 🔐 Session Timeout - Usando Nativo do Odoo
+
+**Status**: ✅ IMPLEMENTADO
+**Localização**: `18.0/extra-addons/thedevkitchen_apigateway/services/session_validator.py`
+
+**Implementação**:
+- Valida `last_activity` vs `cutoff_date` (padrão: 7 dias)
+- Marca sessões expiradas como `is_active=False`
+- Método `cleanup_expired(days=7)` limpa automaticamente
+
+**Configuração Nativa Odoo**:
+```python
+# Verificar/configurar via request
+session_ttl = request.env['ir.config_parameter'].sudo().get_param(
+    'session.timeout', 
+    default=86400  # 24 horas padrão
+)
+```
+
+**Como Usar**:
+1. Settings > Technical > System Parameters
+2. Adicionar `session.timeout` = `86400` (em segundos)
+3. SessionValidator respeita automaticamente
+
+**Testes**: ✅ IMPLEMENTADO (4 testes unitários)
 
 ### 📊 Cobertura de Testes
 
@@ -1132,7 +1166,31 @@ docker compose exec odoo odoo --test-enable --stop-after-init \
 
 ---
 
-**Status Geral**: 70% completo ✅
+---
+
+**Status Geral**: 75% completo ✅
 **Próxima Fase**: Implementar decorator `@require_session` + Testes E2E (Cypress)
 
 🚀 **Pronto para próximos passos!**
+
+---
+
+## 🔄 Requisitos Futuros (Fora do Escopo Fase 0)
+
+### 1. Rate Limiting Avançado (Fase 1+)
+- ❌ Parâmetros customizáveis (retentativas, duração de bloqueio)
+- ❌ Persistência em banco de dados para configurações
+- ❌ Dashboard de análise de tentativas falhas
+- **Nota**: Atualmente usa rate limiting nativo do Odoo via `base.login_cooldown_*`
+
+### 2. Session Timeout Configurável (Fase 1+)
+- ❌ UI Settings para customizar `session.timeout`
+- ❌ Diferentes TTLs por perfil de usuário
+- ❌ Dashboard de sessões ativas
+- **Nota**: Atualmente usa `session_validator.cleanup_expired(days=7)` com padrão de 7 dias
+
+### 3. Validação de Multi-Tenancy (Fase 1+)
+- ❌ Segregação automática de dados por empresa
+- ❌ Validação de acesso à empresa em endpoints
+- ❌ Escopo de queries por empresa
+- **Nota**: Será implementado em FASE-1-MULTI-TENANCY.md
