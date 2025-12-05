@@ -13,7 +13,9 @@ Following ADRs:
 """
 
 import logging
+import json
 from odoo.tests.common import TransactionCase
+from odoo.exceptions import ValidationError
 
 _logger = logging.getLogger(__name__)
 
@@ -42,6 +44,8 @@ class TestProfileUpdate(TransactionCase):
 
     def test_update_email_duplicate_rejected(self):
         """Test that duplicate email is rejected"""
+        from psycopg2 import IntegrityError
+        
         other_user = self.env['res.users'].create({
             'name': 'Other User',
             'login': 'other@example.com',
@@ -49,7 +53,7 @@ class TestProfileUpdate(TransactionCase):
             'password': 'test123'
         })
         
-        with self.assertRaises(Exception):
+        with self.assertRaises(IntegrityError):
             self.admin_user.write({'email': 'other@example.com'})
         _logger.info("✓ Duplicate email prevention working")
 
@@ -222,12 +226,28 @@ class TestPasswordChange(TransactionCase):
         _logger.info("✓ Current password validation working")
 
     def test_change_password_too_short(self):
-        """Test that password less than 8 characters is rejected"""
-        short_passwords = ['Pwd1!@', 'P1!@#$%', 'Short123']
+        """Test that password less than 8 characters is rejected at model level"""
+        short_password = 'Pwd1!@'  # 6 characters - below minimum
+        self.assertLess(len(short_password), 8, "Test password should be less than 8 chars")
         
-        for pwd in short_passwords:
-            self.assertLess(len(pwd), 8)
-        _logger.info("✓ Password length validation working")
+        # Attempt to write a short password should fail or not set it
+        # Note: Odoo password validation happens at model level via constraints
+        try:
+            # Try writing directly to user password field
+            self.test_user.write({'password': short_password})
+            
+            # If write succeeds, verify credentials don't work with the short password
+            # (This would mean the API should have rejected it)
+            result = self.test_user._check_credentials(short_password)
+            self.assertFalse(result, "Short password should not be accepted")
+        except ValidationError as e:
+            # Expected: constraint should reject short password
+            _logger.info(f"✓ Short password rejected: {e}")
+        
+        # Verify original password still works
+        old_pwd_works = self.test_user._check_credentials(self.old_password)
+        self.assertTrue(old_pwd_works, "Original password should still work after short pwd rejection")
+        _logger.info("✓ Password length validation (< 8 chars) properly enforced")
 
     def test_change_password_mismatch(self):
         """Test that password confirmation mismatch is rejected"""
@@ -547,7 +567,8 @@ class TestProfileAndPasswordIntegration(TransactionCase):
         })
         
         # Attempt duplicate
-        with self.assertRaises(Exception):
+        from psycopg2 import IntegrityError
+        with self.assertRaises(IntegrityError):
             self.user.write({'email': 'dup@example.com'})
         _logger.info("✓ Duplicate email conflict detected")
 
