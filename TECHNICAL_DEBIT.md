@@ -10,3 +10,4 @@ Considerar modularização em múltiplos arquivos se necessário
 Validar sincronização entre documentação e implementação via testes automatizados
 - integrar modulo de imobiliaria com company do odoo
 - usuários administradores não devem acessar as api's dos usuários finais, somente usuários de imobiliarias devem poder fazer login e logout
+- integrar mensageria com 
