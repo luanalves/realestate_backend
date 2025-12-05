@@ -334,13 +334,11 @@ class TestSecurityAdvanced(HttpCase):
         _logger.warning(f"Response: {response_data}")
         
         # Validar que tentativa foi rejeitada
-        if response.status_code in [401, 403]:
-            _logger.info("✅ Sessão cruzada rejeitada com HTTP 401/403")
-        else:
-            if 'error' in response_data.get('result', {}):
-                error_status = response_data['result']['error'].get('status')
-                if error_status in [401, 403]:
-                    _logger.info(f"✅ Sessão cruzada rejeitada com erro {error_status}")
+        is_rejected = (
+            response.status_code in [401, 403] or
+            response_data.get('result', {}).get('error', {}).get('status') in [401, 403]
+        )
+        self.assertTrue(is_rejected, "Session hijacking for profile update was NOT rejected!")
         
         # Verificar que email de User 2 NÃO foi alterado
         url = f"{self.base_url}/api/v1/users/login"
@@ -658,8 +656,8 @@ class TestSecurityAdvanced(HttpCase):
             "Authorization": f"Bearer {self.bearer_token}"
         }
         
-        # Tentar SQL Injection na password
-        _logger.warning("Testando SQL Injection: '; DROP TABLE users; --")
+        # Test Case 1: SQL Injection with DROP TABLE payload
+        _logger.warning("Testando SQL Injection (Caso 1): '; DROP TABLE users; --")
         url = f"{self.base_url}/api/v1/users/change-password"
         payload = {
             "current_password": self.user1_password,
@@ -675,13 +673,77 @@ class TestSecurityAdvanced(HttpCase):
                 content_type='application/json'
             )
             
-            response_data = json.loads(response.text)
-            _logger.info(f"Status: {response.status_code}, Response: {response_data}")
-            _logger.info("✅ SQL Injection não causou crash")
+            # Parse response safely
+            try:
+                response_data = json.loads(response.text)
+            except json.JSONDecodeError:
+                response_data = {"error": "Invalid JSON response"}
+            
+            # Assert that response is either rejected (400) or accepted (200) with proper handling
+            self.assertIn(
+                response.status_code,
+                [400, 401, 422],
+                f"SQL Injection payload should be rejected with 400/401/422, got {response.status_code}"
+            )
+            
+            # If rejected, verify error message exists
+            if response.status_code in [400, 401, 422]:
+                self.assertIn(
+                    'error' in response_data or 'message' in response_data or 'detail' in response_data,
+                    True,
+                    f"Error response should contain error/message/detail field. Got: {response_data}"
+                )
+                _logger.info(f"✅ SQL Injection (Caso 1) foi rejeitado: {response.status_code} - {response_data}")
+            else:
+                _logger.warning(f"⚠️ SQL Injection (Caso 1) retornou {response.status_code}")
+                
         except Exception as e:
-            _logger.error(f"❌ Erro durante SQL Injection test: {str(e)}")
+            self.fail(f"❌ Erro não capturado durante SQL Injection test (Caso 1): {str(e)}")
         
-        # Verificar que database ainda funciona
+        # Test Case 2: SQL Injection with OR "1"="1 payload
+        _logger.warning('Testando SQL Injection (Caso 2): " OR "1"="1')
+        payload = {
+            "current_password": self.user1_password,
+            "new_password": '" OR "1"="1',
+            "confirm_password": '" OR "1"="1'
+        }
+        
+        try:
+            response = self.opener.post(
+                url,
+                data=json.dumps(payload),
+                headers=headers,
+                content_type='application/json'
+            )
+            
+            # Parse response safely
+            try:
+                response_data = json.loads(response.text)
+            except json.JSONDecodeError:
+                response_data = {"error": "Invalid JSON response"}
+            
+            # Assert that response is either rejected (400) or accepted (200) with proper handling
+            self.assertIn(
+                response.status_code,
+                [400, 401, 422],
+                f"SQL Injection payload should be rejected with 400/401/422, got {response.status_code}"
+            )
+            
+            # If rejected, verify error message exists
+            if response.status_code in [400, 401, 422]:
+                self.assertIn(
+                    'error' in response_data or 'message' in response_data or 'detail' in response_data,
+                    True,
+                    f"Error response should contain error/message/detail field. Got: {response_data}"
+                )
+                _logger.info(f"✅ SQL Injection (Caso 2) foi rejeitado: {response.status_code} - {response_data}")
+            else:
+                _logger.warning(f"⚠️ SQL Injection (Caso 2) retornou {response.status_code}")
+                
+        except Exception as e:
+            self.fail(f"❌ Erro não capturado durante SQL Injection test (Caso 2): {str(e)}")
+        
+        # Verify that database is still functional
         _logger.info("Verificando se database ainda está funcional...")
         url = f"{self.base_url}/api/v1/users/login"
         payload = {
@@ -697,10 +759,26 @@ class TestSecurityAdvanced(HttpCase):
                 content_type='application/json'
             )
             
-            self.assertEqual(response.status_code, 200, "Database foi corrompida?")
-            _logger.info("✅ Database ainda está funcional - User consegue logar")
+            self.assertEqual(
+                response.status_code,
+                200,
+                f"Database foi corrompida? Login falhou com status {response.status_code}"
+            )
+            
+            # Verify login response contains valid token
+            try:
+                login_data = json.loads(response.text)
+                self.assertIn(
+                    'access_token' in login_data or 'token' in login_data,
+                    True,
+                    f"Login response should contain access_token or token field. Got: {login_data}"
+                )
+                _logger.info("✅ Database ainda está funcional - User consegue logar com password original")
+            except json.JSONDecodeError:
+                self.fail("Login response is not valid JSON")
+                
         except Exception as e:
-            _logger.error(f"❌ Database pode ter sido corrompida: {str(e)}")
+            self.fail(f"❌ Database pode ter sido corrompida: {str(e)}")
 
     # ═════════════════════════════════════════════════════════════════
     # 🔴 TESTE 6: Current Password Validation
