@@ -11,3 +11,4 @@ Validar sincronização entre documentação e implementação via testes automa
 - integrar modulo de imobiliaria com company do odoo
 - usuários administradores não devem acessar as api's dos usuários finais, somente usuários de imobiliarias devem poder fazer login e logout
 - integrar mensageria com 
+- validar se tem arquivos duplicados no repositório e remover /opt/homebrew/var/www/realestate/odoo-docker/18.0/extra-addons/quicksol_estate/tests/api
