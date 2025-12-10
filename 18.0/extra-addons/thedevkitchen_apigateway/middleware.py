@@ -169,3 +169,29 @@ def require_session(func):
         return func(*args, **kwargs)
 
     return wrapper
+
+
+def require_company(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        user = request.env.user
+
+        if user.has_group('base.group_system'):
+            request.company_domain = []
+            return func(*args, **kwargs)
+
+        if not user.estate_company_ids:
+            _logger.warning(f'User {user.login} has no companies')
+            return {
+                'error': {
+                    'status': 403,
+                    'message': 'User has no company access'
+                }
+            }
+
+        request.company_domain = [('company_ids', 'in', user.estate_company_ids.ids)]
+        request.user_company_ids = user.estate_company_ids.ids
+
+        return func(*args, **kwargs)
+
+    return wrapper
