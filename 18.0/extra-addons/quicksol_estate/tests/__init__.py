@@ -39,4 +39,7 @@ from . import test_utils_unit
 from . import test_odoo_bridge
 
 # HTTP/API integration tests (tagged post_install)
-from . import api
+from .api import test_property_api
+from .api import test_property_api_auth
+from .api import test_master_data_api
+from .api import test_company_isolation_api
