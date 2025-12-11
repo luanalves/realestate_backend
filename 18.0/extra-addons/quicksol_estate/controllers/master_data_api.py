@@ -4,6 +4,7 @@ from odoo import http
 from odoo.http import request
 from .utils.auth import require_jwt
 from .utils.response import error_response, success_response
+from odoo.addons.thedevkitchen_apigateway.middleware import require_session, require_company
 
 _logger = logging.getLogger(__name__)
 
@@ -14,6 +15,8 @@ class MasterDataApiController(http.Controller):
     @http.route('/api/v1/property-types', 
                 type='http', auth='none', methods=['GET'], csrf=False, cors='*')
     @require_jwt
+    @require_session
+    @require_company
     def list_property_types(self, **kwargs):
         """
         List all available property types.
@@ -23,7 +26,8 @@ class MasterDataApiController(http.Controller):
         """
         try:
             PropertyType = request.env['real.estate.property.type'].sudo()
-            property_types = PropertyType.search([])
+            domain = request.company_domain
+            property_types = PropertyType.search(domain)
             
             types_list = []
             for prop_type in property_types:
@@ -43,6 +47,8 @@ class MasterDataApiController(http.Controller):
     @http.route('/api/v1/location-types', 
                 type='http', auth='none', methods=['GET'], csrf=False, cors='*')
     @require_jwt
+    @require_session
+    @require_company
     def list_location_types(self, **kwargs):
         """
         List all available location types.
@@ -52,7 +58,8 @@ class MasterDataApiController(http.Controller):
         """
         try:
             LocationType = request.env['real.estate.location.type'].sudo()
-            location_types = LocationType.search([], order='sequence, name')
+            domain = request.company_domain
+            location_types = LocationType.search(domain, order='sequence, name')
             
             types_list = []
             for loc_type in location_types:
@@ -71,6 +78,8 @@ class MasterDataApiController(http.Controller):
     @http.route('/api/v1/states', 
                 type='http', auth='none', methods=['GET'], csrf=False, cors='*')
     @require_jwt
+    @require_session
+    @require_company
     def list_states(self, **kwargs):
         """
         List all states/provinces.
@@ -83,7 +92,7 @@ class MasterDataApiController(http.Controller):
         try:
             country_id = kwargs.get('country_id')
             
-            domain = []
+            domain = request.company_domain[:]
             if country_id:
                 domain.append(('country_id', '=', int(country_id)))
             
@@ -112,6 +121,8 @@ class MasterDataApiController(http.Controller):
     @http.route('/api/v1/agents', 
                 type='http', auth='none', methods=['GET'], csrf=False, cors='*')
     @require_jwt
+    @require_session
+    @require_company
     def list_agents(self, **kwargs):
         """
         List all real estate agents.
@@ -121,7 +132,8 @@ class MasterDataApiController(http.Controller):
         """
         try:
             Agent = request.env['real.estate.agent'].sudo()
-            agents = Agent.search([], order='name')
+            domain = request.company_domain
+            agents = Agent.search(domain, order='name')
             
             agents_list = []
             for agent in agents:
@@ -141,6 +153,8 @@ class MasterDataApiController(http.Controller):
     @http.route('/api/v1/owners', 
                 type='http', auth='none', methods=['GET'], csrf=False, cors='*')
     @require_jwt
+    @require_session
+    @require_company
     def list_owners(self, **kwargs):
         """
         List all property owners.
@@ -150,7 +164,8 @@ class MasterDataApiController(http.Controller):
         """
         try:
             Owner = request.env['real.estate.property.owner'].sudo()
-            owners = Owner.search([('active', '=', True)], order='name')
+            domain = [('active', '=', True)] + request.company_domain
+            owners = Owner.search(domain, order='name')
             
             owners_list = []
             for owner in owners:
@@ -173,6 +188,8 @@ class MasterDataApiController(http.Controller):
     @http.route('/api/v1/companies', 
                 type='http', auth='none', methods=['GET'], csrf=False, cors='*')
     @require_jwt
+    @require_session
+    @require_company
     def list_companies(self, **kwargs):
         """
         List all real estate companies.
@@ -182,7 +199,8 @@ class MasterDataApiController(http.Controller):
         """
         try:
             Company = request.env['thedevkitchen.estate.company'].sudo()
-            companies = Company.search([('active', '=', True)], order='name')
+            domain = [('id', 'in', request.user_company_ids)]
+            companies = Company.search(domain, order='name')
             
             companies_list = []
             for company in companies:
@@ -203,6 +221,8 @@ class MasterDataApiController(http.Controller):
     @http.route('/api/v1/tags', 
                 type='http', auth='none', methods=['GET'], csrf=False, cors='*')
     @require_jwt
+    @require_session
+    @require_company
     def list_tags(self, **kwargs):
         """
         List all property tags.
@@ -212,7 +232,8 @@ class MasterDataApiController(http.Controller):
         """
         try:
             Tag = request.env['real.estate.property.tag'].sudo()
-            tags = Tag.search([('active', '=', True)], order='name')
+            domain = [('active', '=', True)] + request.company_domain
+            tags = Tag.search(domain, order='name')
             
             tags_list = []
             for tag in tags:
@@ -231,6 +252,8 @@ class MasterDataApiController(http.Controller):
     @http.route('/api/v1/amenities', 
                 type='http', auth='none', methods=['GET'], csrf=False, cors='*')
     @require_jwt
+    @require_session
+    @require_company
     def list_amenities(self, **kwargs):
         """
         List all property amenities.
@@ -240,7 +263,8 @@ class MasterDataApiController(http.Controller):
         """
         try:
             Amenity = request.env['real.estate.amenity'].sudo()
-            amenities = Amenity.search([], order='name')
+            domain = request.company_domain
+            amenities = Amenity.search(domain, order='name')
             
             amenities_list = []
             for amenity in amenities:

@@ -119,7 +119,8 @@
             ])]"/>
         </record>
 
-        <!-- Demo properties for testing access control -->
+        <!-- Demo properties commented out - missing required fields -->
+        <!--
         <record id="demo_property_quicksol" model="real.estate.property">
             <field name="name">Casa Demo Quicksol</field>
             <field name="address">Rua das Flores, 123 - São Paulo, SP</field>
@@ -127,6 +128,8 @@
             <field name="num_rooms">3</field>
             <field name="num_bathrooms">2</field>
             <field name="area">150</field>
+            <field name="state_id" ref="quicksol_estate.state_sp"/>
+            <field name="location_type_id" ref="quicksol_estate.location_type_urban"/>
             <field name="property_type_id" ref="quicksol_estate.property_type_house"/>
             <field name="agent_id" ref="agent_pedro_demo"/>
             <field name="company_ids" eval="[(6, 0, [
@@ -143,6 +146,8 @@
             <field name="num_rooms">4</field>
             <field name="num_bathrooms">3</field>
             <field name="area">200</field>
+            <field name="state_id" ref="quicksol_estate.state_sp"/>
+            <field name="location_type_id" ref="quicksol_estate.location_type_urban"/>
             <field name="property_type_id" ref="quicksol_estate.property_type_apartment"/>
             <field name="agent_id" ref="agent_carmen_demo"/>
             <field name="company_ids" eval="[(6, 0, [
@@ -151,6 +156,7 @@
             <field name="status">available</field>
             <field name="condition">new</field>
         </record>
+        -->
 
     </data>
 </odoo>

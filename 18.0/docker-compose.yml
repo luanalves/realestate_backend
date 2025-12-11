@@ -2,20 +2,37 @@ services:
   db:
     image: postgres:16-alpine
     container_name: db
+    env_file: .env
     ports:
       - "5432:5432"  # Exposta para acesso externo (DBeaver, pgAdmin, etc.)
     environment:
-      POSTGRES_DB: realestate
-      POSTGRES_USER: odoo
-      POSTGRES_PASSWORD: odoo
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - odoo18-db:/var/lib/postgresql/data
     networks:
       - odoo-net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U odoo"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 10s
       timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"  # Exposta para acesso externo (opcional)
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - odoo18-redis:/data
+    networks:
+      - odoo-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
       retries: 5
 
   odoo:
@@ -24,8 +41,11 @@ services:
       dockerfile: Dockerfile
     image: custom-odoo:18.0
     container_name: odoo18
+    env_file: .env
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     ports:
       - "8069:8069"   # HTTP
@@ -33,13 +53,13 @@ services:
       - "8072:8072"   # longpolling
     working_dir: /usr/bin
     environment:
-      HOST: db
-      PORT: 5432
-      USER: odoo
-      PASSWORD: odoo
-      DB_NAME: realestate
-      JWT_ISSUER: thedevkitchen-api-gateway
-      JWT_SECRET: thedevkitchen-jwt-secret
+      HOST: ${DB_HOST}
+      PORT: ${DB_PORT}
+      USER: ${POSTGRES_USER}
+      PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      JWT_ISSUER: ${JWT_ISSUER}
+      JWT_SECRET: ${JWT_SECRET}
     volumes:
       - odoo18-data:/var/lib/odoo
       - ./filestore:/var/lib/odoo/filestore
@@ -52,6 +72,7 @@ services:
 volumes:
   odoo18-db:
   odoo18-data:
+  odoo18-redis:
 
 networks:
   odoo-net:

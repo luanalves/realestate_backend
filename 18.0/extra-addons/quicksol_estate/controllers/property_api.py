@@ -8,6 +8,8 @@ from odoo.exceptions import AccessError, UserError, ValidationError
 from .utils.auth import require_jwt
 from .utils.response import error_response, success_response
 from .utils.serializers import serialize_property, validate_property_access
+from odoo.addons.thedevkitchen_apigateway.middleware import require_session, require_company
+from ..services.company_validator import CompanyValidator
 
 _logger = logging.getLogger(__name__)
 
@@ -18,6 +20,8 @@ class PropertyApiController(http.Controller):
     @http.route('/api/v1/properties', 
                 type='http', auth='none', methods=['POST'], csrf=False, cors='*')
     @require_jwt
+    @require_session
+    @require_company
     def create_property(self, **kwargs):
         """
         Create a new property.
@@ -39,6 +43,24 @@ class PropertyApiController(http.Controller):
                 data = json.loads(request.httprequest.data.decode('utf-8'))
             except (ValueError, UnicodeDecodeError):
                 return error_response(400, 'Invalid JSON in request body')
+            
+            # Garantir que company_ids está presente (usa default se não tiver)
+            data = CompanyValidator.ensure_company_ids(data)
+            
+            # Validar que as empresas estão autorizadas
+            company_ids = None
+            if 'company_ids' in data:
+                # Extrai IDs da tupla many2many (6, 0, [id1, id2])
+                if isinstance(data['company_ids'], list) and data['company_ids']:
+                    if isinstance(data['company_ids'][0], (tuple, list)):
+                        company_ids = data['company_ids'][0][2]
+                    else:
+                        company_ids = data['company_ids']
+            
+            if company_ids:
+                valid, error = CompanyValidator.validate_company_ids(company_ids)
+                if not valid:
+                    return error_response(403, error)
             
             # Validate required fields
             required_fields = ['name', 'property_type_id', 'area', 'zip_code', 'state_id', 'city', 'street', 'street_number', 'location_type_id']
@@ -262,6 +284,8 @@ class PropertyApiController(http.Controller):
     @http.route('/api/v1/properties/<int:property_id>', 
                 type='http', auth='none', methods=['GET'], csrf=False, cors='*')
     @require_jwt
+    @require_session
+    @require_company
     def get_property(self, property_id, **kwargs):
         """
         Get property details by ID.
@@ -272,18 +296,14 @@ class PropertyApiController(http.Controller):
         try:
             user = request.env.user
             
-            # Search for property
+            # Search for property with company filter
             Property = request.env['real.estate.property'].sudo()
-            property_record = Property.browse(property_id)
+            domain = [('id', '=', property_id)] + request.company_domain
+            property_record = Property.search(domain, limit=1)
             
-            # Check if property exists
-            if not property_record.exists():
+            # Check if property exists and user has access
+            if not property_record:
                 return error_response(404, 'Property not found')
-            
-            # Validate access
-            has_access, error_msg = validate_property_access(property_record, user, 'read')
-            if not has_access:
-                return error_response(403, error_msg)
             
             # Serialize and return
             property_data = serialize_property(property_record)
@@ -299,6 +319,8 @@ class PropertyApiController(http.Controller):
     @http.route('/api/v1/properties/<int:property_id>', 
                 type='http', auth='none', methods=['PUT'], csrf=False, cors='*')
     @require_jwt
+    @require_session
+    @require_company
     def update_property(self, property_id, **kwargs):
         """
         Update property by ID.
@@ -316,18 +338,18 @@ class PropertyApiController(http.Controller):
             except (ValueError, UnicodeDecodeError):
                 return error_response(400, 'Invalid JSON in request body')
             
-            # Search for property
+            # IMPORTANTE: Bloquear alteração de company_ids via API
+            if 'company_ids' in data:
+                return error_response(403, 'Cannot change company_ids via API')
+            
+            # Search for property with company filter
             Property = request.env['real.estate.property'].sudo()
-            property_record = Property.browse(property_id)
+            domain = [('id', '=', property_id)] + request.company_domain
+            property_record = Property.search(domain, limit=1)
             
-            # Check if property exists
-            if not property_record.exists():
+            # Check if property exists and user has access
+            if not property_record:
                 return error_response(404, 'Property not found')
-            
-            # Validate access
-            has_access, error_msg = validate_property_access(property_record, user, 'write')
-            if not has_access:
-                return error_response(403, error_msg)
             
             # Build update values (only allowed fields)
             allowed_fields = {
@@ -390,6 +412,8 @@ class PropertyApiController(http.Controller):
     @http.route('/api/v1/properties/<int:property_id>', 
                 type='http', auth='none', methods=['DELETE'], csrf=False, cors='*')
     @require_jwt
+    @require_session
+    @require_company
     def delete_property(self, property_id, **kwargs):
         """
         Delete property by ID.
@@ -405,18 +429,14 @@ class PropertyApiController(http.Controller):
                not user.has_group('base.group_system'):
                 return error_response(403, 'Only managers can delete properties')
             
-            # Search for property
+            # Search for property with company filter
             Property = request.env['real.estate.property'].sudo()
-            property_record = Property.browse(property_id)
+            domain = [('id', '=', property_id)] + request.company_domain
+            property_record = Property.search(domain, limit=1)
             
-            # Check if property exists
-            if not property_record.exists():
+            # Check if property exists and user has access
+            if not property_record:
                 return error_response(404, 'Property not found')
-            
-            # Validate access
-            has_access, error_msg = validate_property_access(property_record, user, 'delete')
-            if not has_access:
-                return error_response(403, error_msg)
             
             # Delete property
             property_title = property_record.name

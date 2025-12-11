@@ -47,6 +47,12 @@ docker run -d --name odoo18 --network odoo-net \
 - **Username:** `odoo`
 - **Password:** `odoo`
 
+#### Redis Cache Access (Optional)
+- **Host:** `localhost`
+- **Port:** `6379`
+- **DB Index:** `1` (configured in odoo.conf)
+- **No password required** (local development)
+
 ---
 
 ## Extras
@@ -97,6 +103,126 @@ docker rm odoo18 db
 docker rm -f odoo18 db
 docker volume rm odoo18-data odoo18-db
 ```
+
+---
+
+## Redis Cache Integration
+
+This setup includes **Redis 7** for session storage and caching, using **Odoo's native Redis support**.
+
+### What Redis is Used For
+
+- **HTTP Session Storage**: Stores user sessions (faster than database)
+- **ORM Cache**: Caches database queries and model data
+- **Asset Cache**: Caches static assets and compiled resources
+- **Message Bus**: Improves longpolling performance
+
+### Redis Configuration
+
+Redis is configured in `odoo.conf` with:
+```ini
+enable_redis = True
+redis_host = redis
+redis_port = 6379
+redis_dbindex = 1
+```
+
+### Monitoring Redis
+
+Check Redis status:
+```bash
+docker compose exec redis redis-cli ping
+# Expected output: PONG
+```
+
+Monitor Redis operations:
+```bash
+docker compose exec redis redis-cli MONITOR
+```
+
+View Redis statistics:
+```bash
+docker compose exec redis redis-cli INFO stats
+```
+
+Check memory usage:
+```bash
+docker compose exec redis redis-cli INFO memory
+```
+
+### Redis Data Persistence
+
+- Data is persisted in the `odoo18-redis` Docker volume
+- Uses AOF (Append Only File) for durability
+- Memory limit: 256MB with LRU eviction policy
+
+---
+
+## Code Quality and Linting
+
+This project uses **Flake8** and other Python linting tools to ensure code quality and adherence to PEP 8 standards.
+
+### Available Linting Tools
+
+The following tools are installed in the Docker container:
+- **Flake8** (v7.1.1) - Style guide enforcement
+- **Black** (v24.10.0) - Code formatter
+- **isort** (v5.13.2) - Import sorting
+- **Pylint** (v3.3.1) - Advanced static analysis
+- **mypy** (v1.13.0) - Type checking
+
+### Running Flake8
+
+#### From the Host Machine
+
+Check all custom addons:
+```bash
+docker compose exec odoo flake8 /mnt/extra-addons
+```
+
+Check a specific addon:
+```bash
+docker compose exec odoo flake8 /mnt/extra-addons/quicksol_estate
+```
+
+Using the lint script:
+```bash
+# Check all addons
+docker compose exec odoo bash /mnt/extra-addons/../lint.sh
+
+# Check specific addon
+docker compose exec odoo bash /mnt/extra-addons/../lint.sh quicksol_estate
+```
+
+#### Inside the Container
+
+```bash
+# Enter the container
+docker compose exec odoo bash
+
+# Run flake8
+flake8 /mnt/extra-addons
+
+# Or use the lint script
+./lint.sh
+./lint.sh quicksol_estate
+```
+
+### Configuration
+
+Flake8 configuration is stored in `.flake8` with the following key settings:
+- Maximum line length: 88 characters (Black compatible)
+- Maximum complexity: 10
+- Excludes: migrations, static files, i18n, tests, etc.
+- Compatible with Black formatter
+
+### Pre-commit Checklist
+
+Before committing code, ensure:
+1. Run `black .` to format code
+2. Run `isort .` to sort imports
+3. Run `flake8 .` to check style compliance
+4. Fix any reported issues
 
 ---
 
