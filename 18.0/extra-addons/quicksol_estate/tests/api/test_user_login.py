@@ -412,7 +412,11 @@ def test_07_user_a_tries_read_user_b_session(base_url, user_a_email, user_a_pass
                 'params': {},
                 'id': 4
             },
-            headers={'Content-Type': 'application/json'}
+            headers={
+                'Content-Type': 'application/json',
+                'User-Agent': 'ATTACKER-BROWSER/1.0 (Different from User B)',
+                'Accept-Language': 'fr-FR,fr;q=0.9',
+            }
         )
         
         if hijack_response.status_code != 200:
