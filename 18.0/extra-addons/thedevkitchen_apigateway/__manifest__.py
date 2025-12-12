@@ -33,6 +33,10 @@ Technical Details:
     'license': 'LGPL-3',
     'depends': [
         'base',
+        'web',
+        'mail',
+        'bus',
+        'partner_autocomplete',
     ],
     'external_dependencies': {
         'python': [
@@ -47,6 +51,7 @@ Technical Details:
         'views/oauth_token_views.xml',
         'views/api_endpoint_views.xml',
         'views/api_access_log_views.xml',
+        'views/security_settings_views.xml',
         'views/menu_views.xml',
     ],
     'demo': [],
