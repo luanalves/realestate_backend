@@ -195,3 +195,37 @@ def require_company(func):
         return func(*args, **kwargs)
 
     return wrapper
+
+def require_csrf(func):
+    """
+    Middleware para validar token CSRF em operações sensíveis
+    Use em endpoints POST, PUT, DELETE
+    """
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        # Apenas para métodos que modificam dados
+        if request.httprequest.method not in ('POST', 'PUT', 'DELETE', 'PATCH'):
+            return func(*args, **kwargs)
+        
+        from .services.csrf_service import CSRFService
+        
+        # Obtém token do header ou body
+        csrf_token = (
+            request.httprequest.headers.get('X-CSRF-Token') or
+            request.jsonrequest.get('csrf_token') if hasattr(request, 'jsonrequest') and request.jsonrequest else None
+        )
+        
+        # Valida token
+        is_valid, error_msg = CSRFService.validate_token(csrf_token)
+        
+        if not is_valid:
+            _logger.warning(f'CSRF validation failed: {error_msg}')
+            return _error_response(
+                403,
+                'csrf_invalid',
+                error_msg or 'CSRF token validation failed'
+            )
+        
+        return func(*args, **kwargs)
+    
+    return wrapper

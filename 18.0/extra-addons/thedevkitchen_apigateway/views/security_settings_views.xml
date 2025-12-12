@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <record id="view_security_settings_form" model="ir.ui.view">
+        <field name="name">thedevkitchen.security.settings.form</field>
+        <field name="model">thedevkitchen.security.settings</field>
+        <field name="arch" type="xml">
+            <form string="Security Settings">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+                    
+                    <group>
+                        <group string="Session Fingerprint Validation">
+                            <field name="use_ip_in_fingerprint"/>
+                            <field name="use_user_agent"/>
+                            <field name="use_accept_language"/>
+                        </group>
+                    </group>
+                    
+                    <div class="oe_chatter">
+                        <p class="text-muted">
+                            <strong>💡 Tip:</strong> If users have dynamic IPs (VPN, mobile networks), 
+                            disable "Validate IP Address" to avoid automatic logouts.
+                        </p>
+                    </div>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    
+    <record id="action_security_settings" model="ir.actions.act_window">
+        <field name="name">Security Settings</field>
+        <field name="res_model">thedevkitchen.security.settings</field>
+        <field name="view_mode">form</field>
+        <field name="target">current</field>
+    </record>
+    
+    <menuitem 
+        id="menu_security_settings"
+        name="Security Settings"
+        parent="menu_api_gateway_root"
+        groups="base.group_no_one"
+        action="action_security_settings"
+        sequence="50"/>
+    
+</odoo>
