@@ -68,16 +68,6 @@ class UserAuthController(http.Controller):
                             'message': 'Invalid credentials'
                         }
                     }
-
-                if not uid:
-                    _logger.warning(f"Auth failed for {email}: authentication returned False")
-                    AuditLogger.log_failed_login(ip_address, email)
-                    return {
-                        'error': {
-                            'status': 401,
-                            'message': 'Invalid credentials'
-                        }
-                    }
                     
                 # Captura session_id APÓS authenticate (que pode gerar novo sid)
                 session_id = request.session.sid
