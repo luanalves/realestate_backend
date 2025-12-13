@@ -2,8 +2,46 @@
 
 **Branch:** `feature/multi-tenancy-company-isolation`  
 **Data de Criação:** 30/11/2025  
-**Última Atualização:** 01/12/2025  
-**Status:** Planejamento
+**Última Atualização:** 12/12/2025  
+**Status:** Em Desenvolvimento - Fase 0 (Segurança) Completa
+
+---
+
+## 📊 Progresso Atual (12/12/2025)
+
+### ✅ Concluído Recentemente: Proteção de Sessão (JWT)
+
+**Implementação:** Sistema de token JWT assinado para prevenir session hijacking.
+
+**Arquivos criados/modificados:**
+- `thedevkitchen_apigateway/models/ir_http.py` - Token JWT em `session_info()`
+- `thedevkitchen_apigateway/models/security_settings.py` - Model de configurações
+- `thedevkitchen_apigateway/views/security_settings_views.xml` - UI admin
+- `thedevkitchen_apigateway/tests/test_session_fingerprint.py` - Testes unitários
+- `quicksol_estate/tests/api/test_user_login.py` - Testes de integração atualizados
+
+**Validação:**
+- ✅ Token JWT: uid + fingerprint (IP/UA/Lang) + exp (24h) + assinatura com Odoo secret
+- ✅ Validação a cada request: assinatura, expiração, uid match, fingerprint match
+- ✅ Logout automático se validação falhar (logs detalhados)
+- ✅ 7/7 testes de integração passando (session hijacking bloqueado)
+- ✅ Configurável via Settings > Security
+
+**Commits:**
+- `4fbeaca` - Implementação JWT session token
+- `7859ad4` - Testes unitários + integração
+- `1f3b2fe` - Manifest e dependências
+- `e664609` - Documentação atualizada
+
+### 🎯 Próximas Etapas (Fase 1 - Company Isolation)
+
+1. **Implementar `@require_company` decorator** - Filtro automático por `estate_company_ids`
+2. **Aplicar filtros em endpoints** - Properties, Agents, Tenants, etc.
+3. **Validação de criação/update** - Garantir registros vinculados às empresas corretas
+4. **Testes de isolamento** - User A não vê dados de Company B
+5. **Ativar Record Rules** - Odoo Web com filtros automáticos
+
+---
 
 ## Melhorias Aplicadas (01/12/2025)
 

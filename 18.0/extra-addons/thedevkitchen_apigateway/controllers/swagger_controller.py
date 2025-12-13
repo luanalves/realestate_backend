@@ -502,6 +502,74 @@ class SwaggerController(http.Controller):
             }
         }
         
+        # Add /me endpoint
+        spec["paths"]["/api/v1/me"] = {
+            "get": {
+                "tags": ["User Authentication"],
+                "summary": "Get current user profile",
+                "description": "Returns authenticated user information including companies. Requires valid session and Bearer token.",
+                "operationId": "getCurrentUser",
+                "responses": {
+                    "200": {
+                        "description": "User profile retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "user": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {"type": "integer", "example": 8},
+                                                "name": {"type": "string", "example": "João Silva"},
+                                                "email": {"type": "string", "example": "joao@imobiliaria.com"},
+                                                "login": {"type": "string", "example": "joao@imobiliaria.com"},
+                                                "phone": {"type": "string", "example": "11999998888"},
+                                                "mobile": {"type": "string", "example": "11988887777"},
+                                                "companies": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "id": {"type": "integer", "example": 1},
+                                                            "name": {"type": "string", "example": "Imobiliária A"},
+                                                            "cnpj": {"type": "string", "example": "12.345.678/0001-90"},
+                                                            "email": {"type": "string"},
+                                                            "phone": {"type": "string"},
+                                                            "website": {"type": "string"}
+                                                        }
+                                                    }
+                                                },
+                                                "default_company_id": {"type": "integer", "example": 1},
+                                                "is_admin": {"type": "boolean", "example": False},
+                                                "active": {"type": "boolean", "example": True}
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - Invalid or missing session/token",
+                        "content": {
+                            "application/json": {
+                                "schema": {"$ref": "#/components/schemas/Error"}
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {"$ref": "#/components/schemas/Error"}
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
         # Add registered endpoints
         for endpoint in endpoints:
             path = endpoint.path

@@ -16,7 +16,7 @@ class SessionValidator:
             from odoo.http import request
             env = request.env
 
-        APISession = env['thedevkitchen.api.session']
+        APISession = env['thedevkitchen.api.session'].sudo()
         api_session = APISession.search([
             ('session_id', '=', session_id),
             ('is_active', '=', True)
@@ -46,7 +46,7 @@ class SessionValidator:
             env = request.env
 
         cutoff = datetime.now() - timedelta(days=days)
-        APISession = env['thedevkitchen.api.session']
+        APISession = env['thedevkitchen.api.session'].sudo()
 
         expired = APISession.search([
             ('last_activity', '<', cutoff),

@@ -11,13 +11,10 @@ class UserAuthController(http.Controller):
 
     @http.route('/api/v1/users/login', type='json', auth='none', methods=['POST'], csrf=False, cors='*')
     @require_jwt
-    def login(self):
+    def login(self, email=None, password=None):
         ip_address = request.httprequest.remote_addr
         user_agent = request.httprequest.headers.get('User-Agent', 'Unknown')
         application = request.jwt_application
-        
-        email = request.get_json_data().get('email')
-        password = request.get_json_data().get('password')
 
         try:
             _logger.info(f"Login attempt: {email} from {ip_address} by app: {application.name}")
@@ -81,6 +78,11 @@ class UserAuthController(http.Controller):
                             'message': 'Invalid credentials'
                         }
                     }
+                    
+                # Captura session_id APÓS authenticate (que pode gerar novo sid)
+                session_id = request.session.sid
+                _logger.info(f"Session ID after auth: {session_id}")
+                
             except Exception as auth_error:
                 _logger.error(f"Auth exception for {email}: {type(auth_error).__name__}: {auth_error}")
                 AuditLogger.log_failed_login(ip_address, email, str(auth_error))
@@ -105,7 +107,6 @@ class UserAuthController(http.Controller):
                     }
                 }
 
-            session_id = request.session.sid
             _logger.info(f"Creating API session for user {email}, session_id: {session_id}")
 
             # Usar .sudo() para operações de API session porque:
@@ -129,12 +130,32 @@ class UserAuthController(http.Controller):
                 raise
 
             try:
-                request.env['thedevkitchen.api.session'].sudo().create({
+                api_session_record = request.env['thedevkitchen.api.session'].sudo().create({
                     'session_id': session_id,
                     'user_id': user.id,
                     'ip_address': ip_address,
                     'user_agent': user_agent,
                 })
+                
+                # Fix session_id mismatch: Odoo regenerates session_id after JSON-RPC response
+                # We need to update the record with the final session_id
+                initial_sid = session_id
+                
+                @request.env.cr.postcommit.add
+                def update_final_session_id():
+                    try:
+                        final_sid = request.session.sid
+                        if final_sid and final_sid != initial_sid:
+                            _logger.info(f"Updating session_id: {initial_sid[:16]}... -> {final_sid[:16]}...")
+                            # Use new cursor to avoid transaction issues
+                            with request.env.registry.cursor() as new_cr:
+                                env = request.env(cr=new_cr)
+                                session = env['thedevkitchen.api.session'].sudo().browse(api_session_record.id)
+                                if session.exists():
+                                    session.write({'session_id': final_sid})
+                    except Exception as e:
+                        _logger.error(f"Error updating session_id: {e}")
+                
             except Exception as create_error:
                 _logger.error(f"Error creating API session: {type(create_error).__name__}: {create_error}", exc_info=True)
                 raise
@@ -142,6 +163,18 @@ class UserAuthController(http.Controller):
             AuditLogger.log_successful_login(ip_address, email, user.id)
 
             _logger.info(f"Login successful for {email}")
+
+            # Generate JWT token for session security (prevents session hijacking)
+            try:
+                ir_http = request.env['ir.http']
+                security_token = ir_http._generate_session_token(user.id)
+                if security_token:
+                    request.session['_security_token'] = security_token
+                    _logger.info(f"[SESSION TOKEN] Created for user {email} (UID {user.id})")
+                else:
+                    _logger.warning(f"Failed to generate session token for {email}")
+            except Exception as token_error:
+                _logger.error(f"Error generating session token: {token_error}", exc_info=True)
 
             try:
                 user_response = self._build_user_response(user)

@@ -106,12 +106,15 @@ class IrHttpSessionFingerprint(models.AbstractModel):
         uid = result.get('uid')
         
         if uid:
+            # Skip fingerprint validation for API endpoints (already protected by OAuth + Session)
+            is_api_endpoint = request.httprequest.path.startswith('/api/v1/')
+            
             if not request.session.get('_security_token'):
                 token = self._generate_session_token(uid)
                 if token:
                     request.session['_security_token'] = token
                     _logger.info(f"[SESSION TOKEN] Stored new token for UID {uid}")
-            else:
+            elif not is_api_endpoint:
                 is_valid, reason = self._validate_session_token(uid)
                 
                 if not is_valid:

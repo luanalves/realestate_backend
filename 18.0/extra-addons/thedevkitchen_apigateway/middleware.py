@@ -146,6 +146,7 @@ def validate_json_schema(schema):
 
 def require_session(func):
     from .services.session_validator import SessionValidator
+    from odoo.tools import config
 
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
@@ -162,6 +163,101 @@ def require_session(func):
                 'error': {
                     'status': 401,
                     'message': error_msg or 'Unauthorized'
+                }
+            }
+
+        # SECURITY: Validate JWT token (MANDATORY for APIs)
+        # This prevents session hijacking by validating UID + fingerprint (IP/UA/Lang)
+        stored_token = request.session.get('_security_token')
+        
+        if not stored_token:
+            _logger.warning(
+                f'[SESSION SECURITY] No JWT token found for session {session_id[:16]}... '
+                f'user_id={user.id}'
+            )
+            return {
+                'error': {
+                    'status': 401,
+                    'message': 'Session token required'
+                }
+            }
+        
+        try:
+            secret = config.get('database_secret') or config.get('admin_passwd', 'default_secret')
+            payload = jwt.decode(stored_token, secret, algorithms=['HS256'])
+            token_uid = payload.get('uid')
+            
+            # Validate UID match
+            if token_uid != user.id:
+                _logger.warning(
+                    f'[SESSION HIJACKING DETECTED - UID MISMATCH] '
+                    f'JWT uid={token_uid} != session user_id={user.id} '
+                    f'session_id={session_id[:16]}...'
+                )
+                return {
+                    'error': {
+                        'status': 401,
+                        'message': 'Session validation failed'
+                    }
+                }
+            
+            # Validate fingerprint (IP/UA/Lang) for APIs
+            token_fingerprint = payload.get('fingerprint', {})
+            current_ip = request.httprequest.remote_addr
+            current_ua = request.httprequest.headers.get('User-Agent', '')
+            current_lang = request.httprequest.headers.get('Accept-Language', '')
+            
+            if token_fingerprint.get('ip') and token_fingerprint.get('ip') != current_ip:
+                _logger.warning(
+                    f'[SESSION HIJACKING DETECTED - IP MISMATCH] '
+                    f'Token IP={token_fingerprint.get("ip")} != Current IP={current_ip} '
+                    f'user_id={user.id} session_id={session_id[:16]}...'
+                )
+                return {
+                    'error': {
+                        'status': 401,
+                        'message': 'Session validation failed'
+                    }
+                }
+            
+            if token_fingerprint.get('ua') and token_fingerprint.get('ua') != current_ua:
+                _logger.warning(
+                    f'[SESSION HIJACKING DETECTED - USER-AGENT MISMATCH] '
+                    f'user_id={user.id} session_id={session_id[:16]}...'
+                )
+                return {
+                    'error': {
+                        'status': 401,
+                        'message': 'Session validation failed'
+                    }
+                }
+            
+            if token_fingerprint.get('lang') and token_fingerprint.get('lang') != current_lang:
+                _logger.warning(
+                    f'[SESSION HIJACKING DETECTED - LANGUAGE MISMATCH] '
+                    f'user_id={user.id} session_id={session_id[:16]}...'
+                )
+                return {
+                    'error': {
+                        'status': 401,
+                        'message': 'Session validation failed'
+                    }
+                }
+            
+        except jwt.ExpiredSignatureError:
+            _logger.warning(f'JWT token expired for session {session_id[:16]}...')
+            return {
+                'error': {
+                    'status': 401,
+                    'message': 'Session expired'
+                }
+            }
+        except jwt.InvalidTokenError as e:
+            _logger.warning(f'Invalid JWT token for session {session_id[:16]}...: {e}')
+            return {
+                'error': {
+                    'status': 401,
+                    'message': 'Invalid session token'
                 }
             }
 

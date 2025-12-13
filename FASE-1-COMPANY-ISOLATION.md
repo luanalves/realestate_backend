@@ -12,9 +12,56 @@
 
 ---
 
+## 🔄 Progresso Recente (12/12/2025)
+
+### ✅ Implementado: Proteção de Sessão via JWT
+
+**Contexto:** Implementação de token JWT assinado para proteger sessões contra sequestro (session hijacking).
+
+**Arquivos modificados:**
+- `models/ir_http.py` - Override de `session_info()` com geração/validação de token JWT
+- `models/security_settings.py` - Configurações admin para fingerprint (IP/UA/Lang)
+- `views/security_settings_views.xml` - Interface admin para configurações
+- `security/ir.model.access.csv` - Permissões para modelo de configurações
+- `tests/test_session_fingerprint.py` - Testes unitários JWT (7 cenários)
+- `quicksol_estate/tests/api/test_user_login.py` - Test 7 atualizado (integração)
+- `__manifest__.py` - Dependências atualizadas (partner_autocomplete)
+
+**Comportamento:**
+- Token JWT gerado no primeiro login (payload: uid, fingerprint{ip, ua, lang}, iat, exp=24h, iss)
+- Token armazenado em `request.session['_security_token']`
+- Validação a cada requisição: assinatura, exp, uid match, fingerprint components match
+- Logout automático + log detalhado se validação falhar
+- Configurável via Settings > Security (toggles IP/UA/Lang)
+
+**Testes:**
+- ✅ 7/7 testes de integração passando (`test_user_login.py`)
+- ✅ Test 7 confirma bloqueio de sessão hijacking (headers diferentes = fingerprint mismatch)
+- ✅ Testes unitários criados (geração, validação, expiração, componentes)
+
+**Commits:**
+- `4fbeaca` - security(session): implementar JWT para proteger sessões
+- `7859ad4` - tests(session): adicionar testes unitários e ajustar integração
+- `1f3b2fe` - chore(manifest): atualizar dependências e views
+- `e664609` - docs(security): atualizar plano de segurança v3.0
+
+**Próximos Passos:**
+- Implementar decorator `@require_company` (Fase 1)
+- Aplicar filtros de empresa em endpoints de API
+- Criar testes de isolamento multi-tenant
+
+---
+
 ## 📋 Checklist Geral
 
-- [ ] **Passo 1:** Criar decorator @require_company ⏳ PENDENTE
+### Pré-requisitos (Fase 0)
+- [x] **Autenticação de usuários** - Login/Logout via `/api/v1/users/login` ✅ COMPLETO
+- [x] **Proteção de sessão JWT** - Token assinado com fingerprint (IP/UA/Lang) ✅ COMPLETO
+- [x] **Testes de segurança** - Session hijacking bloqueado (7/7 testes passando) ✅ COMPLETO
+- [x] **Middleware @require_session** - Validação de sessão em endpoints ✅ COMPLETO
+
+### Implementação Fase 1 (Company Isolation)
+- [ ] **Passo 1:** Criar decorator @require_company ⏳ PRÓXIMO
 - [ ] **Passo 2:** Criar serviço de Validação de Empresas ⏳ PENDENTE
 - [ ] **Passo 3:** Aplicar decorator em endpoints de Master Data ⏳ PENDENTE
 - [ ] **Passo 4:** Aplicar decorator em endpoints de Properties ⏳ PENDENTE
