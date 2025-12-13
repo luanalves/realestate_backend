@@ -46,7 +46,10 @@ class IrHttpSessionFingerprint(models.AbstractModel):
                 'iss': 'odoo-session-security'
             }
             
-            secret = config.get('database_secret') or config.get('admin_passwd', 'default_secret')
+            secret = config.get('database_secret') or config.get('admin_passwd')
+            if not secret:
+                _logger.error("No secret configured for session tokens (database_secret or admin_passwd required)")
+                return None
             token = jwt.encode(payload, secret, algorithm='HS256')
             
             _logger.info(f"[SESSION TOKEN] Generated for UID {uid}, session {request.session.sid[:16]}...")
@@ -62,7 +65,10 @@ class IrHttpSessionFingerprint(models.AbstractModel):
             if not stored_token:
                 return False, "Token not found"
             
-            secret = config.get('database_secret') or config.get('admin_passwd', 'default_secret')
+            secret = config.get('database_secret') or config.get('admin_passwd')
+            if not secret:
+                _logger.critical("No secret configured for session token validation (database_secret or admin_passwd required)")
+                return False, "Server configuration error: missing secret key"
             
             try:
                 payload = jwt.decode(stored_token, secret, algorithms=['HS256'])

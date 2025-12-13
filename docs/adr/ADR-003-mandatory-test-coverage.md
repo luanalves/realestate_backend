@@ -154,8 +154,6 @@ docker compose exec odoo /mnt/extra-addons/../lint.sh
 
 ### 2. Testes Unitários com 100% de Cobertura da Lógica de Negócio
 
-### 2. Testes Unitários com 100% de Cobertura da Lógica de Negócio
-
 **Características obrigatórias:**
 - Usar Python `unittest` (biblioteca padrão) ou `pytest`
 - Usar `unittest.mock` para criar mocks (sem banco de dados)

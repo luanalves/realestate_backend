@@ -183,7 +183,16 @@ def require_session(func):
             }
         
         try:
-            secret = config.get('database_secret') or config.get('admin_passwd', 'default_secret')
+            secret = config.get('database_secret') or config.get('admin_passwd')
+            if not secret:
+                _logger.critical("No secret configured for JWT validation (database_secret or admin_passwd required)")
+                return {
+                    'error': {
+                        'status': 500,
+                        'message': 'Server configuration error'
+                    }
+                }
+            
             payload = jwt.decode(stored_token, secret, algorithms=['HS256'])
             token_uid = payload.get('uid')
             
