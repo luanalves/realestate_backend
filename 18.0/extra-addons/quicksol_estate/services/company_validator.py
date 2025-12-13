@@ -19,7 +19,13 @@ class CompanyValidator:
             if not company_ids:
                 return False, 'At least one company must be specified'
             
-            user_company_ids = set(getattr(user, 'estate_company_ids', []).ids)
+            # Safely get user's company IDs with defensive checks
+            estate_companies = getattr(user, 'estate_company_ids', None)
+            if estate_companies and hasattr(estate_companies, 'ids'):
+                user_company_ids = set(estate_companies.ids)
+            else:
+                user_company_ids = set()
+            
             requested_ids = set(company_ids)
             unauthorized = requested_ids - user_company_ids
             
