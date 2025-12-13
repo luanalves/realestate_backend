@@ -41,7 +41,7 @@ class MeController(http.Controller):
                     'phone': c.phone or '',
                     'website': c.website or ''
                 }
-                for c in user.estate_company_ids
+                for c in getattr(user, 'estate_company_ids', [])
             ]
 
             user_data = {
