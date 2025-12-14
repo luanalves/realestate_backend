@@ -156,7 +156,7 @@ def require_session(func):
             request.session.sid
         )
 
-        valid, user, error_msg = SessionValidator.validate(session_id)
+        valid, user, api_session, error_msg = SessionValidator.validate(session_id)
 
         if not valid:
             return {
@@ -168,7 +168,8 @@ def require_session(func):
 
         # SECURITY: Validate JWT token (MANDATORY for APIs)
         # This prevents session hijacking by validating UID + fingerprint (IP/UA/Lang)
-        stored_token = request.session.get('_security_token')
+        # Token já foi buscado pelo SessionValidator (sem .sudo() duplicado)
+        stored_token = api_session.security_token if api_session else None
         
         if not stored_token:
             _logger.warning(

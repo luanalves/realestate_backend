@@ -10,7 +10,7 @@ class SessionValidator:
     @staticmethod
     def validate(session_id, env=None):
         if not session_id:
-            return False, None, 'No session ID provided'
+            return False, None, None, 'No session ID provided'
 
         if env is None:
             from odoo.http import request
@@ -24,7 +24,7 @@ class SessionValidator:
 
         if not api_session:
             _logger.warning(f'Invalid session attempt: {session_id[:10]}...')
-            return False, None, 'Invalid or expired session'
+            return False, None, None, 'Invalid or expired session'
 
         api_session.write({
             'last_activity': fields.Datetime.now()
@@ -34,10 +34,10 @@ class SessionValidator:
         if not user.active:
             api_session.write({'is_active': False})
             _logger.warning(f'Session for inactive user: {user.login}')
-            return False, None, 'User inactive'
+            return False, None, None, 'User inactive'
 
         _logger.info(f'Valid session for user: {user.login}')
-        return True, user, None
+        return True, user, api_session, None
 
     @staticmethod
     def cleanup_expired(env=None, days=7):

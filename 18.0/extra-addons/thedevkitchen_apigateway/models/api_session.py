@@ -40,3 +40,7 @@ class APISession(models.Model):
     logout_at = fields.Datetime(
         string='Logout At',
     )
+    security_token = fields.Text(
+        string='Security Token (JWT)',
+        help='JWT token for session security and hijacking prevention',
+    )
