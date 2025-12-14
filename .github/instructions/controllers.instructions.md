@@ -2,30 +2,108 @@
 applyTo: "18.0/extra-addons/**/controllers/**/*.py"
 ---
 
-Instruções específicas para arquivos de controlador (controllers):
+# Controllers - Regras de Segurança
 
-- Quando modificar arquivos correspondentes a `controllers/**/*.py`, NÃO remova nem substitua `@require_session` ou `@require_jwt` em funções que exponham `@http.route`.
-- `require_jwt` valida o token de autenticação; `require_session` garante a identificação/estado do usuário (sessão). Trate-os como conceitos distintos.
-- Se o endpoint for realmente público, marque claramente com `# public endpoint` acima do `@http.route`.
+⚠️ **Documentação completa**: [ADR-011: Controller Security & Authentication](../../docs/adr/ADR-011-controller-security-authentication-storage.md)
 
-Exemplo aceitável:
+## Regras Obrigatórias
 
-```py
-@http.route('/api/v1/example', type='http', auth='none')
+### 1. Endpoints Protegidos (APIs REST)
+
+SEMPRE use os três decoradores em todos os endpoints de API:
+
+```python
+from odoo.addons.thedevkitchen_apigateway.decorators import require_jwt, require_session, require_company
+
+@http.route('/api/v1/endpoint', type='http', auth='none', methods=['GET'], csrf=False, cors='*')
+@require_jwt       # Valida token OAuth (aplicação autorizada)
+@require_session   # Valida session_id (usuário autenticado + contexto)
+@require_company   # Valida company_id (isolamento multi-tenancy)
+def endpoint(self, **kwargs):
+    # Contexto disponível via request.session.uid e request.session.context
+    pass
+```
+
+**Por que os três?**
+- `@require_jwt` → Autentica a **aplicação** (token OAuth no header `Authorization`)
+- `@require_session` → Autentica o **usuário** (cookie `session_id` + contexto do Redis)
+- `@require_company` → Garante **isolamento** entre empresas (header `X-Company-ID`)
+
+NÃO são redundantes. JWT ≠ Session ≠ Company validation.
+
+### 2. Endpoints Públicos (Exceção)
+
+Se o endpoint não requer autenticação, marque explicitamente:
+
+```python
+@http.route('/api/v1/health', type='http', auth='none', methods=['GET'])
+# public endpoint - health check sem autenticação
+def health_check(self, **kwargs):
+    return Response(json.dumps({'status': 'ok'}))
+```
+
+## ✅ Aceitável
+
+```python
+# Endpoint protegido completo
+@http.route('/api/v1/properties', type='http', auth='none', methods=['GET'], csrf=False, cors='*')
 @require_jwt
 @require_session
-def example(self, **kwargs):
-    ...
+@require_company
+def list_properties(self, **kwargs):
+    return Response(json.dumps({'data': []}))
 ```
 
-Exemplo não aceitável:
+```python
+# Endpoint público marcado
+@http.route('/api/v1/status', type='http', auth='none', methods=['GET'])
+# public endpoint
+def status(self, **kwargs):
+    return Response(json.dumps({'status': 'ok'}))
+```
 
-```py
-@http.route('/api/v1/example', type='http', auth='none')
-# Copilot removed require_session -> não permitido
+## ❌ NÃO Aceitável
+
+```python
+# ERRO: Falta @require_session
+@http.route('/api/v1/properties', type='http', auth='none')
+@require_jwt  # ❌ Incompleto
+def list_properties(self, **kwargs):
+    pass
+```
+
+```python
+# ERRO: Falta @require_jwt
+@http.route('/api/v1/properties', type='http', auth='none')
+@require_session  # ❌ Incompleto
+def list_properties(self, **kwargs):
+    pass
+```
+
+```python
+# ERRO: Falta @require_company
+@http.route('/api/v1/properties', type='http', auth='none')
 @require_jwt
-def example(...):
-    ...
+@require_session  # ❌ Sem isolamento multi-tenancy
+def list_properties(self, **kwargs):
+    pass
 ```
 
-Se desejar que estas instruções não sejam usadas por um agente específico, adicione `excludeAgent` ao frontmatter.
+```python
+# ERRO: Endpoint sem decorators e sem marcação "public endpoint"
+@http.route('/api/v1/data', type='http', auth='none')
+def get_data(self, **kwargs):  # ❌ Ambíguo
+    pass
+```
+
+## Arquitetura de Armazenamento
+
+- **PostgreSQL** (`realestate`): Tokens OAuth, usuários, empresas, dados de negócio
+- **Redis** (DB 1): Sessões HTTP (`session:<id>`), cache ORM, message bus
+
+Consulte a [ADR-011](../../docs/adr/ADR-011-controller-security-authentication-storage.md) para:
+- Fluxo completo de autenticação OAuth 2.0 (JWT)
+- Fluxo de criação e validação de sessão HTTP
+- Estrutura de dados no PostgreSQL e Redis
+- Comandos de monitoramento e debugging
+- Checklist completo de revisão de código
