@@ -768,11 +768,13 @@ class TestSecurityAdvanced(HttpCase):
             # Verify login response contains valid token
             try:
                 login_data = json.loads(response.text)
-                self.assertIn(
-                    'access_token' in login_data or 'token' in login_data,
-                    True,
-                    f"Login response should contain access_token or token field. Got: {login_data}"
-                )
+                try:
+                    login_data = json.loads(response.text)
+                    has_token = 'access_token' in login_data or 'token' in login_data or 'session_id' in login_data
+                    self.assertTrue(
+                        has_token,
+                        f"Login response should contain access_token/token/session_id field. Got: {login_data}"
+                    )
                 _logger.info("✅ Database ainda está funcional - User consegue logar com password original")
             except json.JSONDecodeError:
                 self.fail("Login response is not valid JSON")

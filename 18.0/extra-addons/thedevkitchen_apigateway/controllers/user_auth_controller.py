@@ -15,6 +15,15 @@ class UserAuthController(http.Controller):
         ip_address = request.httprequest.remote_addr
         user_agent = request.httprequest.headers.get('User-Agent', 'Unknown')
         application = request.jwt_application
+        
+        # Extrai dados do JSON quando não vêm como parâmetros diretos
+        if email is None or password is None:
+            data = request.get_json_data() or {}
+            email = email or data.get('email') or data.get('login') or ''
+            password = password or data.get('password') or ''
+        
+        # Normaliza email
+        email = (email or '').strip().lower()
 
         try:
             _logger.info(f"Login attempt: {email} from {ip_address} by app: {application.name}")
@@ -127,25 +136,6 @@ class UserAuthController(http.Controller):
                     'user_agent': user_agent,
                 })
                 
-                # Fix session_id mismatch: Odoo regenerates session_id after JSON-RPC response
-                # We need to update the record with the final session_id
-                initial_sid = session_id
-                
-                @request.env.cr.postcommit.add
-                def update_final_session_id():
-                    try:
-                        final_sid = request.session.sid
-                        if final_sid and final_sid != initial_sid:
-                            _logger.info(f"Updating session_id: {initial_sid[:16]}... -> {final_sid[:16]}...")
-                            # Use new cursor to avoid transaction issues
-                            with request.env.registry.cursor() as new_cr:
-                                env = request.env(cr=new_cr)
-                                session = env['thedevkitchen.api.session'].sudo().browse(api_session_record.id)
-                                if session.exists():
-                                    session.write({'session_id': final_sid})
-                    except Exception as e:
-                        _logger.error(f"Error updating session_id: {e}")
-                
             except Exception as create_error:
                 _logger.error(f"Error creating API session: {type(create_error).__name__}: {create_error}", exc_info=True)
                 raise
@@ -160,6 +150,8 @@ class UserAuthController(http.Controller):
                 security_token = ir_http._generate_session_token(user.id)
                 if security_token:
                     request.session['_security_token'] = security_token
+                    # Também armazenar no registro de API session para persistência
+                    api_session_record.security_token = security_token
                     _logger.info(f"[SESSION TOKEN] Created for user {email} (UID {user.id})")
                 else:
                     _logger.warning(f"Failed to generate session token for {email}")

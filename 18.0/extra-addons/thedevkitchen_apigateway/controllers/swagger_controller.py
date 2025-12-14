@@ -509,6 +509,18 @@ class SwaggerController(http.Controller):
                 "summary": "Get current user profile",
                 "description": "Returns authenticated user information including companies. Requires valid session and Bearer token.",
                 "operationId": "getCurrentUser",
+                "parameters": [
+                    {
+                        "name": "X-Openerp-Session-Id",
+                        "in": "header",
+                        "required": True,
+                        "schema": {
+                            "type": "string",
+                            "example": "804f61035f1e4e3fb1eab49e802c1965"
+                        },
+                        "description": "Session identifier returned by the login endpoint. Required for API clients (browser users may rely on the session_id cookie)."
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "User profile retrieved successfully",
