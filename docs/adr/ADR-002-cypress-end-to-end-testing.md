@@ -90,11 +90,11 @@ Isso torna o HttpCase **inadequado para testes E2E de APIs REST** que envolvem a
 - ✅ **Simples e direto** - sem overhead de frameworks
 - ✅ **Fácil debugging** - vê exatamente a requisição e resposta
 - ✅ **Reutilizável** - comandos curl podem ser usados em documentação
-- ✅ **Automação possível** com scripts shell
+- ✅ **Execução ocorre diretamente pelo terminal** (copiando comandos documentados), sem wrappers `.sh`
 
 **Importante:** 
 - ❌ **NÃO use `odoo.tests.common.HttpCase` para testes de API REST**
-- ✅ **USE curl direto ou scripts shell** para validar APIs
+- ✅ **NÃO criar arquivos `.sh` para orquestrar os testes de integração**; comandos devem ser executados diretamente no terminal (local ou CI)
 - ✅ **HttpCase pode ser usado apenas para testes unitários** de componentes que não precisam persistir dados
 
 ## Estrutura de Arquivos
@@ -128,23 +128,23 @@ cypress/
 
 ### Testes de API REST (curl)
 
-**Diretório Principal:**
+**Diretórios principais:**
 ```
-<module>/tests/api/
+18.0/extra-addons/thedevkitchen_apigateway/tests/integration/
+├── SECURITY_TEST_SCENARIOS.md       # Lista de cenários e comandos curl
+├── test_login_security.sh           # (legado) será migrado para comandos diretos
+├── test_logout_security_advanced.py # Testes Python rodando no .venv
+└── ...
+
+18.0/extra-addons/quicksol_estate/tests/api/
+├── README.md                        # Orientações de execução
+├── test_company_isolation_api.py    # Integrações Python (requests)
+├── utils.py                         # Loader de variáveis e helpers
+└── ...
 ```
 
-**Organização:**
-```
-quicksol_estate/tests/api/
-├── .env.example                      # Template de variáveis de ambiente (commitado)
-├── .env                              # Variáveis de ambiente reais (GITIGNORED)
-├── test_company_isolation.sh        # Script com testes de isolamento de empresa
-├── test_master_data_api.sh          # Script com testes de Master Data
-├── test_property_api.sh              # Script com testes de CRUD de propriedades
-└── README.md                         # Documentação de como executar
-
-⚠️ IMPORTANTE: Dados sensíveis (credenciais OAuth, senhas) DEVEM estar em .env (gitignored)
-```
+- **Não criar novos scripts `.sh`**: os cenários devem ser descritos em arquivos Markdown e executados manualmente no terminal (local ou CI) copiando/colando os comandos `curl`.
+- **Python para utilidades**: quando uma preparação automatizada for necessária (fixtures, sanity checks), use módulos Python executados via `18.0/.venv/bin/python`, reutilizando `utils.py` e mantendo os testes versionáveis.
 
 **Arquivo `.env.example` (commitado no Git):**
 ```bash
@@ -178,50 +178,24 @@ TEST_USER_COMPANY_B_EMAIL=user.company2@example.com
 TEST_USER_COMPANY_B_PASSWORD=user123
 ```
 
-**Estrutura de Script de Teste (exemplo):**
+**Fluxo padrão para um cenário documentado:**
 ```bash
-#!/bin/bash
-# test_company_isolation.sh - Testes de isolamento de empresa via API
+cd 18.0
+source .venv/bin/activate                 # garante requests, httpie, jq etc.
+export $(grep -v '^#' .env | xargs)       # carrega segredos apenas na sessão atual
 
-set -e  # Parar em caso de erro
+# 1) Solicitar token OAuth
+TOKEN=$(curl -s -X POST "$API_BASE_URL/api/v1/auth/token" \
+  -H "Content-Type: application/json" \
+  -d "{\"grant_type\": \"client_credentials\", \"client_id\": \"$OAUTH_CLIENT_ID\", \"client_secret\": \"$OAUTH_CLIENT_SECRET\"}" \
+  | jq -r '.access_token')
 
-# Carregar variáveis de ambiente
-if [ -f .env ]; then
-    export $(cat .env | grep -v '^#' | xargs)
-else
-    echo "❌ Erro: Arquivo .env não encontrado!"
-    echo "Copie .env.example para .env e configure as credenciais."
-    exit 1
-fi
-
-# Validar variáveis obrigatórias
-if [ -z "$OAUTH_CLIENT_ID" ] || [ -z "$OAUTH_CLIENT_SECRET" ]; then
-    echo "❌ Erro: OAUTH_CLIENT_ID e OAUTH_CLIENT_SECRET são obrigatórios!"
-    exit 1
-fi
-
-# Função auxiliar para obter token
-get_token() {
-    curl -s -X POST "$API_BASE_URL/api/v1/auth/token" \
-        -H "Content-Type: application/json" \
-        -d "{
-            \"grant_type\": \"client_credentials\",
-            \"client_id\": \"$OAUTH_CLIENT_ID\",
-            \"client_secret\": \"$OAUTH_CLIENT_SECRET\"
-        }" | jq -r '.access_token'
-}
-
-# Test 1: Listar propriedades com isolamento de empresa
-echo "Test 1: User A vê apenas propriedades da Company A"
-TOKEN=$(get_token)
-RESPONSE=$(curl -s -X GET "$API_BASE_URL/api/v1/properties" \
-    -H "Authorization: Bearer $TOKEN")
-echo "$RESPONSE" | jq .
-
-# Test 2: Tentar criar propriedade em outra empresa
-echo "Test 2: User A não pode criar propriedade na Company B"
-# ... mais testes
+# 2) Chamar o endpoint documentado no cenário
+curl -i -X GET "$API_BASE_URL/api/v1/properties" \
+  -H "Authorization: Bearer $TOKEN" | tee /tmp/response.json
 ```
+
+Cada cenário descreve claramente o comando `curl`, o status esperado e as validações necessárias (via `jq`, `grep` ou pequenos scripts Python no `.venv`). O terminal passa a ser o único executor — tanto em máquinas locais quanto em pipelines.
 
 ## Comandos Customizados
 
@@ -304,80 +278,22 @@ describe('Módulo: Funcionalidade', () => {
 
 ### Testes de API REST (curl)
 
-**Estrutura Padrão:**
+**Fluxo Padrão (copiado dos cenários):**
+1. Ative o `.venv` (`source 18.0/.venv/bin/activate`) e carregue o `.env`.
+2. Execute o comando `curl` descrito no cenário (sempre com `-i` ou `-w "%{http_code}"` para registrar o status).
+3. Use `jq`, `python -m json.tool` ou pequenos scripts Python no `.venv` para validar campos específicos.
+4. Registre o resultado esperado no próprio cenário (ex.: "HTTP 401 e corpo com `invalid_grant`").
+
+**Exemplo simples (extraído de SECURITY_TEST_SCENARIOS.md):**
 ```bash
-#!/bin/bash
-# test_feature_name.sh - Descrição dos testes
-
-set -e  # Parar em caso de erro
-
-# Carregar variáveis de ambiente
-if [ -f .env ]; then
-    export $(cat .env | grep -v '^#' | xargs)
-else
-    echo "❌ Erro: Arquivo .env não encontrado!"
-    echo "Copie .env.example para .env e configure as credenciais."
-    exit 1
-fi
-
-# Validar variáveis obrigatórias
-required_vars=("OAUTH_CLIENT_ID" "OAUTH_CLIENT_SECRET" "API_BASE_URL")
-for var in "${required_vars[@]}"; do
-    if [ -z "${!var}" ]; then
-        echo "❌ Erro: Variável $var é obrigatória!"
-        exit 1
-    fi
-done
-
-# Cores para output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-NC='\033[0m' # No Color
-
-# Função para obter token OAuth
-get_token() {
-    curl -s -X POST "$API_BASE_URL/api/v1/auth/token" \
-        -H "Content-Type: application/json" \
-        -d "{
-            \"grant_type\": \"client_credentials\",
-            \"client_id\": \"$OAUTH_CLIENT_ID\",
-            \"client_secret\": \"$OAUTH_CLIENT_SECRET\"
-        }" | jq -r '.access_token'
-}
-
-# Função para assertar resposta
-assert_status() {
-    local expected=$1
-    local actual=$2
-    local test_name=$3
-    
-    if [ "$actual" -eq "$expected" ]; then
-        echo -e "${GREEN}✓${NC} $test_name"
-    else
-        echo -e "${RED}✗${NC} $test_name (Expected: $expected, Got: $actual)"
-        exit 1
-    fi
-}
-
-# Setup
-echo "=== Setup ==="
-TOKEN=$(get_token)
-
-# Test 1
-echo ""
-echo "=== Test 1: Descrição ==="
-RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$API_BASE_URL/api/v1/endpoint" \
-    -H "Authorization: Bearer $TOKEN")
-STATUS=$(echo "$RESPONSE" | tail -n1)
-BODY=$(echo "$RESPONSE" | sed '$d')
-
-assert_status 200 "$STATUS" "Deve retornar 200"
-echo "$BODY" | jq .
-
-# Cleanup
-echo ""
-echo "=== Cleanup ==="
-# ... limpar dados de teste se necessário
+# Login inválido deve retornar 401
+TOKEN_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE_URL/api/v1/auth/token" \
+  -H "Content-Type: application/json" \
+  -d "{\"grant_type\":\"password\",\"username\":\"attacker@example.com\",\"password\":\"wrong\"}")
+STATUS=$(echo "$TOKEN_RESPONSE" | tail -n1)
+BODY=$(echo "$TOKEN_RESPONSE" | sed '$d')
+test "$STATUS" -eq 401
+echo "$BODY" | jq '.error == "invalid_grant"'
 ```
 
 **Boas Práticas (curl):**
@@ -386,20 +302,67 @@ echo "=== Cleanup ==="
 - ✅ **Use arquivo `.env` para dados sensíveis** (credenciais, senhas)
 - ✅ **Adicione `.env` ao .gitignore** (NUNCA commitar credenciais)
 - ✅ **Commite `.env.example`** com valores de exemplo/placeholder
-- ✅ **Valide variáveis obrigatórias** no início do script
+- ✅ **Execute tudo dentro do `.venv`** para garantir dependências (`curl`, `jq`, helpers Python)
 - Use `jq` para parsing de JSON
-- Capture HTTP status code com `-w "\n%{http_code}"`
-- Adicione cores para facilitar visualização (verde=sucesso, vermelho=erro)
-- Use `set -e` para parar em caso de erro
-- Documente cada teste com comentários
-- Faça cleanup ao final
+- Capture HTTP status code com `-w "\n%{http_code}"` ou `curl -i`
+- Documente cada passo no cenário (entrada, resultado esperado, cleanup manual quando necessário)
+- Versione apenas os cenários (`.md`) e utilidades Python
 
 ❌ **NÃO FAÇA:**
-- ❌ **NUNCA hardcode credenciais no script** (use variáveis de ambiente)
+- ❌ **NUNCA hardcode credenciais em comandos** (carregue do `.env`)
 - ❌ **NUNCA commite arquivo `.env` com credenciais reais**
-- ❌ Ignore status codes HTTP (sempre valide)
+- ❌ Criar scripts `.sh` para encapsular os comandos
+- ❌ Ignorar status codes HTTP (sempre valide)
+
+### Estrutura dos Diretórios de Testes (Odoo)
+
+Todos os testes Python vivem dentro de `18.0/extra-addons` e seguem uma hierarquia fixa para facilitar a descoberta:
+
+```text
+18.0/extra-addons/
+├── quicksol_estate/
+│   └── tests/
+│       ├── *.py                  # testes unitários e helpers base_* para modelos
+│       └── api/                  # testes de integração HTTP (usam requests + .env)
+├── thedevkitchen_apigateway/
+│   └── tests/
+│       ├── *.py                  # unitários/serviços/repos
+│       └── integration/          # E2E reais contra a API Gateway
+└── auditlog/
+    └── tests/                    # regressão do módulo terceirizado
+```
+
+- `quicksol_estate/tests/api/`: módulos Python (`test_company_isolation_api.py`, `test_property_api*.py`, `run_all_tests.py`) que encapsulam utilidades de preparação/limpeza. Todos dependem de `utils.py` para carregar `18.0/.env` via `python-dotenv`, portanto **execute-os apenas com `18.0/.venv/bin/python`**.
+- `quicksol_estate/tests/*.py`: base de fixtures (`base_*.py`) e suites unitárias (`test_agent_unit.py`, `test_validations.py`, etc.) que rodam dentro do Odoo test runner (`./odoo-bin -m quicksol_estate --test-enable`) mas também podem ser chamados via `18.0/.venv/bin/python -m pytest` se configurado.
+- `thedevkitchen_apigateway/tests/`: scripts unitários (`test_oauth_application*.py`, `test_middleware.py`, `test_user_auth.py`, etc.) + um helper `run_unit_tests.py` que prepara o ambiente Odoo. O subdiretório `integration/` abriga documentação (`SECURITY_TEST_SCENARIOS.md`) e arquivos Python usados apenas para fixtures; **os testes de integração em si são sequências de comandos `curl` executados diretamente no terminal** (sem novos `.sh`).
+- `auditlog/tests/`: cobertura mínima (`test_auditlog.py`, `test_autovacuum.py`) para garantir compatibilidade do módulo de terceiros com nossos patches.
+
+Organize novos testes respeitando essa separação (unitários na raiz `tests/`, integrações HTTP em `tests/api/` ou `tests/integration/`) para que ferramentas e humanos consigam identificar rapidamente o escopo de cada suíte.
+
+### Ambiente de Execução e Dados de Teste
+
+Todo teste de integração que consome a API (scripts Python e **comandos `curl` executados manualmente a partir dos cenários**) **deve usar o ambiente virtual Python documentado na ADR-010**. O `.venv` já está provisionado em `18.0/.venv` com `requests`, `python-dotenv`, `jq` e demais dependências, portanto basta executar os testes assim:
+
+```bash
+cd 18.0
+source .venv/bin/activate     # ou use .venv/bin/python diretamente
+.venv/bin/python extra-addons/quicksol_estate/tests/api/test_user_login.py
+```
+
+Os dados sensíveis usados pelos testes (tokens OAuth, usuários das companies de teste, URLs base) **estão centralizados em `18.0/.env`**. Antes de rodar qualquer script, carregue esse arquivo ou copie o `18.0/.env.example` e ajuste os valores. Exemplo:
+
+```bash
+cd 18.0
+cp .env.example .env   # apenas se ainda não existir
+export $(grep -v '^#' .env | xargs)  # torna variáveis disponíveis na sessão atual
+```
+
+- ✅ **Nunca reescreva ou versiona esse `.env`** – ele já está ignorado pelo Git e contém tokens reais.
+- ✅ **Para pipelines ou novos devs:** basta apontar para `18.0/.env` para reutilizar credenciais sem expor dados nos scripts.
+- ✅ **Scripts Python** carregam o `.env` automaticamente via `python-dotenv`, desde que sejam executados com o `python` do `.venv`.
 - ❌ Deixe dados de teste na base após execução
 - ❌ **NUNCA use `odoo.tests.common.HttpCase` para testes de API REST** (limitação de transação read-only)
+- ❌ Criar novos scripts shell para rodar cenários de integração (execute tudo direto no terminal)
 
 ## Módulos Testados
 
@@ -452,40 +415,39 @@ npx cypress run --video
 
 ### Testes de API REST (curl)
 
-**Executar um script de teste:**
+**Executar um cenário documentado:**
 ```bash
-cd 18.0/extra-addons/quicksol_estate/tests/api
+cd 18.0
+source .venv/bin/activate
+export $(grep -v '^#' .env | xargs)
 
-# Primeira vez: copiar template de configuração
-cp .env.example .env
-
-# Editar .env com suas credenciais reais
-nano .env  # ou vim, code, etc.
-
-# Executar o script
-chmod +x test_company_isolation.sh
-./test_company_isolation.sh
+# Abrir SECURITY_TEST_SCENARIOS.md (ou README específico) e copiar o bloco de comandos
+# Exemplo: cenário "Login inválido"
+curl -i -X POST "$API_BASE_URL/api/v1/auth/token" \
+  -H "Content-Type: application/json" \
+  -d "{\"grant_type\":\"password\",\"username\":\"attacker@example.com\",\"password\":\"wrong\"}"
 ```
+Cada cenário informa qual resposta esperar e como validar (ex.: `jq '.error == "invalid_grant"'`). Se um cenário exigir limpeza, execute o bloco "Cleanup" descrito no mesmo arquivo ou utilize os helpers Python.
 
-**Executar todos os scripts de teste:**
-```bash
-cd 18.0/extra-addons/quicksol_estate/tests/api
-for script in test_*.sh; do
-    echo "Running $script..."
-    ./"$script"
-done
+**Automatizar no CI (sem `.sh`):**
+```yaml
+- name: Run security login scenario
+  run: |
+    cd 18.0
+    source .venv/bin/activate
+    export $(grep -v '^#' .env | xargs)
+    STATUS=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE_URL/api/v1/auth/token" \
+      -H "Content-Type: application/json" \
+      -d "{\"grant_type\":\"client_credentials\",\"client_id\":\"$OAUTH_CLIENT_ID\",\"client_secret\":\"$OAUTH_CLIENT_SECRET\"}" | tail -n1)
+    test "$STATUS" -eq 200
 ```
 
 **Pré-requisitos:**
 1. Odoo rodando: `docker compose up -d`
 2. Módulos instalados e atualizados
-3. **Arquivo `.env` configurado** com credenciais válidas:
-   ```bash
-   cp .env.example .env
-   # Editar .env com credenciais reais
-   ```
+3. **Arquivo `.env` configurado** com credenciais válidas (`cp .env.example .env`)
 4. OAuth Application criada no Odoo
-5. `jq` instalado: `brew install jq` (macOS) ou `apt install jq` (Linux)
+5. `jq` instalado dentro do `.venv` (ou disponível no PATH do CI)
 6. Base de dados com dados de teste preparados
 
 **⚠️ IMPORTANTE - Segurança:**
@@ -511,7 +473,7 @@ beforeEach(() => {
 })
 ```
 
-### Otimização de Scripts curl
+### Otimização de Fluxos curl
 
 **✅ Reutilização de Token:**
 ```bash
@@ -523,11 +485,11 @@ curl -H "Authorization: Bearer $TOKEN" ...
 curl -H "Authorization: Bearer $TOKEN" ...
 ```
 
-**✅ Execução Paralela:**
+**✅ Execução Paralela (jobs do CI):**
 ```bash
-# Executar múltiplos scripts em paralelo
-./test_script1.sh &
-./test_script2.sh &
+# rodar dois cenários simultaneamente (cada um em subshell)
+(curl ... cenário A) &
+(curl ... cenário B) &
 wait
 ```
 
@@ -577,13 +539,24 @@ jobs:
           echo "OAUTH_CLIENT_SECRET=${{ secrets.OAUTH_CLIENT_SECRET }}" >> .env
           echo "API_BASE_URL=http://localhost:8069" >> .env
           
-      - name: Run API Tests
+      - name: Run API Tests (sem .sh)
         run: |
-          cd 18.0/extra-addons/quicksol_estate/tests/api
-          chmod +x test_*.sh
-          for script in test_*.sh; do
-            ./"$script"
-          done
+          cd 18.0
+          source .venv/bin/activate
+          export $(grep -v '^#' .env | xargs)
+          TOKEN=$(curl -s -X POST "$API_BASE_URL/api/v1/auth/token" \
+            -H "Content-Type: application/json" \
+            -d "{\"grant_type\":\"client_credentials\",\"client_id\":\"$OAUTH_CLIENT_ID\",\"client_secret\":\"$OAUTH_CLIENT_SECRET\"}" \
+            | jq -r '.access_token')
+          # cenário 1
+          STATUS=$(curl -s -w "\n%{http_code}" -X GET "$API_BASE_URL/api/v1/properties" \
+            -H "Authorization: Bearer $TOKEN" | tail -n1)
+          test "$STATUS" -eq 200
+          # cenário 2
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE_URL/api/v1/auth/token" \
+            -H "Content-Type: application/json" \
+            -d "{\"grant_type\":\"password\",\"username\":\"attacker@example.com\",\"password\":\"wrong\"}")
+          test "$(echo "$RESPONSE" | tail -n1)" -eq 401
 ```
 
 **⚠️ Configuração de Secrets no GitHub:**
@@ -631,12 +604,12 @@ jobs:
 - **UI:** Comandos customizados simplificam uso
 - **UI:** Exemplo prático (`exemplo-boas-praticas.cy.js`)
 - **UI:** Code review obrigatório para novos testes
-- **API:** Templates de scripts padronizados
+- **API:** Templates de cenários em Markdown padronizados
 - **API:** Funções auxiliares reutilizáveis (`get_token`, `assert_status`)
 - **API:** Documentação clara de como executar e limpar
 - **API:** ❌ **NUNCA usar HttpCase para APIs REST** - usar apenas curl
 - **Segurança:** `.env.example` commitado facilita onboarding
-- **Segurança:** Validação de variáveis obrigatórias nos scripts
+- **Segurança:** Validação de variáveis obrigatórias descrita nos cenários/comandos
 - **Segurança:** `.gitignore` previne commit acidental de credenciais
 
 ## Próximos Passos
@@ -644,7 +617,7 @@ jobs:
 1. ✅ Criar testes para API Gateway (concluído)
 2. ✅ Definir padrão curl para testes de API REST (concluído)
 3. ⏳ Expandir cobertura para módulo `quicksol_estate`
-4. ⏳ Criar scripts shell para testes de company isolation
+4. ⏳ Documentar cenários de company isolation em Markdown e remover legados `.sh`
 5. ⏳ Integrar com GitHub Actions para CI/CD
 6. ⏳ Adicionar testes de performance/carga
 7. ⏳ Criar relatórios HTML com Mochawesome (Cypress)
@@ -665,6 +638,7 @@ jobs:
 | 2025-11-15 | 1.0    | Equipe | Criação inicial - Adoção do Cypress                                                  |
 | 2025-12-09 | 1.1    | Equipe | Adicionada seção sobre testes de API REST com curl e limitações HttpCase            |
 | 2025-12-09 | 1.2    | Equipe | Adicionada seção sobre segurança: variáveis de ambiente, .env, e proteção de credenciais |
+| 2025-12-16 | 1.3    | Equipe | Orientações atualizadas: testes de integração usam curl via terminal/.venv, sem scripts `.sh` |
 
 ---
 
