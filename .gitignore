@@ -4,6 +4,13 @@ __pycache__/
 *$py.class
 *.so
 
+# Python virtual environments (ADR-010)
+.venv/
+venv/
+env/
+ENV/
+*.egg-info/
+
 # Odoo specific
 *.pyc
 .idea/

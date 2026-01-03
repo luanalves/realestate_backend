@@ -87,6 +87,14 @@ RUN pip3 install --break-system-packages --ignore-installed \
     cryptography==46.0.3 \
     jsonschema==4.25.1
 
+# Install Python development and code quality tools
+RUN pip3 install --break-system-packages \
+    flake8==7.1.1 \
+    black==24.10.0 \
+    isort==5.13.2 \
+    pylint==3.3.1 \
+    mypy==1.13.0
+
 # Copy entrypoint script and Odoo configuration file
 COPY ./entrypoint.sh /
 COPY ./odoo.conf /etc/odoo/

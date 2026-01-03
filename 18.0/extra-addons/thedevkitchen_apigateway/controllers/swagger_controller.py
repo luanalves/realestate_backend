@@ -332,6 +332,256 @@ class SwaggerController(http.Controller):
             }
         }
         
+        # User Authentication endpoints
+        spec["paths"]["/api/v1/users/login"] = {
+            "post": {
+                "tags": ["User Authentication"],
+                "summary": "User login",
+                "description": "Authenticate user with email and password. Requires valid OAuth 2.0 Bearer token (app must be registered).",
+                "operationId": "userLogin",
+                "requestBody": {
+                    "required": True,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": ["email", "password"],
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "description": "User email",
+                                        "example": "joao@imobiliaria.com"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "format": "password",
+                                        "description": "User password",
+                                        "example": "joao123"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Login successful",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "session_id": {
+                                            "type": "string",
+                                            "description": "Session ID for subsequent API requests"
+                                        },
+                                        "user": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {"type": "integer", "description": "User ID"},
+                                                "name": {"type": "string", "description": "User full name"},
+                                                "email": {"type": "string", "description": "User email"},
+                                                "companies": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "id": {"type": "integer"},
+                                                            "name": {"type": "string"},
+                                                            "cnpj": {"type": "string"}
+                                                        }
+                                                    },
+                                                    "description": "List of companies assigned to user"
+                                                },
+                                                "default_company_id": {
+                                                    "type": "integer",
+                                                    "description": "Default company ID"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid input",
+                        "content": {
+                            "application/json": {
+                                "schema": {"$ref": "#/components/schemas/Error"}
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - Invalid credentials or missing Bearer token",
+                        "content": {
+                            "application/json": {
+                                "schema": {"$ref": "#/components/schemas/Error"}
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - User inactive or no companies assigned",
+                        "content": {
+                            "application/json": {
+                                "schema": {"$ref": "#/components/schemas/Error"}
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests - Rate limit exceeded (5 attempts per 15 minutes)",
+                        "content": {
+                            "application/json": {
+                                "schema": {"$ref": "#/components/schemas/Error"}
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        spec["paths"]["/api/v1/users/logout"] = {
+            "post": {
+                "tags": ["User Authentication"],
+                "summary": "User logout",
+                "description": "Logout user and invalidate session. Requires valid OAuth 2.0 Bearer token (app must be registered).",
+                "operationId": "userLogout",
+                "requestBody": {
+                    "required": True,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": ["session_id"],
+                                "properties": {
+                                    "session_id": {
+                                        "type": "string",
+                                        "description": "Session ID from login response",
+                                        "example": "HP_Z_RlS6Y4APZWM99gWfq53aezjyBCSwW46UDVC5Wn2xlzruc6cU0bpgJzHCRH0Z8"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Logout successful",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Logged out successfully"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid input - Missing session_id",
+                        "content": {
+                            "application/json": {
+                                "schema": {"$ref": "#/components/schemas/Error"}
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - Invalid session or missing Bearer token",
+                        "content": {
+                            "application/json": {
+                                "schema": {"$ref": "#/components/schemas/Error"}
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        # Add /me endpoint
+        spec["paths"]["/api/v1/me"] = {
+            "get": {
+                "tags": ["User Authentication"],
+                "summary": "Get current user profile",
+                "description": "Returns authenticated user information including companies. Requires valid session and Bearer token.",
+                "operationId": "getCurrentUser",
+                "parameters": [
+                    {
+                        "name": "X-Openerp-Session-Id",
+                        "in": "header",
+                        "required": True,
+                        "schema": {
+                            "type": "string",
+                            "example": "804f61035f1e4e3fb1eab49e802c1965"
+                        },
+                        "description": "Session identifier returned by the login endpoint. Required for API clients (browser users may rely on the session_id cookie)."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User profile retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "user": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {"type": "integer", "example": 8},
+                                                "name": {"type": "string", "example": "João Silva"},
+                                                "email": {"type": "string", "example": "joao@imobiliaria.com"},
+                                                "login": {"type": "string", "example": "joao@imobiliaria.com"},
+                                                "phone": {"type": "string", "example": "11999998888"},
+                                                "mobile": {"type": "string", "example": "11988887777"},
+                                                "companies": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "id": {"type": "integer", "example": 1},
+                                                            "name": {"type": "string", "example": "Imobiliária A"},
+                                                            "cnpj": {"type": "string", "example": "12.345.678/0001-90"},
+                                                            "email": {"type": "string"},
+                                                            "phone": {"type": "string"},
+                                                            "website": {"type": "string"}
+                                                        }
+                                                    }
+                                                },
+                                                "default_company_id": {"type": "integer", "example": 1},
+                                                "is_admin": {"type": "boolean", "example": False},
+                                                "active": {"type": "boolean", "example": True}
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - Invalid or missing session/token",
+                        "content": {
+                            "application/json": {
+                                "schema": {"$ref": "#/components/schemas/Error"}
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {"$ref": "#/components/schemas/Error"}
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
         # Add registered endpoints
         for endpoint in endpoints:
             path = endpoint.path
@@ -923,6 +1173,150 @@ class SwaggerController(http.Controller):
                                 }
                             }
                         }
+                    }
+                }
+            }
+        }
+        
+        spec["paths"]["/api/v1/users/profile"] = {
+            "patch": {
+                "tags": ["User Authentication"],
+                "summary": "Update user profile",
+                "description": "Partially update logged-in user profile (email, phone, mobile). Requires Bearer token. Only own profile can be updated.",
+                "operationId": "patchUserProfile",
+                "requestBody": {
+                    "required": True,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "description": "User email (must be unique)",
+                                        "example": "joao.silva@example.com"
+                                    },
+                                    "phone": {
+                                        "type": "string",
+                                        "description": "User phone number",
+                                        "example": "1133334444"
+                                    },
+                                    "mobile": {
+                                        "type": "string",
+                                        "description": "User mobile number",
+                                        "example": "11999998888"
+                                    }
+                                },
+                                "description": "At least one field must be provided"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Profile updated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "user": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {"type": "integer"},
+                                                "name": {"type": "string"},
+                                                "email": {"type": "string"},
+                                                "phone": {"type": "string"},
+                                                "mobile": {"type": "string"},
+                                                "companies": {"type": "array"},
+                                                "default_company_id": {"type": "integer"}
+                                            }
+                                        },
+                                        "message": {"type": "string"}
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid input",
+                        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+                    },
+                    "409": {
+                        "description": "Conflict - Email already in use",
+                        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+                    }
+                }
+            }
+        }
+        
+        spec["paths"]["/api/v1/users/change-password"] = {
+            "post": {
+                "tags": ["User Authentication"],
+                "summary": "Change user password",
+                "description": "Change logged-in user password. Requires current password and new password confirmation. Min 8 characters.",
+                "operationId": "changeUserPassword",
+                "requestBody": {
+                    "required": True,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": ["current_password", "new_password", "confirm_password"],
+                                "properties": {
+                                    "current_password": {
+                                        "type": "string",
+                                        "format": "password",
+                                        "description": "Current user password",
+                                        "example": "OldPass123!@"
+                                    },
+                                    "new_password": {
+                                        "type": "string",
+                                        "format": "password",
+                                        "description": "New password (min 8 characters)",
+                                        "example": "NewPass123!@"
+                                    },
+                                    "confirm_password": {
+                                        "type": "string",
+                                        "format": "password",
+                                        "description": "Confirm new password (must match new_password)",
+                                        "example": "NewPass123!@"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Password changed successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {"type": "string", "example": "Password changed successfully"}
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid input - Missing fields, passwords don't match, or too short",
+                        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+                    },
+                    "401": {
+                        "description": "Unauthorized - Current password incorrect or invalid token",
+                        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
                     }
                 }
             }

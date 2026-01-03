@@ -1,3 +1,22 @@
+Regras rápidas do repositório (Copilot):
+
+- Endpoints expostos com `@http.route` que exigem autenticação devem manter ambos os decoradores `@require_jwt` e `@require_session` antes da definição da função.
+- `require_jwt` valida o token JWT; `require_session` garante a identificação/estado do usuário na aplicação (sessão). Esses conceitos são distintos — não substitua `require_session` por lógica genérica de OAuth ou por tratamento só de token.
+- Se um endpoint for intencionalmente público, adicione o comentário `# public endpoint` logo acima do `@http.route`.
+- Exemplos curtos: aceitável
+
+```py
+@http.route('/api/v1/agents', type='http', auth='none', methods=['GET'], csrf=False, cors='*')
+@require_jwt
+@require_session
+@require_company
+def list_agents(self, **kwargs):
+    ...
+```
+
+- Exemplos não aceitáveis: remover `@require_session` ou substituí-lo por handling genérico de OAuth sem justificativa clara.
+
+Nota: este arquivo é lido automaticamente pelo GitHub Copilot e agentes compatíveis. Para reforçar a proteção, combine estas instruções com verificações automáticas (CI) e regras de proteção de branch (`CODEOWNERS`, checks obrigatórios).
 # Copilot Instructions
 
 ## Project Context
@@ -23,6 +42,15 @@ The main development and operations are focused on the **18.0** directory, which
 - **PostgreSQL port exposed:** `5432` (for external tools like DBeaver)
 - **Odoo web port:** `8069`
 
+### Redis Cache Configuration
+
+- **Redis version:** `7-alpine`
+- **Redis port exposed:** `6379` (for monitoring tools)
+- **Redis DB index:** `1` (configured in odoo.conf)
+- **Memory limit:** 256MB with LRU eviction
+- **Persistence:** AOF (Append Only File) enabled
+- **Use case:** HTTP sessions, ORM cache, asset cache, message bus
+
 ### Key Commands
 
 ```bash
@@ -43,6 +71,12 @@ docker compose exec odoo bash
 
 # Access database
 docker compose exec db psql -U odoo -d realestate
+
+# Access Redis
+docker compose exec redis redis-cli
+
+# Monitor Redis operations
+docker compose exec redis redis-cli MONITOR
 ```
 
 ### Development Notes
@@ -51,6 +85,8 @@ docker compose exec db psql -U odoo -d realestate
 - The `extra-addons` folder is mounted for custom module development
 - Database data persists in Docker volumes
 - External database access is available via localhost:5432
+- **Redis is enabled** for session storage and caching (native Odoo 18.0 support)
+- Redis data persists in `odoo18-redis` volume
 
 When providing assistance, assume the user is working within the 18.0 directory context unless otherwise specified.
 
