@@ -51,7 +51,7 @@ class BaseRealEstateTest(unittest.TestCase):
             'cnpj': '12.345.678/0001-90',
             'address': 'Test Address, 123',
             'city': 'São Paulo',
-            'state': 'SP',
+            'state_id': cls.env['real.estate.state'].search([('code', '=', 'SP')], limit=1).id,
             'zip_code': '01234-567',
             'active': True,
             'property_count': 5,

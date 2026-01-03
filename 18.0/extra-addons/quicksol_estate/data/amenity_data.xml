@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        
+        <!-- Lazer / Recreation -->
+        <record id="amenity_pool" model="real.estate.amenity">
+            <field name="name">Piscina</field>
+            <field name="description">Piscina para uso dos moradores</field>
+        </record>
+        
+        <record id="amenity_gym" model="real.estate.amenity">
+            <field name="name">Academia</field>
+            <field name="description">Academia equipada com aparelhos de ginástica</field>
+        </record>
+        
+        <record id="amenity_bbq" model="real.estate.amenity">
+            <field name="name">Churrasqueira</field>
+            <field name="description">Área de churrasqueira</field>
+        </record>
+        
+        <record id="amenity_party_room" model="real.estate.amenity">
+            <field name="name">Salão de Festas</field>
+            <field name="description">Salão para eventos e comemorações</field>
+        </record>
+        
+        <record id="amenity_playground" model="real.estate.amenity">
+            <field name="name">Playground</field>
+            <field name="description">Área de recreação infantil</field>
+        </record>
+        
+        <record id="amenity_sports_court" model="real.estate.amenity">
+            <field name="name">Quadra Esportiva</field>
+            <field name="description">Quadra poliesportiva</field>
+        </record>
+        
+        <record id="amenity_sauna" model="real.estate.amenity">
+            <field name="name">Sauna</field>
+            <field name="description">Sauna seca ou a vapor</field>
+        </record>
+        
+        <record id="amenity_game_room" model="real.estate.amenity">
+            <field name="name">Sala de Jogos</field>
+            <field name="description">Espaço com mesas de jogos e entretenimento</field>
+        </record>
+        
+        <!-- Segurança / Security -->
+        <record id="amenity_24h_security" model="real.estate.amenity">
+            <field name="name">Portaria 24h</field>
+            <field name="description">Portaria com segurança 24 horas</field>
+        </record>
+        
+        <record id="amenity_cctv" model="real.estate.amenity">
+            <field name="name">Circuito de Câmeras</field>
+            <field name="description">Sistema de monitoramento por câmeras</field>
+        </record>
+        
+        <record id="amenity_alarm" model="real.estate.amenity">
+            <field name="name">Sistema de Alarme</field>
+            <field name="description">Sistema de alarme integrado</field>
+        </record>
+        
+        <record id="amenity_gated_community" model="real.estate.amenity">
+            <field name="name">Condomínio Fechado</field>
+            <field name="description">Condomínio com controle de acesso</field>
+        </record>
+        
+        <!-- Conforto / Comfort -->
+        <record id="amenity_air_conditioning" model="real.estate.amenity">
+            <field name="name">Ar Condicionado</field>
+            <field name="description">Sistema de ar condicionado central ou split</field>
+        </record>
+        
+        <record id="amenity_heating" model="real.estate.amenity">
+            <field name="name">Aquecimento</field>
+            <field name="description">Sistema de aquecimento central</field>
+        </record>
+        
+        <record id="amenity_elevator" model="real.estate.amenity">
+            <field name="name">Elevador</field>
+            <field name="description">Elevador social</field>
+        </record>
+        
+        <record id="amenity_generator" model="real.estate.amenity">
+            <field name="name">Gerador</field>
+            <field name="description">Gerador de emergência</field>
+        </record>
+        
+        <record id="amenity_service_elevator" model="real.estate.amenity">
+            <field name="name">Elevador de Serviço</field>
+            <field name="description">Elevador separado para serviços</field>
+        </record>
+        
+        <!-- Sustentabilidade / Sustainability -->
+        <record id="amenity_solar_panels" model="real.estate.amenity">
+            <field name="name">Painéis Solares</field>
+            <field name="description">Sistema de energia solar</field>
+        </record>
+        
+        <record id="amenity_rainwater" model="real.estate.amenity">
+            <field name="name">Captação de Água da Chuva</field>
+            <field name="description">Sistema de reuso de água pluvial</field>
+        </record>
+        
+        <!-- Outros / Others -->
+        <record id="amenity_pet_place" model="real.estate.amenity">
+            <field name="name">Pet Place</field>
+            <field name="description">Área dedicada para animais de estimação</field>
+        </record>
+        
+        <record id="amenity_bike_rack" model="real.estate.amenity">
+            <field name="name">Bicicletário</field>
+            <field name="description">Espaço para guardar bicicletas</field>
+        </record>
+        
+        <record id="amenity_garden" model="real.estate.amenity">
+            <field name="name">Jardim</field>
+            <field name="description">Área verde e jardim</field>
+        </record>
+        
+        <record id="amenity_gourmet_balcony" model="real.estate.amenity">
+            <field name="name">Varanda Gourmet</field>
+            <field name="description">Varanda equipada com churrasqueira e pia</field>
+        </record>
+        
+        <record id="amenity_coworking" model="real.estate.amenity">
+            <field name="name">Coworking</field>
+            <field name="description">Espaço de trabalho compartilhado</field>
+        </record>
+        
+        <record id="amenity_cinema" model="real.estate.amenity">
+            <field name="name">Cinema</field>
+            <field name="description">Sala de cinema privativa</field>
+        </record>
+        
+        <record id="amenity_wine_cellar" model="real.estate.amenity">
+            <field name="name">Adega Climatizada</field>
+            <field name="description">Espaço para armazenamento de vinhos</field>
+        </record>
+        
+    </data>
+</odoo>

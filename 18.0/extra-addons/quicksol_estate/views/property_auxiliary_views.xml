@@ -49,7 +49,7 @@
                         <group>
                             <field name="zip_code" placeholder="00000-000"/>
                             <field name="country_id"/>
-                            <field name="state"/>
+                            <field name="state_id"/>
                             <field name="city"/>
                         </group>
                         <group>
@@ -135,7 +135,7 @@
                         <group string="Location">
                             <field name="zip_code" placeholder="00000-000"/>
                             <field name="country_id"/>
-                            <field name="state"/>
+                            <field name="state_id"/>
                             <field name="city"/>
                             <field name="address"/>
                         </group>

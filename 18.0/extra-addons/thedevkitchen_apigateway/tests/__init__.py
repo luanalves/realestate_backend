@@ -10,6 +10,8 @@ from . import (
     test_auth_controller,
     test_middleware,
     test_bcrypt_security,
+    test_user_auth,
+    test_session_fingerprint,
 )
 
 from . import integration

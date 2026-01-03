@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Remove "Manage Databases" and "Powered by Odoo" from login page -->
+    <template id="login_footer_hide" inherit_id="web.login_layout" priority="99">
+        <xpath expr="//div[hasclass('text-center', 'small')]" position="replace">
+            <!-- Remove footer with Manage Databases and Powered by Odoo -->
+        </xpath>
+    </template>
+</odoo>

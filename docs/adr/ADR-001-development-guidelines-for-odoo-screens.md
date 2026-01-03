@@ -7,12 +7,13 @@
 
 During the development of the Real Estate Management System using Odoo 18.0, we needed to establish consistent guidelines for creating and modifying screens/features. The team required a structured approach that ensures:
 
-1. **Code Quality**: Maintainable, readable, and well-organized code
+1. **Code Quality**: Maintainable, readable, and well-organized code following object-oriented principles
 2. **Architecture Consistency**: Following Odoo best practices and MVC patterns
-3. **Internationalization**: Proper i18n support for Portuguese translations
-4. **Testing Coverage**: Comprehensive unit tests for all functionality
-5. **Security**: Proper access controls and data isolation
-6. **Data Management**: Consistent demo data and configuration setup
+3. **Clean Code**: Self-explanatory code without unnecessary comments
+4. **Internationalization**: Proper i18n support for Portuguese translations
+5. **Testing Coverage**: Comprehensive unit tests for all functionality
+6. **Security**: Proper access controls and data isolation
+7. **Data Management**: Consistent demo data and configuration setup
 
 ## Decision
 
@@ -298,25 +299,106 @@ from . import property_auxiliary  # Loaded too late
 - Format validations (email, CNPJ, phone, etc.)
 - Clear, translated error messages
 
-#### 11. **INTERFACE STANDARDS**
+#### 11. **CODE QUALITY AND COMMENTS** 🎯
+
+**A) Object-Oriented Design Principles:**
+- Write self-explanatory code through proper naming and structure
+- Classes and methods should reveal their intent through names
+- Follow Single Responsibility Principle
+- Use small, focused methods
+
+**B) Comments Policy:**
+```python
+# ❌ WRONG: Unnecessary comments explaining obvious code
+class Property(models.Model):
+    _name = 'real.estate.property'
+    
+    # This method calculates the total area
+    def calculate_total_area(self):
+        # Get the built area
+        built = self.built_area or 0
+        # Get the land area
+        land = self.land_area or 0
+        # Return the sum
+        return built + land
+
+# ✅ CORRECT: Self-explanatory code without comments
+class Property(models.Model):
+    _name = 'real.estate.property'
+    
+    def calculate_total_area(self):
+        return (self.built_area or 0) + (self.land_area or 0)
+
+# ✅ ACCEPTABLE: Comments only when truly necessary
+class Property(models.Model):
+    _name = 'real.estate.property'
+    
+    def calculate_iptu_value(self):
+        # IPTU calculation: Brazil's municipal property tax
+        # Formula defined by Lei Municipal 1234/2020
+        # Base: venal_value * 0.015 (1.5% annual rate)
+        return self.venal_value * 0.015
+```
+
+**When to use comments:**
+- ✅ Explaining complex business rules or legal requirements
+- ✅ Documenting WHY (not WHAT) for non-obvious decisions
+- ✅ API documentation (docstrings for public methods)
+- ✅ TODOs or FIXMEs with context
+- ✅ Explaining workarounds for framework limitations
+
+**When NOT to use comments:**
+- ❌ Explaining WHAT the code does (code should be self-explanatory)
+- ❌ Repeating information already in method/variable names
+- ❌ Commenting every line or block
+- ❌ Outdated comments that don't match current code
+- ❌ Commented-out code (use version control instead)
+
+**Best Practice:**
+> "Code properly developed with object-oriented principles doesn't need comments. If you feel the need to comment your code, consider refactoring it to be more readable first."
+
+**C) Documentation Standards:**
+```python
+# ✅ GOOD: Docstring for complex public API
+def apply_multi_tenancy_filter(self, domain, user):
+    """
+    Apply company isolation filter to domain for multi-tenancy.
+    
+    Args:
+        domain (list): Odoo search domain
+        user (res.users): User record for context
+        
+    Returns:
+        list: Domain with company filter applied
+        
+    Example:
+        domain = [('status', '=', 'available')]
+        filtered = self.apply_multi_tenancy_filter(domain, request.env.user)
+        # Result: [('status', '=', 'available'), ('company_ids', 'in', [5, 8])]
+    """
+    company_ids = user.estate_company_ids.ids
+    return domain + [('company_ids', 'in', company_ids)]
+```
+
+#### 12. **INTERFACE STANDARDS**
 - **FOLLOW Odoo layout patterns** (don't replicate external designs exactly)
 - Use native components: `<form>`, `<list>`, `<search>`, `<kanban>`
 - Apply Odoo CSS classes: `oe_title`, `oe_edit_only`, etc.
 - Organize complex forms with tabs: `<notebook><page>`
 
-#### 12. **INTERNATIONALIZATION (i18n)**
+#### 13. **INTERNATIONALIZATION (i18n)**
 - All code in English (variables, methods, comments)
 - Create Portuguese translations file
 - Translate: labels, help texts, error messages, menu items
 - Translate demo data when applicable
 
-#### 13. **DATABASE DESIGN**
+#### 14. **DATABASE DESIGN**
 - Define fields with correct types
 - Create indexes when necessary
 - Proper relationships: Many2one, One2many, Many2many
 - Consider performance for large data volumes
 
-#### 14. **TESTING REQUIREMENTS**
+#### 15. **TESTING REQUIREMENTS**
 - Test creation, editing, validations
 - Test error scenarios
 - Test demo data loading
@@ -488,6 +570,9 @@ Before committing code, verify:
 - [ ] No `ref()` in action contexts
 - [ ] Data files use `noupdate="1"` when appropriate
 - [ ] All XML IDs are unique and consistent
+- [ ] **Code is self-explanatory without excessive comments**
+- [ ] Comments only used when truly necessary (business rules, legal requirements)
+- [ ] Method and variable names clearly express intent
 - [ ] Tested with `odoo -u module_name --stop-after-init`
 
 ## Consequences
@@ -528,10 +613,12 @@ When implementing new features, follow this response structure:
 ### **Positive:**
 - **Consistency**: All team members follow the same development patterns
 - **Quality**: Comprehensive testing and validation requirements ensure robust code
-- **Maintainability**: Clear organization and documentation standards
+- **Clean Code**: Self-documenting code reduces maintenance burden and improves readability
+- **Maintainability**: Clear organization and documentation standards with minimal comments
 - **Scalability**: Modular architecture supports project growth
 - **User Experience**: Proper i18n support for Portuguese users
 - **Security**: Standardized access control implementation
+- **Reduced Technical Debt**: Eliminating unnecessary comments prevents outdated documentation
 
 ### **Negative:**
 - **Initial Learning Curve**: Team members need time to learn the comprehensive guidelines
@@ -573,6 +660,14 @@ When implementing new features, follow this response structure:
   - Added detailed examples of correct vs wrong menu structure
   - Updated Problem #6 to include top-level menu creation issue
   - Added menu parent verification to checklist
+- **2025-12-02 (v2.2)**: Added clean code and comments policy:
+  - **NEW SECTION**: Code Quality and Comments (section 11)
+  - Object-oriented design principles
+  - Comments policy: only when truly necessary
+  - Self-explanatory code best practices
+  - Examples of good vs bad comment usage
+  - Rationale: properly designed OOP code doesn't need excessive comments
+  - Updated Context section to include "Clean Code" as core requirement
 
 ---
 **Note**: This ADR is a living document and should be updated when guidelines evolve or new requirements emerge. All team members should review changes and provide feedback.

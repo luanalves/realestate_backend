@@ -10,7 +10,7 @@
             <field name="mobile">(21) 98765-4321</field>
             <field name="whatsapp">(21) 98765-4321</field>
             <field name="zip_code">22040-020</field>
-            <field name="state">RJ</field>
+            <field name="state_id" ref="state_rj"/>
             <field name="city">Rio de Janeiro</field>
             <field name="address">Av. Atlântica, 1234 - Copacabana</field>
             <field name="marital_status">married</field>
@@ -24,7 +24,7 @@
             <field name="mobile">(11) 91234-5678</field>
             <field name="whatsapp">(11) 91234-5678</field>
             <field name="zip_code">01310-100</field>
-            <field name="state">SP</field>
+            <field name="state_id" ref="state_sp"/>
             <field name="city">São Paulo</field>
             <field name="address">Av. Paulista, 1578 - Bela Vista</field>
             <field name="marital_status">single</field>
@@ -37,7 +37,7 @@
             <field name="phone">(21) 2222-3333</field>
             <field name="mobile">(21) 99999-8888</field>
             <field name="zip_code">22250-040</field>
-            <field name="state">RJ</field>
+            <field name="state_id" ref="state_rj"/>
             <field name="city">Rio de Janeiro</field>
             <field name="address">Rua Visconde de Pirajá, 550 - Ipanema</field>
         </record>
@@ -46,7 +46,7 @@
         <record id="demo_building_1" model="real.estate.property.building">
             <field name="name">Edifício Atlântico</field>
             <field name="zip_code">22040-020</field>
-            <field name="state">RJ</field>
+            <field name="state_id" ref="state_rj"/>
             <field name="city">Rio de Janeiro</field>
             <field name="address">Av. Atlântica, 1234 - Copacabana</field>
             <field name="total_floors">20</field>
@@ -66,7 +66,7 @@
         <record id="demo_building_2" model="real.estate.property.building">
             <field name="name">Condomínio Jardim Europa</field>
             <field name="zip_code">01452-000</field>
-            <field name="state">SP</field>
+            <field name="state_id" ref="state_sp"/>
             <field name="city">São Paulo</field>
             <field name="address">Rua Europa, 789 - Jardim Europa</field>
             <field name="total_floors">15</field>
@@ -96,12 +96,12 @@
             
             <!-- Location -->
             <field name="zip_code">22040-020</field>
-            <field name="state">RJ</field>
+            <field name="state_id" ref="state_rj"/>
             <field name="city">Rio de Janeiro</field>
             <field name="neighborhood">Copacabana</field>
             <field name="street">Av. Atlântica</field>
             <field name="street_number">1234</field>
-            <field name="location_type">urban</field>
+            <field name="location_type_id" ref="location_type_urban"/>
             <field name="latitude">-22.9711</field>
             <field name="longitude">-43.1825</field>
             
@@ -157,12 +157,12 @@
             
             <!-- Location -->
             <field name="zip_code">01452-000</field>
-            <field name="state">SP</field>
+            <field name="state_id" ref="state_sp"/>
             <field name="city">São Paulo</field>
             <field name="neighborhood">Jardim Europa</field>
             <field name="street">Rua Europa</field>
             <field name="street_number">789</field>
-            <field name="location_type">urban</field>
+            <field name="location_type_id" ref="location_type_urban"/>
             <field name="latitude">-23.5733</field>
             <field name="longitude">-46.6776</field>
             
@@ -223,14 +223,14 @@
             
             <!-- Location -->
             <field name="zip_code">01310-100</field>
-            <field name="state">SP</field>
+            <field name="state_id" ref="state_sp"/>
             <field name="city">São Paulo</field>
             <field name="neighborhood">Bela Vista</field>
             <field name="street">Av. Paulista</field>
             <field name="street_number">1578</field>
             <field name="floor_number">10</field>
             <field name="unit_number">1001</field>
-            <field name="location_type">urban</field>
+            <field name="location_type_id" ref="location_type_urban"/>
             
             <!-- Primary Data -->
             <field name="for_sale">False</field>

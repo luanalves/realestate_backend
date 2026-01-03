@@ -23,7 +23,7 @@ class RealEstateCompany(models.Model):
     street = fields.Char(string='Street')
     street2 = fields.Char(string='Street 2')
     city = fields.Char(string='City')
-    state = fields.Char(string='State')
+    state_id = fields.Many2one('real.estate.state', string='State')
     zip_code = fields.Char(string='ZIP Code')
     country_id = fields.Many2one('res.country', string='Country')
     

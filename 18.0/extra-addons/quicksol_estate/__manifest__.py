@@ -45,7 +45,7 @@ Property Form Sections:
 """,
     'author': 'Quicksol Technologies',
     'website': 'https://quicksol.ca',
-    'depends': ['base', 'portal', 'mail'],
+    'depends': ['base', 'portal', 'mail', 'thedevkitchen_apigateway'],
     'data': [
         # Security files (must be loaded first)
         'security/groups.xml',
@@ -54,10 +54,14 @@ Property Form Sections:
         'security/ir.model.access.csv',
         
         # Data files (sequences and master data)
+        'data/location_types.xml',
+        'data/states.xml',
         'data/property_data.xml',
+        'data/amenity_data.xml',
         'data/company_data.xml',
         'data/demo_users.xml',
         'data/property_demo_data.xml',
+        'data/api_endpoints.xml',
         
         # Views (actions must be loaded before menus that reference them)
         'views/company_views.xml',

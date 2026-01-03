@@ -1,0 +1,262 @@
+/* Custom Login Page Styles for TheDevKitchen */
+
+/* Hide database selector footer */
+.oe_single_form_footer {
+    display: none !important;
+}
+
+/* Hide "Choose a user" link */
+label[for="login"] small {
+    display: none !important;
+}
+
+/* Additional login page customizations */
+.oe_login_form {
+    max-width: 400px;
+}
+
+/* Custom color scheme - Yellow button and Blue links */
+.btn-primary {
+    background-color: #E0BC00 !important;
+    border-color: #E0BC00 !important;
+    color: #000000 !important;
+}
+
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:active {
+    background-color: #c9a800 !important;
+    border-color: #c9a800 !important;
+    color: #000000 !important;
+}
+
+/* ========================================
+   NAVBAR BRANDING - Complete Design System
+   ======================================== */
+
+/* CRITICAL: Override Bootstrap primary color used in Odoo navbar */
+:root {
+    --bs-primary: #E0BC00 !important;
+    --bs-primary-rgb: 224, 188, 0 !important;
+}
+
+/* Main navbar background - ALL purple backgrounds to yellow */
+.o_main_navbar,
+nav.o_main_navbar,
+.o_navbar_apps_menu,
+header.o_main_navbar,
+.navbar.o_main_navbar,
+.o_main_navbar.navbar-light,
+.navbar-light.bg-light {
+    background-color: #E0BC00 !important;
+    background: #E0BC00 !important;
+    border-bottom: 2px solid #c9a800 !important;
+}
+
+/* Force remove any purple/violet backgrounds - NUCLEAR OPTION */
+.o_main_navbar *[style*="background"],
+.o_main_navbar .bg-primary,
+.o_main_navbar .navbar,
+.o_main_navbar nav,
+.o_main_navbar.bg-primary,
+nav[class*="bg-"],
+header[class*="bg-"],
+.navbar[class*="bg-"] {
+    background-color: #E0BC00 !important;
+    background: #E0BC00 !important;
+}
+
+/* Override any Bootstrap navbar color classes */
+.navbar.navbar-light,
+.navbar-light {
+    background-color: #E0BC00 !important;
+}
+
+.bg-primary,
+.navbar.bg-primary {
+    background-color: #E0BC00 !important;
+}
+
+/* Navbar brand/logo text */
+.o_main_navbar .o_menu_brand {
+    color: #000000 !important;
+    font-weight: 600 !important;
+}
+
+.o_main_navbar .o_menu_brand:hover {
+    color: #1a1a1a !important;
+}
+
+/* Menu items - default state - ALL variations */
+.o_main_navbar .o_menu_sections .dropdown > a,
+.o_main_navbar .o_menu_sections .dropdown-toggle,
+.o_main_navbar .nav-item > a,
+.o_main_navbar .o_menu_sections button,
+.o_main_navbar button.btn-secondary,
+.o_main_navbar a.nav-link,
+.o_main_navbar .o_menu_sections > li > a,
+.o_main_navbar .o_menu_sections > li > button {
+    color: #000000 !important;
+    font-weight: 500 !important;
+    background-color: transparent !important;
+}
+
+/* Menu items - hover state - YELLOW HOVER */
+.o_main_navbar .o_menu_sections .dropdown > a:hover,
+.o_main_navbar .o_menu_sections .dropdown-toggle:hover,
+.o_main_navbar .nav-item > a:hover,
+.o_main_navbar .o_menu_sections button:hover,
+.o_main_navbar button.btn-secondary:hover,
+.o_main_navbar a.nav-link:hover,
+.o_main_navbar .o_menu_sections > li > a:hover,
+.o_main_navbar .o_menu_sections > li > button:hover {
+    background-color: #c9a800 !important;
+    background: #c9a800 !important;
+    color: #000000 !important;
+}
+
+/* Menu items - active/selected state - DARKER YELLOW + BOLD */
+.o_main_navbar .o_menu_sections .dropdown.show > a,
+.o_main_navbar .o_menu_sections .dropdown.show > .dropdown-toggle,
+.o_main_navbar .nav-item.active > a,
+.o_main_navbar .o_menu_sections .dropdown > a.active,
+.o_main_navbar .o_menu_sections button.active,
+.o_main_navbar .o_menu_sections .nav-item.o_nav_entry.active > a,
+.o_main_navbar .o_menu_sections .nav-item > a[aria-current="page"],
+.o_main_navbar .o_menu_sections a.active,
+.o_main_navbar nav[role="navigation"] > ul > li.active > a,
+.o_main_navbar nav[role="navigation"] > ul > li > a.o_active,
+.o_main_navbar .o_navbar_apps_menu .o_menu_sections > .nav-item.active,
+.o_main_navbar .o_navbar_apps_menu .o_menu_sections > .nav-item.active > a,
+.o_main_navbar .o_menu_sections > li.active > a,
+.o_main_navbar .o_menu_sections > li.active > button {
+    background-color: #c9a800 !important;
+    background: #c9a800 !important;
+    color: #000000 !important;
+    font-weight: 700 !important;
+    border-bottom: 3px solid #000000 !important;
+}
+
+/* Menu items - focus state (accessibility) */
+.o_main_navbar .o_menu_sections .dropdown > a:focus,
+.o_main_navbar .o_menu_sections .dropdown-toggle:focus,
+.o_main_navbar .nav-item > a:focus {
+    background-color: #c9a800 !important;
+    color: #000000 !important;
+    outline: 2px solid #000000 !important;
+    outline-offset: -2px !important;
+}
+
+/* Dropdown menu background when open */
+.o_main_navbar .dropdown-menu {
+    border-top: 3px solid #E0BC00 !important;
+}
+
+/* User menu and system tray icons */
+.o_main_navbar .o_menu_systray > .dropdown > a,
+.o_main_navbar .o_menu_systray > .dropdown > button {
+    color: #000000 !important;
+}
+
+.o_main_navbar .o_menu_systray > .dropdown > a:hover,
+.o_main_navbar .o_menu_systray > .dropdown > button:hover {
+    background-color: #c9a800 !important;
+}
+
+/* Apps menu button */
+.o_main_navbar .o_menu_toggle {
+    color: #000000 !important;
+}
+
+.o_main_navbar .o_menu_toggle:hover {
+    background-color: #c9a800 !important;
+}
+
+/* Search bar in navbar (if present) */
+.o_main_navbar .o_searchview input {
+    border-color: #c9a800 !important;
+}
+
+.o_main_navbar .o_searchview input:focus {
+    border-color: #000000 !important;
+    box-shadow: 0 0 0 0.2rem rgba(224, 188, 0, 0.25) !important;
+}
+
+/* Badges and notifications in navbar */
+.o_main_navbar .o_notification_counter {
+    background-color: #FF0000 !important;
+    color: #FFFFFF !important;
+}
+
+/* ========================================
+   SUB-MENUS (Empresas, Propriedades, etc) - PURPLE TO YELLOW
+   ======================================== */
+
+/* All navbar secondary menus - the purple bar below main menu */
+nav.o_main_navbar + nav,
+.o_main_navbar + nav,
+nav[class*="navbar"],
+.top_heading,
+.breadcrumb,
+.o_sub_menu_content,
+.o_menu_sections .nav.navbar-nav {
+    background-color: #E0BC00 !important;
+    background: #E0BC00 !important;
+}
+
+/* Target the specific purple submenu bar */
+.o_main_navbar .o_menu_sections,
+.o_main_navbar .navbar-nav,
+.o_main_navbar ul.navbar-nav,
+nav.navbar,
+.navbar.bg-light,
+.o_main_navbar nav.navbar-nav {
+    background-color: #E0BC00 !important;
+    background: #E0BC00 !important;
+}
+
+/* Links in submenu (Empresas, Propriedades, etc) */
+.o_main_navbar .o_menu_sections a,
+.o_main_navbar .navbar-nav a,
+.o_main_navbar .o_menu_sections button,
+nav.navbar a,
+.navbar-nav .nav-link {
+    color: #000000 !important;
+    background-color: transparent !important;
+}
+
+/* Hover state for submenu items */
+.o_main_navbar .o_menu_sections a:hover,
+.o_main_navbar .navbar-nav a:hover,
+.o_main_navbar .o_menu_sections button:hover,
+nav.navbar a:hover,
+.navbar-nav .nav-link:hover {
+    background-color: #c9a800 !important;
+    color: #000000 !important;
+}
+
+/* Active/selected submenu item */
+.o_main_navbar .o_menu_sections a.active,
+.o_main_navbar .navbar-nav a.active,
+.o_main_navbar .o_menu_sections button.active,
+nav.navbar a.active,
+.navbar-nav .nav-link.active,
+.o_main_navbar .o_menu_sections .nav-item.active > a,
+.o_main_navbar .navbar-nav .nav-item.active > a,
+.o_main_navbar .o_menu_sections li.active > a,
+.o_main_navbar .navbar-nav li.active > a,
+.o_main_navbar a[aria-current="page"],
+.o_main_navbar button[aria-current="page"],
+.o_main_navbar .o_menu_sections .o_nav_entry.active > a,
+.o_main_navbar .o_menu_sections a.o_menu_entry_lvl_1.active,
+.o_main_navbar .o_menu_sections a.focus,
+.o_main_navbar .navbar-nav > .active > a,
+.navbar-nav > .nav-item.active > a,
+.o_main_navbar a.dropdown-item.o_nav_entry:focus,
+.o_main_navbar a.dropdown-item.o_nav_entry:focus-visible,
+.o_main_navbar a.dropdown-item.o_nav_entry:active {
+    background-color: #c9a800 !important;
+    background: #c9a800 !important;
+    color: #000000 !important;
+    font-weight: 700 !important;
+}
