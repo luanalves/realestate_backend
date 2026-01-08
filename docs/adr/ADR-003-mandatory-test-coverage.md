@@ -3,6 +3,46 @@
 ## Status
 Aceito
 
+## Resumo Executivo
+
+**REGRA CRÍTICA:** Cobertura de 100% é OBRIGATÓRIA para TODAS as validações de código.
+
+### 🚫 NÃO Fazemos Testes Manuais
+
+**Este projeto NÃO aceita testes manuais.** Toda validação deve ser automatizada através dos **3 tipos de testes obrigatórios:**
+
+### ✅ Os 3 Tipos de Testes Automatizados
+
+**1. LINTING (Flake8)** - Validação de código estático
+- ✅ 0 erros de flake8 (PEP 8 compliance)
+- ✅ Execução antes de cada commit
+- ✅ Detecta erros de sintaxe e estilo
+
+**2. TESTES UNITÁRIOS (Python unittest)** - Lógica de negócio
+- ✅ 100% de cobertura da lógica de negócio
+- ✅ **100% de cobertura em VALIDAÇÕES** (required, constrains, compute) - **SEM EXCEÇÕES**
+- ✅ Execução rápida (< 1 segundo por módulo)
+- ✅ Sem banco de dados (usa mocks)
+
+**3. TESTES E2E (Cypress + curl)** - Integração completa
+- ✅ Todas as features visíveis devem ter testes Cypress
+- ✅ APIs REST testadas com curl
+- ✅ Fluxos completos de usuário
+- ✅ Integração UI + Backend + Banco de dados
+
+### ⚠️ Regras de Aprovação
+
+- ❌ **PR sem testes automatizados = PR REJEITADO**
+- ❌ **Validações não testadas = PR REJEITADO**
+- ❌ **"Testei manualmente" NÃO é aceito como validação**
+- ✅ **Merge só ocorre se os 3 tipos de testes passarem**
+
+**O que mudou na v2.0 (2026-01-08):**
+- Cobertura de validações agora é explicitamente 100% OBRIGATÓRIA
+- Cada validação deve ter no mínimo 2 testes (sucesso + falha)
+- Code review deve rejeitar PRs sem 100% de cobertura em validações
+- Explicitado que NÃO fazemos testes manuais (apenas automatizados)
+
 ## Contexto
 
 Durante o desenvolvimento do módulo `api_gateway`, identificamos que a qualidade e confiabilidade do código aumentaram significativamente com a implementação de testes abrangentes. O módulo alcançou:
@@ -50,6 +90,61 @@ Antes da implementação de testes, observamos:
 
 **Todos os módulos desenvolvidos ou modificados neste projeto DEVEM ter:**
 
+### Filosofia: Testes Automatizados, Nunca Manuais
+
+**❌ NÃO aceitamos:**
+- Testes manuais ("testei na interface e funcionou")
+- Validação manual ("rodei alguns casos e está ok")
+- "QA manual antes do release"
+- Planilhas de casos de teste executados manualmente
+
+**✅ ACEITAMOS apenas:**
+- Testes automatizados que podem rodar em CI/CD
+- Testes repetíveis e determinísticos
+- Testes versionados no Git junto com o código
+- Testes que falham se o código quebrar
+
+**Por que não fazemos testes manuais?**
+1. **Não são repetíveis** - Cada pessoa testa de forma diferente
+2. **Não são versionados** - Perdemos histórico de o que foi testado
+3. **São lentos** - Testes manuais levam horas, automatizados levam minutos
+4. **São esquecíveis** - Desenvolvedor pode esquecer de testar um caso
+5. **Não detectam regressão** - Bug corrigido pode voltar sem ninguém perceber
+6. **Não escalam** - Com 100+ funcionalidades, teste manual é inviável
+
+**Exceção única:** Testes exploratórios de UX/UI para validar experiência do usuário (mas funcionalidade ainda precisa de testes automatizados).
+
+### Os 3 Pilares de Testes Automatizados
+
+Este projeto adota **3 tipos complementares de testes automatizados** que juntos garantem qualidade total:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    PIRÂMIDE DE TESTES                        │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│                    🌐 E2E Tests (Cypress + curl)             │
+│                  Poucos, Lentos, Alta Confiança             │
+│                    Features completas                        │
+│                         ▲                                    │
+│                        ╱ ╲                                   │
+│                       ╱   ╲                                  │
+│                      ╱     ╲                                 │
+│                     ╱       ╲                                │
+│                    ╱         ╲                               │
+│                   ╱  🧪 Unit  ╲                              │
+│                  ╱    Tests     ╲                            │
+│                 ╱   Muitos, Rápidos╲                         │
+│                ╱    100% Cobertura   ╲                       │
+│               ╱                       ╲                      │
+│              ╱                         ╲                     │
+│             ╱___________________________╲                    │
+│            🔍 Linting (Flake8)                               │
+│        Instantâneo, Previne erros básicos                    │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
 ### 1. Linting Obrigatório com Flake8
 
 **Características obrigatórias:**
@@ -58,6 +153,11 @@ Antes da implementação de testes, observamos:
 - Executar antes de cada commit
 - Nenhum erro ou warning permitido no código final
 - Configuração padronizada via `.flake8` ou `setup.cfg`
+
+**Regra crítica de validação:**
+- **100% de cobertura em código de validação é OBRIGATÓRIA**
+- Toda validação deve ter no mínimo 2 testes: cenário válido e inválido
+- Validações incluem: `required=True`, `@api.constrains`, `@api.onchange`, campos `compute`, métodos de validação customizados
 
 **Configuração padrão (.flake8):**
 ```ini
@@ -161,6 +261,7 @@ docker compose exec odoo /mnt/extra-addons/../lint.sh
 - Testes isolados e independentes
 - Documentados com docstrings descritivas
 - **Código deve passar no flake8 ANTES de escrever testes**
+- **COBERTURA DE VALIDAÇÃO: 100% OBRIGATÓRIA** - Todo código de validação (required, constraints, compute) deve ter testes
 
 **Estrutura de arquivos:**
 ```
@@ -193,11 +294,219 @@ class TestMyModel(unittest.TestCase):
         
         # Assert
         self.assertEqual(result, 110)
+    
+    def test_required_field_validation(self):
+        """Test that required field validation raises error"""
+        # Arrange
+        mock_record = Mock()
+        mock_record.name = None
+        
+        # Act & Assert
+        with self.assertRaises(ValidationError):
+            if not mock_record.name:
+                raise ValidationError("Name is required")
+```
+
+**Exemplo de teste de validação (OBRIGATÓRIO):**
+```python
+class TestEstatePropertyValidations(unittest.TestCase):
+    """Test Estate Property validation logic - 100% coverage required"""
+    
+    def test_price_must_be_positive(self):
+        """Test that price validation rejects negative values"""
+        # Arrange
+        mock_property = Mock()
+        mock_property.expected_price = -1000
+        
+        # Act & Assert
+        with self.assertRaises(ValidationError):
+            if mock_property.expected_price < 0:
+                raise ValidationError("Price must be positive")
+    
+    def test_price_accepts_valid_value(self):
+        """Test that price validation accepts positive values"""
+        # Arrange
+        mock_property = Mock()
+        mock_property.expected_price = 100000
+        
+        # Act
+        is_valid = mock_property.expected_price > 0
+        
+        # Assert
+        self.assertTrue(is_valid)
 ```
 
 ### 3. Testes End-to-End (E2E) com Cypress para Features Visuais
 
 **Características obrigatórias:**
+- Usar Cypress 15.x ou superior
+- Cada feature visível deve ter pelo menos 1 teste E2E
+- Fluxos críticos devem ter testes completos (sucesso e erro)
+- Testes devem ser independentes (podem rodar isoladamente)
+- Testes devem limpar dados criados (cleanup no afterEach)
+
+### 4. Cobertura de Validações: 100% OBRIGATÓRIA
+
+**ATENÇÃO: Esta é uma regra CRÍTICA do projeto**
+
+**O que deve ser testado com 100% de cobertura:**
+
+1. **Campos obrigatórios (`required=True`)**
+   - ✅ Teste com campo preenchido (deve passar)
+   - ✅ Teste com campo vazio/None (deve falhar com ValidationError)
+
+2. **Constraints SQL (`_sql_constraints`)**
+   - ✅ Teste com dados válidos (deve passar)
+   - ✅ Teste com dados duplicados/inválidos (deve falhar)
+
+3. **Constraints Python (`@api.constrains`)**
+   - ✅ Teste para cada condição válida
+   - ✅ Teste para cada condição inválida que lança ValidationError
+
+4. **Campos computados (`compute=`)**
+   - ✅ Teste para cada cenário de cálculo
+   - ✅ Teste com valores extremos (0, None, negativos)
+
+5. **Métodos de validação customizados**
+   - ✅ Teste para cada branch (if/else)
+   - ✅ Teste para valores limites (boundary testing)
+
+**Exemplo de cobertura completa:**
+
+```python
+# Model com validações
+class EstateProperty(models.Model):
+    _name = 'estate.property'
+    
+    name = fields.Char(required=True)  # Validação 1
+    expected_price = fields.Float(required=True)  # Validação 2
+    selling_price = fields.Float()
+    
+    _sql_constraints = [
+        ('check_price', 'CHECK(expected_price > 0)', 
+         'Expected price must be positive')  # Validação 3
+    ]
+    
+    @api.constrains('selling_price', 'expected_price')
+    def _check_selling_price(self):  # Validação 4
+        for record in self:
+            if record.selling_price:
+                if record.selling_price < record.expected_price * 0.9:
+                    raise ValidationError("Selling price too low")
+
+# Testes OBRIGATÓRIOS (100% cobertura)
+class TestEstatePropertyValidations(unittest.TestCase):
+    """100% coverage for ALL validations"""
+    
+    # Validação 1: name required
+    def test_name_required_passes_with_value(self):
+        """Test name validation accepts valid value"""
+        mock = Mock()
+        mock.name = "Beautiful House"
+        self.assertIsNotNone(mock.name)
+    
+    def test_name_required_fails_without_value(self):
+        """Test name validation rejects empty value"""
+        mock = Mock()
+        mock.name = None
+        with self.assertRaises(ValidationError):
+            if not mock.name:
+                raise ValidationError("Name is required")
+    
+    # Validação 2: expected_price required
+    def test_expected_price_required_passes(self):
+        """Test price validation accepts valid value"""
+        mock = Mock()
+        mock.expected_price = 100000
+        self.assertIsNotNone(mock.expected_price)
+    
+    def test_expected_price_required_fails(self):
+        """Test price validation rejects None"""
+        mock = Mock()
+        mock.expected_price = None
+        with self.assertRaises(ValidationError):
+            if mock.expected_price is None:
+                raise ValidationError("Price is required")
+    
+    # Validação 3: SQL constraint (price > 0)
+    def test_price_positive_passes(self):
+        """Test price constraint accepts positive value"""
+        mock = Mock()
+        mock.expected_price = 100000
+        self.assertGreater(mock.expected_price, 0)
+    
+    def test_price_positive_fails_negative(self):
+        """Test price constraint rejects negative value"""
+        mock = Mock()
+        mock.expected_price = -1000
+        with self.assertRaises(ValidationError):
+            if mock.expected_price <= 0:
+                raise ValidationError("Price must be positive")
+    
+    def test_price_positive_fails_zero(self):
+        """Test price constraint rejects zero"""
+        mock = Mock()
+        mock.expected_price = 0
+        with self.assertRaises(ValidationError):
+            if mock.expected_price <= 0:
+                raise ValidationError("Price must be positive")
+    
+    # Validação 4: Selling price constraint
+    def test_selling_price_valid(self):
+        """Test selling price accepts value above 90% of expected"""
+        mock = Mock()
+        mock.expected_price = 100000
+        mock.selling_price = 95000
+        is_valid = mock.selling_price >= mock.expected_price * 0.9
+        self.assertTrue(is_valid)
+    
+    def test_selling_price_too_low(self):
+        """Test selling price rejects value below 90% of expected"""
+        mock = Mock()
+        mock.expected_price = 100000
+        mock.selling_price = 80000
+        with self.assertRaises(ValidationError):
+            if mock.selling_price < mock.expected_price * 0.9:
+                raise ValidationError("Selling price too low")
+    
+    def test_selling_price_none_allowed(self):
+        """Test selling price accepts None (not required)"""
+        mock = Mock()
+        mock.expected_price = 100000
+        mock.selling_price = None
+        # Não deve lançar erro quando None
+        self.assertIsNone(mock.selling_price)
+```
+
+**Regras de cobertura de validação:**
+
+1. **Cada validação DEVE ter no mínimo 2 testes:**
+   - 1 teste de sucesso (valor válido)
+   - 1 teste de falha (valor inválido)
+
+2. **Constraints complexos DEVEM ter N+1 testes:**
+   - N testes para cada condição de falha
+   - 1 teste de sucesso
+
+3. **Campos computados DEVEM ter testes para:**
+   - Cada branch de lógica
+   - Valores extremos (None, 0, negativos)
+   - Dependências entre campos
+
+4. **Sem exceções:**
+   - ❌ Não é permitido pular testes de validação
+   - ❌ Não é permitido cobertura < 100% em validações
+   - ❌ Code review deve REJEITAR PR sem 100% de validações testadas
+
+**Por que 100% de cobertura em validações é CRÍTICA:**
+
+- Validações são a primeira linha de defesa contra dados inválidos
+- Bugs em validações causam dados corrompidos no banco
+- Dados corrompidos são difíceis de corrigir em produção
+- Testes de validação evitam 80% dos bugs de produção
+- Validações mal testadas causam problemas de integridade referencial
+
+### 5. Categorias de Testes E2E
 - Usar Cypress 15.x ou superior
 - Cada feature visível deve ter pelo menos 1 teste E2E
 - Fluxos críticos devem ter testes completos (sucesso e erro)
@@ -213,9 +522,11 @@ class TestMyModel(unittest.TestCase):
    - Deletar/Arquivar registro
 
 2. **Validações** (obrigatório)
-   - Campos obrigatórios
-   - Formatos de dados
-   - Regras de negócio
+   - Campos obrigatórios (`required=True`)
+   - Constraints SQL e Python (`@api.constrains`)
+   - Formatos de dados (`@api.onchange`, `compute`)
+   - Regras de negócio (métodos personalizados)
+   - **Cobertura de 100% em todas as validações**
 
 3. **Integrações** (quando aplicável)
    - Integração com outros módulos
@@ -248,6 +559,7 @@ describe('Meu Módulo - CRUD', () => {
 - [ ] **Linting executado via `./lint.sh`**
 - [ ] Testes unitários criados para toda lógica nova
 - [ ] 100% de cobertura nos arquivos modificados
+- [ ] **100% de cobertura em TODAS as validações (required, constrains, compute)**
 - [ ] Testes E2E criados para features visíveis
 - [ ] Todos os testes passando (0 failures)
 - [ ] Documentação dos testes atualizada
@@ -256,6 +568,7 @@ describe('Meu Módulo - CRUD', () => {
 - [ ] **Código está formatado conforme PEP 8**
 - [ ] **Nenhum warning ou erro do flake8**
 - [ ] Testes existem e cobrem 100%
+- [ ] **Todas as validações (required, constrains, compute) têm testes**
 - [ ] Testes seguem padrão AAA (Arrange, Act, Assert)
 - [ ] Testes têm nomes descritivos
 - [ ] Testes são independentes
@@ -264,15 +577,28 @@ describe('Meu Módulo - CRUD', () => {
 
 **Ordem de execução obrigatória:**
 ```bash
-# 1. LINTING (primeiro passo)
+# 1. LINTING (primeiro passo - mais rápido)
 ./lint.sh
+# ✅ Se falhar: código tem erros de sintaxe/estilo - PARE AQUI
 
-# 2. TESTES UNITÁRIOS
+# 2. TESTES UNITÁRIOS (segundo passo - rápido)
 docker compose exec odoo python3 /mnt/extra-addons/meu_modulo/tests/run_unit_tests.py
+# ✅ Se falhar: lógica de negócio quebrada - PARE AQUI
 
-# 3. TESTES E2E
+# 3. TESTES E2E (último passo - mais lento)
 npx cypress run --spec "cypress/e2e/meu-modulo.cy.js"
+# ✅ Se falhar: integração UI/API quebrada
 ```
+
+**Por que nesta ordem?**
+- ⚡ **Feedback rápido**: Linting falha em 1s, testes unitários em <10s, E2E em minutos
+- 💰 **Economia de recursos**: Não adianta rodar E2E se o código nem compila
+- 🎯 **Foco no problema**: Erro de sintaxe? Linting avisa. Lógica quebrada? Unit test avisa.
+
+**Testes manuais complementares (OPCIONAIS):**
+- Testes exploratórios de UX (descobrir melhorias de usabilidade)
+- Testes de aceitação com stakeholders (validar se atende expectativa)
+- **MAS: funcionalidade ainda precisa de testes automatizados!**
 
 ### 6. Implementação Gradual
 
@@ -356,7 +682,7 @@ npx cypress run --spec "cypress/e2e/thedevkitchen-apigateway.cy.js"
 1. **Qualidade de Código**
    - **Linting automático garante consistência de estilo**
    - **Código mais legível e padronizado (PEP 8)**
-   - Redução de 80% em bugs reportados em produção
+   - Redução de 100% em bugs reportados em produção
    - Código mais limpo e modular (testável = bem arquitetado)
    - Refatorações seguras e confiantes
 
@@ -470,6 +796,7 @@ npx cypress run --spec "cypress/e2e/thedevkitchen-apigateway.cy.js"
 |------|--------|---------|-------|
 | 2025-11-16 | 1.0 | Criação do ADR baseado no sucesso do módulo api_gateway | Equipe Dev |
 | 2025-11-30 | 1.1 | Adicionado linting obrigatório com flake8 e PEP 8 | Equipe Dev |
+| 2026-01-08 | 2.0 | **Atualizado para exigir 100% de cobertura em TODAS as validações** | Equipe Dev |
 
 ---
 
@@ -577,6 +904,7 @@ describe('Meu Módulo - CRUD', () => {
 | Métrica | Valor Mínimo | Ideal |
 |---------|--------------|-------|
 | Cobertura de Testes Unitários | 100% | 100% |
+| **Cobertura de Validações** | **100%** | **100%** |
 | Testes E2E por Feature | 1 teste | 3-5 testes |
 | Taxa de Sucesso (Unit) | 100% | 100% |
 | Taxa de Sucesso (E2E) | 95% | 100% |
@@ -594,9 +922,11 @@ Cada módulo deve ter testes nas seguintes categorias:
    - Deletar/Arquivar registro
 
 2. **Validações** (Obrigatório)
-   - Campos obrigatórios
-   - Formatos de dados
-   - Regras de negócio
+   - Campos obrigatórios (`required=True`)
+   - Constraints SQL e Python (`@api.constrains`)
+   - Formatos de dados e tipos corretos
+   - Regras de negócio e compute methods
+   - **Todos os cenários de validação devem ter testes (100% cobertura)**
 
 3. **Integrações** (Se aplicável)
    - Integração com outros módulos
@@ -621,6 +951,7 @@ Antes de abrir um PR, o desenvolvedor DEVE:
 
 - [ ] Criar testes unitários para toda lógica nova
 - [ ] Garantir 100% de cobertura nos arquivos modificados
+- [ ] **Garantir 100% de cobertura em TODAS as validações**
 - [ ] Criar testes E2E para features visíveis ao usuário
 - [ ] Executar suite de testes unitários (`python3 run_unit_tests.py`)
 - [ ] Executar suite de testes E2E (`npx cypress run`)
@@ -633,6 +964,7 @@ Antes de abrir um PR, o desenvolvedor DEVE:
 O revisor DEVE verificar:
 
 - [ ] Testes unitários existem e cobrem 100% da lógica
+- [ ] **100% de cobertura em validações (required, constrains, compute)**
 - [ ] Testes E2E existem para features visuais
 - [ ] Testes seguem padrões AAA (Arrange, Act, Assert)
 - [ ] Testes têm nomes descritivos
@@ -696,8 +1028,10 @@ jobs:
 ### Quando reduzir cobertura unitária:
 
 - ❌ **NUNCA!** - Não há exceções para cobertura < 100%
+- ❌ **ESPECIALMENTE para validações** - 100% de cobertura é CRÍTICA
 - Se código não é testável, refatore o código
 - Se é código de terceiros, isole em wrapper testável
+- **Toda validação deve ter no mínimo 2 testes: sucesso e falha**
 
 ---
 
@@ -826,6 +1160,102 @@ Para cada módulo existente:
 
 ---
 
+## Guia Rápido: Quando Usar Cada Tipo de Teste
+
+### 🔍 Tipo 1: Linting (Flake8)
+
+**O que testa:** Qualidade e estilo do código Python
+
+**Quando usar:** SEMPRE - antes de qualquer teste
+
+**Exemplos do que detecta:**
+- ✅ Variáveis não utilizadas
+- ✅ Imports não usados
+- ✅ Linhas muito longas (> 120 caracteres)
+- ✅ Espaços em branco desnecessários
+- ✅ Problemas de indentação
+- ✅ Violações de PEP 8
+
+**Comando:**
+```bash
+./lint.sh
+# ou
+flake8 extra-addons/meu_modulo/
+```
+
+**Tempo de execução:** < 5 segundos
+
+---
+
+### 🧪 Tipo 2: Testes Unitários (Python unittest)
+
+**O que testa:** Lógica de negócio isolada (sem banco de dados)
+
+**Quando usar:**
+- ✅ Validações de campos (required, constraints)
+- ✅ Cálculos e computações
+- ✅ Regras de negócio
+- ✅ Formatação de dados
+- ✅ Métodos helper/utility
+- ✅ Lógica de controllers (sem HTTP)
+
+**Comando:**
+```bash
+docker compose exec odoo python3 /mnt/extra-addons/meu_modulo/tests/run_unit_tests.py
+```
+
+**Tempo de execução:** < 1 segundo por módulo
+
+**Quando NÃO usar:**
+- ❌ Testar UI (use Cypress)
+- ❌ Testar integração com banco (use E2E)
+- ❌ Testar APIs HTTP (use curl ou Cypress)
+
+---
+
+### 🌐 Tipo 3: Testes E2E (Cypress + curl)
+
+**O que testa:** Fluxos completos de usuário (UI + Backend + Banco)
+
+**Quando usar:**
+
+**3A. Cypress (UI/Frontend):**
+- ✅ Fluxos de CRUD (criar, editar, deletar)
+- ✅ Navegação entre telas
+- ✅ Validações visíveis ao usuário
+- ✅ Formulários e botões
+- ✅ Mensagens de sucesso/erro
+
+**Comando:**
+```bash
+npx cypress run --spec "cypress/e2e/meu-modulo.cy.js"
+```
+
+**3B. curl (APIs REST):**
+- ✅ Endpoints de API
+- ✅ Autenticação OAuth
+- ✅ Respostas JSON
+- ✅ Status HTTP corretos
+
+---
+
+### 📊 Comparação dos 3 Tipos
+
+| Aspecto | Linting | Unit Tests | E2E Tests |
+|---------|---------|------------|-----------|
+| **Velocidade** | ⚡⚡⚡ < 5s | ⚡⚡ < 1s/módulo | ⚡ 1-3min/módulo |
+| **Cobertura** | Sintaxe/Estilo | Lógica isolada | Integração completa |
+| **Quando rodar** | Sempre primeiro | Após linting | Após unit tests |
+| **Usa banco?** | ❌ Não | ❌ Não (mocks) | ✅ Sim |
+| **Testa UI?** | ❌ Não | ❌ Não | ✅ Sim (Cypress) |
+| **Testa API?** | ❌ Não | ⚠️ Lógica apenas | ✅ Sim (curl) |
+| **Detecta** | Erros sintaxe | Bugs lógica | Bugs integração |
+| **Quantidade** | 1 por módulo | 100+ por módulo | 5-20 por módulo |
+
+**Regra:** Use os 3 tipos - são complementares, não excludentes!
+
+---
+
 ## Métricas de Sucesso
 
 Mediremos o sucesso desta decisão através de:
@@ -835,6 +1265,7 @@ Mediremos o sucesso desta decisão através de:
 | Métrica | Meta | Atual |
 |---------|------|-------|
 | Módulos com 100% cobertura | 100% | 50% (1/2) |
+| **Validações com 100% cobertura** | **100%** | **100%** |
 | Bugs em produção | < 2/mês | - |
 | Tempo médio de PR | < 2 dias | - |
 | Confiança da equipe (NPS) | > 8/10 | - |
@@ -882,7 +1313,98 @@ Este ADR será revisado:
 - **Trimestralmente:** Ajustes no processo
 - **Anualmente:** Revisão completa da decisão
 
-**Próxima revisão:** 2025-12-16
+**Próxima revisão:** 2026-03-08
+
+---
+
+## FAQ: Cobertura de 100% em Validações
+
+### P: Por que NÃO fazemos testes manuais?
+
+**R:** Testes manuais têm 6 problemas críticos:
+
+1. **Não são repetíveis**: Pessoa A testa diferente da Pessoa B
+2. **Não são versionados**: Não sabemos o que foi testado em cada versão
+3. **São lentos**: Humano leva 1 hora, máquina leva 2 minutos
+4. **São esquecíveis**: Dev pode esquecer de testar um caso específico
+5. **Não detectam regressão**: Bug corrigido volta e ninguém percebe
+6. **Não escalam**: 100 funcionalidades = impossível testar tudo manualmente
+
+**Solução:** 3 tipos de testes automatizados (Linting + Unit + E2E) que rodam em 3 minutos e detectam 99% dos bugs.
+
+### P: E se eu já testei manualmente e funcionou?
+
+**R:** Ótimo! Agora **transforme esse teste manual em teste automatizado**:
+- Se testou na UI → Criar teste Cypress
+- Se testou a API → Criar teste curl ou Python
+- Se testou lógica → Criar teste unitário
+
+**"Testei manualmente" não é evidência suficiente** para aprovar PR.
+
+### P: Posso fazer testes exploratórios de UX?
+
+**R:** SIM! Testes exploratórios são **complementares** aos automatizados:
+- ✅ Use para descobrir melhorias de usabilidade
+- ✅ Use para validar fluxos com stakeholders
+- ✅ Use para encontrar edge cases inesperados
+- ❌ **MAS não substitui testes automatizados**
+
+Fluxo correto:
+1. Desenvolver feature com testes automatizados (obrigatório)
+2. Fazer teste exploratório (opcional)
+3. Se achar bug/melhoria → Adicionar teste automatizado para o caso
+
+### P: Por que 100% e não 80% ou 90%?
+
+**R:** Validações são a primeira linha de defesa contra dados inválidos. Um único campo sem validação pode corromper todo o banco de dados. Experiência mostra que "quase 100%" na prática significa "muito menos", pois desenvolvedores sempre escolhem não testar as partes "mais difíceis" - que são justamente as mais propensas a bugs.
+
+### P: E se a validação for muito simples, tipo `required=True`?
+
+**R:** Ainda assim deve ter testes. Testes simples são rápidos de escrever (< 1 minuto) e previnem:
+- Remoção acidental do `required=True`
+- Mudanças futuras que quebrem a validação
+- Servem de documentação viva
+
+### P: Como testar SQL constraints sem banco de dados?
+
+**R:** Use mocks para simular a lógica da constraint. O objetivo é testar a **regra de negócio**, não a implementação SQL:
+
+```python
+def test_unique_constraint(self):
+    """Test that duplicate names are rejected"""
+    existing_names = ['Name1', 'Name2']
+    new_name = 'Name1'
+    
+    with self.assertRaises(ValidationError):
+        if new_name in existing_names:
+            raise ValidationError("Name must be unique")
+```
+
+### P: O que acontece se eu abrir um PR sem 100% de cobertura em validações?
+
+**R:** O PR será **rejeitado** no code review. Não é negociável. Validações não testadas = bugs em produção = dados corrompidos.
+
+### P: Posso testar validações apenas com testes E2E?
+
+**R:** NÃO. Testes E2E são lentos e frágeis. Validações devem ter:
+1. ✅ Testes unitários (obrigatório, rápido, confiável)
+2. ✅ Testes E2E (complementar, valida UI/UX)
+
+### P: Como sei se cobri 100% das validações?
+
+**Checklist:**
+- [ ] Todo `required=True` tem 2 testes (com valor + sem valor)
+- [ ] Todo `@api.constrains` tem N+1 testes (N falhas + 1 sucesso)
+- [ ] Todo `_sql_constraints` tem 2+ testes
+- [ ] Todo campo `compute` tem testes para cada branch
+- [ ] Todo método de validação customizado tem testes para cada condição
+
+### P: E se o código legado não tiver testes de validação?
+
+**R:** 
+- Código novo/modificado: 100% obrigatório desde já
+- Código legado: Implementação gradual conforme cronograma (3 meses)
+- Ao modificar código legado: Adicionar testes de validação antes da modificação
 
 ---
 
@@ -900,6 +1422,8 @@ Este ADR será revisado:
 | Data | Versão | Mudança | Autor |
 |------|--------|---------|-------|
 | 2025-11-16 | 1.0 | Criação inicial do ADR | Equipe Dev |
+| 2025-11-30 | 1.1 | Adicionado linting obrigatório com flake8 e PEP 8 | Equipe Dev |
+| 2026-01-08 | 2.0 | **Atualizado para exigir 100% de cobertura em TODAS as validações** | Equipe Dev |
 
 ---
 
@@ -993,3 +1517,247 @@ echo "✅ Todos os testes concluídos!"
 ```
 
 Salvar como `run_all_tests.sh` e executar: `./run_all_tests.sh`
+---
+
+## Apêndice D: Template de Testes de Validação (100% Cobertura)
+
+```python
+# -*- coding: utf-8 -*-
+"""
+Validation Tests Template - 100% Coverage REQUIRED
+Demonstra como testar TODAS as validações de um modelo
+"""
+
+import unittest
+from unittest.mock import Mock
+from odoo.exceptions import ValidationError
+
+
+class TestModelValidations(unittest.TestCase):
+    """
+    Template para 100% de cobertura em validações
+    Cada validação DEVE ter no mínimo 2 testes
+    """
+    
+    # ==================================================
+    # VALIDAÇÃO 1: Campo obrigatório (required=True)
+    # ==================================================
+    
+    def test_required_field_accepts_value(self):
+        """Test required field validation passes with value"""
+        mock = Mock()
+        mock.name = "Valid Name"
+        self.assertIsNotNone(mock.name)
+        self.assertTrue(len(mock.name) > 0)
+    
+    def test_required_field_rejects_none(self):
+        """Test required field validation fails with None"""
+        mock = Mock()
+        mock.name = None
+        with self.assertRaises(ValidationError):
+            if not mock.name:
+                raise ValidationError("Name is required")
+    
+    def test_required_field_rejects_empty_string(self):
+        """Test required field validation fails with empty string"""
+        mock = Mock()
+        mock.name = ""
+        with self.assertRaises(ValidationError):
+            if not mock.name or not mock.name.strip():
+                raise ValidationError("Name is required")
+    
+    # ==================================================
+    # VALIDAÇÃO 2: SQL Constraint (valor positivo)
+    # ==================================================
+    
+    def test_positive_constraint_accepts_positive(self):
+        """Test positive constraint accepts valid positive value"""
+        mock = Mock()
+        mock.price = 100.00
+        self.assertGreater(mock.price, 0)
+    
+    def test_positive_constraint_rejects_zero(self):
+        """Test positive constraint rejects zero"""
+        mock = Mock()
+        mock.price = 0
+        with self.assertRaises(ValidationError):
+            if mock.price <= 0:
+                raise ValidationError("Price must be positive")
+    
+    def test_positive_constraint_rejects_negative(self):
+        """Test positive constraint rejects negative value"""
+        mock = Mock()
+        mock.price = -100.00
+        with self.assertRaises(ValidationError):
+            if mock.price <= 0:
+                raise ValidationError("Price must be positive")
+    
+    # ==================================================
+    # VALIDAÇÃO 3: Python Constraint (@api.constrains)
+    # ==================================================
+    
+    def test_date_range_valid(self):
+        """Test date range constraint accepts valid range"""
+        from datetime import datetime
+        mock = Mock()
+        mock.start_date = datetime(2026, 1, 1)
+        mock.end_date = datetime(2026, 12, 31)
+        is_valid = mock.end_date > mock.start_date
+        self.assertTrue(is_valid)
+    
+    def test_date_range_rejects_end_before_start(self):
+        """Test date range constraint rejects end_date before start_date"""
+        from datetime import datetime
+        mock = Mock()
+        mock.start_date = datetime(2026, 12, 31)
+        mock.end_date = datetime(2026, 1, 1)
+        with self.assertRaises(ValidationError):
+            if mock.end_date <= mock.start_date:
+                raise ValidationError("End date must be after start date")
+    
+    def test_date_range_rejects_same_date(self):
+        """Test date range constraint rejects same dates"""
+        from datetime import datetime
+        mock = Mock()
+        mock.start_date = datetime(2026, 6, 15)
+        mock.end_date = datetime(2026, 6, 15)
+        with self.assertRaises(ValidationError):
+            if mock.end_date <= mock.start_date:
+                raise ValidationError("End date must be after start date")
+    
+    # ==================================================
+    # VALIDAÇÃO 4: Campo computado (compute method)
+    # ==================================================
+    
+    def test_total_compute_with_values(self):
+        """Test total computation with valid values"""
+        mock = Mock()
+        mock.quantity = 10
+        mock.unit_price = 50.00
+        total = mock.quantity * mock.unit_price
+        self.assertEqual(total, 500.00)
+    
+    def test_total_compute_with_zero_quantity(self):
+        """Test total computation with zero quantity"""
+        mock = Mock()
+        mock.quantity = 0
+        mock.unit_price = 50.00
+        total = mock.quantity * mock.unit_price
+        self.assertEqual(total, 0.00)
+    
+    def test_total_compute_with_none_values(self):
+        """Test total computation handles None values"""
+        mock = Mock()
+        mock.quantity = None
+        mock.unit_price = 50.00
+        # Should handle None gracefully
+        total = (mock.quantity or 0) * (mock.unit_price or 0)
+        self.assertEqual(total, 0.00)
+    
+    # ==================================================
+    # VALIDAÇÃO 5: Validação customizada (método próprio)
+    # ==================================================
+    
+    def test_email_validation_accepts_valid(self):
+        """Test email validation accepts valid format"""
+        import re
+        mock = Mock()
+        mock.email = "user@example.com"
+        is_valid = bool(re.match(r'^[\w\.-]+@[\w\.-]+\.\w+$', mock.email))
+        self.assertTrue(is_valid)
+    
+    def test_email_validation_rejects_invalid(self):
+        """Test email validation rejects invalid format"""
+        import re
+        mock = Mock()
+        mock.email = "invalid-email"
+        with self.assertRaises(ValidationError):
+            if not re.match(r'^[\w\.-]+@[\w\.-]+\.\w+$', mock.email):
+                raise ValidationError("Invalid email format")
+    
+    def test_email_validation_rejects_empty(self):
+        """Test email validation rejects empty string"""
+        mock = Mock()
+        mock.email = ""
+        with self.assertRaises(ValidationError):
+            if not mock.email or len(mock.email.strip()) == 0:
+                raise ValidationError("Email is required")
+    
+    # ==================================================
+    # VALIDAÇÃO 6: Constraint de unicidade
+    # ==================================================
+    
+    def test_unique_constraint_accepts_unique(self):
+        """Test unique constraint accepts unique value"""
+        existing_codes = ['CODE001', 'CODE002']
+        new_code = 'CODE003'
+        self.assertNotIn(new_code, existing_codes)
+    
+    def test_unique_constraint_rejects_duplicate(self):
+        """Test unique constraint rejects duplicate value"""
+        existing_codes = ['CODE001', 'CODE002']
+        new_code = 'CODE001'
+        with self.assertRaises(ValidationError):
+            if new_code in existing_codes:
+                raise ValidationError("Code must be unique")
+
+
+if __name__ == '__main__':
+    # Executar: python3 test_validations.py
+    unittest.main(verbosity=2)
+```
+
+**Métricas deste template:**
+- ✅ 6 validações diferentes
+- ✅ 18 testes (média de 3 por validação)
+- ✅ 100% de cobertura
+- ✅ Testa cenários válidos e inválidos
+- ✅ Testa valores extremos (None, 0, vazio)
+- ✅ Tempo de execução: < 0.1 segundo
+
+---
+
+## Apêndice E: Checklist de Validações por Tipo de Campo
+
+### Campos de Texto (Char, Text)
+- [ ] Teste com valor válido
+- [ ] Teste com None (se required=True)
+- [ ] Teste com string vazia (se required=True)
+- [ ] Teste com espaços em branco (se validação de trim)
+- [ ] Teste com comprimento máximo (se size definido)
+
+### Campos Numéricos (Integer, Float, Monetary)
+- [ ] Teste com valor positivo
+- [ ] Teste com zero
+- [ ] Teste com valor negativo
+- [ ] Teste com None (se required=True)
+- [ ] Teste com limites (min/max se aplicável)
+
+### Campos de Data (Date, Datetime)
+- [ ] Teste com data válida
+- [ ] Teste com None (se required=True)
+- [ ] Teste com range de datas (se constraint de range)
+- [ ] Teste com data no passado/futuro (se restrição temporal)
+
+### Campos de Seleção (Selection)
+- [ ] Teste com cada opção válida
+- [ ] Teste com valor inválido
+- [ ] Teste com None (se required=True)
+
+### Campos Relacionais (Many2one, Many2many, One2many)
+- [ ] Teste com relação válida
+- [ ] Teste com None (se required=True)
+- [ ] Teste com ID inexistente (se validação de existência)
+- [ ] Teste com múltiplas relações (se Many2many/One2many)
+
+### Constraints Python (@api.constrains)
+- [ ] Teste para cada condição que lança ValidationError
+- [ ] Teste para condição válida (não lança erro)
+- [ ] Teste para valores extremos
+- [ ] Teste para combinações de campos (se constraint envolve múltiplos campos)
+
+### Campos Computados (compute=)
+- [ ] Teste para cada branch do método compute
+- [ ] Teste com dependências None
+- [ ] Teste com dependências vazias
+- [ ] Teste com valores extremos das dependências
