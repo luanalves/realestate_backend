@@ -79,3 +79,56 @@ class AuditLogger:
             })
         except Exception as e:
             _logger.error(f'Failed to log error: {str(e)}')
+
+    @staticmethod
+    def log_company_isolation_violation(user_id, user_login, unauthorized_companies, endpoint):
+        """Log attempts to access data from unauthorized companies."""
+        try:
+            context = AuditLogger._get_log_context()
+            user = request.env.user
+            user_companies = user.estate_company_ids.ids if hasattr(user, 'estate_company_ids') else []
+            
+            request.env['ir.logging'].sudo().create({
+                'name': 'security.company_isolation.violation',
+                'type': 'server',
+                'level': 'WARNING',
+                'path': endpoint,
+                'func': context['func'],
+                'line': context['line'],
+                'message': (
+                    f'Company isolation violation: User {user_login} (ID: {user_id}) '
+                    f'attempted to access unauthorized companies {unauthorized_companies}. '
+                    f'User authorized companies: {user_companies}'
+                ),
+            })
+            _logger.warning(
+                f'[SECURITY] Company isolation violation by user {user_login} (ID: {user_id}): '
+                f'Attempted companies={unauthorized_companies}, Authorized={user_companies}, '
+                f'Endpoint={endpoint}'
+            )
+        except Exception as e:
+            _logger.error(f'Failed to log company isolation violation: {str(e)}')
+
+    @staticmethod
+    def log_unauthorized_record_access(user_id, user_login, record_model, record_id, endpoint):
+        """Log attempts to access specific records from unauthorized companies (404 responses)."""
+        try:
+            context = AuditLogger._get_log_context()
+            request.env['ir.logging'].sudo().create({
+                'name': 'security.unauthorized_record_access',
+                'type': 'server',
+                'level': 'WARNING',
+                'path': endpoint,
+                'func': context['func'],
+                'line': context['line'],
+                'message': (
+                    f'Unauthorized record access: User {user_login} (ID: {user_id}) '
+                    f'attempted to access {record_model} ID {record_id} via {endpoint}'
+                ),
+            })
+            _logger.info(
+                f'[SECURITY] Unauthorized record access attempt: User={user_login} (ID={user_id}), '
+                f'Model={record_model}, RecordID={record_id}, Endpoint={endpoint}'
+            )
+        except Exception as e:
+            _logger.error(f'Failed to log unauthorized record access: {str(e)}')

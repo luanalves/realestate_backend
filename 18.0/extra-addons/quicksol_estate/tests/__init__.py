@@ -15,7 +15,8 @@ Test Structure:
 │   ├── test_agent_unit.py: Agent model unit tests
 │   ├── test_utils_unit.py: Utils (auth, response, serializers) unit tests
 │   ├── test_odoo_bridge.py: Odoo bridge integration tests
-│   └── test_property_api.py: Property API access control tests
+│   ├── test_property_api.py: Property API access control tests
+│   └── test_company_isolation.py: Multi-tenant company isolation test suite
 │
 └── HTTP/API Integration Tests (run with Odoo running):
     └── api/
@@ -37,6 +38,7 @@ from . import test_company_unit
 from . import test_agent_unit
 from . import test_utils_unit
 from . import test_odoo_bridge
+from . import test_company_isolation
 
 # HTTP/API integration tests (tagged post_install)
 from .api import test_property_api

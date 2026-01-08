@@ -91,6 +91,66 @@ services:
       - REFRESH_TOKEN_EXPIRATION=2592000      # Expiração em segundos (30d)
 ```
 
+---
+
+## 🛡️ Decoradores de Segurança
+
+Este módulo fornece três decoradores essenciais para proteger endpoints REST API com autenticação multi-camada e isolamento de empresas.
+
+### Uso Obrigatório
+
+**IMPORTANTE**: Todos os endpoints protegidos devem usar os três decoradores nesta ordem exata:
+
+```python
+@http.route('/api/v1/endpoint', type='http', auth='none', methods=['GET'], csrf=False, cors='*')
+@require_jwt        # 1️⃣ Valida token JWT
+@require_session    # 2️⃣ Valida sessão do usuário
+@require_company    # 3️⃣ Injeta contexto de filtragem por empresa
+def seu_endpoint(self, **kwargs):
+    # Seu código aqui
+    pass
+```
+
+### Decoradores Disponíveis
+
+| Decorador | Propósito | Injeta no Request |
+|-----------|-----------|-------------------|
+| `@require_jwt` | Valida token OAuth 2.0 JWT | `request.env.user` |
+| `@require_session` | Valida sessão + fingerprinting | Session validation |
+| `@require_company` | Isolamento multi-tenant | `request.company_domain`, `request.user_company_ids` |
+
+### Exemplo Completo
+
+```python
+from odoo import http
+from odoo.http import request
+from .utils.auth import require_jwt
+from .utils.response import success_response
+from odoo.addons.thedevkitchen_apigateway.middleware import require_session, require_company
+
+class MyController(http.Controller):
+    
+    @http.route('/api/v1/properties', type='http', auth='none', methods=['GET'], csrf=False, cors='*')
+    @require_jwt
+    @require_session
+    @require_company
+    def list_properties(self, **kwargs):
+        # Filtragem automática por empresas do usuário
+        domain = request.company_domain
+        properties = request.env['real.estate.property'].sudo().search(domain)
+        return success_response([{'id': p.id, 'name': p.name} for p in properties])
+```
+
+**📖 Documentação Completa**: Consulte [docs/decorators.md](docs/decorators.md) para:
+- Detalhes de cada decorador
+- Padrões de uso (listagem, criação, atualização)
+- Integração com CompanyValidator
+- Exemplos de testes
+- Troubleshooting
+- Boas práticas de segurança
+
+---
+
 ### 2. Criar Aplicação OAuth
 
 **Via Interface Web:**
