@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 
+  Odoo Record Rules for Multi-Tenant Company Isolation
+  Feature: 001-company-isolation
+  Phase: 1 (Design)
+  
+  These rules enforce data isolation in the Odoo Web UI.
+  REST API endpoints use @require_company decorator for equivalent filtering.
+-->
+<odoo>
+    <data noupdate="1">
+        
+        <!-- ============================================================ -->
+        <!-- Property Record Rules                                        -->
+        <!-- ============================================================ -->
+        
+        <record id="property_multi_company_rule" model="ir.rule">
+            <field name="name">Property: Multi-company Isolation</field>
+            <field name="model_id" ref="quicksol_estate.model_thedevkitchen_estate_property"/>
+            <field name="domain_force">[('estate_company_ids', 'in', user.estate_company_ids.ids)]</field>
+            <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+        
+        <!-- ============================================================ -->
+        <!-- Agent Record Rules                                           -->
+        <!-- ============================================================ -->
+        
+        <record id="agent_multi_company_rule" model="ir.rule">
+            <field name="name">Agent: Multi-company Isolation</field>
+            <field name="model_id" ref="quicksol_estate.model_thedevkitchen_estate_agent"/>
+            <field name="domain_force">[('estate_company_ids', 'in', user.estate_company_ids.ids)]</field>
+            <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+        
+        <!-- ============================================================ -->
+        <!-- Tenant Record Rules                                          -->
+        <!-- ============================================================ -->
+        
+        <record id="tenant_multi_company_rule" model="ir.rule">
+            <field name="name">Tenant: Multi-company Isolation</field>
+            <field name="model_id" ref="quicksol_estate.model_thedevkitchen_estate_tenant"/>
+            <field name="domain_force">[('estate_company_ids', 'in', user.estate_company_ids.ids)]</field>
+            <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+        
+        <!-- ============================================================ -->
+        <!-- Owner Record Rules                                           -->
+        <!-- ============================================================ -->
+        
+        <record id="owner_multi_company_rule" model="ir.rule">
+            <field name="name">Owner: Multi-company Isolation</field>
+            <field name="model_id" ref="quicksol_estate.model_thedevkitchen_estate_owner"/>
+            <field name="domain_force">[('estate_company_ids', 'in', user.estate_company_ids.ids)]</field>
+            <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+        
+        <!-- ============================================================ -->
+        <!-- Building Record Rules                                        -->
+        <!-- ============================================================ -->
+        
+        <record id="building_multi_company_rule" model="ir.rule">
+            <field name="name">Building: Multi-company Isolation</field>
+            <field name="model_id" ref="quicksol_estate.model_thedevkitchen_estate_building"/>
+            <field name="domain_force">[('estate_company_ids', 'in', user.estate_company_ids.ids)]</field>
+            <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+        
+        <!-- ============================================================ -->
+        <!-- Lease Record Rules (if lease model exists)                  -->
+        <!-- ============================================================ -->
+        
+        <!-- Uncomment if lease model has estate_company_ids field
+        <record id="lease_multi_company_rule" model="ir.rule">
+            <field name="name">Lease: Multi-company Isolation</field>
+            <field name="model_id" ref="quicksol_estate.model_thedevkitchen_estate_lease"/>
+            <field name="domain_force">[('estate_company_ids', 'in', user.estate_company_ids.ids)]</field>
+            <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+        -->
+        
+        <!-- ============================================================ -->
+        <!-- Sale Record Rules (if sale model exists)                    -->
+        <!-- ============================================================ -->
+        
+        <!-- Uncomment if sale model has estate_company_ids field
+        <record id="sale_multi_company_rule" model="ir.rule">
+            <field name="name">Sale: Multi-company Isolation</field>
+            <field name="model_id" ref="quicksol_estate.model_thedevkitchen_estate_sale"/>
+            <field name="domain_force">[('estate_company_ids', 'in', user.estate_company_ids.ids)]</field>
+            <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+        -->
+        
+        <!-- ============================================================ -->
+        <!-- Notes on Record Rule Behavior                                -->
+        <!-- ============================================================ -->
+        
+        <!-- 
+        Record Rule Fields Explained:
+        - name: Human-readable description shown in Settings > Security > Record Rules
+        - model_id: Reference to ir.model (must use ref() to existing model)
+        - domain_force: Python expression evaluated in user context (NOT in sudo mode)
+        - groups: Users in these groups are subject to this rule
+        - perm_read/write/create/unlink: Which operations are affected
+        
+        Domain Force Syntax:
+        - [('estate_company_ids', 'in', user.estate_company_ids.ids)]
+        - Evaluated for each database operation
+        - user.estate_company_ids.ids returns list of company IDs (e.g., [1, 2, 3])
+        - Many2many 'in' operator matches if ANY company overlaps
+        
+        Group Assignment:
+        - base.group_user: All internal Odoo users (not portal/public)
+        - System admins (base.group_system) bypass ALL record rules automatically
+        
+        Permission Flags:
+        - Setting all to True means rule applies to ALL CRUD operations
+        - Can create separate rules for read vs. write if needed
+        
+        Testing Record Rules:
+        1. Create 2 users assigned to different companies
+        2. Log in as User A via Odoo Web UI
+        3. Navigate to Properties menu
+        4. Verify only Company A properties are visible
+        5. Attempt to access Company B property via URL manipulation
+        6. Should see "Access Denied" error
+        
+        Debugging:
+        - Enable debug mode: ?debug=1 in URL
+        - Go to Settings > Technical > Security > Record Rules
+        - View active rules per model
+        - Check "Debug with assets" to see SQL queries in logs
+        -->
+        
+    </data>
+</odoo>
