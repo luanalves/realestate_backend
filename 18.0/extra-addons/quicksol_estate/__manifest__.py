@@ -61,6 +61,7 @@ Property Form Sections:
         'data/company_data.xml',
         'data/demo_users.xml',
         'data/property_demo_data.xml',
+        'data/agent_seed.xml',
         'data/api_endpoints.xml',
         
         # Views (actions must be loaded before menus that reference them)
@@ -68,6 +69,8 @@ Property Form Sections:
         'views/property_views.xml',
         'views/property_auxiliary_views.xml',
         'views/agent_views.xml',
+        'views/commission_rule_views.xml',
+        'views/assignment_views.xml',
         'views/lease_views.xml',
         'views/sale_views.xml',
         'views/tenant_views.xml',

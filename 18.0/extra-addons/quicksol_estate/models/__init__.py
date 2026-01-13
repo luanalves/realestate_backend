@@ -16,6 +16,9 @@ from . import property
 
 # Import other models
 from . import agent
+from . import assignment
+from . import commission_rule
+from . import commission_transaction
 from . import lease
 from . import sale
 from . import tenant

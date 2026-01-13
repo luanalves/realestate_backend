@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- ============================================================ -->
+    <!-- AGENT SEED DATA -->
+    <!-- Demo data for real estate agents -->
+    <!-- Author: Quicksol Technologies -->
+    <!-- Date: 2026-01-12 -->
+    <!-- ============================================================ -->
+
+    <record id="agent_demo_1" model="real.estate.agent">
+        <field name="name">João Silva</field>
+        <field name="cpf">12345678901</field>
+        <field name="email">joao.silva@kenlo.com.br</field>
+        <field name="phone">+55 11 98765-4321</field>
+        <field name="mobile">+55 11 98765-4321</field>
+        <field name="creci_state">SP</field>
+        <field name="creci_number">123456</field>
+        <field name="company_id" ref="company_quicksol_real_estate"/>
+        <field name="hire_date" eval="time.strftime('%Y-%m-%d')"/>
+        <field name="active" eval="True"/>
+    </record>
+
+    <record id="agent_demo_2" model="real.estate.agent">
+        <field name="name">Maria Santos</field>
+        <field name="cpf">98765432109</field>
+        <field name="email">maria.santos@kenlo.com.br</field>
+        <field name="phone">+55 11 98765-4322</field>
+        <field name="mobile">+55 11 98765-4322</field>
+        <field name="creci_state">SP</field>
+        <field name="creci_number">234567</field>
+        <field name="company_id" ref="company_quicksol_real_estate"/>
+        <field name="hire_date" eval="time.strftime('%Y-%m-%d')"/>
+        <field name="active" eval="True"/>
+    </record>
+
+    <record id="agent_demo_3" model="real.estate.agent">
+        <field name="name">Carlos Oliveira</field>
+        <field name="cpf">45678912345</field>
+        <field name="email">carlos.oliveira@kenlo.com.br</field>
+        <field name="phone">+55 21 98765-4323</field>
+        <field name="mobile">+55 21 98765-4323</field>
+        <field name="creci_state">RJ</field>
+        <field name="creci_number">345678</field>
+        <field name="company_id" ref="company_urban_properties"/>
+        <field name="hire_date" eval="time.strftime('%Y-%m-%d')"/>
+        <field name="active" eval="True"/>
+    </record>
+
+    <record id="agent_demo_4" model="real.estate.agent">
+        <field name="name">Ana Paula Ferreira</field>
+        <field name="cpf">78912345678</field>
+        <field name="email">ana.ferreira@kenlo.com.br</field>
+        <field name="phone">+55 11 98765-4324</field>
+        <field name="mobile">+55 11 98765-4324</field>
+        <field name="creci_state">SP</field>
+        <field name="creci_number">456789</field>
+        <field name="company_id" ref="company_quicksol_real_estate"/>
+        <field name="hire_date" eval="time.strftime('%Y-%m-%d')"/>
+        <field name="active" eval="True"/>
+    </record>
+
+    <record id="agent_demo_5" model="real.estate.agent">
+        <field name="name">Roberto Costa</field>
+        <field name="cpf">32165498732</field>
+        <field name="email">roberto.costa@kenlo.com.br</field>
+        <field name="phone">+55 21 98765-4325</field>
+        <field name="mobile">+55 21 98765-4325</field>
+        <field name="creci_state">RJ</field>
+        <field name="creci_number">567890</field>
+        <field name="company_id" ref="company_urban_properties"/>
+        <field name="hire_date" eval="time.strftime('%Y-%m-%d')"/>
+        <field name="active" eval="True"/>
+    </record>
+
+</odoo>

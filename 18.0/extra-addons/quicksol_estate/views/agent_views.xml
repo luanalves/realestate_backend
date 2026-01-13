@@ -1,47 +1,194 @@
+<?xml version="1.0" encoding="utf-8"?>
 <odoo>
-
-    <record id="action_agent" model="ir.actions.act_window">
-        <field name="name">Agents</field>
-        <field name="res_model">real.estate.agent</field>
-        <field name="view_mode">list,form</field>
+    <!-- ============================================================ -->
+    <!-- TREE VIEW: Agent List -->
+    <!-- ============================================================ -->
+    <record id="view_agent_tree" model="ir.ui.view">
+        <field name="name">real.estate.agent.tree</field>
+        <field name="model">real.estate.agent</field>
+        <field name="arch" type="xml">
+            <list string="Real Estate Agents" decoration-muted="not active">
+                <field name="name"/>
+                <field name="cpf"/>
+                <field name="creci"/>
+                <field name="email"/>
+                <field name="phone"/>
+                <field name="company_id"/>
+                <field name="total_sales_count"/>
+                <field name="total_commissions" widget="monetary"/>
+                <field name="active_properties_count"/>
+                <field name="active" invisible="1"/>
+            </list>
+        </field>
     </record>
 
+    <!-- ============================================================ -->
+    <!-- FORM VIEW: Agent Details -->
+    <!-- ============================================================ -->
     <record id="view_agent_form" model="ir.ui.view">
         <field name="name">real.estate.agent.form</field>
         <field name="model">real.estate.agent</field>
         <field name="arch" type="xml">
-            <form string="Agent">
+            <form string="Real Estate Agent">
+                <header>
+                    <field name="active" widget="boolean_button" options="{'terminology': 'active'}"/>
+                </header>
                 <sheet>
+                    <!-- Smart Buttons -->
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_properties" type="object" class="oe_stat_button" icon="fa-home">
+                            <field name="active_properties_count" widget="statinfo" string="Properties"/>
+                        </button>
+                        <button name="action_view_commission_transactions" type="object" class="oe_stat_button" icon="fa-usd">
+                            <field name="total_sales_count" widget="statinfo" string="Sales"/>
+                        </button>
+                    </div>
+
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Agent Name" required="1"/>
+                        </h1>
+                        <h3>
+                            <field name="creci" placeholder="CRECI: UF-123456" required="1"/>
+                        </h3>
+                    </div>
+
                     <group>
-                        <group>
-                            <field name="name"/>
+                        <group name="personal_info" string="Personal Information">
+                            <field name="cpf" required="1"/>
                             <field name="user_id"/>
-                            <field name="phone"/>
-                            <field name="email"/>
                         </group>
-                        <group>
-                            <field name="years_experience"/>
-                            <field name="agency_name"/>
-                            <field name="company_ids" widget="many2many_tags"/>
+                        <group name="contact_info" string="Contact Information">
+                            <field name="email" widget="email"/>
+                            <field name="phone"/>
+                            <field name="mobile"/>
                         </group>
                     </group>
+
+                    <group>
+                        <group name="creci_details" string="CRECI Details">
+                            <field name="creci_state" readonly="1"/>
+                            <field name="creci_number" readonly="1"/>
+                        </group>
+                        <group name="company_info" string="Company">
+                            <field name="company_id" required="1"/>
+                            <field name="hire_date"/>
+                        </group>
+                    </group>
+
+                    <!-- Notebook with tabs -->
+                    <notebook>
+                        <!-- Tab 1: Performance Metrics -->
+                        <page string="Performance" name="performance">
+                            <group>
+                                <group string="Sales Metrics">
+                                    <field name="total_sales_count" readonly="1"/>
+                                    <field name="total_commissions" widget="monetary" readonly="1"/>
+                                    <field name="average_commission" widget="monetary" readonly="1"/>
+                                </group>
+                                <group string="Activity Metrics">
+                                    <field name="active_properties_count" readonly="1"/>
+                                    <field name="active"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <!-- Tab 2: Commission Rules -->
+                        <page string="Commission Rules" name="commission_rules">
+                            <field name="commission_rule_ids">
+                                <list editable="bottom">
+                                    <field name="transaction_type"/>
+                                    <field name="structure_type"/>
+                                    <field name="percentage"/>
+                                    <field name="fixed_amount"/>
+                                    <field name="active"/>
+                                </list>
+                            </field>
+                        </page>
+
+                        <!-- Tab 3: Property Assignments -->
+                        <page string="Assignments" name="assignments">
+                            <field name="assignment_ids">
+                                <list decoration-success="active==True" decoration-muted="active==False">
+                                    <field name="property_id"/>
+                                    <field name="responsibility_type"/>
+                                    <field name="assignment_date"/>
+                                    <field name="active"/>
+                                </list>
+                            </field>
+                        </page>
+
+                        <!-- Tab 4: Commission Transactions -->
+                        <page string="Commission History" name="commission_history">
+                            <field name="commission_transaction_ids">
+                                <list decoration-info="payment_status=='pending'" 
+                                      decoration-success="payment_status=='paid'" 
+                                      decoration-danger="payment_status=='cancelled'">
+                                    <field name="transaction_date"/>
+                                    <field name="transaction_type"/>
+                                    <field name="transaction_reference"/>
+                                    <field name="transaction_amount" widget="monetary"/>
+                                    <field name="commission_amount" widget="monetary"/>
+                                    <field name="payment_status"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
                 </sheet>
+
+                <!-- Chatter -->
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="message_ids"/>
+                </div>
             </form>
         </field>
     </record>
 
-    <record id="view_agent_tree" model="ir.ui.view">
-        <field name="name">real.estate.agent.list</field>
+    <!-- ============================================================ -->
+    <!-- SEARCH VIEW: Filters and Group By -->
+    <!-- ============================================================ -->
+    <record id="view_agent_search" model="ir.ui.view">
+        <field name="name">real.estate.agent.search</field>
         <field name="model">real.estate.agent</field>
         <field name="arch" type="xml">
-            <list>
-                <field name="name"/>
-                <field name="user_id"/>
-                <field name="phone"/>
-                <field name="email"/>
-                <field name="years_experience"/>
-                <field name="company_ids" widget="many2many_tags"/>
-            </list>
+            <search string="Search Agents">
+                <!-- Search Fields -->
+                <field name="name" string="Agent Name" filter_domain="[('name', 'ilike', self)]"/>
+                <field name="cpf" string="CPF"/>
+                <field name="creci" string="CRECI"/>
+                <field name="email" string="Email"/>
+                <field name="company_id" string="Company"/>
+                
+                <!-- Filters -->
+                <filter string="Active" name="active" domain="[('active', '=', True)]"/>
+                <filter string="Inactive" name="inactive" domain="[('active', '=', False)]"/>
+                
+                <!-- Group By -->
+                <group expand="0" string="Group By">
+                    <filter string="Company" name="group_company" context="{'group_by': 'company_id'}"/>
+                    <filter string="CRECI State" name="group_creci_state" context="{'group_by': 'creci_state'}"/>
+                </group>
+            </search>
         </field>
     </record>
+
+    <!-- ============================================================ -->
+    <!-- ACTION: Open Agent List -->
+    <!-- ============================================================ -->
+    <record id="action_agent" model="ir.actions.act_window">
+        <field name="name">Agents</field>
+        <field name="res_model">real.estate.agent</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'search_default_active': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first real estate agent!
+            </p>
+            <p>
+                Track agents with CRECI validation, manage commissions, and monitor performance.
+            </p>
+        </field>
+    </record>
+
 </odoo>

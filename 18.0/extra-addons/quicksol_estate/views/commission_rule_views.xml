@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ============================================================ -->
+    <!-- TREE VIEW: Commission Rules List -->
+    <!-- ============================================================ -->
+    <record id="view_commission_rule_tree" model="ir.ui.view">
+        <field name="name">real.estate.commission.rule.tree</field>
+        <field name="model">real.estate.commission.rule</field>
+        <field name="arch" type="xml">
+            <list string="Commission Rules" decoration-muted="not active">
+                <field name="agent_id"/>
+                <field name="transaction_type"/>
+                <field name="structure_type"/>
+                <field name="percentage" column_invisible="structure_type != 'percentage'"/>
+                <field name="fixed_amount" column_invisible="structure_type != 'fixed'"/>
+                <field name="min_value"/>
+                <field name="max_value"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ============================================================ -->
+    <!-- FORM VIEW: Commission Rule Details -->
+    <!-- ============================================================ -->
+    <record id="view_commission_rule_form" model="ir.ui.view">
+        <field name="name">real.estate.commission.rule.form</field>
+        <field name="model">real.estate.commission.rule</field>
+        <field name="arch" type="xml">
+            <form string="Commission Rule">
+                <header>
+                    <field name="active" widget="boolean_button" options="{'terminology': 'active'}"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group name="basic_info" string="Basic Information">
+                            <field name="agent_id" required="1"/>
+                            <field name="company_id" invisible="1"/>
+                            <field name="transaction_type" required="1"/>
+                        </group>
+                        <group name="commission_config" string="Commission Configuration">
+                            <field name="structure_type" required="1"/>
+                            <field name="percentage" invisible="structure_type != 'percentage'" required="structure_type == 'percentage'"/>
+                            <field name="fixed_amount" invisible="structure_type != 'fixed'" required="structure_type == 'fixed'"/>
+                        </group>
+                    </group>
+
+                    <group>
+                        <group name="transaction_filters" string="Transaction Filters">
+                            <field name="min_value"/>
+                            <field name="max_value"/>
+                        </group>
+                        <group name="validity" string="Validity Period">
+                            <field name="valid_from"/>
+                            <field name="valid_until"/>
+                        </group>
+                    </group>
+                </sheet>
+
+                <!-- Chatter -->
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- ============================================================ -->
+    <!-- SEARCH VIEW: Commission Rules Filters -->
+    <!-- ============================================================ -->
+    <record id="view_commission_rule_search" model="ir.ui.view">
+        <field name="name">real.estate.commission.rule.search</field>
+        <field name="model">real.estate.commission.rule</field>
+        <field name="arch" type="xml">
+            <search string="Search Commission Rules">
+                <field name="agent_id"/>
+                
+                <filter string="Active" name="active" domain="[('active', '=', True)]"/>
+                <filter string="Inactive" name="inactive" domain="[('active', '=', False)]"/>
+                <separator/>
+                <filter string="Percentage Rules" name="percentage" domain="[('structure_type', '=', 'percentage')]"/>
+                <filter string="Fixed Amount Rules" name="fixed" domain="[('structure_type', '=', 'fixed')]"/>
+                <filter string="Tiered Rules" name="tiered" domain="[('structure_type', '=', 'tiered')]"/>
+                <separator/>
+                <filter string="Sales" name="sales" domain="[('transaction_type', '=', 'sale')]"/>
+                <filter string="Rentals" name="rentals" domain="[('transaction_type', '=', 'rental')]"/>
+                
+                <group expand="0" string="Group By">
+                    <filter string="Agent" name="group_agent" context="{'group_by': 'agent_id'}"/>
+                    <filter string="Structure Type" name="group_type" context="{'group_by': 'structure_type'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- ============================================================ -->
+    <!-- ACTION: Open Commission Rules -->
+    <!-- ============================================================ -->
+    <record id="action_commission_rule" model="ir.actions.act_window">
+        <field name="name">Commission Rules</field>
+        <field name="res_model">real.estate.commission.rule</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'search_default_active': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first commission rule!
+            </p>
+            <p>
+                Define commission structures for agents based on transaction types, amounts, and property criteria.
+            </p>
+        </field>
+    </record>
+
+</odoo>

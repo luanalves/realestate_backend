@@ -97,3 +97,15 @@ access_public_property_photo,Public: Property Photos,model_real_estate_property_
 access_public_property_tag,Public: Property Tags,model_real_estate_property_tag,base.group_public,1,0,0,0
 access_public_state,Public: States,model_real_estate_state,base.group_public,1,0,0,0
 access_public_location_type,Public: Location Types,model_real_estate_location_type,base.group_public,1,0,0,0
+access_system_admin_assignment,System Admin: Assignments,model_real_estate_agent_property_assignment,base.group_system,1,1,1,1
+access_company_manager_assignment,Company Manager: Assignments,model_real_estate_agent_property_assignment,group_real_estate_manager,1,1,1,1
+access_company_user_assignment,Company User: Assignments,model_real_estate_agent_property_assignment,group_real_estate_user,1,1,1,0
+access_agent_assignment,Agent: Assignments,model_real_estate_agent_property_assignment,group_real_estate_agent,1,1,0,0
+access_system_admin_commission_rule,System Admin: Commission Rules,model_real_estate_commission_rule,base.group_system,1,1,1,1
+access_company_manager_commission_rule,Company Manager: Commission Rules,model_real_estate_commission_rule,group_real_estate_manager,1,1,1,1
+access_company_user_commission_rule,Company User: Commission Rules,model_real_estate_commission_rule,group_real_estate_user,1,1,1,0
+access_agent_commission_rule,Agent: Commission Rules,model_real_estate_commission_rule,group_real_estate_agent,1,0,0,0
+access_system_admin_commission_transaction,System Admin: Commission Transactions,model_real_estate_commission_transaction,base.group_system,1,1,1,1
+access_company_manager_commission_transaction,Company Manager: Commission Transactions,model_real_estate_commission_transaction,group_real_estate_manager,1,1,1,1
+access_company_user_commission_transaction,Company User: Commission Transactions,model_real_estate_commission_transaction,group_real_estate_user,1,1,1,0
+access_agent_commission_transaction,Agent: Commission Transactions,model_real_estate_commission_transaction,group_real_estate_agent,1,0,0,0

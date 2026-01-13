@@ -19,14 +19,21 @@
 - **Testing Framework:** Odoo Test Suite + Cypress E2E
 
 ### Mission Statement
-Build a secure, scalable, and feature-rich real estate management platform for Brazilian market agencies, following Kenlo Imóveis standards. The system provides complete property lifecycle management with OAuth 2.0 secured REST APIs for headless frontend integration.
+Build a secure, scalable, and feature-rich CRM platform for real estate management in the Brazilian market, following Kenlo Imóveis standards. The system is built on Odoo framework as backend foundation, providing:
+
+- **For Real Estate Agencies (End Users):** Headless frontend with SSR (Server-Side Rendering) for enhanced security and performance, connecting via OAuth 2.0 secured REST APIs
+- **For Platform Managers:** Odoo Web interface for system administration, configuration, and operational management
+- **Multi-Tenancy:** Complete data isolation per real estate company, ensuring each agency and their users have separate, secure data access
+
+The platform delivers complete property lifecycle management with modern web technologies while leveraging Odoo's robust ERP foundation.
 
 ### Core Values
-1. **Security First:** Multi-layered defense-in-depth approach with JWT, session fingerprinting, and company isolation
-2. **Test Coverage:** Mandatory testing for all features (ADR-003: minimum 80% coverage)
-3. **API-First Design:** RESTful APIs with HATEOAS, OpenAPI 3.0 documentation (ADR-005, ADR-007)
-4. **Multi-Tenancy:** Complete data isolation per real estate company (ADR-008)
-5. **Brazilian Market Focus:** CEP integration, CPF/CNPJ validation, IPTU, Matrícula, local standards
+1. **Security First:** Multi-layered defense-in-depth approach with SSR, JWT, session fingerprinting, and company isolation
+2. **Headless Architecture:** SSR-based frontend for agencies with OAuth 2.0 API access; Odoo Web for platform managers
+3. **Test Coverage:** Mandatory testing for all features (ADR-003: minimum 80% coverage)
+4. **API-First Design:** RESTful APIs with HATEOAS, OpenAPI 3.0 documentation (ADR-005, ADR-007)
+5. **Multi-Tenancy:** Complete data isolation per real estate company with company-level access control (ADR-008)
+6. **Brazilian Market Focus:** CEP integration, CPF/CNPJ validation, IPTU, Matrícula, local standards
 
 ---
 
@@ -35,19 +42,24 @@ Build a secure, scalable, and feature-rich real estate management platform for B
 ### System Components
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                        Frontend Layer                        │
-│                    (Headless React/Next.js)                 │
-└───────────────────────────┬─────────────────────────────────┘
-                            │ REST API + OAuth 2.0
-┌───────────────────────────┴─────────────────────────────────┐
-│                  thedevkitchen_apigateway                    │
-│  • OAuth 2.0 Server (RFC 6749, 7009, 7662, 9068)           │
-│  • JWT Middleware (@require_jwt)                            │
-│  • Session Management (@require_session)                    │
-│  • Swagger/OpenAPI Documentation                            │
-│  • Rate Limiting & Audit Logs                               │
-└───────────────────────────┬─────────────────────────────────┘
+┌──────────────────────────────────┐  ┌──────────────────────────────┐
+│   Frontend Layer (Agencies)      │  │  Odoo Web (Platform Managers)│
+│  Headless SSR (Next.js/React)    │  │   • System Administration    │
+│  • Real Estate Agency Users      │  │   • Configuration            │
+│  • Public Property Listings      │  │   • Operational Management   │
+│  • Agent/Owner Portals           │  │   • Database Management      │
+└───────────┬──────────────────────┘  └────────────┬─────────────────┘
+            │ REST API + OAuth 2.0                 │ Direct Access
+            │                                      │
+┌───────────┴──────────────────────────────────────┴─────────────────┐
+│                  thedevkitchen_apigateway                           │
+│  • OAuth 2.0 Server (RFC 6749, 7009, 7662, 9068)                   │
+│  • JWT Middleware (@require_jwt)                                   │
+│  • Session Management (@require_session)                           │
+│  • Multi-Tenancy Isolation (@require_company)                      │
+│  • Swagger/OpenAPI Documentation                                   │
+│  • Rate Limiting & Audit Logs                                      │
+└───────────────────────────┬─────────────────────────────────────────┘
                             │
 ┌───────────────────────────┴─────────────────────────────────┐
 │                   quicksol_estate Module                     │
@@ -78,6 +90,44 @@ Build a secure, scalable, and feature-rich real estate management platform for B
 │  DB: realestate                │  DB Index: 1 │   │           │
 └─────────────┘                  └──────────────┘   └───────────┘
 ```
+
+### Architecture Philosophy
+
+**Dual-Interface Design:**
+
+This platform employs a strategic dual-interface architecture:
+
+1. **Headless Frontend (Real Estate Agencies)**
+   - **Target Users:** Real estate agency staff, property owners, tenants, public visitors
+   - **Technology:** Server-Side Rendering (SSR) with Next.js/React
+   - **Security:** OAuth 2.0 authentication, JWT tokens, session fingerprinting
+   - **Benefits:** 
+     - Enhanced security through SSR (no sensitive data in client-side code)
+     - Better SEO for property listings
+     - Modern UX/UI tailored for real estate workflows
+     - Mobile-responsive design
+   - **Access Method:** REST API consumption only (no direct Odoo Web access)
+
+2. **Odoo Web Interface (Platform Managers)**
+   - **Target Users:** System administrators, platform managers, technical staff
+   - **Purpose:** Backend management, configuration, database administration
+   - **Features:** Full Odoo ERP capabilities for system oversight
+   - **Access Method:** Direct Odoo Web UI
+
+**Why Odoo Framework:**
+- Robust ORM and database abstraction layer
+- Built-in multi-company support (foundation for multi-tenancy)
+- Extensive module ecosystem (auditlog, reporting, etc.)
+- Security framework (groups, record rules, access rights)
+- Mature workflow engine and business logic handling
+- Proven scalability for enterprise applications
+
+**Why Headless for Agencies:**
+- Complete control over user experience
+- SSR security advantages (credentials never reach client browser)
+- API-first approach enables future mobile apps
+- Decoupling frontend from backend for independent evolution
+- Better performance and SEO for public-facing content
 
 ### Technology Stack
 

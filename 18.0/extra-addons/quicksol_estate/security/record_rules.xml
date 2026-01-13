@@ -67,6 +67,54 @@
             <field name="domain_force">[('property_id.agent_id.user_id', '=', user.id)]</field>
             <field name="groups" eval="[(4, ref('group_real_estate_agent'))]"/>
         </record>
+
+        <!-- Regra para atribuições agente-propriedade: acessam apenas das suas empresas -->
+        <record id="rule_assignment_multi_company" model="ir.rule">
+            <field name="name">Assignment: Multi-company Access</field>
+            <field name="model_id" ref="model_real_estate_agent_property_assignment"/>
+            <field name="domain_force">[('company_id', 'in', user.estate_company_ids.ids)]</field>
+            <field name="groups" eval="[(4, ref('group_real_estate_user')), (4, ref('group_real_estate_manager'))]"/>
+        </record>
+
+        <!-- Regra para agentes verem apenas suas próprias atribuições -->
+        <record id="rule_assignment_agent_own" model="ir.rule">
+            <field name="name">Assignment: Agent Own Assignments</field>
+            <field name="model_id" ref="model_real_estate_agent_property_assignment"/>
+            <field name="domain_force">[('agent_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_real_estate_agent'))]"/>
+        </record>
+        
+        <!-- Regra para regras de comissão: acessam apenas das suas empresas -->
+        <record id="rule_commission_rule_multi_company" model="ir.rule">
+            <field name="name">Commission Rule: Multi-company Access</field>
+            <field name="model_id" ref="model_real_estate_commission_rule"/>
+            <field name="domain_force">[('company_id', 'in', user.estate_company_ids.ids)]</field>
+            <field name="groups" eval="[(4, ref('group_real_estate_user')), (4, ref('group_real_estate_manager'))]"/>
+        </record>
+
+        <!-- Regra para agentes verem apenas suas próprias regras de comissão -->
+        <record id="rule_commission_rule_agent_own" model="ir.rule">
+            <field name="name">Commission Rule: Agent Own Rules</field>
+            <field name="model_id" ref="model_real_estate_commission_rule"/>
+            <field name="domain_force">[('agent_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_real_estate_agent'))]"/>
+        </record>
+
+        <!-- Regra para transações de comissão: acessam apenas das suas empresas -->
+        <record id="rule_commission_transaction_multi_company" model="ir.rule">
+            <field name="name">Commission Transaction: Multi-company Access</field>
+            <field name="model_id" ref="model_real_estate_commission_transaction"/>
+            <field name="domain_force">[('company_id', 'in', user.estate_company_ids.ids)]</field>
+            <field name="groups" eval="[(4, ref('group_real_estate_user')), (4, ref('group_real_estate_manager'))]"/>
+        </record>
+
+        <!-- Regra para agentes verem apenas suas próprias transações de comissão -->
+        <record id="rule_commission_transaction_agent_own" model="ir.rule">
+            <field name="name">Commission Transaction: Agent Own Transactions</field>
+            <field name="model_id" ref="model_real_estate_commission_transaction"/>
+            <field name="domain_force">[('agent_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_real_estate_agent'))]"/>
+        </record>
         
     </data>
 </odoo>

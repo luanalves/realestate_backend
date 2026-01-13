@@ -17,6 +17,10 @@ Este diretório contém as decisões arquiteturais do projeto Real Estate Manage
 | [ADR-009](./ADR-009-headless-authentication-user-context.md) | **Autenticação Headless com Contexto de Usuário** | **Proposed** | **2025-11-30** |
 | [ADR-010](./ADR-010-python-virtual-environment.md) | Python Virtual Environment | Accepted | 2025-12-01 |
 | [ADR-011](./ADR-011-controller-security-authentication-storage.md) | **Segurança de Controllers - Autenticação Dual e Armazenamento** | **Accepted** | **2025-12-13** |
+| [ADR-012](./ADR-012-creci-validation-brazilian-real-estate.md) | **CRECI Validation for Brazilian Real Estate System** | **Proposed** | **2026-01-12** |
+| [ADR-013](./ADR-013-commission-calculation-rule-management.md) | **Real Estate Commission Calculation and Rule Management** | **Proposed** | **2026-01-12** |
+| [ADR-014](./ADR-014-odoo-many2many-agent-property-relationship.md) | **Odoo ORM Many2many Relationship Patterns for Agent-Property Assignment** | **Accepted** | **2026-01-12** |
+| [ADR-015](./ADR-015-soft-delete-logical-deletion-odoo-models.md) | **Soft-Delete (Logical Deletion) Strategies for Odoo Models with Referential Integrity** | **Accepted** | **2026-01-12** |
 
 ## Como usar as ADRs
 

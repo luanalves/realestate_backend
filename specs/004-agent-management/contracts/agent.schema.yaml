@@ -1,0 +1,654 @@
+# OpenAPI 3.0 Schema: Agent Model
+# ADR-005: OpenAPI 3.0 with mandatory request/response schemas
+# ADR-004: Nomenclatura - real_estate_agent table
+
+openapi: 3.0.3
+info:
+  title: Real Estate Agent API
+  description: |
+    RESTful API for managing real estate agents with CRECI validation,
+    commission rules, and multi-tenant company assignments.
+    
+    Related ADRs:
+    - ADR-012: CRECI Validation
+    - ADR-013: Commission Calculation
+    - ADR-014: Many2many Agent-Property Relationships
+    - ADR-015: Soft-Delete Strategies
+  version: 1.0.0
+  contact:
+    name: Real Estate API Support
+    email: api@realestate.com
+
+servers:
+  - url: http://localhost:8069/api/v1
+    description: Local development server
+  - url: https://api.realestate.com/v1
+    description: Production server
+
+tags:
+  - name: Agents
+    description: Real estate agent management
+  - name: Commission Rules
+    description: Agent commission rule configuration
+  - name: Assignments
+    description: Agent-property assignments
+
+paths:
+  /agents:
+    get:
+      summary: List all agents
+      description: |
+        Returns a paginated list of agents with optional filtering.
+        
+        **Default behavior**: Returns only active agents (ADR-015).
+        Use `?active=all` to include inactive agents.
+      tags:
+        - Agents
+      security:
+        - BearerAuth: []
+        - SessionAuth: []
+      parameters:
+        - name: active
+          in: query
+          description: Filter by active status
+          schema:
+            type: string
+            enum: [true, false, all]
+            default: true
+        - name: company_id
+          in: query
+          description: Filter by company (multi-tenancy)
+          schema:
+            type: integer
+        - name: creci_number
+          in: query
+          description: Filter by CRECI number
+          schema:
+            type: string
+        - name: creci_state
+          in: query
+          description: Filter by CRECI state (UF)
+          schema:
+            type: string
+            pattern: '^[A-Z]{2}$'
+        - name: limit
+          in: query
+          description: Number of records to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          description: Number of records to skip
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: List of agents retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentListResponse'
+              examples:
+                success:
+                  value:
+                    success: true
+                    data:
+                      - id: 1
+                        name: "João Silva"
+                        email: "joao.silva@example.com"
+                        phone: "+55 11 98765-4321"
+                        creci_number: "123456"
+                        creci_state: "SP"
+                        creci_verified: true
+                        active: true
+                        company_ids: [1]
+                      - id: 2
+                        name: "Maria Santos"
+                        email: "maria.santos@example.com"
+                        phone: "+55 21 98888-7777"
+                        creci_number: "654321"
+                        creci_state: "RJ"
+                        creci_verified: true
+                        active: true
+                        company_ids: [1]
+                    count: 2
+                    total: 45
+                    limit: 20
+                    offset: 0
+                    _links:
+                      self:
+                        href: "/api/v1/agents?limit=20&offset=0"
+                      next:
+                        href: "/api/v1/agents?limit=20&offset=20"
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+
+    post:
+      summary: Create a new agent
+      description: |
+        Creates a new real estate agent with CRECI validation (ADR-012).
+        
+        **Validation rules**:
+        - CRECI number format: 6-8 digits
+        - CRECI state: Valid Brazilian UF
+        - Email: Valid format
+        - Phone: Brazilian format with country code
+        - At least one company assignment required (multi-tenancy)
+      tags:
+        - Agents
+      security:
+        - BearerAuth: []
+        - SessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentCreateRequest'
+            examples:
+              minimal:
+                summary: Minimal required fields
+                value:
+                  name: "João Silva"
+                  email: "joao.silva@example.com"
+                  creci_number: "123456"
+                  creci_state: "SP"
+                  company_ids: [1]
+              complete:
+                summary: All fields populated
+                value:
+                  name: "Maria Santos"
+                  email: "maria.santos@example.com"
+                  phone: "+55 21 98888-7777"
+                  cpf: "123.456.789-00"
+                  creci_number: "654321"
+                  creci_state: "RJ"
+                  creci_verification_date: "2025-01-01"
+                  company_ids: [1, 2]
+                  bio: "Especialista em imóveis comerciais no Rio de Janeiro"
+                  profile_picture: "https://example.com/photos/maria.jpg"
+      responses:
+        '201':
+          description: Agent created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+
+  /agents/{agent_id}:
+    get:
+      summary: Get agent by ID
+      description: Returns detailed information about a specific agent
+      tags:
+        - Agents
+      security:
+        - BearerAuth: []
+        - SessionAuth: []
+      parameters:
+        - name: agent_id
+          in: path
+          required: true
+          description: Agent ID
+          schema:
+            type: integer
+        - name: include_inactive
+          in: query
+          description: Include agent even if inactive
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Agent details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+    put:
+      summary: Update agent
+      description: |
+        Updates an existing agent.
+        
+        **CRECI updates**: Changing CRECI number requires re-verification (ADR-012).
+      tags:
+        - Agents
+      security:
+        - BearerAuth: []
+        - SessionAuth: []
+      parameters:
+        - name: agent_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentUpdateRequest'
+      responses:
+        '200':
+          description: Agent updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+    delete:
+      summary: Delete agent (soft-delete)
+      description: |
+        Deactivates an agent (soft-delete - ADR-015).
+        Historical references are preserved.
+      tags:
+        - Agents
+      security:
+        - BearerAuth: []
+        - SessionAuth: []
+      parameters:
+        - name: agent_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Agent deactivated successfully
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /agents/{agent_id}/commission-rules:
+    get:
+      summary: List agent's commission rules
+      description: Returns all commission rules for an agent (ADR-013)
+      tags:
+        - Commission Rules
+      security:
+        - BearerAuth: []
+        - SessionAuth: []
+      parameters:
+        - name: agent_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: include_history
+          in: query
+          description: Include expired rules (version history)
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Commission rules retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CommissionRule'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token from OAuth authentication (ADR-011)
+    SessionAuth:
+      type: apiKey
+      in: cookie
+      name: session_id
+      description: Odoo session cookie (ADR-011)
+
+  schemas:
+    Agent:
+      type: object
+      required:
+        - name
+        - email
+        - creci_number
+        - creci_state
+        - company_ids
+      properties:
+        id:
+          type: integer
+          readOnly: true
+          example: 1
+        name:
+          type: string
+          minLength: 3
+          maxLength: 100
+          example: "João Silva"
+        email:
+          type: string
+          format: email
+          example: "joao.silva@example.com"
+        phone:
+          type: string
+          pattern: '^\+55 \d{2} \d{4,5}-\d{4}$'
+          example: "+55 11 98765-4321"
+        cpf:
+          type: string
+          pattern: '^\d{3}\.\d{3}\.\d{3}-\d{2}$'
+          example: "123.456.789-00"
+        creci_number:
+          type: string
+          pattern: '^\d{6,8}$'
+          example: "123456"
+          description: CRECI registration number (6-8 digits)
+        creci_state:
+          type: string
+          pattern: '^[A-Z]{2}$'
+          example: "SP"
+          description: Brazilian state code (UF)
+        creci_verified:
+          type: boolean
+          readOnly: true
+          default: false
+          description: Whether CRECI has been verified with COFECI
+        creci_verification_date:
+          type: string
+          format: date
+          readOnly: true
+          example: "2025-01-15"
+        active:
+          type: boolean
+          default: true
+          description: Active status (soft-delete - ADR-015)
+        deactivation_date:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        deactivation_reason:
+          type: string
+          nullable: true
+        company_ids:
+          type: array
+          items:
+            type: integer
+          minItems: 1
+          example: [1, 2]
+          description: List of company IDs (multi-tenancy)
+        bio:
+          type: string
+          maxLength: 1000
+          nullable: true
+        profile_picture:
+          type: string
+          format: uri
+          nullable: true
+        commission_rules_count:
+          type: integer
+          readOnly: true
+          description: Number of active commission rules
+        properties_count:
+          type: integer
+          readOnly: true
+          description: Number of assigned properties
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+
+    AgentCreateRequest:
+      type: object
+      required:
+        - name
+        - email
+        - creci_number
+        - creci_state
+        - company_ids
+      properties:
+        name:
+          type: string
+          minLength: 3
+          maxLength: 100
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+          pattern: '^\+55 \d{2} \d{4,5}-\d{4}$'
+        cpf:
+          type: string
+          pattern: '^\d{3}\.\d{3}\.\d{3}-\d{2}$'
+        creci_number:
+          type: string
+          pattern: '^\d{6,8}$'
+        creci_state:
+          type: string
+          pattern: '^[A-Z]{2}$'
+        company_ids:
+          type: array
+          items:
+            type: integer
+          minItems: 1
+        bio:
+          type: string
+          maxLength: 1000
+        profile_picture:
+          type: string
+          format: uri
+
+    AgentUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 3
+          maxLength: 100
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        cpf:
+          type: string
+        creci_number:
+          type: string
+          description: Changing this requires re-verification
+        creci_state:
+          type: string
+        company_ids:
+          type: array
+          items:
+            type: integer
+        bio:
+          type: string
+        profile_picture:
+          type: string
+
+    AgentResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/Agent'
+        _links:
+          $ref: '#/components/schemas/HATEOASLinks'
+
+    AgentListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Agent'
+        count:
+          type: integer
+          description: Number of records in current page
+        total:
+          type: integer
+          description: Total number of records
+        limit:
+          type: integer
+        offset:
+          type: integer
+        _links:
+          type: object
+          properties:
+            self:
+              $ref: '#/components/schemas/Link'
+            next:
+              $ref: '#/components/schemas/Link'
+            prev:
+              $ref: '#/components/schemas/Link'
+
+    CommissionRule:
+      type: object
+      description: Agent commission rule (ADR-013)
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        agent_id:
+          type: integer
+        transaction_type:
+          type: string
+          enum: [sale, rental]
+        structure_type:
+          type: string
+          enum: [percentage, fixed, tiered]
+        percentage:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 100
+        fixed_amount:
+          type: number
+          format: float
+          minimum: 0
+        valid_from:
+          type: string
+          format: date-time
+        valid_until:
+          type: string
+          format: date-time
+          nullable: true
+        is_active:
+          type: boolean
+          readOnly: true
+
+    HATEOASLinks:
+      type: object
+      description: HATEOAS links (ADR-007)
+      properties:
+        self:
+          $ref: '#/components/schemas/Link'
+        commission_rules:
+          $ref: '#/components/schemas/Link'
+        properties:
+          $ref: '#/components/schemas/Link'
+        deactivate:
+          $ref: '#/components/schemas/Link'
+        reactivate:
+          $ref: '#/components/schemas/Link'
+
+    Link:
+      type: object
+      properties:
+        href:
+          type: string
+          format: uri
+        method:
+          type: string
+          enum: [GET, POST, PUT, DELETE, PATCH]
+
+    Error:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+        code:
+          type: string
+        details:
+          type: object
+
+  responses:
+    UnauthorizedError:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            success: false
+            error: "Authentication required"
+            code: "UNAUTHORIZED"
+
+    ForbiddenError:
+      description: Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            success: false
+            error: "Insufficient permissions"
+            code: "FORBIDDEN"
+
+    NotFoundError:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            success: false
+            error: "Agent not found"
+            code: "NOT_FOUND"
+
+    ValidationError:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            success: false
+            error: "Validation failed"
+            code: "VALIDATION_ERROR"
+            details:
+              creci_number: ["Invalid CRECI format"]
+              email: ["Email already exists"]

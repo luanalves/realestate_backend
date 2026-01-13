@@ -211,6 +211,20 @@ class Property(models.Model):
     sale_id = fields.Many2one('real.estate.sale', string='Sale')
     lease_id = fields.Many2one('real.estate.lease', string='Lease')
     
+    # ========== ASSIGNMENT RELATIONSHIPS (US3) ==========
+    assignment_ids = fields.One2many(
+        'real.estate.agent.property.assignment',
+        'property_id',
+        string='Agent Assignments'
+    )
+    
+    assigned_agent_ids = fields.Many2many(
+        'real.estate.agent',
+        compute='_compute_assigned_agents',
+        string='Assigned Agents',
+        help='All agents assigned to this property'
+    )
+    
     # ========== LEGACY FIELDS (for compatibility) ==========
     status = fields.Selection([
         ('available', 'Available'),
@@ -288,6 +302,13 @@ class Property(models.Model):
     def _compute_document_count(self):
         for prop in self:
             prop.document_count = len(prop.document_ids)
+    
+    @api.depends('assignment_ids', 'assignment_ids.agent_id')
+    def _compute_assigned_agents(self):
+        """Compute list of agents assigned to this property"""
+        for prop in self:
+            active_assignments = prop.assignment_ids.filtered(lambda a: a.active)
+            prop.assigned_agent_ids = active_assignments.mapped('agent_id')
     
     # ========== CONSTRAINTS ==========
     @api.constrains('for_sale', 'for_rent')

@@ -1,31 +1,38 @@
 <!--
-Sync Impact Report - Constitution v1.0.0
+Sync Impact Report - Constitution v1.1.0
 ========================================
 
-Version Change: N/A → 1.0.0
-Change Type: MINOR (initial constitution codification)
-Date: 2026-01-07
+Version Change: 1.0.0 → 1.1.0
+Change Type: MINOR (architectural philosophy expansion)
+Date: 2026-01-08
 
-Sections Added:
-- Core Principles (5 principles codified from existing docs/constitution.md)
-- Security Requirements
-- Quality & Testing Standards
-- Governance & Compliance
+Sections Modified:
+- Added "Architecture Philosophy" section (new principle VI)
+- Expanded Security Requirements to include SSR context
+- Clarified dual-interface design pattern
 
-Principles Extracted from docs/constitution.md:
-1. Security First - Multi-layered defense approach (ADR-008, ADR-009, ADR-011)
-2. Test Coverage Mandatory - 80% minimum per ADR-003
-3. API-First Design - RESTful with HATEOAS, OpenAPI 3.0 (ADR-005, ADR-007)
-4. Multi-Tenancy by Design - Complete company isolation (ADR-008)
-5. ADR Governance - All decisions documented and enforced
+New Principle Added:
+6. Headless Architecture - SSR for agencies, Odoo Web for managers
+
+Rationale for Version Bump:
+- Material expansion of architectural guidance
+- New non-negotiable principle added (Principle VI)
+- Backward compatible (no existing principles removed/redefined)
+- Clarifies intended use of Odoo framework vs headless frontend
 
 Template Files Status:
-✅ plan-template.md - Contains "Constitution Check" gate (aligned)
-✅ spec-template.md - User scenarios and requirements align with testing principles
-✅ tasks-template.md - Test-first workflow aligns with principle 2
-⚠️  No updates required - templates already compatible
+✅ plan-template.md - "Constitution Check" gate remains aligned
+✅ spec-template.md - User scenarios compatible with headless SSR architecture
+✅ tasks-template.md - Test-first workflow unchanged
+✅ docs/constitution.md - Updated with detailed architecture philosophy (source of this amendment)
+
+Propagation Complete:
+✅ Core principle added to .specify/memory/constitution.md
+✅ Detailed documentation in docs/constitution.md
+✅ Architecture diagrams updated in docs/constitution.md
 
 Follow-up Actions: None
+Previous Amendment: 2026-01-07 (v1.0.0 initial codification)
 -->
 
 # Realestate Backend Platform Constitution
@@ -81,7 +88,29 @@ All architectural decisions documented as ADRs in `docs/adr/`:
 
 **Rationale**: Distributed team + AI agents require consistent, searchable decision history to prevent pattern drift and ensure maintainability.
 
+### VI. Headless Architecture (NON-NEGOTIABLE)
+Platform employs dual-interface design:
+- **Real Estate Agencies**: Headless SSR frontend (Next.js/React) consuming REST APIs
+  - Enhanced security through SSR (credentials never reach client browser)
+  - Better SEO for property listings
+  - Modern UX/UI tailored for real estate workflows
+  - Access via OAuth 2.0 REST APIs only (no direct Odoo Web access)
+- **Platform Managers**: Odoo Web interface for system administration
+  - Backend management, configuration, database administration
+  - Direct Odoo Web UI access for operational oversight
+
+**Why Odoo Framework**: Robust ORM, built-in multi-company support, security framework, proven scalability
+
+**Rationale**: Complete UX control for agencies, SSR security advantages (sensitive data never in client-side code), API-first enables future mobile apps, frontend/backend independent evolution.
+
 ## Security Requirements
+
+### Dual-Interface Security Model
+- **Headless Frontend (SSR)**: Server-Side Rendering prevents credential exposure in client browser
+  - Authentication tokens handled server-side only
+  - API calls from SSR backend to Odoo backend
+  - Public pages (property listings) benefit from SEO optimization
+- **Odoo Web (Managers)**: Standard Odoo authentication for internal platform management
 
 ### Authentication Standards (ADR-009, ADR-011)
 - OAuth 2.0 for application-to-application (Client Credentials Grant)
@@ -169,4 +198,4 @@ All architectural decisions documented as ADRs in `docs/adr/`:
 - Constitution provides strategic direction; copilot-instructions provides tactical rules
 - Conflicts resolved in favor of constitution (strategic supersedes tactical)
 
-**Version**: 1.0.0 | **Ratified**: 2026-01-03 | **Last Amended**: 2026-01-07
+**Version**: 1.1.0 | **Ratified**: 2026-01-03 | **Last Amended**: 2026-01-08
