@@ -1,9 +1,12 @@
 import json
 import jwt
 import os
+import logging
 from datetime import datetime, timedelta
 from odoo import http
 from odoo.http import request
+
+_logger = logging.getLogger(__name__)
 
 
 class AuthController(http.Controller):
@@ -33,12 +36,16 @@ class AuthController(http.Controller):
         }
         """
         try:
+            _logger.info("=== OAuth Token Request Started ===")
+            
             # Accept both JSON and form data
             data = kwargs
             if request.httprequest.content_type == 'application/json':
                 try:
                     data = json.loads(request.httprequest.data.decode('utf-8'))
-                except (json.JSONDecodeError, ValueError, UnicodeDecodeError):
+                    _logger.info(f"Parsed JSON data: grant_type={data.get('grant_type')}, client_id={data.get('client_id')[:10]}...")
+                except (json.JSONDecodeError, ValueError, UnicodeDecodeError) as e:
+                    _logger.warning(f"JSON parsing failed: {e}, falling back to kwargs")
                     # Fall back to kwargs if JSON parsing fails
                     pass
             
@@ -46,29 +53,44 @@ class AuthController(http.Controller):
             client_id = data.get('client_id')
             client_secret = data.get('client_secret')
 
+            _logger.info(f"Grant type: {grant_type}, Client ID: {client_id}")
+
             # Validate grant type
             if grant_type != 'client_credentials':
+                _logger.warning(f"Invalid grant type: {grant_type}")
                 return self._error_response('unsupported_grant_type', 'Only client_credentials grant is supported')
 
             # Validate client credentials
             if not client_id or not client_secret:
+                _logger.warning(f"Missing credentials - client_id: {bool(client_id)}, client_secret: {bool(client_secret)}")
                 return self._error_response('invalid_request', 'client_id and client_secret are required')
 
             # Find application by client_id only (we'll verify secret separately)
+            _logger.info(f"Searching for application with client_id: {client_id}")
             Application = request.env['thedevkitchen.oauth.application'].sudo()
             application = Application.search([
                 ('client_id', '=', client_id),
                 ('active', '=', True),
             ], limit=1)
 
+            _logger.info(f"Application found: {bool(application)}")
+            
             # Verify client secret using bcrypt hash comparison
-            if not application or not application.verify_secret(client_secret):
+            if not application:
+                _logger.warning(f"No application found for client_id: {client_id}")
+                return self._error_response('invalid_client', 'Invalid client credentials')
+            
+            _logger.info("Verifying client secret...")
+            if not application.verify_secret(client_secret):
+                _logger.warning("Client secret verification failed")
                 return self._error_response('invalid_client', 'Invalid client credentials')
 
+            _logger.info("Generating access token...")
             # Generate tokens
             access_token, expires_in = self._generate_access_token(application)
             refresh_token = self._generate_refresh_token()
 
+            _logger.info("Storing token in database...")
             # Store token in database
             Token = request.env['thedevkitchen.oauth.token'].sudo()
             Token.create({
@@ -80,6 +102,7 @@ class AuthController(http.Controller):
                 'active': True,
             })
 
+            _logger.info("=== OAuth Token Request Successful ===")
             # Return token response
             return request.make_json_response({
                 'access_token': access_token,
@@ -89,6 +112,9 @@ class AuthController(http.Controller):
             })
 
         except Exception as e:
+            _logger.error(f"=== OAuth Token Request Failed ===")
+            _logger.error(f"Exception type: {type(e).__name__}")
+            _logger.error(f"Exception message: {str(e)}", exc_info=True)
             return self._error_response('server_error', str(e))
 
     @http.route('/api/v1/auth/revoke', type='http', auth='none', methods=['POST'], csrf=False)
