@@ -652,7 +652,13 @@ class TestPropertyAPIHTTP(HttpCase):
             'status': 'draft',
             'num_rooms': 2,
             'num_bathrooms': 1,
-            'area': 80.0
+            'area': 80.0,
+            'state_id': self.state_sp.id,
+            'city': 'São Paulo',
+            'street': 'Rua Nova',
+            'street_number': '100',
+            'zip_code': '01234-567',
+            'location_type_id': self.location_type.id
         }
         
         response = self.url_open(
