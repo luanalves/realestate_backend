@@ -169,9 +169,14 @@ class TestPropertyAPI(HttpCase):
             'name': 'Test API App'
         })
         
-        # Get plaintext secret from cache
+        # Get plaintext secret from cache using correct cache key
         from odoo.addons.thedevkitchen_apigateway.models.oauth_application import _PLAINTEXT_CACHE
-        cls.client_secret = _PLAINTEXT_CACHE.get(cls.oauth_app.client_id)
+        cache_key = f'oauth_app_{cls.oauth_app.id}_plaintext'
+        cached_data = _PLAINTEXT_CACHE.get(cache_key)
+        if cached_data:
+            cls.client_secret, _ = cached_data
+        else:
+            raise Exception(f"Client secret not found in cache for application {cls.oauth_app.id}")
         
         # Create access token
         from odoo import fields
@@ -436,9 +441,14 @@ class TestPropertyAPIHTTP(HttpCase):
             'name': 'HTTP Test App'
         })
         
-        # Get client secret
+        # Get client secret from cache using correct cache key
         from odoo.addons.thedevkitchen_apigateway.models.oauth_application import _PLAINTEXT_CACHE
-        cls.client_secret = _PLAINTEXT_CACHE.get(cls.oauth_app.client_id)
+        cache_key = f'oauth_app_{cls.oauth_app.id}_plaintext'
+        cached_data = _PLAINTEXT_CACHE.get(cache_key)
+        if cached_data:
+            cls.client_secret, _ = cached_data
+        else:
+            raise Exception(f"Client secret not found in cache for application {cls.oauth_app.id}")
         
         # Create test property
         cls.test_property = cls.env['real.estate.property'].create({
