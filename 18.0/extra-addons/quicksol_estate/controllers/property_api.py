@@ -461,3 +461,4 @@ class PropertyApiController(http.Controller):
 _serialize_property = serialize_property
 _validate_property_access = validate_property_access
 _error_response = error_response
+_success_response = success_response

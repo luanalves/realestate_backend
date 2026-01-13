@@ -92,8 +92,8 @@ def validate_property_access(property_record, user, operation='read'):
     
     # Manager: access to properties of their companies
     if user.has_group('quicksol_estate.group_real_estate_manager'):
-        user_companies = user.company_ids
-        property_companies = property_record.company_ids
+        user_companies = set(user.company_ids.ids)
+        property_companies = set(property_record.company_ids.ids)
         
         if property_companies & user_companies:
             return True, None
@@ -113,8 +113,8 @@ def validate_property_access(property_record, user, operation='read'):
         if operation == 'delete':
             return False, 'Users cannot delete properties'
         
-        user_companies = user.company_ids
-        property_companies = property_record.company_ids
+        user_companies = set(user.company_ids.ids)
+        property_companies = set(property_record.company_ids.ids)
         
         if property_companies & user_companies:
             return True, None
