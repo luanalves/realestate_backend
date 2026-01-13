@@ -37,13 +37,16 @@ class AuthController(http.Controller):
         """
         try:
             _logger.info("=== OAuth Token Request Started ===")
+            _logger.info(f"Content-Type: {request.httprequest.content_type}")
+            _logger.info(f"Request data (raw): {request.httprequest.data[:200]}")
+            _logger.info(f"Kwargs: {kwargs}")
             
             # Accept both JSON and form data
             data = kwargs
             if request.httprequest.content_type == 'application/json':
                 try:
                     data = json.loads(request.httprequest.data.decode('utf-8'))
-                    _logger.info(f"Parsed JSON data: grant_type={data.get('grant_type')}, client_id={data.get('client_id')[:10]}...")
+                    _logger.info(f"Parsed JSON data (full): {data}")
                 except (json.JSONDecodeError, ValueError, UnicodeDecodeError) as e:
                     _logger.warning(f"JSON parsing failed: {e}, falling back to kwargs")
                     # Fall back to kwargs if JSON parsing fails
@@ -53,7 +56,7 @@ class AuthController(http.Controller):
             client_id = data.get('client_id')
             client_secret = data.get('client_secret')
 
-            _logger.info(f"Grant type: {grant_type}, Client ID: {client_id}")
+            _logger.info(f"Grant type: {grant_type}, Client ID: {client_id}, Secret: {client_secret[:10] if client_secret else None}...")
 
             # Validate grant type
             if grant_type != 'client_credentials':
@@ -63,6 +66,7 @@ class AuthController(http.Controller):
             # Validate client credentials
             if not client_id or not client_secret:
                 _logger.warning(f"Missing credentials - client_id: {bool(client_id)}, client_secret: {bool(client_secret)}")
+                _logger.error(f"Full data dict: {data}")
                 return self._error_response('invalid_request', 'client_id and client_secret are required')
 
             # Find application by client_id only (we'll verify secret separately)

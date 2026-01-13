@@ -69,6 +69,7 @@ class TestPropertyAPIAuth(HttpCase):
     def _get_access_token(self):
         """Helper to get valid access token"""
         response = self.url_open('/api/v1/auth/token', data=json.dumps({
+            'grant_type': 'client_credentials',
             'client_id': self.oauth_app.client_id,
             'client_secret': self.client_secret
         }), headers={'Content-Type': 'application/json'})
