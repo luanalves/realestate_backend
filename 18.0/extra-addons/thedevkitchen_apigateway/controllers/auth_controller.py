@@ -97,14 +97,20 @@ class AuthController(http.Controller):
             _logger.info("Storing token in database...")
             # Store token in database
             Token = request.env['thedevkitchen.oauth.token'].sudo()
-            Token.create({
-                'application_id': application.id,
-                'access_token': access_token,
-                'refresh_token': refresh_token,
-                'expires_at': datetime.now() + timedelta(seconds=expires_in),
-                'token_type': 'Bearer',
-                'active': True,
-            })
+            try:
+                Token.create({
+                    'application_id': application.id,
+                    'access_token': access_token,
+                    'refresh_token': refresh_token,
+                    'expires_at': datetime.now() + timedelta(seconds=expires_in),
+                    'token_type': 'Bearer',
+                    'active': True,
+                })
+            except Exception as token_error:
+                _logger.error(f"Failed to create token in database: {str(token_error)}", exc_info=True)
+                # Rollback the current transaction
+                request.env.cr.rollback()
+                raise
 
             _logger.info("=== OAuth Token Request Successful ===")
             # Return token response
@@ -273,23 +279,32 @@ class AuthController(http.Controller):
         # Get JWT secret from environment variable
         secret = os.getenv('JWT_SECRET')
         
+        _logger.info(f"JWT_SECRET from env: {'SET' if secret else 'NOT SET'}")
+        
         if not secret:
+            _logger.error("JWT_SECRET not configured!")
             raise ValueError(
                 'JWT secret not configured. Please set the environment variable: JWT_SECRET'
             )
         
-        expires_in = 3600  # 1 hour
-        payload = {
-            'client_id': application.client_id,
-            'exp': datetime.utcnow() + timedelta(seconds=expires_in),
-            'iat': datetime.utcnow(),
-            'iss': os.getenv('JWT_ISSUER', 'thedevkitchen-api-gateway'),
-            'sub': application.client_id,
-            'jti': secrets.token_urlsafe(16),  # JWT ID único para evitar duplicatas
-        }
-        
-        token = jwt.encode(payload, secret, algorithm='HS256')
-        return token, expires_in
+        try:
+            expires_in = 3600  # 1 hour
+            payload = {
+                'client_id': application.client_id,
+                'exp': datetime.utcnow() + timedelta(seconds=expires_in),
+                'iat': datetime.utcnow(),
+                'iss': os.getenv('JWT_ISSUER', 'thedevkitchen-api-gateway'),
+                'sub': application.client_id,
+                'jti': secrets.token_urlsafe(16),  # JWT ID único para evitar duplicatas
+            }
+            
+            _logger.info(f"Encoding JWT with payload: {payload}")
+            token = jwt.encode(payload, secret, algorithm='HS256')
+            _logger.info("JWT encoded successfully")
+            return token, expires_in
+        except Exception as e:
+            _logger.error(f"Failed to generate JWT token: {str(e)}", exc_info=True)
+            raise
 
     def _generate_refresh_token(self):
         """Generate refresh token"""
