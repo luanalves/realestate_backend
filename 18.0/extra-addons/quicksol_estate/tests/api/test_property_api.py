@@ -174,12 +174,14 @@ class TestPropertyAPI(HttpCase):
         cls.client_secret = _PLAINTEXT_CACHE.get(cls.oauth_app.client_id)
         
         # Create access token
+        from odoo import fields
+        from datetime import timedelta
         cls.access_token = cls.env['thedevkitchen.oauth.token'].create({
             'application_id': cls.oauth_app.id,
             'token_type': 'access',
             'access_token': 'test_access_token_123',
             'refresh_token': 'test_refresh_token_456',
-            'expires_in': 3600,
+            'expires_at': fields.Datetime.now() + timedelta(seconds=3600),
             'revoked': False
         })
     

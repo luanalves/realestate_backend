@@ -286,14 +286,6 @@ class RealEstateCommissionRule(models.Model):
             )
         
         result = super().write(vals)
-        
-        # Log significant changes
-        if any(field in vals for field in ['percentage', 'fixed_amount', 'valid_from', 'valid_until']):
-            for rule in self:
-                rule.message_post(
-                    body=_('Commission rule updated')
-                )
-        
         return result
     
     # ==================== HELPER METHODS ====================

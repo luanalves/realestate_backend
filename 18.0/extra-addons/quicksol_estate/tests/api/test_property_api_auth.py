@@ -174,14 +174,14 @@ class TestPropertyAPIAuth(HttpCase):
     def test_09_token_expiration(self):
         """Expired token should return 401"""
         # Create expired token
-        import datetime
+        from odoo import fields
+        from datetime import timedelta
         expired_token = self.env['thedevkitchen.oauth.token'].create({
             'application_id': self.oauth_app.id,
             'token_type': 'access',
             'access_token': 'expired_token_123',
             'refresh_token': 'refresh_123',
-            'expires_in': 3600,
-            'created_at': (datetime.datetime.now() - datetime.timedelta(hours=2)).isoformat(),
+            'expires_at': fields.Datetime.now() - timedelta(hours=2),
             'revoked': False
         })
         
@@ -195,12 +195,14 @@ class TestPropertyAPIAuth(HttpCase):
     def test_10_revoked_token(self):
         """Revoked token should return 401"""
         # Create revoked token
+        from odoo import fields
+        from datetime import timedelta
         revoked_token = self.env['thedevkitchen.oauth.token'].create({
             'application_id': self.oauth_app.id,
             'token_type': 'access',
             'access_token': 'revoked_token_123',
             'refresh_token': 'refresh_456',
-            'expires_in': 3600,
+            'expires_at': fields.Datetime.now() + timedelta(seconds=3600),
             'revoked': True
         })
         
