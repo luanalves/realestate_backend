@@ -315,7 +315,7 @@ class TestPropertyAPI(HttpCase):
         property_no_agent = self.env['real.estate.property'].create({
             'name': 'Property without agent',
             'price': 200000.00,
-            'status': 'draft',
+            'status': 'available',
             'property_type_id': self.property_type.id,
             'company_ids': [(6, 0, [self.company.id])],
             'area': 100.0,
@@ -776,7 +776,13 @@ class TestPropertyAPIHTTP(HttpCase):
             'name': 'Property to Delete',
             'price': 100000.00,
             'property_type_id': self.property_type.id,
-            'company_ids': [(6, 0, [self.company.id])]
+            'company_ids': [(6, 0, [self.company.id])],
+            'state_id': self.state_sp.id,
+            'city': 'São Paulo',
+            'street': 'Rua Delete',
+            'street_number': '999',
+            'zip_code': '01234-567',
+            'location_type_id': self.location_type.id
         })
         
         response = self.url_open(
