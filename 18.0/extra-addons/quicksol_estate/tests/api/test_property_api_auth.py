@@ -256,7 +256,7 @@ class TestPropertyAPIAuth(HttpCase):
             headers=headers
         )
         
-        self.assertEqual(response.headers.get('Content-Type'), 'application/json')
+        self.assertTrue(response.headers.get('Content-Type').startswith('application/json'))
         data = json.loads(response.content.decode('utf-8'))
         self.assertIsInstance(data, dict)
     

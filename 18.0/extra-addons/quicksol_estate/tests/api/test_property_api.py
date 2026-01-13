@@ -198,7 +198,7 @@ class TestPropertyAPI(HttpCase):
         
         self.assertIsInstance(result, dict)
         self.assertEqual(result['id'], self.property_agent.id)
-        self.assertEqual(result['title'], 'Property managed by agent_user')
+        self.assertEqual(result['name'], 'Property managed by agent_user')
         self.assertEqual(result['price'], 450000.00)
         self.assertEqual(result['status'], 'available')
         self.assertEqual(result['features']['bedrooms'], 3)
@@ -672,7 +672,7 @@ class TestPropertyAPIHTTP(HttpCase):
         self.assertEqual(response.status_code, 201)
         data = json.loads(response.content.decode('utf-8'))
         self.assertIn('id', data)
-        self.assertEqual(data['title'], 'New Valid Property')
+        self.assertEqual(data['name'], 'New Valid Property')
         self.assertEqual(data['price'], 350000.00)
     
     # =================================================================
@@ -810,7 +810,7 @@ class TestPropertyAPIHTTP(HttpCase):
         )
         self.assertEqual(response.status_code, 201)
         data = json.loads(response.content.decode('utf-8'))
-        self.assertEqual(data['title'], payload['name'])
+        self.assertEqual(data['name'], payload['name'])
     
     def test_property_with_very_long_description(self):
         """Test property with very long description"""
