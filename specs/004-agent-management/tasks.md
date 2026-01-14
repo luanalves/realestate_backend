@@ -151,7 +151,7 @@
 - [X] T063 [US3] Implement GET /api/v1/agents/{id}/properties endpoint in controllers/agent_api.py
 - [X] T064 [US3] Implement DELETE /api/v1/assignments/{id} endpoint in controllers/agent_api.py
 - [X] T065 [US3] Add assigned_property_count computed field in models/agent.py
-- [ ] T066 [US3] Verify all US3 tests pass (run odoo --test-tags=quicksol_estate.test_assignment)
+- [X] T066 [US3] Verify all US3 tests pass (run odoo --test-tags=quicksol_estate.test_assignment)
 
 **Checkpoint**: User Story 3 complete - can assign agents to properties with validation ✅
 
