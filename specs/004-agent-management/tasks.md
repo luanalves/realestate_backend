@@ -34,7 +34,7 @@
 - [X] T003 [P] Initialize models/ directory with __init__.py imports
 - [X] T004 [P] Initialize controllers/ directory with __init__.py imports
 - [X] T005 [P] Initialize services/ directory with __init__.py imports
-- [ ] T006 [P] Initialize tests/ directory with __init__.py and test configuration
+- [X] T006 [P] Initialize tests/ directory with __init__.py and test configuration
 
 ---
 
@@ -50,7 +50,7 @@
 - [X] T010 [P] Create security record rules in security/agent_security.xml (agent_company_rule)
 - [X] T011 Create access rights in security/ir.model.access.csv for real.estate.agent model
 - [X] T012 [P] Setup base controller structure in controllers/agent_api.py with route decorators
-- [ ] T013 [P] Implement error handling utilities in services/error_handler.py
+- [X] T013 [P] Implement error handling utilities in services/error_handler.py
 - [X] T014 Create audit log mixin integration in models/agent.py (_inherit mail.thread, mail.activity.mixin)
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
@@ -132,25 +132,25 @@
 
 ### Tests for User Story 3 (TDD - Write First)
 
-- [ ] T050 [P] [US3] Create test_assignment.py with test_assign_agent_to_property in tests/
-- [ ] T051 [P] [US3] Write test_assign_agent_cross_company_forbidden in tests/test_assignment.py
-- [ ] T052 [P] [US3] Write test_multiple_agents_per_property in tests/test_assignment.py
-- [ ] T053 [P] [US3] Write test_list_agent_properties in tests/test_assignment.py
+- [X] T050 [P] [US3] Create test_assignment.py with test_assign_agent_to_property in tests/
+- [X] T051 [P] [US3] Write test_assign_agent_cross_company_forbidden in tests/test_assignment.py
+- [X] T052 [P] [US3] Write test_multiple_agents_per_property in tests/test_assignment.py
+- [X] T053 [P] [US3] Write test_list_agent_properties in tests/test_assignment.py
 - [ ] T054 [P] [US3] Write Cypress E2E test agent-property-assignment.cy.js in cypress/e2e/
 
 ### Implementation for User Story 3
 
-- [ ] T055 [P] [US3] Create Assignment model in models/assignment.py with _name='real.estate.agent.property.assignment'
-- [ ] T056 [P] [US3] Add assignment fields (agent_id, property_id, company_id, assignment_date, responsibility_type)
-- [ ] T057 [US3] Add Many2many field agent_property_ids in models/agent.py
-- [ ] T058 [US3] Add Many2many field assigned_agent_ids in property model
-- [ ] T059 [US3] Implement _check_company_match constraint in models/assignment.py validating agent/property same company
-- [ ] T060 [US3] Add security record rule assignment_company_rule in security/agent_security.xml
-- [ ] T061 [US3] Create AssignmentService with assign_agent_to_property method in services/assignment_service.py
-- [ ] T062 [US3] Implement POST /api/v1/assignments endpoint in controllers/agent_api.py
-- [ ] T063 [US3] Implement GET /api/v1/agents/{id}/properties endpoint in controllers/agent_api.py
-- [ ] T064 [US3] Implement DELETE /api/v1/assignments/{id} endpoint in controllers/agent_api.py
-- [ ] T065 [US3] Add assigned_property_count computed field in models/agent.py
+- [X] T055 [P] [US3] Create Assignment model in models/assignment.py with _name='real.estate.agent.property.assignment'
+- [X] T056 [P] [US3] Add assignment fields (agent_id, property_id, company_id, assignment_date, responsibility_type)
+- [X] T057 [US3] Add Many2many field agent_property_ids in models/agent.py
+- [X] T058 [US3] Add Many2many field assigned_agent_ids in property model
+- [X] T059 [US3] Implement _check_company_match constraint in models/assignment.py validating agent/property same company
+- [X] T060 [US3] Add security record rule assignment_company_rule in security/agent_security.xml
+- [X] T061 [US3] Create AssignmentService with assign_agent_to_property method in services/assignment_service.py
+- [X] T062 [US3] Implement POST /api/v1/assignments endpoint in controllers/agent_api.py
+- [X] T063 [US3] Implement GET /api/v1/agents/{id}/properties endpoint in controllers/agent_api.py
+- [X] T064 [US3] Implement DELETE /api/v1/assignments/{id} endpoint in controllers/agent_api.py
+- [X] T065 [US3] Add assigned_property_count computed field in models/agent.py
 - [ ] T066 [US3] Verify all US3 tests pass (run odoo --test-tags=quicksol_estate.test_assignment)
 
 **Checkpoint**: User Story 3 complete - can assign agents to properties with validation ✅
