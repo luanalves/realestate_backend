@@ -159,12 +159,11 @@ def require_session(func):
         valid, user, api_session, error_msg = SessionValidator.validate(session_id)
 
         if not valid:
-            return {
-                'error': {
-                    'status': 401,
-                    'message': error_msg or 'Unauthorized'
-                }
-            }
+            return request.make_json_response({
+                'error': 'unauthorized',
+                'message': error_msg or 'Unauthorized',
+                'code': 401
+            }, status=401)
 
         # SECURITY: Validate JWT token (MANDATORY for APIs)
         # This prevents session hijacking by validating UID + fingerprint (IP/UA/Lang)
@@ -176,23 +175,21 @@ def require_session(func):
                 f'[SESSION SECURITY] No JWT token found for session {session_id[:16]}... '
                 f'user_id={user.id}'
             )
-            return {
-                'error': {
-                    'status': 401,
-                    'message': 'Session token required'
-                }
-            }
+            return request.make_json_response({
+                'error': 'unauthorized',
+                'message': 'Session token required',
+                'code': 401
+            }, status=401)
         
         try:
             secret = config.get('database_secret') or config.get('admin_passwd')
             if not secret:
                 _logger.critical("No secret configured for JWT validation (database_secret or admin_passwd required)")
-                return {
-                    'error': {
-                        'status': 500,
-                        'message': 'Server configuration error'
-                    }
-                }
+                return request.make_json_response({
+                    'error': 'configuration_error',
+                    'message': 'Server configuration error',
+                    'code': 500
+                }, status=500)
             
             payload = jwt.decode(stored_token, secret, algorithms=['HS256'])
             token_uid = payload.get('uid')
@@ -204,12 +201,11 @@ def require_session(func):
                     f'JWT uid={token_uid} != session user_id={user.id} '
                     f'session_id={session_id[:16]}...'
                 )
-                return {
-                    'error': {
-                        'status': 401,
-                        'message': 'Session validation failed'
-                    }
-                }
+                return request.make_json_response({
+                    'error': 'unauthorized',
+                    'message': 'Session validation failed',
+                    'code': 401
+                }, status=401)
             
             # Validate fingerprint (IP/UA/Lang) for APIs
             token_fingerprint = payload.get('fingerprint', {})
