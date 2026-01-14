@@ -777,6 +777,7 @@ class TestPropertyAPIHTTP(HttpCase):
             'price': 100000.00,
             'property_type_id': self.property_type.id,
             'company_ids': [(6, 0, [self.company.id])],
+            'area': 80.0,
             'state_id': self.state_sp.id,
             'city': 'São Paulo',
             'street': 'Rua Delete',
