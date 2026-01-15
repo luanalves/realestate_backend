@@ -559,5 +559,261 @@ curl 'http://localhost:8069/api/v1/location-types' \
             <field name="active" eval="True"/>
         </record>
 
+        <!-- Agent Management Endpoints -->
+
+        <record id="api_endpoint_list_agents" model="thedevkitchen.api.endpoint">
+            <field name="name">List Agents</field>
+            <field name="path">/api/v1/agents</field>
+            <field name="method">GET</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Agents</field>
+            <field name="summary">List all agents</field>
+            <field name="description">Get paginated list of all agents with filtering and search capabilities.
+
+**Query Parameters:**
+- `page`: Page number (default: 1)
+- `limit`: Items per page (default: 20, max: 100)
+- `search`: Search by name, email, CRECI
+- `active`: Filter by active status (true/false)
+- `company_id`: Filter by company
+
+**Response Format (200 OK):**
+```json
+{
+  "agents": [...],
+  "total": 50,
+  "page": 1,
+  "limit": 20,
+  "pages": 3
+}
+```</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_create_agent" model="thedevkitchen.api.endpoint">
+            <field name="name">Create Agent</field>
+            <field name="path">/api/v1/agents</field>
+            <field name="method">POST</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Agents</field>
+            <field name="summary">Create a new agent</field>
+            <field name="description">Creates a new real estate agent with CRECI registration and commission configuration.</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_get_agent" model="thedevkitchen.api.endpoint">
+            <field name="name">Get Agent</field>
+            <field name="path">/api/v1/agents/{id}</field>
+            <field name="method">GET</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Agents</field>
+            <field name="summary">Get agent by ID</field>
+            <field name="description">Returns detailed information about a specific agent including performance metrics.</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_update_agent" model="thedevkitchen.api.endpoint">
+            <field name="name">Update Agent</field>
+            <field name="path">/api/v1/agents/{id}</field>
+            <field name="method">PUT</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Agents</field>
+            <field name="summary">Update agent</field>
+            <field name="description">Update agent information including CRECI, contact details, and commission settings.</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_deactivate_agent" model="thedevkitchen.api.endpoint">
+            <field name="name">Deactivate Agent</field>
+            <field name="path">/api/v1/agents/{id}/deactivate</field>
+            <field name="method">POST</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Agents</field>
+            <field name="summary">Deactivate agent</field>
+            <field name="description">Deactivate an agent (soft delete). Agent won't appear in active lists but data is preserved.</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_reactivate_agent" model="thedevkitchen.api.endpoint">
+            <field name="name">Reactivate Agent</field>
+            <field name="path">/api/v1/agents/{id}/reactivate</field>
+            <field name="method">POST</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Agents</field>
+            <field name="summary">Reactivate agent</field>
+            <field name="description">Reactivate a previously deactivated agent.</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <!-- Assignment Endpoints -->
+
+        <record id="api_endpoint_create_assignment" model="thedevkitchen.api.endpoint">
+            <field name="name">Create Assignment</field>
+            <field name="path">/api/v1/assignments</field>
+            <field name="method">POST</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Assignments</field>
+            <field name="summary">Assign agent to property</field>
+            <field name="description">Create a new assignment linking an agent to a property.</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_get_agent_properties" model="thedevkitchen.api.endpoint">
+            <field name="name">Get Agent Properties</field>
+            <field name="path">/api/v1/agents/{id}/properties</field>
+            <field name="method">GET</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Assignments</field>
+            <field name="summary">List properties assigned to agent</field>
+            <field name="description">Get all properties currently assigned to a specific agent.</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_update_assignment" model="thedevkitchen.api.endpoint">
+            <field name="name">Update Assignment</field>
+            <field name="path">/api/v1/assignments/{id}</field>
+            <field name="method">PUT</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Assignments</field>
+            <field name="summary">Update assignment</field>
+            <field name="description">Update assignment details or end date.</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <!-- Commission Endpoints -->
+
+        <record id="api_endpoint_create_commission_rule" model="thedevkitchen.api.endpoint">
+            <field name="name">Create Commission Rule</field>
+            <field name="path">/api/v1/agents/{id}/commission-rules</field>
+            <field name="method">POST</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Commissions</field>
+            <field name="summary">Create commission rule for agent</field>
+            <field name="description">Define commission calculation rules for an agent.</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_list_commission_rules" model="thedevkitchen.api.endpoint">
+            <field name="name">List Commission Rules</field>
+            <field name="path">/api/v1/agents/{id}/commission-rules</field>
+            <field name="method">GET</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Commissions</field>
+            <field name="summary">List agent commission rules</field>
+            <field name="description">Get all commission rules for a specific agent.</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_update_commission_rule" model="thedevkitchen.api.endpoint">
+            <field name="name">Update Commission Rule</field>
+            <field name="path">/api/v1/commission-rules/{id}</field>
+            <field name="method">PUT</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Commissions</field>
+            <field name="summary">Update commission rule</field>
+            <field name="description">Update commission rule details.</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_create_commission_transaction" model="thedevkitchen.api.endpoint">
+            <field name="name">Create Commission Transaction</field>
+            <field name="path">/api/v1/commission-transactions</field>
+            <field name="method">POST</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Commissions</field>
+            <field name="summary">Record commission transaction</field>
+            <field name="description">Record a commission payment or transaction for an agent.</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <!-- Performance Endpoints -->
+
+        <record id="api_endpoint_agent_performance" model="thedevkitchen.api.endpoint">
+            <field name="name">Agent Performance</field>
+            <field name="path">/api/v1/agents/{id}/performance</field>
+            <field name="method">GET</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Performance</field>
+            <field name="summary">Get agent performance metrics</field>
+            <field name="description">Get detailed performance metrics for a specific agent including sales, commissions, and activity.</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_agents_ranking" model="thedevkitchen.api.endpoint">
+            <field name="name">Agents Ranking</field>
+            <field name="path">/api/v1/agents/ranking</field>
+            <field name="method">GET</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Performance</field>
+            <field name="summary">Get agents ranking</field>
+            <field name="description">Get ranking of agents by performance metrics (sales, commissions, etc.).</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <!-- Master Data Endpoints -->
+
+        <record id="api_endpoint_list_tags" model="thedevkitchen.api.endpoint">
+            <field name="name">List Property Tags</field>
+            <field name="path">/api/v1/tags</field>
+            <field name="method">GET</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Master Data</field>
+            <field name="summary">List all property tags</field>
+            <field name="description">Get list of all active property tags for categorization.</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_list_amenities" model="thedevkitchen.api.endpoint">
+            <field name="name">List Amenities</field>
+            <field name="path">/api/v1/amenities</field>
+            <field name="method">GET</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Master Data</field>
+            <field name="summary">List all amenities</field>
+            <field name="description">Get list of all available property amenities (pool, gym, etc.).</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_list_owners" model="thedevkitchen.api.endpoint">
+            <field name="name">List Property Owners</field>
+            <field name="path">/api/v1/owners</field>
+            <field name="method">GET</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Master Data</field>
+            <field name="summary">List all property owners</field>
+            <field name="description">Get list of all active property owners with contact information.</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_list_companies" model="thedevkitchen.api.endpoint">
+            <field name="name">List Real Estate Companies</field>
+            <field name="path">/api/v1/companies</field>
+            <field name="method">GET</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Master Data</field>
+            <field name="summary">List all real estate companies</field>
+            <field name="description">Get list of all active real estate companies in the system.</field>
+            <field name="active" eval="True"/>
+        </record>
+
     </data>
 </odoo>

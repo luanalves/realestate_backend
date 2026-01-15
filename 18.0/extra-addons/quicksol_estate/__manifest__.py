@@ -63,6 +63,7 @@ Property Form Sections:
         'data/property_demo_data.xml',
         'data/agent_seed.xml',
         'data/api_endpoints.xml',
+        'data/user_auth_endpoints_data.xml',
         
         # Views (actions must be loaded before menus that reference them)
         'views/company_views.xml',
