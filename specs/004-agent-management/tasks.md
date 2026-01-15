@@ -248,7 +248,7 @@
 - [X] T119 Run full test suite (unit + integration + E2E) and verify ≥80% coverage (Current: 60.8%, Agent tests: 100%)
 - [X] T120 Performance test: Verify GET /agents returns <500ms for 1000 records
 - [X] T121 Security audit: Run all multi-tenancy isolation tests
-- [ ] T122 Create migration script for existing data (if applicable)
+- [X] T122 Create migration script for existing data (if applicable)
 - [X] T123 Update CHANGELOG.md with feature release notes
 - [X] T124 Final code review checklist: ADR compliance, security decorators, error handling
 
