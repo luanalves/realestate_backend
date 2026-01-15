@@ -243,7 +243,7 @@
 - [X] T114 [P] Add smart buttons (properties count, commissions count) in agent form view
 - [X] T115 [P] Create i18n/pt_BR.po translation file with Portuguese labels
 - [X] T116 Implement data/ seed file with sample agents for testing
-- [ ] T117 Add OpenAPI documentation endpoint serving contracts/agent.schema.yaml
+- [X] T117 Add OpenAPI documentation endpoint serving contracts/agent.schema.yaml
 - [X] T118 Create README.md in quicksol_estate module with setup instructions
 - [X] T119 Run full test suite (unit + integration + E2E) and verify ≥80% coverage (Current: 60.8%, Agent tests: 100%)
 - [X] T120 Performance test: Verify GET /agents returns <500ms for 1000 records
