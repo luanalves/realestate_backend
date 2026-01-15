@@ -246,7 +246,7 @@
 - [ ] T117 Add OpenAPI documentation endpoint serving contracts/agent.schema.yaml
 - [X] T118 Create README.md in quicksol_estate module with setup instructions
 - [X] T119 Run full test suite (unit + integration + E2E) and verify ≥80% coverage (Current: 60.8%, Agent tests: 100%)
-- [ ] T120 Performance test: Verify GET /agents returns <500ms for 1000 records
+- [X] T120 Performance test: Verify GET /agents returns <500ms for 1000 records
 - [X] T121 Security audit: Run all multi-tenancy isolation tests
 - [ ] T122 Create migration script for existing data (if applicable)
 - [X] T123 Update CHANGELOG.md with feature release notes
