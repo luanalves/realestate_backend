@@ -80,7 +80,7 @@
 - [X] T024 [US1] Add CRECI uniqueness constraint _check_creci_unique in models/agent.py
 - [X] T025 [US1] Implement email format validation _check_email in models/agent.py
 - [X] T026 [US1] Implement phone validation _check_phone in models/agent.py using phonenumbers
-- [ ] T027 [US1] Create AgentService with create_agent method in services/agent_service.py
+- [X] T027 [US1] Create AgentService with create_agent method in services/agent_service.py
 - [X] T028 [US1] Implement POST /api/v1/agents endpoint in controllers/agent_api.py with @require_jwt, @require_session, @require_company
 - [X] T029 [US1] Implement GET /api/v1/agents endpoint with pagination in controllers/agent_api.py
 - [X] T030 [US1] Implement GET /api/v1/agents/{id} endpoint in controllers/agent_api.py
@@ -111,7 +111,7 @@
 - [X] T039 [P] [US2] Add lifecycle fields in models/agent.py (hire_date, deactivation_date, deactivation_reason)
 - [X] T040 [P] [US2] Implement action_deactivate method in models/agent.py setting active=False and logging reason
 - [X] T041 [P] [US2] Implement action_reactivate method in models/agent.py
-- [ ] T042 [US2] Add update_agent method in services/agent_service.py with field validation
+- [X] T042 [US2] Add update_agent method in services/agent_service.py with field validation
 - [X] T043 [US2] Implement PUT /api/v1/agents/{id} endpoint in controllers/agent_api.py
 - [X] T044 [US2] Implement PATCH /api/v1/agents/{id}/deactivate endpoint in controllers/agent_api.py
 - [X] T045 [US2] Implement PATCH /api/v1/agents/{id}/reactivate endpoint in controllers/agent_api.py
@@ -205,16 +205,16 @@
 
 ### Tests for User Story 5 (TDD - Write First)
 
-- [ ] T091 [P] [US5] Create test_performance.py with test_get_agent_performance in tests/
-- [ ] T092 [P] [US5] Write test_performance_metrics_calculation in tests/test_performance.py
-- [ ] T093 [P] [US5] Write test_performance_date_filtering in tests/test_performance.py
-- [ ] T094 [P] [US5] Write test_performance_multi_tenant_isolation in tests/test_performance.py
+- [X] T091 [P] [US5] Create test_performance.py with test_get_agent_performance in tests/
+- [X] T092 [P] [US5] Write test_performance_metrics_calculation in tests/test_performance.py
+- [X] T093 [P] [US5] Write test_performance_date_filtering in tests/test_performance.py
+- [X] T094 [P] [US5] Write test_performance_multi_tenant_isolation in tests/test_performance.py
 - [ ] T095 [P] [US5] Write Cypress E2E test agent-performance.cy.js in cypress/e2e/
 
 ### Implementation for User Story 5
 
-- [ ] T096 [P] [US5] Add computed performance fields in models/agent.py (total_sales_count, total_commissions)
-- [ ] T097 [P] [US5] Implement _compute_total_sales_count method in models/agent.py
+- [X] T096 [P] [US5] Add computed performance fields in models/agent.py (total_sales_count, total_commissions)
+- [X] T097 [P] [US5] Implement _compute_total_sales_count method in models/agent.py
 - [X] T098 [P] [US5] Implement _compute_total_commissions method in models/agent.py
 - [X] T099 [P] [US5] Implement _compute_active_properties_count method in models/agent.py
 - [X] T100 [US5] Create PerformanceService with get_agent_performance method in services/performance_service.py
