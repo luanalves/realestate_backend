@@ -5,35 +5,613 @@
 openapi: 3.0.3
 info:
   title: Real Estate Agent API
-  description: |
-    RESTful API for managing real estate agents with CRECI validation,
-    commission rules, and multi-tenant company assignments.
-    
-    Related ADRs:
-    - ADR-012: CRECI Validation
-    - ADR-013: Commission Calculation
-    - ADR-014: Many2many Agent-Property Relationships
-    - ADR-015: Soft-Delete Strategies
+  description: API para gerenciamento de agentes imobiliários
   version: 1.0.0
-  contact:
-    name: Real Estate API Support
-    email: api@realestate.com
 
 servers:
   - url: http://localhost:8069/api/v1
     description: Local development server
-  - url: https://api.realestate.com/v1
-    description: Production server
 
 tags:
+  - name: OAuth 2.0
+    description: OAuth token management (client credentials flow)
+  - name: Authentication
+    description: User authentication and session management
+  - name: Users
+    description: User profile and password management
+  - name: Properties
+    description: Property CRUD operations
   - name: Agents
-    description: Real estate agent management
-  - name: Commission Rules
-    description: Agent commission rule configuration
+    description: Agent CRUD operations
   - name: Assignments
     description: Agent-property assignments
+  - name: Commission Rules
+    description: Commission rule configuration
+  - name: Commission Transactions
+    description: Commission transaction recording
+  - name: Performance
+    description: Agent performance metrics
+  - name: Master Data
+    description: Property types, location types, states, tags, amenities
 
 paths:
+  /auth/login:
+    post:
+      summary: Authenticate user and get JWT token
+      description: |
+        Authenticates a user with username/password and returns a JWT access token.
+        
+        **Security**:
+        - JWT token expires after configured duration
+        - Session cookie also created for browser clients
+        - Supports multi-database Odoo installations
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+                - db
+              properties:
+                username:
+                  type: string
+                  example: "admin"
+                password:
+                  type: string
+                  format: password
+                  example: "admin"
+                db:
+                  type: string
+                  description: Database name (multi-database support)
+                  example: "realestate"
+      responses:
+        '200':
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                    description: JWT bearer token
+                    example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  token_type:
+                    type: string
+                    example: "Bearer"
+                  expires_in:
+                    type: integer
+                    description: Token expiration in seconds
+                    example: 3600
+                  user_id:
+                    type: integer
+                    example: 2
+                  username:
+                    type: string
+                    example: "admin"
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                success: false
+                error: "Invalid username or password"
+                code: "INVALID_CREDENTIALS"
+
+  /auth/token:
+    post:
+      summary: OAuth 2.0 Token (Client Credentials)
+      description: Obtain OAuth access token using client credentials flow
+      tags:
+        - OAuth 2.0
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - grant_type
+                - client_id
+                - client_secret
+              properties:
+                grant_type:
+                  type: string
+                  enum: [client_credentials]
+                  example: "client_credentials"
+                client_id:
+                  type: string
+                  example: "your_client_id"
+                client_secret:
+                  type: string
+                  format: password
+                  example: "your_client_secret"
+      responses:
+        '200':
+          description: Token generated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                  token_type:
+                    type: string
+                    example: "Bearer"
+                  expires_in:
+                    type: integer
+                    example: 3600
+                  refresh_token:
+                    type: string
+        '400':
+          description: Invalid request
+
+  /auth/refresh:
+    post:
+      summary: Refresh OAuth token
+      description: Refresh an expired OAuth access token
+      tags:
+        - OAuth 2.0
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - refresh_token
+              properties:
+                refresh_token:
+                  type: string
+      responses:
+        '200':
+          description: Token refreshed successfully
+
+  /auth/revoke:
+    post:
+      summary: Revoke OAuth token
+      description: Revoke an active OAuth access token
+      tags:
+        - OAuth 2.0
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - token
+              properties:
+                token:
+                  type: string
+      responses:
+        '200':
+          description: Token revoked successfully
+
+  /users/login:
+    post:
+      summary: User login
+      description: Authenticate user with username/password
+      tags:
+        - Users
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - login
+                - password
+                - db
+              properties:
+                login:
+                  type: string
+                  example: "admin"
+                password:
+                  type: string
+                  format: password
+                db:
+                  type: string
+                  example: "realestate"
+      responses:
+        '200':
+          description: Login successful
+
+  /users/logout:
+    post:
+      summary: User logout
+      description: Logout current user and invalidate session
+      tags:
+        - Users
+      responses:
+        '200':
+          description: Logout successful
+
+  /users/profile:
+    patch:
+      summary: Update user profile
+      description: Update current user's profile information
+      tags:
+        - Users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                phone:
+                  type: string
+      responses:
+        '200':
+          description: Profile updated successfully
+
+  /users/change-password:
+    post:
+      summary: Change password
+      description: Change current user's password
+      tags:
+        - Users
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - old_password
+                - new_password
+              properties:
+                old_password:
+                  type: string
+                  format: password
+                new_password:
+                  type: string
+                  format: password
+      responses:
+        '200':
+          description: Password changed successfully
+
+  /me:
+    post:
+      summary: Get current user context information
+      description: |
+        Returns comprehensive information about the currently authenticated user including:
+        - User profile (ID, name, email, language)
+        - Session details (database, login time, session ID)
+        - Company context (accessible companies, current company)
+        - Access rights and permissions
+        
+        **Security**: Requires JWT token and active session
+      tags:
+        - Users
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User context information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        example: 2
+                      name:
+                        type: string
+                        example: "Admin User"
+                      login:
+                        type: string
+                        example: "admin"
+                      email:
+                        type: string
+                        example: "admin@example.com"
+                      lang:
+                        type: string
+                        example: "pt_BR"
+                      tz:
+                        type: string
+                        example: "America/Sao_Paulo"
+                  session:
+                    type: object
+                    properties:
+                      db:
+                        type: string
+                        example: "realestate"
+                      login:
+                        type: string
+                        example: "admin"
+                      session_id:
+                        type: string
+                        example: "a1b2c3d4e5f6..."
+                  companies:
+                    type: object
+                    properties:
+                      current_company:
+                        type: integer
+                        example: 1
+                      allowed_companies:
+                        type: array
+                        items:
+                          type: integer
+                        example: [1, 2, 3]
+        '401':
+          description: Unauthorized - Invalid or missing JWT token
+        '500':
+          description: Internal server error
+
+  /properties:
+    get:
+      summary: List properties
+      description: Get paginated list of properties
+      tags:
+        - Properties
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: active
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Properties retrieved successfully
+    
+    post:
+      summary: Create property
+      description: Create a new property
+      tags:
+        - Properties
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - property_type_id
+                - title
+              properties:
+                property_type_id:
+                  type: integer
+                title:
+                  type: string
+                description:
+                  type: string
+                price:
+                  type: number
+                area:
+                  type: number
+                bedrooms:
+                  type: integer
+                bathrooms:
+                  type: integer
+      responses:
+        '201':
+          description: Property created successfully
+
+  /properties/{property_id}:
+    get:
+      summary: Get property by ID
+      description: Retrieve detailed information about a property
+      tags:
+        - Properties
+      parameters:
+        - name: property_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Property retrieved successfully
+        '404':
+          description: Property not found
+    
+    put:
+      summary: Update property
+      description: Update an existing property
+      tags:
+        - Properties
+      parameters:
+        - name: property_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Property updated successfully
+    
+    delete:
+      summary: Delete property
+      description: Delete a property (soft delete)
+      tags:
+        - Properties
+      parameters:
+        - name: property_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Property deleted successfully
+
+  /property-types:
+    get:
+      summary: List property types
+      description: Get all available property types
+      tags:
+        - Master Data
+      responses:
+        '200':
+          description: Property types retrieved
+
+  /location-types:
+    get:
+      summary: List location types
+      description: Get all available location types
+      tags:
+        - Master Data
+      responses:
+        '200':
+          description: Location types retrieved
+
+  /states:
+    get:
+      summary: List states
+      description: Get all Brazilian states
+      tags:
+        - Master Data
+      responses:
+        '200':
+          description: States retrieved
+
+  /tags:
+    get:
+      summary: List tags
+      description: Get all available property tags
+      tags:
+        - Master Data
+      responses:
+        '200':
+          description: Tags retrieved
+
+  /amenities:
+    get:
+      summary: List amenities
+      description: Get all available property amenities
+      tags:
+        - Master Data
+      responses:
+        '200':
+          description: Amenities retrieved
+
+  /owners:
+    get:
+      summary: List property owners
+      description: |
+        Returns all property owners accessible to the authenticated user.
+        
+        **Security**: Requires JWT token and active session
+      tags:
+        - Master Data
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of property owners
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          example: 1
+                        name:
+                          type: string
+                          example: "João da Silva"
+                        email:
+                          type: string
+                          example: "joao@example.com"
+                        phone:
+                          type: string
+                          example: "+55 11 98765-4321"
+        '401':
+          description: Unauthorized - Invalid or missing JWT token
+        '500':
+          description: Internal server error
+
+  /companies:
+    get:
+      summary: List real estate companies
+      description: |
+        Returns all real estate companies accessible to the authenticated user.
+        Results are filtered by user's company access rights.
+        
+        **Security**: Requires JWT token and active session
+      tags:
+        - Master Data
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of companies
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          example: 1
+                        name:
+                          type: string
+                          example: "Imobiliária Top SP"
+                        email:
+                          type: string
+                          example: "contato@topsp.com.br"
+                        phone:
+                          type: string
+                          example: "+55 11 3456-7890"
+                        website:
+                          type: string
+                          example: "https://www.topsp.com.br"
+        '401':
+          description: Unauthorized - Invalid or missing JWT token
+        '500':
+          description: Internal server error
+
   /agents:
     get:
       summary: List all agents
@@ -279,6 +857,188 @@ paths:
         '404':
           $ref: '#/components/responses/NotFoundError'
 
+  /agents/{agent_id}/deactivate:
+    patch:
+      summary: Deactivate agent with reason
+      description: |
+        Explicitly deactivates an agent with deactivation reason (soft-delete).
+        More detailed than simple DELETE - records reason and timestamp.
+      tags:
+        - Agents
+      security:
+        - BearerAuth: []
+        - SessionAuth: []
+      parameters:
+        - name: agent_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  description: Reason for deactivation
+                  example: "Desligamento por decisão da empresa"
+      responses:
+        '200':
+          description: Agent deactivated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /agents/{agent_id}/reactivate:
+    patch:
+      summary: Reactivate a deactivated agent
+      description: |
+        Reactivates a previously deactivated agent.
+        Clears deactivation_date and deactivation_reason.
+      tags:
+        - Agents
+      security:
+        - BearerAuth: []
+        - SessionAuth: []
+      parameters:
+        - name: agent_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Agent reactivated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /assignments:
+    post:
+      summary: Create agent-property assignment
+      description: |
+        Assigns an agent to a property with specific responsibility type.
+        
+        **Validation**:
+        - Agent and property must belong to same company (multi-tenancy)
+        - Allows multiple agents per property
+        - responsibility_type: seller, buyer, or both
+      tags:
+        - Assignments
+      security:
+        - BearerAuth: []
+        - SessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - agent_id
+                - property_id
+                - responsibility_type
+              properties:
+                agent_id:
+                  type: integer
+                  example: 1
+                property_id:
+                  type: integer
+                  example: 42
+                responsibility_type:
+                  type: string
+                  enum: [seller, buyer, both]
+                  example: "seller"
+                assignment_date:
+                  type: string
+                  format: date
+                  example: "2024-01-15"
+      responses:
+        '201':
+          description: Assignment created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Assignment'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          description: Agent or property not found
+
+  /agents/{agent_id}/properties:
+    get:
+      summary: List properties assigned to an agent
+      description: Returns all properties currently assigned to a specific agent
+      tags:
+        - Assignments
+      security:
+        - BearerAuth: []
+        - SessionAuth: []
+      parameters:
+        - name: agent_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Properties retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        property_id:
+                          type: integer
+                        property_name:
+                          type: string
+                        responsibility_type:
+                          type: string
+                        assignment_date:
+                          type: string
+                          format: date
+
+  /assignments/{assignment_id}:
+    delete:
+      summary: Remove agent-property assignment
+      description: Deletes an assignment relationship between agent and property
+      tags:
+        - Assignments
+      security:
+        - BearerAuth: []
+        - SessionAuth: []
+      parameters:
+        - name: assignment_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Assignment deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
   /agents/{agent_id}/commission-rules:
     get:
       summary: List agent's commission rules
@@ -294,9 +1054,9 @@ paths:
           required: true
           schema:
             type: integer
-        - name: include_history
+        - name: active_only
           in: query
-          description: Include expired rules (version history)
+          description: Filter only currently active rules (valid today)
           schema:
             type: boolean
             default: false
@@ -314,6 +1074,334 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/CommissionRule'
+
+    post:
+      summary: Create commission rule for agent
+      description: |
+        Creates a new commission rule for an agent.
+        
+        **Rule Types**:
+        - percentage: Commission as % of transaction value
+        - fixed: Fixed amount regardless of transaction value
+        
+        **Validation**:
+        - percentage must be 0-100
+        - min_value <= max_value (if provided)
+        - valid_from <= valid_until (if provided)
+      tags:
+        - Commission Rules
+      security:
+        - BearerAuth: []
+        - SessionAuth: []
+      parameters:
+        - name: agent_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommissionRuleCreateRequest'
+            examples:
+              percentage:
+                summary: Percentage-based rule
+                value:
+                  transaction_type: "sale"
+                  structure_type: "percentage"
+                  percentage: 6.0
+                  min_value: 500000.00
+                  max_value: 2000000.00
+                  valid_from: "2024-01-01"
+                  valid_until: "2024-12-31"
+              fixed:
+                summary: Fixed amount rule
+                value:
+                  transaction_type: "rental"
+                  structure_type: "fixed"
+                  fixed_amount: 5000.00
+                  valid_from: "2024-01-01"
+      responses:
+        '201':
+          description: Commission rule created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/CommissionRule'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+
+  /commission-rules/{rule_id}:
+    put:
+      summary: Update commission rule
+      description: |
+        Updates an existing commission rule.
+        
+        **⚠️ Important**: Changes are NOT retroactive.
+        - Existing transactions keep their rule snapshot
+        - Only future transactions use the updated rule
+      tags:
+        - Commission Rules
+      security:
+        - BearerAuth: []
+        - SessionAuth: []
+      parameters:
+        - name: rule_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommissionRuleUpdateRequest'
+      responses:
+        '200':
+          description: Commission rule updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/CommissionRule'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /commission-transactions:
+    post:
+      summary: Create commission transaction
+      description: |
+        Records a transaction and automatically calculates commission based on
+        active rules for the agent.
+        
+        **Automatic Calculation**:
+        1. Finds active rule for agent + transaction_type + date
+        2. Applies percentage or fixed amount
+        3. Creates immutable rule snapshot
+        4. Returns calculated commission
+        
+        **Preview Mode**:
+        Set preview_only=true to calculate without persisting.
+      tags:
+        - Commission Transactions
+      security:
+        - BearerAuth: []
+        - SessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - agent_id
+                - transaction_type
+                - transaction_amount
+              properties:
+                agent_id:
+                  type: integer
+                  example: 1
+                transaction_type:
+                  type: string
+                  enum: [sale, rental]
+                  example: "sale"
+                transaction_amount:
+                  type: number
+                  format: float
+                  minimum: 0
+                  example: 850000.00
+                transaction_reference:
+                  type: string
+                  description: External reference (contract ID, etc)
+                  example: "VENDA-2024-001"
+                transaction_date:
+                  type: string
+                  format: date
+                  example: "2024-01-15"
+                preview_only:
+                  type: boolean
+                  default: false
+                  description: Calculate without persisting
+      responses:
+        '201':
+          description: Commission transaction created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/CommissionTransaction'
+        '200':
+          description: Commission preview calculated (preview_only=true)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      commission_amount:
+                        type: number
+                      rule_used:
+                        $ref: '#/components/schemas/CommissionRule'
+        '400':
+          description: No active rule found for agent/transaction type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                success: false
+                error: "No active commission rule found"
+                code: "NO_ACTIVE_RULE"
+
+  /agents/{agent_id}/performance:
+    get:
+      summary: Get agent performance metrics
+      description: |
+        Returns performance metrics for an agent within a date range.
+        
+        **Metrics included**:
+        - Total commissions earned
+        - Number of sales closed
+        - Active properties count
+        - Average sale value
+        - Conversion rate
+        
+        **Cache**: Results cached in Redis for 5 minutes
+      tags:
+        - Performance
+      security:
+        - BearerAuth: []
+        - SessionAuth: []
+      parameters:
+        - name: agent_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+          description: "Start of date range (default: 30 days ago)"
+          example: "2024-01-01"
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+          description: "End of date range (default: today)"
+          example: "2024-12-31"
+        - name: metric
+          in: query
+          schema:
+            type: string
+            enum: [all, sales, commissions, properties]
+            default: all
+          description: Specific metric to retrieve
+      responses:
+        '200':
+          description: Performance metrics retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/AgentPerformance'
+
+  /agents/ranking:
+    get:
+      summary: Get agents ranking
+      description: |
+        Returns ranking of top performing agents.
+        
+        **Ranking Criteria**:
+        - total_commissions: Highest revenue
+        - total_sales: Most sales closed
+        - avg_ticket: Highest average sale value
+        
+        **Multi-tenancy**: Only agents from user's company
+        
+        **Cache**: Results cached in Redis for 5 minutes
+      tags:
+        - Performance
+      security:
+        - BearerAuth: []
+        - SessionAuth: []
+      parameters:
+        - name: metric
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [total_commissions, total_sales, avg_ticket]
+            default: total_commissions
+          description: Metric for ranking
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [week, month, quarter, year]
+            default: month
+          description: Time period for ranking
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+          description: Number of top agents to return
+      responses:
+        '200':
+          description: Ranking retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        rank:
+                          type: integer
+                        agent_id:
+                          type: integer
+                        agent_name:
+                          type: string
+                        metric_value:
+                          type: number
+                        period:
+                          type: string
 
 components:
   securitySchemes:
@@ -534,19 +1622,88 @@ components:
     CommissionRule:
       type: object
       description: Agent commission rule (ADR-013)
+      required:
+        - agent_id
+        - transaction_type
+        - structure_type
       properties:
         id:
           type: integer
-        name:
-          type: string
+          readOnly: true
         agent_id:
           type: integer
+        company_id:
+          type: integer
+          readOnly: true
+          description: Auto-assigned from user's company
+        transaction_type:
+          type: string
+          enum: [sale, rental]
+          description: Type of transaction this rule applies to
+        structure_type:
+          type: string
+          enum: [percentage, fixed]
+          description: Commission calculation method
+        percentage:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 100
+          nullable: true
+          description: Commission percentage (required if structure_type=percentage)
+        fixed_amount:
+          type: number
+          format: float
+          minimum: 0
+          nullable: true
+          description: Fixed commission amount (required if structure_type=fixed)
+        min_value:
+          type: number
+          format: float
+          minimum: 0
+          nullable: true
+          description: Minimum transaction value for rule to apply
+        max_value:
+          type: number
+          format: float
+          minimum: 0
+          nullable: true
+          description: Maximum transaction value for rule to apply
+        valid_from:
+          type: string
+          format: date
+          description: Rule becomes active from this date
+        valid_until:
+          type: string
+          format: date
+          nullable: true
+          description: Rule expires after this date (null = no expiration)
+        is_active:
+          type: boolean
+          readOnly: true
+          description: Computed field - true if today is within valid_from/valid_until
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+
+    CommissionRuleCreateRequest:
+      type: object
+      required:
+        - transaction_type
+        - structure_type
+        - valid_from
+      properties:
         transaction_type:
           type: string
           enum: [sale, rental]
         structure_type:
           type: string
-          enum: [percentage, fixed, tiered]
+          enum: [percentage, fixed]
         percentage:
           type: number
           format: float
@@ -556,16 +1713,157 @@ components:
           type: number
           format: float
           minimum: 0
+        min_value:
+          type: number
+          format: float
+        max_value:
+          type: number
+          format: float
         valid_from:
           type: string
-          format: date-time
+          format: date
         valid_until:
           type: string
-          format: date-time
-          nullable: true
-        is_active:
-          type: boolean
+          format: date
+
+    CommissionRuleUpdateRequest:
+      type: object
+      properties:
+        percentage:
+          type: number
+          format: float
+        fixed_amount:
+          type: number
+          format: float
+        min_value:
+          type: number
+          format: float
+        max_value:
+          type: number
+          format: float
+        valid_from:
+          type: string
+          format: date
+        valid_until:
+          type: string
+          format: date
+
+    CommissionTransaction:
+      type: object
+      description: Immutable commission transaction record
+      properties:
+        id:
+          type: integer
           readOnly: true
+        agent_id:
+          type: integer
+        company_id:
+          type: integer
+          readOnly: true
+        transaction_type:
+          type: string
+          enum: [sale, rental]
+        transaction_amount:
+          type: number
+          format: float
+          description: Original transaction value
+        commission_amount:
+          type: number
+          format: float
+          readOnly: true
+          description: Calculated commission
+        rule_snapshot:
+          type: object
+          readOnly: true
+          description: Immutable snapshot of rule used for calculation
+          properties:
+            rule_id:
+              type: integer
+            structure_type:
+              type: string
+            percentage:
+              type: number
+            fixed_amount:
+              type: number
+            captured_at:
+              type: string
+              format: date-time
+        transaction_reference:
+          type: string
+          nullable: true
+          description: External reference (contract ID, etc)
+        transaction_date:
+          type: string
+          format: date
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+
+    Assignment:
+      type: object
+      description: Agent-property assignment relationship
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        agent_id:
+          type: integer
+        property_id:
+          type: integer
+        responsibility_type:
+          type: string
+          enum: [seller, buyer, both]
+        assignment_date:
+          type: string
+          format: date
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+
+    AgentPerformance:
+      type: object
+      description: Agent performance metrics
+      properties:
+        agent_id:
+          type: integer
+        agent_name:
+          type: string
+        period:
+          type: object
+          properties:
+            start_date:
+              type: string
+              format: date
+            end_date:
+              type: string
+              format: date
+        metrics:
+          type: object
+          properties:
+            total_commissions:
+              type: number
+              format: float
+              description: Total commission earned in period
+            total_sales_count:
+              type: integer
+              description: Number of sales closed
+            active_properties_count:
+              type: integer
+              description: Currently active properties
+            avg_sale_value:
+              type: number
+              format: float
+              description: Average transaction value
+            conversion_rate:
+              type: number
+              format: float
+              description: Sales / active properties ratio
+        cached_at:
+          type: string
+          format: date-time
+          description: When these metrics were cached
 
     HATEOASLinks:
       type: object
