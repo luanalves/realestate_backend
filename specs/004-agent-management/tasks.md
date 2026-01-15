@@ -84,8 +84,8 @@
 - [X] T028 [US1] Implement POST /api/v1/agents endpoint in controllers/agent_api.py with @require_jwt, @require_session, @require_company
 - [X] T029 [US1] Implement GET /api/v1/agents endpoint with pagination in controllers/agent_api.py
 - [X] T030 [US1] Implement GET /api/v1/agents/{id} endpoint in controllers/agent_api.py
-- [ ] T031 [US1] Add request/response schemas validation matching contracts/agent.schema.yaml
-- [X] T032 [US1] Add error handling for 400 (validation), 404 (not found), 403 (unauthorized)
+- [X] T031 [US1] Add request/response schemas validation matching contracts/agent.schema.yaml
+- [X] T032 [US1] Implement error handling for 400 (validation), 404 (not found), 403 (unauthorized)
 - [X] T033 [US1] Verify all US1 tests pass (7/8 tests passing, 1 skipped - validate_docbr not installed)
 
 **Checkpoint**: User Story 1 complete - can create and list agents with full isolation ✅
