@@ -19,6 +19,7 @@ from odoo.http import request, Response
 from odoo.exceptions import AccessError, UserError, ValidationError
 from .utils.auth import require_jwt
 from .utils.response import error_response, success_response
+from .utils.schema import SchemaValidator
 from odoo.addons.thedevkitchen_apigateway.middleware import require_session, require_company
 from ..services.company_validator import CompanyValidator
 
@@ -180,11 +181,10 @@ class AgentApiController(http.Controller):
             except (ValueError, UnicodeDecodeError):
                 return error_response(400, 'Invalid JSON in request body')
             
-            # Validate required fields
-            required_fields = ['name', 'cpf']
-            missing_fields = [field for field in required_fields if field not in data]
-            if missing_fields:
-                return error_response(400, f"Missing required fields: {', '.join(missing_fields)}")
+            # Validate against schema
+            is_valid, errors = SchemaValidator.validate_agent_create(data)
+            if not is_valid:
+                return error_response(400, 'Validation failed', ', '.join(errors))
             
             # Prepare agent data
             agent_vals = {
@@ -347,6 +347,11 @@ class AgentApiController(http.Controller):
                 data = json.loads(request.httprequest.data.decode('utf-8'))
             except (ValueError, UnicodeDecodeError):
                 return error_response(400, 'Invalid JSON in request body')
+            
+            # Validate against schema
+            is_valid, errors = SchemaValidator.validate_agent_update(data)
+            if not is_valid:
+                return error_response(400, 'Validation failed', ', '.join(errors))
             
             # Get agent
             Agent = request.env['real.estate.agent']
@@ -537,11 +542,10 @@ class AgentApiController(http.Controller):
             except json.JSONDecodeError:
                 return error_response(400, 'Invalid JSON in request body')
             
-            # Validate required fields
-            if 'agent_id' not in data:
-                return error_response(400, 'Missing required field: agent_id')
-            if 'property_id' not in data:
-                return error_response(400, 'Missing required field: property_id')
+            # Validate against schema
+            is_valid, errors = SchemaValidator.validate_assignment_create(data)
+            if not is_valid:
+                return error_response(400, 'Validation failed', ', '.join(errors))
             
             agent_id = data.get('agent_id')
             property_id = data.get('property_id')

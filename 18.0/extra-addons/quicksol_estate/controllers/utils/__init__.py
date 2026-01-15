@@ -2,3 +2,4 @@
 from . import auth
 from . import response
 from . import serializers
+from . import schema
