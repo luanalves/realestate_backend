@@ -1,0 +1,1135 @@
+{
+	"info": {
+		"_postman_id": "quicksol-api-complete-2026",
+		"name": "Quicksol Real Estate API - Complete (29 Endpoints)",
+		"description": "Collection completa da API Quicksol Real Estate com 29 endpoints, autenticação JWT/OAuth 2.0, multi-tenancy e dados de teste realistas.\n\n**✅ Atualizado em: 15/01/2026**\n**📊 Total de endpoints: 29**\n\n**Configuração Inicial:**\n1. Import no Postman\n2. Configure environment ou use variáveis da collection\n3. Execute \"OAuth Token\" ou \"User Login\" primeiro\n4. Os tokens são salvos automaticamente\n5. Explore os endpoints em ordem sugerida\n\n**Categorias:**\n- 🔐 Authentication (OAuth + Users): 8 endpoints\n- 👤 Agents: 7 endpoints\n- 🏠 Properties: 4 endpoints\n- 📋 Assignments: 3 endpoints\n- 💰 Commissions: 4 endpoints\n- 📊 Performance: 2 endpoints\n- 📚 Master Data: 5 endpoints\n\n**ADRs Implementadas:**\n- ADR-005: OpenAPI 3.0 Documentation\n- ADR-007: HATEOAS Hypermedia\n- ADR-008: Multi-tenancy Security\n- ADR-009: Headless Authentication\n- ADR-011: Controller Security (@require_jwt + @require_session + @require_company)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "🔐 1. OAuth Authentication",
+			"item": [
+				{
+					"name": "Get OAuth Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.access_token) {",
+									"        pm.environment.set('access_token', jsonData.access_token);",
+									"        pm.collectionVariables.set('access_token', jsonData.access_token);",
+									"        console.log('✅ OAuth token salvo');",
+									"    }",
+									"    if (jsonData.refresh_token) {",
+									"        pm.environment.set('refresh_token', jsonData.refresh_token);",
+									"        pm.collectionVariables.set('refresh_token', jsonData.refresh_token);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"grant_type\": \"client_credentials\",\n    \"client_id\": \"your_client_id_here\",\n    \"client_secret\": \"your_client_secret_here\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/token",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "auth", "token"]
+						},
+						"description": "OAuth 2.0 Client Credentials Grant.\n\n**Como obter credenciais:**\n1. Acesse Odoo → Configurações → API Gateway → OAuth Applications\n2. Crie nova aplicação\n3. Copie client_id e client_secret\n\n**Token é salvo automaticamente**"
+					},
+					"response": []
+				},
+				{
+					"name": "Refresh OAuth Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const jsonData = pm.response.json();",
+									"    pm.environment.set('access_token', jsonData.access_token);",
+									"    pm.collectionVariables.set('access_token', jsonData.access_token);",
+									"    console.log('✅ Token renovado');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"refresh_token\": \"{{refresh_token}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/refresh",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "auth", "refresh"]
+						},
+						"description": "Renova access_token expirado usando refresh_token.\n\n**Quando usar:** Token expira após 3600s (1 hora)"
+					},
+					"response": []
+				},
+				{
+					"name": "Revoke OAuth Token",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"token\": \"{{access_token}}\",\n    \"token_type_hint\": \"access_token\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/revoke",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "auth", "revoke"]
+						},
+						"description": "Revoga (invalida) um token ativo.\n\n**Uso:** Logout, segurança"
+					},
+					"response": []
+				}
+			],
+			"description": "OAuth 2.0 token management (RFC 6749)"
+		},
+		{
+			"name": "👤 2. User Authentication",
+			"item": [
+				{
+					"name": "User Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.access_token) {",
+									"        pm.environment.set('access_token', jsonData.access_token);",
+									"        pm.collectionVariables.set('access_token', jsonData.access_token);",
+									"        console.log('✅ Login realizado, token salvo');",
+									"    }",
+									"    if (jsonData.user && jsonData.user.id) {",
+									"        pm.collectionVariables.set('user_id', jsonData.user.id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"login\": \"admin\",\n    \"password\": \"admin\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/users/login",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "users", "login"]
+						},
+						"description": "**RECOMENDADO para testes**\n\nAutenticação com usuário e senha.\n\n**Credenciais padrão:**\n- Login: admin\n- Password: admin\n- DB: realestate (auto)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Current User (/me)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/me",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "me"]
+						},
+						"description": "Retorna dados completos do usuário autenticado.\n\n**Inclui:**\n- Perfil\n- Empresas acessíveis\n- Permissões\n- Company padrão"
+					},
+					"response": []
+				},
+				{
+					"name": "Update User Profile",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"novo.email@example.com\",\n    \"phone\": \"11999998888\",\n    \"mobile\": \"11988887777\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/users/profile",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "users", "profile"]
+						},
+						"description": "Atualiza perfil do usuário logado.\n\n**Campos editáveis:**\n- email (único)\n- phone\n- mobile\n\n**Apenas o próprio usuário pode editar**"
+					},
+					"response": []
+				},
+				{
+					"name": "Change Password",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"current_password\": \"admin\",\n    \"new_password\": \"NewPass123!\",\n    \"confirm_password\": \"NewPass123!\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/users/change-password",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "users", "change-password"]
+						},
+						"description": "Altera senha do usuário.\n\n**Validações:**\n- ✅ Senha atual correta\n- ✅ Nova senha ≥ 8 caracteres\n- ✅ Confirmação igual"
+					},
+					"response": []
+				},
+				{
+					"name": "User Logout",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/users/logout",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "users", "logout"]
+						},
+						"description": "Logout: invalida sessão e token"
+					},
+					"response": []
+				}
+			],
+			"description": "User authentication and profile management"
+		},
+		{
+			"name": "👥 3. Agents Management",
+			"item": [
+				{
+					"name": "List Agents",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/agents?page=1&limit=20&search=&active=true",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "agents"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Página (padrão: 1)"
+								},
+								{
+									"key": "limit",
+									"value": "20",
+									"description": "Itens por página (max: 100)"
+								},
+								{
+									"key": "search",
+									"value": "",
+									"description": "Busca por nome, email, CRECI"
+								},
+								{
+									"key": "active",
+									"value": "true",
+									"description": "Filtrar ativos/inativos"
+								},
+								{
+									"key": "company_id",
+									"value": "1",
+									"description": "Filtrar por empresa",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Lista agentes com paginação e filtros.\n\n**Multi-tenancy:** Apenas agentes da company do usuário"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Agent",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.id) {",
+									"        pm.collectionVariables.set('agent_id', jsonData.id);",
+									"        console.log('✅ Agent criado, ID:', jsonData.id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Maria Silva Santos\",\n    \"cpf\": \"123.456.789-09\",\n    \"email\": \"maria.silva@realestate.com\",\n    \"phone\": \"(11) 98765-4321\",\n    \"mobile\": \"(11) 91234-5678\",\n    \"creci\": \"CRECI/SP 123456-F\",\n    \"hire_date\": \"2024-01-15\",\n    \"birth_date\": \"1990-05-20\",\n    \"address\": \"Rua das Flores, 123\",\n    \"city\": \"São Paulo\",\n    \"state\": \"SP\",\n    \"zip_code\": \"01234-567\",\n    \"commission_default_percentage\": 5.0,\n    \"specialization\": \"Imóveis Residenciais de Alto Padrão\",\n    \"active\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/agents",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "agents"]
+						},
+						"description": "Cria novo agente imobiliário.\n\n**Validações automáticas:**\n- ✅ CPF válido (dígitos verificadores)\n- ✅ CRECI normalizado (CRECI/UF NNNNNN)\n- ✅ Email único e formato válido\n- ✅ Phone formato brasileiro\n- ✅ Company auto-atribuída\n\n**Campos obrigatórios:**\nname, cpf, email, creci\n\n**ID é salvo automaticamente**"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Agent by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/agents/{{agent_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "agents", "{{agent_id}}"]
+						},
+						"description": "Retorna detalhes completos de um agente.\n\n**Inclui:**\n- Dados pessoais\n- CRECI normalizado\n- Count de imóveis\n- Count de regras de comissão\n- Métricas de performance"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Agent",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Maria Silva Santos Corretora\",\n    \"email\": \"maria.corretora@realestate.com\",\n    \"phone\": \"(11) 99999-8888\",\n    \"mobile\": \"(11) 98888-7777\",\n    \"specialization\": \"Imóveis Comerciais e Residenciais\",\n    \"commission_default_percentage\": 6.0\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/agents/{{agent_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "agents", "{{agent_id}}"]
+						},
+						"description": "Atualiza dados de um agente.\n\n**Campos editáveis:**\nname, email, phone, mobile, creci, address, etc.\n\n**Campos protegidos:**\n❌ company_id (multi-tenancy)\n❌ cpf (imutável)"
+					},
+					"response": []
+				},
+				{
+					"name": "Deactivate Agent",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"reason\": \"Desligamento por decisão da empresa - Novo emprego em outra cidade\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/agents/{{agent_id}}/deactivate",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "agents", "{{agent_id}}", "deactivate"]
+						},
+						"description": "Desativa agente (soft delete).\n\n**Comportamento:**\n- active = False\n- Registra data e motivo\n- Preserva histórico\n- Não aparece em listas ativas\n- Pode ser reativado"
+					},
+					"response": []
+				},
+				{
+					"name": "Reactivate Agent",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/agents/{{agent_id}}/reactivate",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "agents", "{{agent_id}}", "reactivate"]
+						},
+						"description": "Reativa agente desativado.\n\n**Comportamento:**\n- active = True\n- Limpa deactivation_date e reason\n- Volta a listagens ativas"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Agents Ranking",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/agents/ranking?metric=total_commissions&period=month&limit=10",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "agents", "ranking"],
+							"query": [
+								{
+									"key": "metric",
+									"value": "total_commissions",
+									"description": "total_commissions | total_sales | avg_ticket"
+								},
+								{
+									"key": "period",
+									"value": "month",
+									"description": "week | month | quarter | year"
+								},
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Top N agentes"
+								}
+							]
+						},
+						"description": "Ranking dos melhores agentes.\n\n**Critérios:**\n- 💰 total_commissions: Maior faturamento\n- 📈 total_sales: Maior volume\n- 💵 avg_ticket: Maior ticket médio\n\n**Multi-tenancy:** Apenas da company\n**Cache:** Redis 5min"
+					},
+					"response": []
+				}
+			],
+			"description": "Agent CRUD + lifecycle management"
+		},
+		{
+			"name": "🏠 4. Properties",
+			"item": [
+				{
+					"name": "List Properties",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/properties?limit=20&offset=0&status=available",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "properties"],
+							"query": [
+								{
+									"key": "limit",
+									"value": "20"
+								},
+								{
+									"key": "offset",
+									"value": "0"
+								},
+								{
+									"key": "status",
+									"value": "available",
+									"description": "available|sold|rented|reserved"
+								},
+								{
+									"key": "min_price",
+									"value": "500000",
+									"description": "Preço mínimo",
+									"disabled": true
+								},
+								{
+									"key": "max_price",
+									"value": "2000000",
+									"description": "Preço máximo",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Lista imóveis com filtros.\n\n**Multi-tenancy aplicado**"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Property",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.id) {",
+									"        pm.collectionVariables.set('property_id', jsonData.id);",
+									"        console.log('✅ Property criado, ID:', jsonData.id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Apartamento 3 quartos Vista Mar\",\n    \"property_type_id\": 2,\n    \"area\": 120.5,\n    \"zip_code\": \"11020-001\",\n    \"state_id\": 25,\n    \"city\": \"Santos\",\n    \"street\": \"Avenida Bartolomeu de Gusmão\",\n    \"street_number\": \"500\",\n    \"location_type_id\": 1,\n    \"price\": 850000.00,\n    \"rent_price\": 4500.00,\n    \"property_status\": \"available\",\n    \"property_purpose\": \"residential\",\n    \"num_rooms\": 3,\n    \"num_suites\": 1,\n    \"num_bathrooms\": 2,\n    \"num_parking\": 2,\n    \"total_area\": 145.0,\n    \"neighborhood\": \"Ponta da Praia\",\n    \"for_sale\": true,\n    \"for_rent\": true,\n    \"description\": \"<p>Apartamento amplo com vista privilegiada para o mar. Localização nobre.</p>\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/properties",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "properties"]
+						},
+						"description": "Cria novo imóvel.\n\n**Campos obrigatórios:**\nname, property_type_id, area, zip_code, state_id, city, street, street_number, location_type_id\n\n**Company auto-atribuída**"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Property by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/properties/{{property_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "properties", "{{property_id}}"]
+						},
+						"description": "Busca imóvel por ID com todos os detalhes"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Property",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Apartamento 3 quartos Vista Mar - OPORTUNIDADE\",\n    \"price\": 800000.00,\n    \"description\": \"<p>Apartamento com vista mar - PREÇO REDUZIDO!</p>\",\n    \"property_status\": \"reserved\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/properties/{{property_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "properties", "{{property_id}}"]
+						},
+						"description": "Atualiza imóvel existente"
+					},
+					"response": []
+				}
+			],
+			"description": "Property CRUD operations"
+		},
+		{
+			"name": "📋 5. Assignments (Agent ↔ Property)",
+			"item": [
+				{
+					"name": "Create Assignment",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.id) {",
+									"        pm.collectionVariables.set('assignment_id', jsonData.id);",
+									"        console.log('✅ Assignment criado, ID:', jsonData.id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"agent_id\": {{agent_id}},\n    \"property_id\": {{property_id}},\n    \"responsibility_type\": \"seller\",\n    \"assignment_date\": \"2024-01-15\",\n    \"notes\": \"Agente responsável pela venda deste imóvel\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/assignments",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "assignments"]
+						},
+						"description": "Atribui agente a imóvel.\n\n**Validação:**\n✅ Agente e imóvel mesma company\n✅ responsibility_type: seller | buyer | both\n✅ Múltiplos agentes permitidos"
+					},
+					"response": []
+				},
+				{
+					"name": "List Agent Properties",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/agents/{{agent_id}}/properties",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "agents", "{{agent_id}}", "properties"]
+						},
+						"description": "Lista imóveis atribuídos a um agente.\n\n**Retorna:**\n- Imóveis\n- Tipo responsabilidade\n- Data atribuição"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Assignment",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"responsibility_type\": \"both\",\n    \"notes\": \"Agora responsável por venda e captação de comprador\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/assignments/{{assignment_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "assignments", "{{assignment_id}}"]
+						},
+						"description": "Atualiza atribuição existente"
+					},
+					"response": []
+				}
+			],
+			"description": "Agent-to-Property assignments with validation"
+		},
+		{
+			"name": "💰 6. Commissions",
+			"item": [
+				{
+					"name": "Create Commission Rule (Percentage)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.id) {",
+									"        pm.collectionVariables.set('commission_rule_id', jsonData.id);",
+									"        console.log('✅ Commission Rule criado, ID:', jsonData.id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"agent_id\": {{agent_id}},\n    \"transaction_type\": \"sale\",\n    \"structure_type\": \"percentage\",\n    \"percentage\": 6.0,\n    \"min_value\": 500000.00,\n    \"max_value\": 2000000.00,\n    \"valid_from\": \"2024-01-01\",\n    \"valid_until\": \"2024-12-31\",\n    \"description\": \"Comissão 6% para vendas entre R$ 500k e R$ 2M\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/agents/{{agent_id}}/commission-rules",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "agents", "{{agent_id}}", "commission-rules"]
+						},
+						"description": "Cria regra de comissão percentual.\n\n**Exemplo:** 6% vendas R$ 500k-2M\n\n**Validações:**\n✅ percentage: 0-100\n✅ min_value <= max_value\n✅ dates válidas"
+					},
+					"response": []
+				},
+				{
+					"name": "List Agent Commission Rules",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/agents/{{agent_id}}/commission-rules?active_only=true",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "agents", "{{agent_id}}", "commission-rules"],
+							"query": [
+								{
+									"key": "active_only",
+									"value": "true",
+									"description": "Apenas regras ativas"
+								}
+							]
+						},
+						"description": "Lista regras de comissão do agente"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Commission Rule",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"percentage\": 7.0,\n    \"valid_until\": \"2025-12-31\",\n    \"description\": \"Comissão aumentada para 7% - Performance excepcional\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/commission-rules/{{commission_rule_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "commission-rules", "{{commission_rule_id}}"]
+						},
+						"description": "Atualiza regra existente.\n\n⚠️ **Não é retroativo**\n- Transações antigas mantêm snapshot original\n- Apenas transações futuras usam nova regra"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Commission Transaction",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"agent_id\": {{agent_id}},\n    \"transaction_type\": \"sale\",\n    \"transaction_amount\": 1200000.00,\n    \"transaction_reference\": \"VENDA-2024-001\",\n    \"transaction_date\": \"2024-01-15\",\n    \"description\": \"Venda Apartamento Vista Mar - Santos/SP\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/commission-transactions",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "commission-transactions"]
+						},
+						"description": "Registra transação e calcula comissão.\n\n**Cálculo automático:**\n1. Busca regra ativa\n2. Aplica percentual/fixo\n3. Salva snapshot imutável\n4. Retorna comissão\n\n**Exemplo:** R$ 1.2M × 6% = R$ 72.000"
+					},
+					"response": []
+				}
+			],
+			"description": "Commission rules and transaction calculation"
+		},
+		{
+			"name": "📊 7. Performance & Rankings",
+			"item": [
+				{
+					"name": "Get Agent Performance",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/agents/{{agent_id}}/performance?start_date=2024-01-01&end_date=2024-12-31",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "agents", "{{agent_id}}", "performance"],
+							"query": [
+								{
+									"key": "start_date",
+									"value": "2024-01-01"
+								},
+								{
+									"key": "end_date",
+									"value": "2024-12-31"
+								}
+							]
+						},
+						"description": "Métricas de performance do agente.\n\n**Retorna:**\n- 💰 total_commissions\n- 📈 total_sales_count\n- 🏠 active_properties_count\n- 💵 avg_sale_value\n- 📊 conversion_rate\n\n**Cache Redis:** 5 min"
+					},
+					"response": []
+				}
+			],
+			"description": "Performance metrics and comparative rankings"
+		},
+		{
+			"name": "📚 8. Master Data",
+			"item": [
+				{
+					"name": "Get Property Types",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/property-types",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "property-types"]
+						},
+						"description": "Lista tipos de imóveis (Casa, Apartamento, Terreno, etc)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get States",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/states",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "states"]
+						},
+						"description": "Lista estados brasileiros (27 UFs)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Location Types",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/location-types",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "location-types"]
+						},
+						"description": "Lista tipos de localização (Urbano, Rural, Praia, etc)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Tags",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/tags",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "tags"]
+						},
+						"description": "Lista tags/marcadores de imóveis"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Amenities",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/amenities",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "amenities"]
+						},
+						"description": "Lista amenidades/comodidades (piscina, academia, etc)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Owners",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/owners",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "owners"]
+						},
+						"description": "Lista proprietários de imóveis"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Companies",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/companies",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "companies"]
+						},
+						"description": "Lista imobiliárias (empresas do sistema)"
+					},
+					"response": []
+				}
+			],
+			"description": "Reference data (types, states, tags, amenities)"
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Auto-inject token if exists",
+					"const token = pm.collectionVariables.get('access_token') || pm.environment.get('access_token');",
+					"if (token) {",
+					"    pm.request.headers.add({key: 'Authorization', value: 'Bearer ' + token});",
+					"}"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Log response time",
+					"console.log('⏱️ Response time:', pm.response.responseTime, 'ms');",
+					"",
+					"// Check for errors",
+					"if (pm.response.code >= 400) {",
+					"    console.error('❌ Error:', pm.response.status);",
+					"    console.error('Body:', pm.response.text());",
+					"}"
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8069",
+			"type": "string"
+		},
+		{
+			"key": "access_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "refresh_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "agent_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "property_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "assignment_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "commission_rule_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "user_id",
+			"value": "",
+			"type": "string"
+		}
+	]
+}
