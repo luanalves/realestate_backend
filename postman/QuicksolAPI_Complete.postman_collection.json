@@ -2,7 +2,7 @@
 	"info": {
 		"_postman_id": "quicksol-api-complete-2026",
 		"name": "Quicksol Real Estate API - Complete (29 Endpoints)",
-		"description": "Collection completa da API Quicksol Real Estate com 29 endpoints, autenticação JWT/OAuth 2.0, multi-tenancy e dados de teste realistas.\n\n**✅ Atualizado em: 15/01/2026**\n**📊 Total de endpoints: 29**\n\n**Configuração Inicial:**\n1. Import no Postman\n2. Configure environment ou use variáveis da collection\n3. Execute \"OAuth Token\" ou \"User Login\" primeiro\n4. Os tokens são salvos automaticamente\n5. Explore os endpoints em ordem sugerida\n\n**Categorias:**\n- 🔐 Authentication (OAuth + Users): 8 endpoints\n- 👤 Agents: 7 endpoints\n- 🏠 Properties: 4 endpoints\n- 📋 Assignments: 3 endpoints\n- 💰 Commissions: 4 endpoints\n- 📊 Performance: 2 endpoints\n- 📚 Master Data: 5 endpoints\n\n**ADRs Implementadas:**\n- ADR-005: OpenAPI 3.0 Documentation\n- ADR-007: HATEOAS Hypermedia\n- ADR-008: Multi-tenancy Security\n- ADR-009: Headless Authentication\n- ADR-011: Controller Security (@require_jwt + @require_session + @require_company)",
+		"description": "Collection completa da API Quicksol Real Estate com 29 endpoints, autenticação JWT/OAuth 2.0, multi-tenancy e dados de teste realistas.\n\n**✅ Atualizado em: 16/01/2026**\n**📊 Total de endpoints: 29**\n**🔒 Session Validation: Added to logout endpoint (ADR-011)**\n\n**Configuração Inicial:**\n1. Import no Postman\n2. Configure environment ou use variáveis da collection\n3. Execute \"Get OAuth Token\" primeiro para obter bearer token\n4. Execute \"User Login\" para criar sessão (session_id salvo automaticamente)\n5. Os tokens e session_id são salvos automaticamente nas variáveis\n6. Explore os endpoints - todos exceto login requerem session_id\n\n**Categorias:**\n- 🔐 Authentication (OAuth + Users): 8 endpoints\n- 👤 Agents: 7 endpoints\n- 🏠 Properties: 4 endpoints\n- 📋 Assignments: 3 endpoints\n- 💰 Commissions: 4 endpoints\n- 📊 Performance: 2 endpoints\n- 📚 Master Data: 5 endpoints\n\n**Security Model (ADR-011 - Dual Authentication):**\n- Login: Bearer token only (creates session)\n- All other User Auth endpoints: Bearer token + Session required\n- Session validation includes fingerprint check (IP/User-Agent/Language)\n- Session stored in Redis with 7200s TTL\n\n**ADRs Implementadas:**\n- ADR-005: OpenAPI 3.0 Documentation\n- ADR-007: HATEOAS Hypermedia\n- ADR-008: Multi-tenancy Security\n- ADR-009: Headless Authentication\n- ADR-011: Controller Security (@require_jwt + @require_session + @require_company)\n\n**Variables Used:**\n- {{base_url}}: http://localhost:8069\n- {{access_token}}: OAuth 2.0 bearer token (auto-saved)\n- {{session_id}}: HTTP session ID (auto-saved from login)\n- {{user_id}}: Current user ID (auto-saved)\n- {{user_email}}: Current user email (auto-saved)",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
@@ -131,14 +131,30 @@
 								"exec": [
 									"if (pm.response.code === 200) {",
 									"    const jsonData = pm.response.json();",
-									"    if (jsonData.access_token) {",
-									"        pm.environment.set('access_token', jsonData.access_token);",
-									"        pm.collectionVariables.set('access_token', jsonData.access_token);",
-									"        console.log('✅ Login realizado, token salvo');",
+									"    ",
+									"    // Save session_id from response",
+									"    if (jsonData.session_id) {",
+									"        pm.environment.set('session_id', jsonData.session_id);",
+									"        pm.collectionVariables.set('session_id', jsonData.session_id);",
+									"        console.log('✅ Session ID saved: ' + jsonData.session_id);",
 									"    }",
+									"    ",
+									"    // Save session_id from cookies",
+									"    const cookies = pm.cookies.toObject();",
+									"    if (cookies.session_id) {",
+									"        pm.environment.set('session_id', cookies.session_id);",
+									"        pm.collectionVariables.set('session_id', cookies.session_id);",
+									"        console.log('✅ Session cookie captured: ' + cookies.session_id);",
+									"    }",
+									"    ",
+									"    // Save user data",
 									"    if (jsonData.user && jsonData.user.id) {",
 									"        pm.collectionVariables.set('user_id', jsonData.user.id);",
+									"        pm.collectionVariables.set('user_email', jsonData.user.email);",
+									"        console.log('✅ User ID saved: ' + jsonData.user.id);",
 									"    }",
+									"    ",
+									"    console.log('✅ Login successful - token and session ready');",
 									"}"
 								],
 								"type": "text/javascript"
@@ -146,6 +162,16 @@
 						}
 					],
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "POST",
 						"header": [
 							{
@@ -155,115 +181,191 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"login\": \"admin\",\n    \"password\": \"admin\"\n}"
+							"raw": "{\n    \"email\": \"admin\",\n    \"password\": \"admin\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/api/v1/users/login",
 							"host": ["{{base_url}}"],
 							"path": ["api", "v1", "users", "login"]
 						},
-						"description": "**RECOMENDADO para testes**\n\nAutenticação com usuário e senha.\n\n**Credenciais padrão:**\n- Login: admin\n- Password: admin\n- DB: realestate (auto)"
+						"description": "**User Login - Bearer Token Only (No Session Required)**\n\n**Security**: ADR-011 - Requires ONLY OAuth bearer token\n\n**Creates**:\n- HTTP session (saved in cookie)\n- Returns session_id in response\n\n**Credentials (default)**:\n- Email: admin\n- Password: admin\n- DB: realestate (auto-selected)\n\n**Post-login**:\n- Session ID automatically saved to environment\n- Use session_id for all subsequent authenticated requests\n\n**Test Script**:\n- Captures session_id from response AND cookies\n- Saves user_id and user_email for later use"
 					},
 					"response": []
 				},
 				{
 					"name": "Get Current User (/me)",
 					"request": {
-						"method": "GET",
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
 						"header": [
 							{
-								"key": "Authorization",
-								"value": "Bearer {{access_token}}",
-								"type": "text"
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Cookie",
+								"value": "session_id={{session_id}}",
+								"type": "text",
+								"description": "Session cookie (required)"
 							}
 						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"session_id\": \"{{session_id}}\"\n}"
+						},
 						"url": {
 							"raw": "{{base_url}}/api/v1/me",
 							"host": ["{{base_url}}"],
 							"path": ["api", "v1", "me"]
 						},
-						"description": "Retorna dados completos do usuário autenticado.\n\n**Inclui:**\n- Perfil\n- Empresas acessíveis\n- Permissões\n- Company padrão"
+						"description": "**Get Current User - Requires Bearer Token + Session**\n\n**Security**: ADR-011 - Dual authentication\n- ✅ Bearer token (Authorization header)\n- ✅ Session ID (Cookie + request body)\n\n**Returns**:\n- User profile (id, name, email, login)\n- Accessible companies\n- Default company\n- Permissions\n\n**Session Validation**:\n- Session must be active (not expired/logged out)\n- Session fingerprint must match (IP/User-Agent/Language)\n- Returns 401 if session invalid or missing\n\n**Use Case**:\nFetch authenticated user data for SSR frontend hydration"
 					},
 					"response": []
 				},
 				{
 					"name": "Update User Profile",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "PATCH",
 						"header": [
 							{
-								"key": "Authorization",
-								"value": "Bearer {{access_token}}",
-								"type": "text"
-							},
-							{
 								"key": "Content-Type",
 								"value": "application/json"
+							},
+							{
+								"key": "Cookie",
+								"value": "session_id={{session_id}}",
+								"type": "text",
+								"description": "Session cookie (required)"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"email\": \"novo.email@example.com\",\n    \"phone\": \"11999998888\",\n    \"mobile\": \"11988887777\"\n}"
+							"raw": "{\n    \"session_id\": \"{{session_id}}\",\n    \"email\": \"updated.email@example.com\",\n    \"phone\": \"+55 11 99999-8888\",\n    \"mobile\": \"+55 11 98888-7777\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/api/v1/users/profile",
 							"host": ["{{base_url}}"],
 							"path": ["api", "v1", "users", "profile"]
 						},
-						"description": "Atualiza perfil do usuário logado.\n\n**Campos editáveis:**\n- email (único)\n- phone\n- mobile\n\n**Apenas o próprio usuário pode editar**"
+						"description": "**Update User Profile - Requires Bearer Token + Session**\n\n**Security**: ADR-011 - Dual authentication\n- ✅ Bearer token (Authorization header)\n- ✅ Session ID (Cookie + request body)\n\n**Editable Fields**:\n- email (must be unique)\n- phone\n- mobile\n\n**Validation**:\n- Email format validation\n- Email uniqueness check\n- Only authenticated user can edit own profile\n\n**Session Validation**:\n- Session fingerprint must match (prevents session hijacking)\n- Returns 401 if session invalid\n\n**Response**: Updated user profile data"
 					},
 					"response": []
 				},
 				{
 					"name": "Change Password",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "POST",
 						"header": [
 							{
-								"key": "Authorization",
-								"value": "Bearer {{access_token}}",
-								"type": "text"
-							},
-							{
 								"key": "Content-Type",
 								"value": "application/json"
+							},
+							{
+								"key": "Cookie",
+								"value": "session_id={{session_id}}",
+								"type": "text",
+								"description": "Session cookie (required)"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"current_password\": \"admin\",\n    \"new_password\": \"NewPass123!\",\n    \"confirm_password\": \"NewPass123!\"\n}"
+							"raw": "{\n    \"session_id\": \"{{session_id}}\",\n    \"current_password\": \"admin\",\n    \"new_password\": \"NewSecurePass123!\",\n    \"confirm_password\": \"NewSecurePass123!\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/api/v1/users/change-password",
 							"host": ["{{base_url}}"],
 							"path": ["api", "v1", "users", "change-password"]
 						},
-						"description": "Altera senha do usuário.\n\n**Validações:**\n- ✅ Senha atual correta\n- ✅ Nova senha ≥ 8 caracteres\n- ✅ Confirmação igual"
+						"description": "**Change Password - Requires Bearer Token + Session**\n\n**Security**: ADR-011 - Dual authentication\n- ✅ Bearer token (Authorization header)\n- ✅ Session ID (Cookie + request body)\n\n**Validation Rules**:\n- ✅ Current password must be correct\n- ✅ New password minimum 8 characters\n- ✅ New password must contain: uppercase, lowercase, number, special char\n- ✅ Confirm password must match new password\n- ✅ New password cannot be same as current\n\n**Session Validation**:\n- Session fingerprint must match\n- Returns 401 if session invalid\n\n**Security Features**:\n- Password hashed with bcrypt (cost factor 12)\n- Audit log entry created\n- All other sessions invalidated on success"
 					},
 					"response": []
 				},
 				{
 					"name": "User Logout",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    // Clear session variables on successful logout",
+									"    pm.environment.unset('session_id');",
+									"    pm.collectionVariables.unset('session_id');",
+									"    console.log('✅ Logout successful - session cleared');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "POST",
 						"header": [
 							{
-								"key": "Authorization",
-								"value": "Bearer {{access_token}}",
-								"type": "text"
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Cookie",
+								"value": "session_id={{session_id}}",
+								"type": "text",
+								"description": "Session cookie (required)"
 							}
 						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"session_id\": \"{{session_id}}\"\n}"
+						},
 						"url": {
 							"raw": "{{base_url}}/api/v1/users/logout",
 							"host": ["{{base_url}}"],
 							"path": ["api", "v1", "users", "logout"]
 						},
-						"description": "Logout: invalida sessão e token"
+						"description": "**User Logout - Requires Bearer Token + Session**\n\n**Security**: ADR-011 - Dual authentication (NEW as of 2026-01-16)\n- ✅ Bearer token (Authorization header)\n- ✅ Session ID (Cookie + request body) **[REQUIRED]**\n\n**What Happens**:\n1. Validates bearer token (401 if invalid/expired/revoked)\n2. Validates session (401 if missing/expired/fingerprint mismatch)\n3. Marks API session as inactive (PostgreSQL)\n4. Deletes session from Redis cache\n5. Clears session cookie\n6. Creates audit log entry\n\n**Session Validation**:\n- Session must exist and be active\n- Session fingerprint must match (IP/User-Agent/Language)\n- Returns 401 if session invalid or missing\n\n**Error Scenarios**:\n- 401: Missing Authorization header\n- 401: Token expired/revoked\n- 401: Session required (missing session_id)\n- 401: Session expired or not found\n- 401: Session validation failed (fingerprint mismatch)\n\n**Test Script**:\n- Automatically clears session_id from environment on success"
 					},
 					"response": []
 				}
 			],
-			"description": "User authentication and profile management"
+			"description": "**User Authentication & Profile Management**\n\n**Updated**: 2026-01-16 (ADR-011 Session Validation)\n\n**Security Model** (Dual Authentication):\n- **Login**: Bearer token only (creates session)\n- **All other endpoints**: Bearer token + Session required\n\n**5 Endpoints**:\n1. Login - Bearer token only ✅\n2. /me - Bearer + Session ✅\n3. Profile - Bearer + Session ✅\n4. Change Password - Bearer + Session ✅\n5. Logout - Bearer + Session ✅ (updated 2026-01-16)\n\n**Session Flow**:\n1. Call \"User Login\" → receives session_id\n2. Session auto-saved to {{session_id}} variable\n3. All subsequent requests include session_id in Cookie header + body\n4. Call \"User Logout\" → session invalidated\n\n**Session Validation**:\n- Redis-backed with 7200s TTL\n- Fingerprint validation (IP/User-Agent/Language)\n- Prevents session hijacking\n- Automatic expiration after logout or timeout"
 		},
 		{
 			"name": "👥 3. Agents Management",

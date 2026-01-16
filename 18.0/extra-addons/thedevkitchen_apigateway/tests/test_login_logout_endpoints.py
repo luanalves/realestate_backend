@@ -245,3 +245,278 @@ class TestLoginLogoutEndpoints(TransactionCase):
         self.assertEqual(api_session.ip_address, '192.168.1.100')
         self.assertEqual(api_session.user_agent, 'Mozilla/5.0 Test Browser')
         self.assertIsNotNone(api_session.login_at)
+
+    # =========================================================================
+    # US1: Bearer Token Validation Tests (T006-T008)
+    # =========================================================================
+
+    def test_logout_without_authorization_header_returns_401(self):
+        """
+        T006: Test logout endpoint rejects request without Authorization header
+        US1 - Secure API Access with Bearer Token
+        
+        Given: An API consumer has no bearer token
+        When: They send POST to /api/v1/users/logout without Authorization header
+        Then: System returns 401 error with message "Authorization header is required"
+        """
+        # Create an active session for the test user
+        api_session = self.env['thedevkitchen.api.session'].create({
+            'session_id': 'test-session-no-auth-header',
+            'user_id': self.test_user.id,
+            'ip_address': '127.0.0.1',
+            'is_active': True,
+        })
+        
+        # Simulate request to logout endpoint WITHOUT Authorization header
+        # This should be blocked by @require_jwt decorator
+        with patch('odoo.http.request') as mock_request:
+            mock_request.httprequest.headers.get.return_value = None  # No Authorization header
+            mock_request.httprequest.method = 'POST'
+            mock_request.httprequest.content_type = 'application/json'
+            
+            # Import the middleware decorator
+            from ..middleware import require_jwt
+            
+            # Create a mock endpoint function
+            @require_jwt
+            def mock_logout():
+                return {'success': True}
+            
+            # Call the decorated function
+            result = mock_logout()
+            
+            # Verify 401 error response
+            self.assertIn('error', result)
+            self.assertEqual(result['error']['code'], 'unauthorized')
+            self.assertIn('Authorization header is required', result['error']['message'])
+
+    def test_logout_with_expired_token_returns_401(self):
+        """
+        T007: Test logout endpoint rejects request with expired bearer token
+        US1 - Secure API Access with Bearer Token
+        
+        Given: An API consumer has an expired bearer token
+        When: They send POST to /api/v1/users/logout with expired token
+        Then: System returns 401 error with message "Token has expired"
+        """
+        # Create an expired OAuth token
+        expired_token = self.env['thedevkitchen.oauth.token'].create({
+            'application_id': self.app.id,
+            'access_token': 'expired-token-12345',
+            'token_type': 'Bearer',
+            'expires_at': datetime.now() - timedelta(hours=1),  # Expired 1 hour ago
+        })
+        
+        # Create an active session
+        api_session = self.env['thedevkitchen.api.session'].create({
+            'session_id': 'test-session-expired-token',
+            'user_id': self.test_user.id,
+            'ip_address': '127.0.0.1',
+            'is_active': True,
+        })
+        
+        # Simulate request with expired token
+        with patch('odoo.http.request') as mock_request:
+            mock_request.httprequest.headers.get.return_value = 'Bearer expired-token-12345'
+            mock_request.httprequest.method = 'POST'
+            mock_request.httprequest.content_type = 'application/json'
+            mock_request.env = self.env
+            
+            from ..middleware import require_jwt
+            
+            @require_jwt
+            def mock_logout():
+                return {'success': True}
+            
+            result = mock_logout()
+            
+            # Verify 401 error for expired token
+            self.assertIn('error', result)
+            self.assertIn('expired', result['error']['message'].lower())
+
+    def test_logout_with_revoked_token_returns_401(self):
+        """
+        T008: Test logout endpoint rejects request with revoked bearer token
+        US1 - Secure API Access with Bearer Token
+        
+        Given: An API consumer has a revoked bearer token
+        When: They send POST to /api/v1/users/logout with revoked token
+        Then: System returns 401 error with message indicating token is revoked
+        """
+        # Create a revoked OAuth token
+        revoked_token = self.env['thedevkitchen.oauth.token'].create({
+            'application_id': self.app.id,
+            'access_token': 'revoked-token-12345',
+            'token_type': 'Bearer',
+            'expires_at': datetime.now() + timedelta(hours=1),
+            'revoked': True,  # Token is revoked
+        })
+        
+        # Create an active session
+        api_session = self.env['thedevkitchen.api.session'].create({
+            'session_id': 'test-session-revoked-token',
+            'user_id': self.test_user.id,
+            'ip_address': '127.0.0.1',
+            'is_active': True,
+        })
+        
+        # Simulate request with revoked token
+        with patch('odoo.http.request') as mock_request:
+            mock_request.httprequest.headers.get.return_value = 'Bearer revoked-token-12345'
+            mock_request.httprequest.method = 'POST'
+            mock_request.httprequest.content_type = 'application/json'
+            mock_request.env = self.env
+            
+            from ..middleware import require_jwt
+            
+            @require_jwt
+            def mock_logout():
+                return {'success': True}
+            
+            result = mock_logout()
+            
+            # Verify 401 error for revoked token
+            self.assertIn('error', result)
+            self.assertIn('revoked', result['error']['message'].lower())
+
+
+    # =========================================================================
+    # US3: Session Validation Tests (T015-T017)
+    # =========================================================================
+
+    def test_logout_with_valid_token_but_no_session_returns_401(self):
+        """
+        T015: Test logout endpoint requires session cookie
+        US3 - Session-Based User Context
+        
+        Given: An API consumer has a valid bearer token but no session cookie
+        When: They send POST to /api/v1/users/logout with token only
+        Then: System returns 401 error with message "Session required"
+        """
+        # Simulate request with valid token but no session
+        with patch('odoo.http.request') as mock_request:
+            mock_request.httprequest.headers.get.return_value = 'Bearer test-access-token-12345'
+            mock_request.httprequest.method = 'POST'
+            mock_request.httprequest.content_type = 'application/json'
+            mock_request.env = self.env
+            mock_request.jwt_application = self.app
+            
+            # Mock Redis to return None (no session found)
+            with patch('redis.Redis.get', return_value=None):
+                from ..middleware import require_jwt, require_session
+                
+                @require_jwt
+                @require_session
+                def mock_logout():
+                    return {'success': True}
+                
+                result = mock_logout()
+                
+                # Verify 401 error for missing session
+                self.assertIn('error', result)
+                self.assertIn('session', result['error']['message'].lower())
+
+    def test_logout_with_valid_token_and_expired_session_returns_401(self):
+        """
+        T016: Test logout endpoint rejects expired sessions
+        US3 - Session-Based User Context
+        
+        Given: An API consumer has a valid bearer token and an expired session
+        When: They send POST to /api/v1/users/logout with expired session
+        Then: System returns 401 error with message "Session expired"
+        """
+        # Create an API session (already logged out)
+        api_session = self.env['thedevkitchen.api.session'].create({
+            'session_id': 'test-session-expired',
+            'user_id': self.test_user.id,
+            'ip_address': '127.0.0.1',
+            'is_active': False,  # Session is not active (expired/logged out)
+            'logout_at': datetime.now() - timedelta(hours=1),
+        })
+        
+        # Simulate request with valid token but expired session
+        with patch('odoo.http.request') as mock_request:
+            mock_request.httprequest.headers.get.return_value = 'Bearer test-access-token-12345'
+            mock_request.httprequest.method = 'POST'
+            mock_request.httprequest.content_type = 'application/json'
+            mock_request.env = self.env
+            mock_request.jwt_application = self.app
+            
+            # Mock session cookie
+            mock_request.httprequest.cookies.get.return_value = 'test-session-expired'
+            
+            from ..middleware import require_jwt, require_session
+            
+            @require_jwt
+            @require_session
+            def mock_logout():
+                return {'success': True}
+            
+            result = mock_logout()
+            
+            # Verify 401 error for expired session
+            self.assertIn('error', result)
+            # Either "Session expired" or "Session not found" is acceptable
+            self.assertTrue(
+                'expired' in result['error']['message'].lower() or 
+                'not found' in result['error']['message'].lower()
+            )
+
+    def test_logout_with_session_fingerprint_mismatch_returns_401(self):
+        """
+        T017: Test logout endpoint validates session fingerprint
+        US3 - Session-Based User Context
+        
+        Given: An API consumer has valid token and session but different IP (fingerprint mismatch)
+        When: They send POST to /api/v1/users/logout with mismatched fingerprint
+        Then: System returns 401 error with message "Session validation failed"
+        """
+        # Create an active session with specific IP
+        api_session = self.env['thedevkitchen.api.session'].create({
+            'session_id': 'test-session-fingerprint',
+            'user_id': self.test_user.id,
+            'ip_address': '192.168.1.100',  # Original IP
+            'user_agent': 'Mozilla/5.0',
+            'is_active': True,
+        })
+        
+        # Simulate request from DIFFERENT IP (fingerprint mismatch)
+        with patch('odoo.http.request') as mock_request:
+            mock_request.httprequest.headers.get.side_effect = lambda key: {
+                'Authorization': 'Bearer test-access-token-12345',
+                'User-Agent': 'Mozilla/5.0',
+            }.get(key)
+            mock_request.httprequest.remote_addr = '10.0.0.1'  # Different IP!
+            mock_request.httprequest.method = 'POST'
+            mock_request.httprequest.content_type = 'application/json'
+            mock_request.env = self.env
+            mock_request.jwt_application = self.app
+            mock_request.httprequest.cookies.get.return_value = 'test-session-fingerprint'
+            
+            # Mock Redis session data with original IP
+            import json
+            session_data = json.dumps({
+                'session_id': 'test-session-fingerprint',
+                'user_id': self.test_user.id,
+                'ip_address': '192.168.1.100',  # Original IP
+                'user_agent': 'Mozilla/5.0',
+            })
+            
+            with patch('redis.Redis.get', return_value=session_data.encode()):
+                from ..middleware import require_jwt, require_session
+                
+                @require_jwt
+                @require_session
+                def mock_logout():
+                    return {'success': True}
+                
+                result = mock_logout()
+                
+                # Verify 401 error for fingerprint mismatch
+                self.assertIn('error', result)
+                # Session validation should fail due to IP mismatch
+                self.assertTrue(
+                    'validation' in result['error']['message'].lower() or
+                    'fingerprint' in result['error']['message'].lower() or
+                    'session' in result['error']['message'].lower()
+                )
