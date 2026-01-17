@@ -1,13 +1,14 @@
 {
 	"info": {
-		"_postman_id": "quicksol-api-complete-2026",
-		"name": "Quicksol Real Estate API - Complete (29 Endpoints)",
-		"description": "Collection completa da API Quicksol Real Estate com 29 endpoints, autenticação JWT/OAuth 2.0, multi-tenancy e dados de teste realistas.\n\n**✅ Atualizado em: 16/01/2026**\n**📊 Total de endpoints: 29**\n**🔒 Session Validation: Added to logout endpoint (ADR-011)**\n\n**Configuração Inicial:**\n1. Import no Postman\n2. Configure environment ou use variáveis da collection\n3. Execute \"Get OAuth Token\" primeiro para obter bearer token\n4. Execute \"User Login\" para criar sessão (session_id salvo automaticamente)\n5. Os tokens e session_id são salvos automaticamente nas variáveis\n6. Explore os endpoints - todos exceto login requerem session_id\n\n**Categorias:**\n- 🔐 Authentication (OAuth + Users): 8 endpoints\n- 👤 Agents: 7 endpoints\n- 🏠 Properties: 4 endpoints\n- 📋 Assignments: 3 endpoints\n- 💰 Commissions: 4 endpoints\n- 📊 Performance: 2 endpoints\n- 📚 Master Data: 5 endpoints\n\n**Security Model (ADR-011 - Dual Authentication):**\n- Login: Bearer token only (creates session)\n- All other User Auth endpoints: Bearer token + Session required\n- Session validation includes fingerprint check (IP/User-Agent/Language)\n- Session stored in Redis with 7200s TTL\n\n**ADRs Implementadas:**\n- ADR-005: OpenAPI 3.0 Documentation\n- ADR-007: HATEOAS Hypermedia\n- ADR-008: Multi-tenancy Security\n- ADR-009: Headless Authentication\n- ADR-011: Controller Security (@require_jwt + @require_session + @require_company)\n\n**Variables Used:**\n- {{base_url}}: http://localhost:8069\n- {{access_token}}: OAuth 2.0 bearer token (auto-saved)\n- {{session_id}}: HTTP session ID (auto-saved from login)\n- {{user_id}}: Current user ID (auto-saved)\n- {{user_email}}: Current user email (auto-saved)",
+		"_postman_id": "quicksol-api-complete-001",
+		"name": "Quicksol Real Estate API - Complete",
+		"description": "Complete API documentation for Quicksol Real Estate Management System\n\n**Authentication Requirements:**\n- All endpoints (except OAuth token) require **Bearer Token** from OAuth 2.0\n- Business endpoints require **Session ID** from user login\n- Fingerprint validation active (IP + User-Agent + Accept-Language)\n- Session expires after 2 hours of inactivity\n\n**Important:** Keep User-Agent consistent during session lifetime to avoid fingerprint validation failures.",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
 		{
-			"name": "🔐 1. OAuth Authentication",
+			"name": "1. Authentication",
+			"description": "OAuth 2.0 token management endpoints (Bearer only - no session required)",
 			"item": [
 				{
 					"name": "Get OAuth Token",
@@ -16,17 +17,13 @@
 							"listen": "test",
 							"script": {
 								"exec": [
-									"if (pm.response.code === 200) {",
-									"    const jsonData = pm.response.json();",
-									"    if (jsonData.access_token) {",
-									"        pm.environment.set('access_token', jsonData.access_token);",
-									"        pm.collectionVariables.set('access_token', jsonData.access_token);",
-									"        console.log('✅ OAuth token salvo');",
-									"    }",
-									"    if (jsonData.refresh_token) {",
-									"        pm.environment.set('refresh_token', jsonData.refresh_token);",
-									"        pm.collectionVariables.set('refresh_token', jsonData.refresh_token);",
-									"    }",
+									"// Auto-set access_token for subsequent requests",
+									"const jsonData = pm.response.json();",
+									"if (jsonData && jsonData.result && jsonData.result.access_token) {",
+									"    pm.environment.set('access_token', jsonData.result.access_token);",
+									"    console.log('✅ Access token saved to environment');",
+									"} else {",
+									"    console.error('❌ Failed to extract access_token from response');",
 									"}"
 								],
 								"type": "text/javascript"
@@ -43,35 +40,26 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"grant_type\": \"client_credentials\",\n    \"client_id\": \"your_client_id_here\",\n    \"client_secret\": \"your_client_secret_here\"\n}"
+							"raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"call\",\n  \"params\": {\n    \"grant_type\": \"client_credentials\",\n    \"client_id\": \"{{oauth_client_id}}\",\n    \"client_secret\": \"{{oauth_client_secret}}\"\n  }\n}"
 						},
 						"url": {
-							"raw": "{{base_url}}/api/v1/auth/token",
-							"host": ["{{base_url}}"],
-							"path": ["api", "v1", "auth", "token"]
+							"raw": "{{odoo_base_url}}/api/v1/auth/token",
+							"host": [
+								"{{odoo_base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"token"
+							]
 						},
-						"description": "OAuth 2.0 Client Credentials Grant.\n\n**Como obter credenciais:**\n1. Acesse Odoo → Configurações → API Gateway → OAuth Applications\n2. Crie nova aplicação\n3. Copie client_id e client_secret\n\n**Token é salvo automaticamente**"
+						"description": "**Authentication:** None required\n\nObtain OAuth 2.0 Bearer token for API access.\n\n**Grant Type:** client_credentials\n\n**Response:** Returns access_token, expires_in, and token_type"
 					},
 					"response": []
 				},
 				{
-					"name": "Refresh OAuth Token",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"if (pm.response.code === 200) {",
-									"    const jsonData = pm.response.json();",
-									"    pm.environment.set('access_token', jsonData.access_token);",
-									"    pm.collectionVariables.set('access_token', jsonData.access_token);",
-									"    console.log('✅ Token renovado');",
-									"}"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
+					"name": "Refresh Token",
 					"request": {
 						"method": "POST",
 						"header": [
@@ -82,45 +70,63 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"refresh_token\": \"{{refresh_token}}\"\n}"
+							"raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"call\",\n  \"params\": {\n    \"grant_type\": \"refresh_token\",\n    \"refresh_token\": \"{{refresh_token}}\",\n    \"client_id\": \"{{oauth_client_id}}\",\n    \"client_secret\": \"{{oauth_client_secret}}\"\n  }\n}"
 						},
 						"url": {
-							"raw": "{{base_url}}/api/v1/auth/refresh",
-							"host": ["{{base_url}}"],
-							"path": ["api", "v1", "auth", "refresh"]
+							"raw": "{{odoo_base_url}}/api/v1/auth/token",
+							"host": [
+								"{{odoo_base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"token"
+							]
 						},
-						"description": "Renova access_token expirado usando refresh_token.\n\n**Quando usar:** Token expira após 3600s (1 hora)"
+						"description": "**Authentication:** None required\n\nRefresh an expired access token using refresh_token.\n\n**Grant Type:** refresh_token"
 					},
 					"response": []
 				},
 				{
-					"name": "Revoke OAuth Token",
+					"name": "Revoke Token",
 					"request": {
 						"method": "POST",
 						"header": [
 							{
 								"key": "Content-Type",
 								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"token\": \"{{access_token}}\",\n    \"token_type_hint\": \"access_token\"\n}"
+							"raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"call\",\n  \"params\": {\n    \"token\": \"{{access_token}}\"\n  }\n}"
 						},
 						"url": {
-							"raw": "{{base_url}}/api/v1/auth/revoke",
-							"host": ["{{base_url}}"],
-							"path": ["api", "v1", "auth", "revoke"]
+							"raw": "{{odoo_base_url}}/api/v1/auth/revoke",
+							"host": [
+								"{{odoo_base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"revoke"
+							]
 						},
-						"description": "Revoga (invalida) um token ativo.\n\n**Uso:** Logout, segurança"
+						"description": "**Authentication:** Bearer Token required\n\nRevoke an active OAuth token.\n\n**Response:** 200 OK on success"
 					},
 					"response": []
 				}
-			],
-			"description": "OAuth 2.0 token management (RFC 6749)"
+			]
 		},
 		{
-			"name": "👤 2. User Authentication",
+			"name": "2. User Authentication",
+			"description": "User login/logout and session management (Dual Auth: Bearer + Session)",
 			"item": [
 				{
 					"name": "User Login",
@@ -129,32 +135,18 @@
 							"listen": "test",
 							"script": {
 								"exec": [
-									"if (pm.response.code === 200) {",
-									"    const jsonData = pm.response.json();",
-									"    ",
-									"    // Save session_id from response",
-									"    if (jsonData.session_id) {",
-									"        pm.environment.set('session_id', jsonData.session_id);",
-									"        pm.collectionVariables.set('session_id', jsonData.session_id);",
-									"        console.log('✅ Session ID saved: ' + jsonData.session_id);",
-									"    }",
-									"    ",
-									"    // Save session_id from cookies",
-									"    const cookies = pm.cookies.toObject();",
-									"    if (cookies.session_id) {",
-									"        pm.environment.set('session_id', cookies.session_id);",
-									"        pm.collectionVariables.set('session_id', cookies.session_id);",
-									"        console.log('✅ Session cookie captured: ' + cookies.session_id);",
-									"    }",
-									"    ",
-									"    // Save user data",
-									"    if (jsonData.user && jsonData.user.id) {",
-									"        pm.collectionVariables.set('user_id', jsonData.user.id);",
-									"        pm.collectionVariables.set('user_email', jsonData.user.email);",
-									"        console.log('✅ User ID saved: ' + jsonData.user.id);",
-									"    }",
-									"    ",
-									"    console.log('✅ Login successful - token and session ready');",
+									"// CRITICAL: Extract session_id from response BODY (NOT cookie)",
+									"// FR2 Compliance: session_id is in jsonData.result.session_id",
+									"const jsonData = pm.response.json();",
+									"",
+									"if (jsonData && jsonData.result && jsonData.result.session_id) {",
+									"    const sessionId = jsonData.result.session_id;",
+									"    pm.environment.set('session_id', sessionId);",
+									"    console.log('✅ Session ID saved:', sessionId.substring(0, 20) + '...');",
+									"    console.log('📌 Session valid for 2 hours of inactivity');",
+									"} else {",
+									"    console.error('❌ Failed to extract session_id from response body');",
+									"    console.log('Response:', JSON.stringify(jsonData, null, 2));",
 									"}"
 								],
 								"type": "text/javascript"
@@ -162,49 +154,6 @@
 						}
 					],
 					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{access_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"email\": \"admin\",\n    \"password\": \"admin\"\n}"
-						},
-						"url": {
-							"raw": "{{base_url}}/api/v1/users/login",
-							"host": ["{{base_url}}"],
-							"path": ["api", "v1", "users", "login"]
-						},
-						"description": "**User Login - Bearer Token Only (No Session Required)**\n\n**Security**: ADR-011 - Requires ONLY OAuth bearer token\n\n**Creates**:\n- HTTP session (saved in cookie)\n- Returns session_id in response\n\n**Credentials (default)**:\n- Email: admin\n- Password: admin\n- DB: realestate (auto-selected)\n\n**Post-login**:\n- Session ID automatically saved to environment\n- Use session_id for all subsequent authenticated requests\n\n**Test Script**:\n- Captures session_id from response AND cookies\n- Saves user_id and user_email for later use"
-					},
-					"response": []
-				},
-				{
-					"name": "Get Current User (/me)",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{access_token}}",
-									"type": "string"
-								}
-							]
-						},
 						"method": "POST",
 						"header": [
 							{
@@ -212,77 +161,101 @@
 								"value": "application/json"
 							},
 							{
-								"key": "Cookie",
-								"value": "session_id={{session_id}}",
-								"type": "text",
-								"description": "Session cookie (required)"
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"session_id\": \"{{session_id}}\"\n}"
+							"raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"call\",\n  \"params\": {\n    \"email\": \"{{test_user_email}}\",\n    \"password\": \"{{test_user_password}}\"\n  }\n}"
 						},
 						"url": {
-							"raw": "{{base_url}}/api/v1/me",
-							"host": ["{{base_url}}"],
-							"path": ["api", "v1", "me"]
+							"raw": "{{odoo_base_url}}/api/v1/users/login",
+							"host": [
+								"{{odoo_base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"users",
+								"login"
+							]
 						},
-						"description": "**Get Current User - Requires Bearer Token + Session**\n\n**Security**: ADR-011 - Dual authentication\n- ✅ Bearer token (Authorization header)\n- ✅ Session ID (Cookie + request body)\n\n**Returns**:\n- User profile (id, name, email, login)\n- Accessible companies\n- Default company\n- Permissions\n\n**Session Validation**:\n- Session must be active (not expired/logged out)\n- Session fingerprint must match (IP/User-Agent/Language)\n- Returns 401 if session invalid or missing\n\n**Use Case**:\nFetch authenticated user data for SSR frontend hydration"
+						"description": "**Authentication:** Bearer Token required\n**Session:** Creates new session\n\n**IMPORTANT:** \n- Session ID returned in response body (jsonData.result.session_id)\n- NOT in cookies - extract from JSON response\n- Session expires after 2 hours of inactivity\n- Keep User-Agent consistent for fingerprint validation\n\n**Fingerprint validation active:**\n- IP Address\n- User-Agent\n- Accept-Language"
 					},
 					"response": []
 				},
 				{
-					"name": "Update User Profile",
+					"name": "User Logout",
 					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{access_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "PATCH",
+						"method": "POST",
 						"header": [
 							{
 								"key": "Content-Type",
 								"value": "application/json"
 							},
 							{
-								"key": "Cookie",
-								"value": "session_id={{session_id}}",
-								"type": "text",
-								"description": "Session cookie (required)"
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"session_id\": \"{{session_id}}\",\n    \"email\": \"updated.email@example.com\",\n    \"phone\": \"+55 11 99999-8888\",\n    \"mobile\": \"+55 11 98888-7777\"\n}"
+							"raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"call\",\n  \"params\": {\n    \"session_id\": \"{{session_id}}\"\n  }\n}"
 						},
 						"url": {
-							"raw": "{{base_url}}/api/v1/users/profile",
-							"host": ["{{base_url}}"],
-							"path": ["api", "v1", "users", "profile"]
+							"raw": "{{odoo_base_url}}/api/v1/users/logout",
+							"host": [
+								"{{odoo_base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"users",
+								"logout"
+							]
 						},
-						"description": "**Update User Profile - Requires Bearer Token + Session**\n\n**Security**: ADR-011 - Dual authentication\n- ✅ Bearer token (Authorization header)\n- ✅ Session ID (Cookie + request body)\n\n**Editable Fields**:\n- email (must be unique)\n- phone\n- mobile\n\n**Validation**:\n- Email format validation\n- Email uniqueness check\n- Only authenticated user can edit own profile\n\n**Session Validation**:\n- Session fingerprint must match (prevents session hijacking)\n- Returns 401 if session invalid\n\n**Response**: Updated user profile data"
+						"description": "**Authentication:** Bearer Token + Session ID required\n\nInvalidate current user session.\n\n**Effect:** Session marked as inactive in database and removed from Redis cache."
+					},
+					"response": []
+				},
+				{
+					"name": "User Profile",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"call\",\n  \"params\": {\n    \"session_id\": \"{{session_id}}\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{odoo_base_url}}/api/v1/users/profile",
+							"host": [
+								"{{odoo_base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"users",
+								"profile"
+							]
+						},
+						"description": "**Authentication:** Bearer Token + Session ID required\n**Fingerprint validation:** Active\n\nGet authenticated user profile information.\n\n**User-Agent consistency:** Required for session validation"
 					},
 					"response": []
 				},
 				{
 					"name": "Change Password",
 					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{access_token}}",
-									"type": "string"
-								}
-							]
-						},
 						"method": "POST",
 						"header": [
 							{
@@ -290,85 +263,68 @@
 								"value": "application/json"
 							},
 							{
-								"key": "Cookie",
-								"value": "session_id={{session_id}}",
-								"type": "text",
-								"description": "Session cookie (required)"
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"session_id\": \"{{session_id}}\",\n    \"current_password\": \"admin\",\n    \"new_password\": \"NewSecurePass123!\",\n    \"confirm_password\": \"NewSecurePass123!\"\n}"
+							"raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"call\",\n  \"params\": {\n    \"session_id\": \"{{session_id}}\",\n    \"old_password\": \"current_password\",\n    \"new_password\": \"new_password\"\n  }\n}"
 						},
 						"url": {
-							"raw": "{{base_url}}/api/v1/users/change-password",
-							"host": ["{{base_url}}"],
-							"path": ["api", "v1", "users", "change-password"]
+							"raw": "{{odoo_base_url}}/api/v1/users/change-password",
+							"host": [
+								"{{odoo_base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"users",
+								"change-password"
+							]
 						},
-						"description": "**Change Password - Requires Bearer Token + Session**\n\n**Security**: ADR-011 - Dual authentication\n- ✅ Bearer token (Authorization header)\n- ✅ Session ID (Cookie + request body)\n\n**Validation Rules**:\n- ✅ Current password must be correct\n- ✅ New password minimum 8 characters\n- ✅ New password must contain: uppercase, lowercase, number, special char\n- ✅ Confirm password must match new password\n- ✅ New password cannot be same as current\n\n**Session Validation**:\n- Session fingerprint must match\n- Returns 401 if session invalid\n\n**Security Features**:\n- Password hashed with bcrypt (cost factor 12)\n- Audit log entry created\n- All other sessions invalidated on success"
+						"description": "**Authentication:** Bearer Token + Session ID required\n**Fingerprint validation:** Active\n\nChange authenticated user's password.\n\n**Session expiry:** 2 hours inactivity"
 					},
 					"response": []
 				},
 				{
-					"name": "User Logout",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"if (pm.response.code === 200) {",
-									"    // Clear session variables on successful logout",
-									"    pm.environment.unset('session_id');",
-									"    pm.collectionVariables.unset('session_id');",
-									"    console.log('✅ Logout successful - session cleared');",
-									"}"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
+					"name": "Get Current User",
 					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{access_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "POST",
+						"method": "GET",
 						"header": [
 							{
 								"key": "Content-Type",
 								"value": "application/json"
 							},
 							{
-								"key": "Cookie",
-								"value": "session_id={{session_id}}",
-								"type": "text",
-								"description": "Session cookie (required)"
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"session_id\": \"{{session_id}}\"\n}"
+							"raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"call\",\n  \"params\": {\n    \"session_id\": \"{{session_id}}\"\n  }\n}"
 						},
 						"url": {
-							"raw": "{{base_url}}/api/v1/users/logout",
-							"host": ["{{base_url}}"],
-							"path": ["api", "v1", "users", "logout"]
+							"raw": "{{odoo_base_url}}/api/v1/me",
+							"host": [
+								"{{odoo_base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"me"
+							]
 						},
-						"description": "**User Logout - Requires Bearer Token + Session**\n\n**Security**: ADR-011 - Dual authentication (NEW as of 2026-01-16)\n- ✅ Bearer token (Authorization header)\n- ✅ Session ID (Cookie + request body) **[REQUIRED]**\n\n**What Happens**:\n1. Validates bearer token (401 if invalid/expired/revoked)\n2. Validates session (401 if missing/expired/fingerprint mismatch)\n3. Marks API session as inactive (PostgreSQL)\n4. Deletes session from Redis cache\n5. Clears session cookie\n6. Creates audit log entry\n\n**Session Validation**:\n- Session must exist and be active\n- Session fingerprint must match (IP/User-Agent/Language)\n- Returns 401 if session invalid or missing\n\n**Error Scenarios**:\n- 401: Missing Authorization header\n- 401: Token expired/revoked\n- 401: Session required (missing session_id)\n- 401: Session expired or not found\n- 401: Session validation failed (fingerprint mismatch)\n\n**Test Script**:\n- Automatically clears session_id from environment on success"
+						"description": "**Authentication:** Bearer Token + Session ID required\n**Fingerprint validation:** Active\n\nGet current authenticated user information.\n\n**User-Agent consistency:** Required"
 					},
 					"response": []
 				}
-			],
-			"description": "**User Authentication & Profile Management**\n\n**Updated**: 2026-01-16 (ADR-011 Session Validation)\n\n**Security Model** (Dual Authentication):\n- **Login**: Bearer token only (creates session)\n- **All other endpoints**: Bearer token + Session required\n\n**5 Endpoints**:\n1. Login - Bearer token only ✅\n2. /me - Bearer + Session ✅\n3. Profile - Bearer + Session ✅\n4. Change Password - Bearer + Session ✅\n5. Logout - Bearer + Session ✅ (updated 2026-01-16)\n\n**Session Flow**:\n1. Call \"User Login\" → receives session_id\n2. Session auto-saved to {{session_id}} variable\n3. All subsequent requests include session_id in Cookie header + body\n4. Call \"User Logout\" → session invalidated\n\n**Session Validation**:\n- Redis-backed with 7200s TTL\n- Fingerprint validation (IP/User-Agent/Language)\n- Prevents session hijacking\n- Automatic expiration after logout or timeout"
+			]
 		},
 		{
-			"name": "👥 3. Agents Management",
+			"name": "3. Agents",
+			"description": "Agent management endpoints (Dual Auth: Bearer + Session + Company isolation)",
 			"item": [
 				{
 					"name": "List Agents",
@@ -376,110 +332,103 @@
 						"method": "GET",
 						"header": [
 							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
 								"key": "Authorization",
-								"value": "Bearer {{access_token}}",
-								"type": "text"
+								"value": "Bearer {{access_token}}"
 							}
 						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"call\",\n  \"params\": {\n    \"session_id\": \"{{session_id}}\",\n    \"limit\": 10,\n    \"offset\": 0\n  }\n}"
+						},
 						"url": {
-							"raw": "{{base_url}}/api/v1/agents?page=1&limit=20&search=&active=true",
-							"host": ["{{base_url}}"],
-							"path": ["api", "v1", "agents"],
-							"query": [
-								{
-									"key": "page",
-									"value": "1",
-									"description": "Página (padrão: 1)"
-								},
-								{
-									"key": "limit",
-									"value": "20",
-									"description": "Itens por página (max: 100)"
-								},
-								{
-									"key": "search",
-									"value": "",
-									"description": "Busca por nome, email, CRECI"
-								},
-								{
-									"key": "active",
-									"value": "true",
-									"description": "Filtrar ativos/inativos"
-								},
-								{
-									"key": "company_id",
-									"value": "1",
-									"description": "Filtrar por empresa",
-									"disabled": true
-								}
+							"raw": "{{odoo_base_url}}/api/v1/agents",
+							"host": [
+								"{{odoo_base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"agents"
 							]
 						},
-						"description": "Lista agentes com paginação e filtros.\n\n**Multi-tenancy:** Apenas agentes da company do usuário"
+						"description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\nList all agents accessible to the authenticated user's company.\n\n**User-Agent consistency:** Required for session validation\n**Session expiry:** 2 hours inactivity"
 					},
 					"response": []
 				},
 				{
 					"name": "Create Agent",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"if (pm.response.code === 201) {",
-									"    const jsonData = pm.response.json();",
-									"    if (jsonData.id) {",
-									"        pm.collectionVariables.set('agent_id', jsonData.id);",
-									"        console.log('✅ Agent criado, ID:', jsonData.id);",
-									"    }",
-									"}"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
 					"request": {
 						"method": "POST",
 						"header": [
 							{
-								"key": "Authorization",
-								"value": "Bearer {{access_token}}",
-								"type": "text"
-							},
-							{
 								"key": "Content-Type",
 								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"name\": \"Maria Silva Santos\",\n    \"cpf\": \"123.456.789-09\",\n    \"email\": \"maria.silva@realestate.com\",\n    \"phone\": \"(11) 98765-4321\",\n    \"mobile\": \"(11) 91234-5678\",\n    \"creci\": \"CRECI/SP 123456-F\",\n    \"hire_date\": \"2024-01-15\",\n    \"birth_date\": \"1990-05-20\",\n    \"address\": \"Rua das Flores, 123\",\n    \"city\": \"São Paulo\",\n    \"state\": \"SP\",\n    \"zip_code\": \"01234-567\",\n    \"commission_default_percentage\": 5.0,\n    \"specialization\": \"Imóveis Residenciais de Alto Padrão\",\n    \"active\": true\n}"
+							"raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"call\",\n  \"params\": {\n    \"session_id\": \"{{session_id}}\",\n    \"name\": \"João Silva\",\n    \"creci\": \"F12345\",\n    \"email\": \"joao.silva@example.com\",\n    \"phone\": \"+5511999999999\"\n  }\n}"
 						},
 						"url": {
-							"raw": "{{base_url}}/api/v1/agents",
-							"host": ["{{base_url}}"],
-							"path": ["api", "v1", "agents"]
+							"raw": "{{odoo_base_url}}/api/v1/agents",
+							"host": [
+								"{{odoo_base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"agents"
+							]
 						},
-						"description": "Cria novo agente imobiliário.\n\n**Validações automáticas:**\n- ✅ CPF válido (dígitos verificadores)\n- ✅ CRECI normalizado (CRECI/UF NNNNNN)\n- ✅ Email único e formato válido\n- ✅ Phone formato brasileiro\n- ✅ Company auto-atribuída\n\n**Campos obrigatórios:**\nname, cpf, email, creci\n\n**ID é salvo automaticamente**"
+						"description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active\n**Fingerprint validation:** Active\n\nCreate a new real estate agent.\n\n**CRECI Validation:** Brazilian real estate license number (ADR-012)"
 					},
 					"response": []
 				},
 				{
-					"name": "Get Agent by ID",
+					"name": "Get Agent",
 					"request": {
 						"method": "GET",
 						"header": [
 							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
 								"key": "Authorization",
-								"value": "Bearer {{access_token}}",
-								"type": "text"
+								"value": "Bearer {{access_token}}"
 							}
 						],
-						"url": {
-							"raw": "{{base_url}}/api/v1/agents/{{agent_id}}",
-							"host": ["{{base_url}}"],
-							"path": ["api", "v1", "agents", "{{agent_id}}"]
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"call\",\n  \"params\": {\n    \"session_id\": \"{{session_id}}\"\n  }\n}"
 						},
-						"description": "Retorna detalhes completos de um agente.\n\n**Inclui:**\n- Dados pessoais\n- CRECI normalizado\n- Count de imóveis\n- Count de regras de comissão\n- Métricas de performance"
+						"url": {
+							"raw": "{{odoo_base_url}}/api/v1/agents/:agent_id",
+							"host": [
+								"{{odoo_base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"agents",
+								":agent_id"
+							],
+							"variable": [
+								{
+									"key": "agent_id",
+									"value": "1"
+								}
+							]
+						},
+						"description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active\n**Fingerprint validation:** Active\n\nGet details of a specific agent."
 					},
 					"response": []
 				},
@@ -489,25 +438,37 @@
 						"method": "PUT",
 						"header": [
 							{
-								"key": "Authorization",
-								"value": "Bearer {{access_token}}",
-								"type": "text"
-							},
-							{
 								"key": "Content-Type",
 								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"name\": \"Maria Silva Santos Corretora\",\n    \"email\": \"maria.corretora@realestate.com\",\n    \"phone\": \"(11) 99999-8888\",\n    \"mobile\": \"(11) 98888-7777\",\n    \"specialization\": \"Imóveis Comerciais e Residenciais\",\n    \"commission_default_percentage\": 6.0\n}"
+							"raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"call\",\n  \"params\": {\n    \"session_id\": \"{{session_id}}\",\n    \"name\": \"João Silva Updated\",\n    \"phone\": \"+5511988888888\"\n  }\n}"
 						},
 						"url": {
-							"raw": "{{base_url}}/api/v1/agents/{{agent_id}}",
-							"host": ["{{base_url}}"],
-							"path": ["api", "v1", "agents", "{{agent_id}}"]
+							"raw": "{{odoo_base_url}}/api/v1/agents/:agent_id",
+							"host": [
+								"{{odoo_base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"agents",
+								":agent_id"
+							],
+							"variable": [
+								{
+									"key": "agent_id",
+									"value": "1"
+								}
+							]
 						},
-						"description": "Atualiza dados de um agente.\n\n**Campos editáveis:**\nname, email, phone, mobile, creci, address, etc.\n\n**Campos protegidos:**\n❌ company_id (multi-tenancy)\n❌ cpf (imutável)"
+						"description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active\n**Fingerprint validation:** Active\n\nUpdate agent information."
 					},
 					"response": []
 				},
@@ -517,25 +478,38 @@
 						"method": "POST",
 						"header": [
 							{
-								"key": "Authorization",
-								"value": "Bearer {{access_token}}",
-								"type": "text"
-							},
-							{
 								"key": "Content-Type",
 								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"reason\": \"Desligamento por decisão da empresa - Novo emprego em outra cidade\"\n}"
+							"raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"call\",\n  \"params\": {\n    \"session_id\": \"{{session_id}}\"\n  }\n}"
 						},
 						"url": {
-							"raw": "{{base_url}}/api/v1/agents/{{agent_id}}/deactivate",
-							"host": ["{{base_url}}"],
-							"path": ["api", "v1", "agents", "{{agent_id}}", "deactivate"]
+							"raw": "{{odoo_base_url}}/api/v1/agents/:agent_id/deactivate",
+							"host": [
+								"{{odoo_base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"agents",
+								":agent_id",
+								"deactivate"
+							],
+							"variable": [
+								{
+									"key": "agent_id",
+									"value": "1"
+								}
+							]
 						},
-						"description": "Desativa agente (soft delete).\n\n**Comportamento:**\n- active = False\n- Registra data e motivo\n- Preserva histórico\n- Não aparece em listas ativas\n- Pode ser reativado"
+						"description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active\n**Fingerprint validation:** Active\n\nDeactivate an agent (soft delete)."
 					},
 					"response": []
 				},
@@ -545,172 +519,315 @@
 						"method": "POST",
 						"header": [
 							{
-								"key": "Authorization",
-								"value": "Bearer {{access_token}}",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{base_url}}/api/v1/agents/{{agent_id}}/reactivate",
-							"host": ["{{base_url}}"],
-							"path": ["api", "v1", "agents", "{{agent_id}}", "reactivate"]
-						},
-						"description": "Reativa agente desativado.\n\n**Comportamento:**\n- active = True\n- Limpa deactivation_date e reason\n- Volta a listagens ativas"
-					},
-					"response": []
-				},
-				{
-					"name": "Get Agents Ranking",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{access_token}}",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{base_url}}/api/v1/agents/ranking?metric=total_commissions&period=month&limit=10",
-							"host": ["{{base_url}}"],
-							"path": ["api", "v1", "agents", "ranking"],
-							"query": [
-								{
-									"key": "metric",
-									"value": "total_commissions",
-									"description": "total_commissions | total_sales | avg_ticket"
-								},
-								{
-									"key": "period",
-									"value": "month",
-									"description": "week | month | quarter | year"
-								},
-								{
-									"key": "limit",
-									"value": "10",
-									"description": "Top N agentes"
-								}
-							]
-						},
-						"description": "Ranking dos melhores agentes.\n\n**Critérios:**\n- 💰 total_commissions: Maior faturamento\n- 📈 total_sales: Maior volume\n- 💵 avg_ticket: Maior ticket médio\n\n**Multi-tenancy:** Apenas da company\n**Cache:** Redis 5min"
-					},
-					"response": []
-				}
-			],
-			"description": "Agent CRUD + lifecycle management"
-		},
-		{
-			"name": "🏠 4. Properties",
-			"item": [
-				{
-					"name": "List Properties",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{access_token}}",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{base_url}}/api/v1/properties?limit=20&offset=0&status=available",
-							"host": ["{{base_url}}"],
-							"path": ["api", "v1", "properties"],
-							"query": [
-								{
-									"key": "limit",
-									"value": "20"
-								},
-								{
-									"key": "offset",
-									"value": "0"
-								},
-								{
-									"key": "status",
-									"value": "available",
-									"description": "available|sold|rented|reserved"
-								},
-								{
-									"key": "min_price",
-									"value": "500000",
-									"description": "Preço mínimo",
-									"disabled": true
-								},
-								{
-									"key": "max_price",
-									"value": "2000000",
-									"description": "Preço máximo",
-									"disabled": true
-								}
-							]
-						},
-						"description": "Lista imóveis com filtros.\n\n**Multi-tenancy aplicado**"
-					},
-					"response": []
-				},
-				{
-					"name": "Create Property",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"if (pm.response.code === 201) {",
-									"    const jsonData = pm.response.json();",
-									"    if (jsonData.id) {",
-									"        pm.collectionVariables.set('property_id', jsonData.id);",
-									"        console.log('✅ Property criado, ID:', jsonData.id);",
-									"    }",
-									"}"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{access_token}}",
-								"type": "text"
-							},
-							{
 								"key": "Content-Type",
 								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"name\": \"Apartamento 3 quartos Vista Mar\",\n    \"property_type_id\": 2,\n    \"area\": 120.5,\n    \"zip_code\": \"11020-001\",\n    \"state_id\": 25,\n    \"city\": \"Santos\",\n    \"street\": \"Avenida Bartolomeu de Gusmão\",\n    \"street_number\": \"500\",\n    \"location_type_id\": 1,\n    \"price\": 850000.00,\n    \"rent_price\": 4500.00,\n    \"property_status\": \"available\",\n    \"property_purpose\": \"residential\",\n    \"num_rooms\": 3,\n    \"num_suites\": 1,\n    \"num_bathrooms\": 2,\n    \"num_parking\": 2,\n    \"total_area\": 145.0,\n    \"neighborhood\": \"Ponta da Praia\",\n    \"for_sale\": true,\n    \"for_rent\": true,\n    \"description\": \"<p>Apartamento amplo com vista privilegiada para o mar. Localização nobre.</p>\"\n}"
+							"raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"call\",\n  \"params\": {\n    \"session_id\": \"{{session_id}}\"\n  }\n}"
 						},
 						"url": {
-							"raw": "{{base_url}}/api/v1/properties",
-							"host": ["{{base_url}}"],
-							"path": ["api", "v1", "properties"]
+							"raw": "{{odoo_base_url}}/api/v1/agents/:agent_id/reactivate",
+							"host": [
+								"{{odoo_base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"agents",
+								":agent_id",
+								"reactivate"
+							],
+							"variable": [
+								{
+									"key": "agent_id",
+									"value": "1"
+								}
+							]
 						},
-						"description": "Cria novo imóvel.\n\n**Campos obrigatórios:**\nname, property_type_id, area, zip_code, state_id, city, street, street_number, location_type_id\n\n**Company auto-atribuída**"
+						"description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active\n**Fingerprint validation:** Active\n\nReactivate a previously deactivated agent."
 					},
 					"response": []
 				},
 				{
-					"name": "Get Property by ID",
+					"name": "Agent Properties",
 					"request": {
 						"method": "GET",
 						"header": [
 							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
 								"key": "Authorization",
-								"value": "Bearer {{access_token}}",
-								"type": "text"
+								"value": "Bearer {{access_token}}"
 							}
 						],
-						"url": {
-							"raw": "{{base_url}}/api/v1/properties/{{property_id}}",
-							"host": ["{{base_url}}"],
-							"path": ["api", "v1", "properties", "{{property_id}}"]
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"call\",\n  \"params\": {\n    \"session_id\": \"{{session_id}}\"\n  }\n}"
 						},
-						"description": "Busca imóvel por ID com todos os detalhes"
+						"url": {
+							"raw": "{{odoo_base_url}}/api/v1/agents/:agent_id/properties",
+							"host": [
+								"{{odoo_base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"agents",
+								":agent_id",
+								"properties"
+							],
+							"variable": [
+								{
+									"key": "agent_id",
+									"value": "1"
+								}
+							]
+						},
+						"description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active\n**Fingerprint validation:** Active\n\nList all properties assigned to this agent."
+					},
+					"response": []
+				},
+				{
+					"name": "Agent Performance",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"call\",\n  \"params\": {\n    \"session_id\": \"{{session_id}}\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{odoo_base_url}}/api/v1/agents/:agent_id/performance",
+							"host": [
+								"{{odoo_base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"agents",
+								":agent_id",
+								"performance"
+							],
+							"variable": [
+								{
+									"key": "agent_id",
+									"value": "1"
+								}
+							]
+						},
+						"description": "**Authentication:** Bearer Token + Session ID required\n**Fingerprint validation:** Active\n\nGet agent performance metrics (sales, commissions, etc.)."
+					},
+					"response": []
+				},
+				{
+					"name": "Agent Ranking",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"call\",\n  \"params\": {\n    \"session_id\": \"{{session_id}}\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{odoo_base_url}}/api/v1/agents/ranking",
+							"host": [
+								"{{odoo_base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"agents",
+								"ranking"
+							]
+						},
+						"description": "**Authentication:** Bearer Token + Session ID required\n**Fingerprint validation:** Active\n\nGet agent performance ranking across the company."
+					},
+					"response": []
+				},
+				{
+					"name": "Create Commission Rule",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"call\",\n  \"params\": {\n    \"session_id\": \"{{session_id}}\",\n    \"percentage\": 3.5,\n    \"min_value\": 100000,\n    \"max_value\": 500000\n  }\n}"
+						},
+						"url": {
+							"raw": "{{odoo_base_url}}/api/v1/agents/:agent_id/commission-rules",
+							"host": [
+								"{{odoo_base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"agents",
+								":agent_id",
+								"commission-rules"
+							],
+							"variable": [
+								{
+									"key": "agent_id",
+									"value": "1"
+								}
+							]
+						},
+						"description": "**Authentication:** Bearer Token + Session ID required\n**Fingerprint validation:** Active\n\nCreate commission calculation rule for agent (ADR-013)."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Commission Rules",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"call\",\n  \"params\": {\n    \"session_id\": \"{{session_id}}\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{odoo_base_url}}/api/v1/agents/:agent_id/commission-rules",
+							"host": [
+								"{{odoo_base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"agents",
+								":agent_id",
+								"commission-rules"
+							],
+							"variable": [
+								{
+									"key": "agent_id",
+									"value": "1"
+								}
+							]
+						},
+						"description": "**Authentication:** Bearer Token + Session ID required\n**Fingerprint validation:** Active\n\nGet all commission rules for this agent."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "4. Properties",
+			"description": "Property management endpoints (Dual Auth: Bearer + Session + Company)",
+			"item": [
+				{
+					"name": "Create Property",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"call\",\n  \"params\": {\n    \"session_id\": \"{{session_id}}\",\n    \"name\": \"Apartamento Centro\",\n    \"property_type\": \"apartment\",\n    \"bedrooms\": 3,\n    \"bathrooms\": 2,\n    \"area\": 85.5,\n    \"price\": 450000.00,\n    \"address\": \"Rua Principal, 123\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{odoo_base_url}}/api/v1/properties",
+							"host": [
+								"{{odoo_base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"properties"
+							]
+						},
+						"description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active\n**Fingerprint validation:** Active\n\nCreate a new property listing."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Property",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"call\",\n  \"params\": {\n    \"session_id\": \"{{session_id}}\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{odoo_base_url}}/api/v1/properties/:property_id",
+							"host": [
+								"{{odoo_base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"properties",
+								":property_id"
+							],
+							"variable": [
+								{
+									"key": "property_id",
+									"value": "1"
+								}
+							]
+						},
+						"description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active\n**Fingerprint validation:** Active\n\nGet property details."
 					},
 					"response": []
 				},
@@ -720,482 +837,368 @@
 						"method": "PUT",
 						"header": [
 							{
-								"key": "Authorization",
-								"value": "Bearer {{access_token}}",
-								"type": "text"
-							},
-							{
 								"key": "Content-Type",
 								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"name\": \"Apartamento 3 quartos Vista Mar - OPORTUNIDADE\",\n    \"price\": 800000.00,\n    \"description\": \"<p>Apartamento com vista mar - PREÇO REDUZIDO!</p>\",\n    \"property_status\": \"reserved\"\n}"
+							"raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"call\",\n  \"params\": {\n    \"session_id\": \"{{session_id}}\",\n    \"price\": 475000.00,\n    \"status\": \"available\"\n  }\n}"
 						},
 						"url": {
-							"raw": "{{base_url}}/api/v1/properties/{{property_id}}",
-							"host": ["{{base_url}}"],
-							"path": ["api", "v1", "properties", "{{property_id}}"]
-						},
-						"description": "Atualiza imóvel existente"
-					},
-					"response": []
-				}
-			],
-			"description": "Property CRUD operations"
-		},
-		{
-			"name": "📋 5. Assignments (Agent ↔ Property)",
-			"item": [
-				{
-					"name": "Create Assignment",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"if (pm.response.code === 201) {",
-									"    const jsonData = pm.response.json();",
-									"    if (jsonData.id) {",
-									"        pm.collectionVariables.set('assignment_id', jsonData.id);",
-									"        console.log('✅ Assignment criado, ID:', jsonData.id);",
-									"    }",
-									"}"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{access_token}}",
-								"type": "text"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"agent_id\": {{agent_id}},\n    \"property_id\": {{property_id}},\n    \"responsibility_type\": \"seller\",\n    \"assignment_date\": \"2024-01-15\",\n    \"notes\": \"Agente responsável pela venda deste imóvel\"\n}"
-						},
-						"url": {
-							"raw": "{{base_url}}/api/v1/assignments",
-							"host": ["{{base_url}}"],
-							"path": ["api", "v1", "assignments"]
-						},
-						"description": "Atribui agente a imóvel.\n\n**Validação:**\n✅ Agente e imóvel mesma company\n✅ responsibility_type: seller | buyer | both\n✅ Múltiplos agentes permitidos"
-					},
-					"response": []
-				},
-				{
-					"name": "List Agent Properties",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{access_token}}",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{base_url}}/api/v1/agents/{{agent_id}}/properties",
-							"host": ["{{base_url}}"],
-							"path": ["api", "v1", "agents", "{{agent_id}}", "properties"]
-						},
-						"description": "Lista imóveis atribuídos a um agente.\n\n**Retorna:**\n- Imóveis\n- Tipo responsabilidade\n- Data atribuição"
-					},
-					"response": []
-				},
-				{
-					"name": "Update Assignment",
-					"request": {
-						"method": "PUT",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{access_token}}",
-								"type": "text"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"responsibility_type\": \"both\",\n    \"notes\": \"Agora responsável por venda e captação de comprador\"\n}"
-						},
-						"url": {
-							"raw": "{{base_url}}/api/v1/assignments/{{assignment_id}}",
-							"host": ["{{base_url}}"],
-							"path": ["api", "v1", "assignments", "{{assignment_id}}"]
-						},
-						"description": "Atualiza atribuição existente"
-					},
-					"response": []
-				}
-			],
-			"description": "Agent-to-Property assignments with validation"
-		},
-		{
-			"name": "💰 6. Commissions",
-			"item": [
-				{
-					"name": "Create Commission Rule (Percentage)",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"if (pm.response.code === 201) {",
-									"    const jsonData = pm.response.json();",
-									"    if (jsonData.id) {",
-									"        pm.collectionVariables.set('commission_rule_id', jsonData.id);",
-									"        console.log('✅ Commission Rule criado, ID:', jsonData.id);",
-									"    }",
-									"}"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{access_token}}",
-								"type": "text"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"agent_id\": {{agent_id}},\n    \"transaction_type\": \"sale\",\n    \"structure_type\": \"percentage\",\n    \"percentage\": 6.0,\n    \"min_value\": 500000.00,\n    \"max_value\": 2000000.00,\n    \"valid_from\": \"2024-01-01\",\n    \"valid_until\": \"2024-12-31\",\n    \"description\": \"Comissão 6% para vendas entre R$ 500k e R$ 2M\"\n}"
-						},
-						"url": {
-							"raw": "{{base_url}}/api/v1/agents/{{agent_id}}/commission-rules",
-							"host": ["{{base_url}}"],
-							"path": ["api", "v1", "agents", "{{agent_id}}", "commission-rules"]
-						},
-						"description": "Cria regra de comissão percentual.\n\n**Exemplo:** 6% vendas R$ 500k-2M\n\n**Validações:**\n✅ percentage: 0-100\n✅ min_value <= max_value\n✅ dates válidas"
-					},
-					"response": []
-				},
-				{
-					"name": "List Agent Commission Rules",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{access_token}}",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{base_url}}/api/v1/agents/{{agent_id}}/commission-rules?active_only=true",
-							"host": ["{{base_url}}"],
-							"path": ["api", "v1", "agents", "{{agent_id}}", "commission-rules"],
-							"query": [
+							"raw": "{{odoo_base_url}}/api/v1/properties/:property_id",
+							"host": [
+								"{{odoo_base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"properties",
+								":property_id"
+							],
+							"variable": [
 								{
-									"key": "active_only",
-									"value": "true",
-									"description": "Apenas regras ativas"
+									"key": "property_id",
+									"value": "1"
 								}
 							]
 						},
-						"description": "Lista regras de comissão do agente"
+						"description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active\n**Fingerprint validation:** Active\n\nUpdate property information."
 					},
 					"response": []
 				},
+				{
+					"name": "Delete Property",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"call\",\n  \"params\": {\n    \"session_id\": \"{{session_id}}\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{odoo_base_url}}/api/v1/properties/:property_id",
+							"host": [
+								"{{odoo_base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"properties",
+								":property_id"
+							],
+							"variable": [
+								{
+									"key": "property_id",
+									"value": "1"
+								}
+							]
+						},
+						"description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active\n**Fingerprint validation:** Active\n\nDelete property listing."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "5. Assignments",
+			"description": "Agent-Property assignment endpoints (Dual Auth)",
+			"item": [
+				{
+					"name": "Create Assignment",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"call\",\n  \"params\": {\n    \"session_id\": \"{{session_id}}\",\n    \"agent_id\": 1,\n    \"property_id\": 1,\n    \"assignment_type\": \"exclusive\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{odoo_base_url}}/api/v1/assignments",
+							"host": [
+								"{{odoo_base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"assignments"
+							]
+						},
+						"description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active\n**Fingerprint validation:** Active\n\nAssign agent to property."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Assignment",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"call\",\n  \"params\": {\n    \"session_id\": \"{{session_id}}\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{odoo_base_url}}/api/v1/assignments/:assignment_id",
+							"host": [
+								"{{odoo_base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"assignments",
+								":assignment_id"
+							],
+							"variable": [
+								{
+									"key": "assignment_id",
+									"value": "1"
+								}
+							]
+						},
+						"description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active\n**Fingerprint validation:** Active\n\nGet assignment details."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "6. Commissions",
+			"description": "Commission calculation and transaction endpoints (Dual Auth)",
+			"item": [
 				{
 					"name": "Update Commission Rule",
 					"request": {
 						"method": "PUT",
 						"header": [
 							{
-								"key": "Authorization",
-								"value": "Bearer {{access_token}}",
-								"type": "text"
-							},
-							{
 								"key": "Content-Type",
 								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"percentage\": 7.0,\n    \"valid_until\": \"2025-12-31\",\n    \"description\": \"Comissão aumentada para 7% - Performance excepcional\"\n}"
+							"raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"call\",\n  \"params\": {\n    \"session_id\": \"{{session_id}}\",\n    \"percentage\": 4.0,\n    \"min_value\": 200000\n  }\n}"
 						},
 						"url": {
-							"raw": "{{base_url}}/api/v1/commission-rules/{{commission_rule_id}}",
-							"host": ["{{base_url}}"],
-							"path": ["api", "v1", "commission-rules", "{{commission_rule_id}}"]
+							"raw": "{{odoo_base_url}}/api/v1/commission-rules/:rule_id",
+							"host": [
+								"{{odoo_base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"commission-rules",
+								":rule_id"
+							],
+							"variable": [
+								{
+									"key": "rule_id",
+									"value": "1"
+								}
+							]
 						},
-						"description": "Atualiza regra existente.\n\n⚠️ **Não é retroativo**\n- Transações antigas mantêm snapshot original\n- Apenas transações futuras usam nova regra"
+						"description": "**Authentication:** Bearer Token + Session ID required\n**Fingerprint validation:** Active\n\nUpdate commission calculation rule (ADR-013)."
 					},
 					"response": []
 				},
 				{
-					"name": "Create Commission Transaction",
+					"name": "Create Transaction",
 					"request": {
 						"method": "POST",
 						"header": [
 							{
-								"key": "Authorization",
-								"value": "Bearer {{access_token}}",
-								"type": "text"
-							},
-							{
 								"key": "Content-Type",
 								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"agent_id\": {{agent_id}},\n    \"transaction_type\": \"sale\",\n    \"transaction_amount\": 1200000.00,\n    \"transaction_reference\": \"VENDA-2024-001\",\n    \"transaction_date\": \"2024-01-15\",\n    \"description\": \"Venda Apartamento Vista Mar - Santos/SP\"\n}"
+							"raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"call\",\n  \"params\": {\n    \"session_id\": \"{{session_id}}\",\n    \"agent_id\": 1,\n    \"property_id\": 1,\n    \"sale_amount\": 450000.00,\n    \"transaction_date\": \"2026-01-17\"\n  }\n}"
 						},
 						"url": {
-							"raw": "{{base_url}}/api/v1/commission-transactions",
-							"host": ["{{base_url}}"],
-							"path": ["api", "v1", "commission-transactions"]
-						},
-						"description": "Registra transação e calcula comissão.\n\n**Cálculo automático:**\n1. Busca regra ativa\n2. Aplica percentual/fixo\n3. Salva snapshot imutável\n4. Retorna comissão\n\n**Exemplo:** R$ 1.2M × 6% = R$ 72.000"
-					},
-					"response": []
-				}
-			],
-			"description": "Commission rules and transaction calculation"
-		},
-		{
-			"name": "📊 7. Performance & Rankings",
-			"item": [
-				{
-					"name": "Get Agent Performance",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{access_token}}",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{base_url}}/api/v1/agents/{{agent_id}}/performance?start_date=2024-01-01&end_date=2024-12-31",
-							"host": ["{{base_url}}"],
-							"path": ["api", "v1", "agents", "{{agent_id}}", "performance"],
-							"query": [
-								{
-									"key": "start_date",
-									"value": "2024-01-01"
-								},
-								{
-									"key": "end_date",
-									"value": "2024-12-31"
-								}
+							"raw": "{{odoo_base_url}}/api/v1/commission-transactions",
+							"host": [
+								"{{odoo_base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"commission-transactions"
 							]
 						},
-						"description": "Métricas de performance do agente.\n\n**Retorna:**\n- 💰 total_commissions\n- 📈 total_sales_count\n- 🏠 active_properties_count\n- 💵 avg_sale_value\n- 📊 conversion_rate\n\n**Cache Redis:** 5 min"
+						"description": "**Authentication:** Bearer Token + Session ID required\n**Fingerprint validation:** Active\n\nCreate commission transaction record."
+					},
+					"response": []
+				},
+				{
+					"name": "Calculate Commission",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"call\",\n  \"params\": {\n    \"session_id\": \"{{session_id}}\",\n    \"agent_id\": 1,\n    \"sale_amount\": 450000.00\n  }\n}"
+						},
+						"url": {
+							"raw": "{{odoo_base_url}}/api/v1/commissions/calculate",
+							"host": [
+								"{{odoo_base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"commissions",
+								"calculate"
+							]
+						},
+						"description": "**Authentication:** Bearer Token + Session ID required\n**Fingerprint validation:** Active\n\nCalculate commission based on agent rules (ADR-013)."
+					},
+					"response": []
+				},
+				{
+					"name": "List Commissions",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"call\",\n  \"params\": {\n    \"session_id\": \"{{session_id}}\",\n    \"limit\": 10\n  }\n}"
+						},
+						"url": {
+							"raw": "{{odoo_base_url}}/api/v1/commissions",
+							"host": [
+								"{{odoo_base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"commissions"
+							]
+						},
+						"description": "**Authentication:** Bearer Token + Session ID required\n**Fingerprint validation:** Active\n\nList commission transactions."
 					},
 					"response": []
 				}
-			],
-			"description": "Performance metrics and comparative rankings"
+			]
 		},
 		{
-			"name": "📚 8. Master Data",
+			"name": "8. Master Data",
+			"description": "Read-only master data endpoints (Bearer only - NO session required)",
 			"item": [
 				{
-					"name": "Get Property Types",
+					"name": "List Agents (Master Data)",
 					"request": {
 						"method": "GET",
 						"header": [
 							{
-								"key": "Authorization",
-								"value": "Bearer {{access_token}}",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{base_url}}/api/v1/property-types",
-							"host": ["{{base_url}}"],
-							"path": ["api", "v1", "property-types"]
-						},
-						"description": "Lista tipos de imóveis (Casa, Apartamento, Terreno, etc)"
-					},
-					"response": []
-				},
-				{
-					"name": "Get States",
-					"request": {
-						"method": "GET",
-						"header": [
+								"key": "Content-Type",
+								"value": "application/json"
+							},
 							{
 								"key": "Authorization",
-								"value": "Bearer {{access_token}}",
-								"type": "text"
+								"value": "Bearer {{access_token}}"
 							}
 						],
 						"url": {
-							"raw": "{{base_url}}/api/v1/states",
-							"host": ["{{base_url}}"],
-							"path": ["api", "v1", "states"]
+							"raw": "{{odoo_base_url}}/api/v1/master/agents",
+							"host": [
+								"{{odoo_base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"master",
+								"agents"
+							]
 						},
-						"description": "Lista estados brasileiros (27 UFs)"
-					},
-					"response": []
-				},
-				{
-					"name": "Get Location Types",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{access_token}}",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{base_url}}/api/v1/location-types",
-							"host": ["{{base_url}}"],
-							"path": ["api", "v1", "location-types"]
-						},
-						"description": "Lista tipos de localização (Urbano, Rural, Praia, etc)"
-					},
-					"response": []
-				},
-				{
-					"name": "Get Tags",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{access_token}}",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{base_url}}/api/v1/tags",
-							"host": ["{{base_url}}"],
-							"path": ["api", "v1", "tags"]
-						},
-						"description": "Lista tags/marcadores de imóveis"
-					},
-					"response": []
-				},
-				{
-					"name": "Get Amenities",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{access_token}}",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{base_url}}/api/v1/amenities",
-							"host": ["{{base_url}}"],
-							"path": ["api", "v1", "amenities"]
-						},
-						"description": "Lista amenidades/comodidades (piscina, academia, etc)"
-					},
-					"response": []
-				},
-				{
-					"name": "Get Owners",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{access_token}}",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{base_url}}/api/v1/owners",
-							"host": ["{{base_url}}"],
-							"path": ["api", "v1", "owners"]
-						},
-						"description": "Lista proprietários de imóveis"
-					},
-					"response": []
-				},
-				{
-					"name": "Get Companies",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{access_token}}",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{base_url}}/api/v1/companies",
-							"host": ["{{base_url}}"],
-							"path": ["api", "v1", "companies"]
-						},
-						"description": "Lista imobiliárias (empresas do sistema)"
+						"description": "**Authentication:** Bearer Token ONLY (no session required)\n**Note:** This is a read-only master data endpoint\n\n**NO Session ID required**\n**NO Fingerprint validation**\n\nUse for public/readonly agent directory."
 					},
 					"response": []
 				}
-			],
-			"description": "Reference data (types, states, tags, amenities)"
-		}
-	],
-	"event": [
-		{
-			"listen": "prerequest",
-			"script": {
-				"type": "text/javascript",
-				"exec": [
-					"// Auto-inject token if exists",
-					"const token = pm.collectionVariables.get('access_token') || pm.environment.get('access_token');",
-					"if (token) {",
-					"    pm.request.headers.add({key: 'Authorization', value: 'Bearer ' + token});",
-					"}"
-				]
-			}
-		},
-		{
-			"listen": "test",
-			"script": {
-				"type": "text/javascript",
-				"exec": [
-					"// Log response time",
-					"console.log('⏱️ Response time:', pm.response.responseTime, 'ms');",
-					"",
-					"// Check for errors",
-					"if (pm.response.code >= 400) {",
-					"    console.error('❌ Error:', pm.response.status);",
-					"    console.error('Body:', pm.response.text());",
-					"}"
-				]
-			}
+			]
 		}
 	],
 	"variable": [
 		{
-			"key": "base_url",
+			"key": "odoo_base_url",
 			"value": "http://localhost:8069",
+			"type": "string"
+		},
+		{
+			"key": "oauth_client_id",
+			"value": "client_EEQix5KVT6JsSUARsdUGnw",
+			"type": "string"
+		},
+		{
+			"key": "oauth_client_secret",
+			"value": "Xu5l7zL9Je6HKcx6EbJJiLwy9JAA0QHozcDE37TGjjC5skPEWfkigZPouqTWzDBG",
+			"type": "string"
+		},
+		{
+			"key": "test_user_email",
+			"value": "joao@imobiliaria.com",
+			"type": "string"
+		},
+		{
+			"key": "test_user_password",
+			"value": "test123",
 			"type": "string"
 		},
 		{
@@ -1204,32 +1207,12 @@
 			"type": "string"
 		},
 		{
+			"key": "session_id",
+			"value": "",
+			"type": "string"
+		},
+		{
 			"key": "refresh_token",
-			"value": "",
-			"type": "string"
-		},
-		{
-			"key": "agent_id",
-			"value": "",
-			"type": "string"
-		},
-		{
-			"key": "property_id",
-			"value": "",
-			"type": "string"
-		},
-		{
-			"key": "assignment_id",
-			"value": "",
-			"type": "string"
-		},
-		{
-			"key": "commission_rule_id",
-			"value": "",
-			"type": "string"
-		},
-		{
-			"key": "user_id",
 			"value": "",
 			"type": "string"
 		}
