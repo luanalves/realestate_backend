@@ -41,10 +41,10 @@
 
 ### Validation Tests
 
-- [ ] T007 Test session_id too short (10 chars) → expect 401 response
-- [ ] T008 Test session_id too long (150 chars) → expect 401 response
-- [ ] T009 Test session_id valid length (80 chars) → expect success
-- [ ] T009a Test session_id extraction priority: kwargs overrides body overrides headers (FR2 compliance)
+- [X] T007 Test session_id too short (10 chars) → expect 401 response
+- [X] T008 Test session_id too long (150 chars) → expect 401 response
+- [X] T009 Test session_id valid length (80 chars) → expect success
+- [X] T009a Test session_id extraction priority: kwargs overrides body overrides headers (FR2 compliance)
 
 **Checkpoint**: Clean middleware, validation working, extraction priority tested, quick wins complete
 
@@ -56,7 +56,7 @@
 
 ### Environment Setup
 
-- [ ] T010 Create Postman environment variables in postman/QuicksolAPI_Complete.postman_collection.json:
+- [X] T010 Create Postman environment variables in postman/QuicksolAPI_Complete.postman_collection.json:
   - odoo_base_url (http://localhost:8069)
   - oauth_client_id (from .env)
   - oauth_client_secret (from .env)
@@ -67,72 +67,72 @@
 
 ### Folder Structure
 
-- [ ] T011 Create folder "1. Authentication" in Postman collection
-- [ ] T012 Create folder "2. User Authentication" in Postman collection
-- [ ] T013 Create folder "3. Agents" in Postman collection
-- [ ] T014 Create folder "4. Properties" in Postman collection
-- [ ] T015 Create folder "5. Assignments" in Postman collection
-- [ ] T016 Create folder "6. Commissions" in Postman collection
-- [ ] T017 Create folder "7. Performance" in Postman collection
-- [ ] T018 Create folder "8. Master Data" in Postman collection
+- [X] T011 Create folder "1. Authentication" in Postman collection
+- [X] T012 Create folder "2. User Authentication" in Postman collection
+- [X] T013 Create folder "3. Agents" in Postman collection
+- [X] T014 Create folder "4. Properties" in Postman collection
+- [X] T015 Create folder "5. Assignments" in Postman collection
+- [X] T016 Create folder "6. Commissions" in Postman collection
+- [X] T017 Create folder "7. Performance" in Postman collection
+- [X] T018 Create folder "8. Master Data" in Postman collection
 
 ### Authentication Endpoints (Bearer Only)
 
-- [ ] T019 [P] Create "Get OAuth Token" request in folder "1. Authentication" (POST /api/v1/auth/token) with test script to set access_token
-- [ ] T020 [P] Create "Refresh Token" request in folder "1. Authentication" (POST /api/v1/auth/token with grant_type=refresh_token)
-- [ ] T021 [P] Create "Revoke Token" request in folder "1. Authentication" (POST /api/v1/auth/revoke)
+- [X] T019 [P] Create "Get OAuth Token" request in folder "1. Authentication" (POST /api/v1/auth/token) with test script to set access_token
+- [X] T020 [P] Create "Refresh Token" request in folder "1. Authentication" (POST /api/v1/auth/token with grant_type=refresh_token)
+- [X] T021 [P] Create "Revoke Token" request in folder "1. Authentication" (POST /api/v1/auth/revoke)
 
 ### User Authentication Endpoints (Dual Auth)
 
-- [ ] T022 Create "User Login" request in folder "2. User Authentication" (POST /api/v1/users/login) with CRITICAL test script to capture session_id from jsonData.result.session_id (NOT cookies) - See plan.md lines 227-237 for exact JavaScript template
-- [ ] T023 [P] Create "User Logout" request in folder "2. User Authentication" (POST /api/v1/users/logout + session_id)
-- [ ] T024 [P] Create "User Profile" request in folder "2. User Authentication" (GET /api/v1/users/profile + session_id)
-- [ ] T025 [P] Create "Change Password" request in folder "2. User Authentication" (POST /api/v1/users/change-password + session_id)
-- [ ] T026 [P] Create "Get Current User" request in folder "2. User Authentication" (GET /api/v1/me + session_id)
+- [X] T022 Create "User Login" request in folder "2. User Authentication" (POST /api/v1/users/login) with CRITICAL test script to capture session_id from jsonData.result.session_id (NOT cookies) - See plan.md lines 227-237 for exact JavaScript template
+- [X] T023 [P] Create "User Logout" request in folder "2. User Authentication" (POST /api/v1/users/logout + session_id)
+- [X] T024 [P] Create "User Profile" request in folder "2. User Authentication" (GET /api/v1/users/profile + session_id)
+- [X] T025 [P] Create "Change Password" request in folder "2. User Authentication" (POST /api/v1/users/change-password + session_id)
+- [X] T026 [P] Create "Get Current User" request in folder "2. User Authentication" (GET /api/v1/me + session_id)
 
 ### Agents Endpoints (11 total - Dual Auth)
 
-- [ ] T027 [P] Create "List Agents" request (GET /api/v1/agents + session_id) with auth requirements in description
-- [ ] T028 [P] Create "Create Agent" request (POST /api/v1/agents + session_id) with JSON-RPC body template
-- [ ] T029 [P] Create "Get Agent" request (GET /api/v1/agents/{id} + session_id)
-- [ ] T030 [P] Create "Update Agent" request (PUT /api/v1/agents/{id} + session_id)
-- [ ] T031 [P] Create "Deactivate Agent" request (POST /api/v1/agents/{id}/deactivate + session_id)
-- [ ] T032 [P] Create "Reactivate Agent" request (POST /api/v1/agents/{id}/reactivate + session_id)
-- [ ] T033 [P] Create "Agent Properties" request (GET /api/v1/agents/{id}/properties + session_id)
-- [ ] T034 [P] Create "Agent Performance" request (GET /api/v1/agents/{id}/performance + session_id)
-- [ ] T035 [P] Create "Agent Ranking" request (GET /api/v1/agents/ranking + session_id)
-- [ ] T036 [P] Create "Create Commission Rule" request (POST /api/v1/agents/{id}/commission-rules + session_id)
-- [ ] T037 [P] Create "Get Commission Rules" request (GET /api/v1/agents/{id}/commission-rules + session_id)
+- [X] T027 [P] Create "List Agents" request (GET /api/v1/agents + session_id) with auth requirements in description
+- [X] T028 [P] Create "Create Agent" request (POST /api/v1/agents + session_id) with JSON-RPC body template
+- [X] T029 [P] Create "Get Agent" request (GET /api/v1/agents/{id} + session_id)
+- [X] T030 [P] Create "Update Agent" request (PUT /api/v1/agents/{id} + session_id)
+- [X] T031 [P] Create "Deactivate Agent" request (POST /api/v1/agents/{id}/deactivate + session_id)
+- [X] T032 [P] Create "Reactivate Agent" request (POST /api/v1/agents/{id}/reactivate + session_id)
+- [X] T033 [P] Create "Agent Properties" request (GET /api/v1/agents/{id}/properties + session_id)
+- [X] T034 [P] Create "Agent Performance" request (GET /api/v1/agents/{id}/performance + session_id)
+- [X] T035 [P] Create "Agent Ranking" request (GET /api/v1/agents/ranking + session_id)
+- [X] T036 [P] Create "Create Commission Rule" request (POST /api/v1/agents/{id}/commission-rules + session_id)
+- [X] T037 [P] Create "Get Commission Rules" request (GET /api/v1/agents/{id}/commission-rules + session_id)
 
 ### Properties Endpoints (4 total - Dual Auth)
 
-- [ ] T038 [P] Create "Create Property" request (POST /api/v1/properties + session_id)
-- [ ] T039 [P] Create "Get Property" request (GET /api/v1/properties/{id} + session_id)
-- [ ] T040 [P] Create "Update Property" request (PUT /api/v1/properties/{id} + session_id)
-- [ ] T041 [P] Create "Delete Property" request (DELETE /api/v1/properties/{id} + session_id)
+- [X] T038 [P] Create "Create Property" request (POST /api/v1/properties + session_id)
+- [X] T039 [P] Create "Get Property" request (GET /api/v1/properties/{id} + session_id)
+- [X] T040 [P] Create "Update Property" request (PUT /api/v1/properties/{id} + session_id)
+- [X] T041 [P] Create "Delete Property" request (DELETE /api/v1/properties/{id} + session_id)
 
 ### Assignments Endpoints (2 total - Dual Auth)
 
-- [ ] T042 [P] Create "Create Assignment" request (POST /api/v1/assignments + session_id)
-- [ ] T043 [P] Create "Get Assignment" request (GET /api/v1/assignments/{id} + session_id)
+- [X] T042 [P] Create "Create Assignment" request (POST /api/v1/assignments + session_id)
+- [X] T043 [P] Create "Get Assignment" request (GET /api/v1/assignments/{id} + session_id)
 
 ### Commissions Endpoints (4 total - Dual Auth)
 
-- [ ] T044 [P] Create "Update Commission Rule" request (PUT /api/v1/commission-rules/{id} + session_id)
-- [ ] T045 [P] Create "Create Transaction" request (POST /api/v1/commission-transactions + session_id)
-- [ ] T046 [P] Create "Calculate Commission" request (POST /api/v1/commissions/calculate + session_id)
-- [ ] T047 [P] Create "List Commissions" request (GET /api/v1/commissions + session_id)
+- [X] T044 [P] Create "Update Commission Rule" request (PUT /api/v1/commission-rules/{id} + session_id)
+- [X] T045 [P] Create "Create Transaction" request (POST /api/v1/commission-transactions + session_id)
+- [X] T046 [P] Create "Calculate Commission" request (POST /api/v1/commissions/calculate + session_id)
+- [X] T047 [P] Create "List Commissions" request (GET /api/v1/commissions + session_id)
 
 ### Master Data Endpoints (Bearer Only - No Session)
 
-- [ ] T048 [P] Create "List Agents (Master)" request (GET /api/v1/agents - master data version) with note: Bearer only, NO session_id required
+- [X] T048 [P] Create "List Agents (Master)" request (GET /api/v1/agents - master data version) with note: Bearer only, NO session_id required
 
 ### Documentation for All Endpoints
 
-- [ ] T049 Add authentication requirements to all dual auth endpoint descriptions (lines: "Bearer Token: Required", "Session ID: Required", "Fingerprint validation active")
-- [ ] T050 Add User-Agent consistency warning to all dual auth endpoint descriptions
-- [ ] T051 Add session expiration note (2 hours inactivity) to all dual auth endpoint descriptions
-- [ ] T052 Add JSON-RPC example request body to all endpoint descriptions
+- [X] T049 Add authentication requirements to all dual auth endpoint descriptions (lines: "Bearer Token: Required", "Session ID: Required", "Fingerprint validation active")
+- [X] T050 Add User-Agent consistency warning to all dual auth endpoint descriptions
+- [X] T051 Add session expiration note (2 hours inactivity) to all dual auth endpoint descriptions
+- [X] T052 Add JSON-RPC example request body to all endpoint descriptions
 
 **Checkpoint**: Postman collection complete with ~50 endpoints, all scripts working
 
@@ -144,28 +144,28 @@
 
 ### API Authentication Guide
 
-- [ ] T053 Create docs/api-authentication.md with dual authentication model explanation
-- [ ] T054 Add OAuth flow documentation (how to get bearer token) to docs/api-authentication.md
-- [ ] T055 Add user login flow documentation (how to get session_id) to docs/api-authentication.md
-- [ ] T056 Add request format examples (bearer + session_id in body) to docs/api-authentication.md
-- [ ] T057 Add session lifecycle diagram (login → requests → logout) to docs/api-authentication.md
-- [ ] T058 Add fingerprint validation explanation (IP + User-Agent + Accept-Language) to docs/api-authentication.md
+- [X] T053 Create docs/api-authentication.md with dual authentication model explanation
+- [X] T054 Add OAuth flow documentation (how to get bearer token) to docs/api-authentication.md
+- [X] T055 Add user login flow documentation (how to get session_id) to docs/api-authentication.md
+- [X] T056 Add request format examples (bearer + session_id in body) to docs/api-authentication.md
+- [X] T057 Add session lifecycle diagram (login → requests → logout) to docs/api-authentication.md
+- [X] T058 Add fingerprint validation explanation (IP + User-Agent + Accept-Language) to docs/api-authentication.md
 
 ### Troubleshooting Guide
 
-- [ ] T059 Create docs/troubleshooting-sessions.md with common session issues section
-- [ ] T060 Add "Session validation failed" troubleshooting entry (User-Agent mismatch) to docs/troubleshooting-sessions.md
-- [ ] T061 Add "Session required" troubleshooting entry (missing session_id) to docs/troubleshooting-sessions.md
-- [ ] T062 Add "Session expired" troubleshooting entry (> 2 hours inactivity) to docs/troubleshooting-sessions.md
-- [ ] T063 Add "Invalid session_id format" troubleshooting entry (length validation) to docs/troubleshooting-sessions.md
-- [ ] T064 Add examples and error messages for each issue to docs/troubleshooting-sessions.md
+- [X] T059 Create docs/troubleshooting-sessions.md with common session issues section
+- [X] T060 Add "Session validation failed" troubleshooting entry (User-Agent mismatch) to docs/troubleshooting-sessions.md
+- [X] T061 Add "Session required" troubleshooting entry (missing session_id) to docs/troubleshooting-sessions.md
+- [X] T062 Add "Session expired" troubleshooting entry (> 2 hours inactivity) to docs/troubleshooting-sessions.md
+- [X] T063 Add "Invalid session_id format" troubleshooting entry (length validation) to docs/troubleshooting-sessions.md
+- [X] T064 Add examples and error messages for each issue to docs/troubleshooting-sessions.md
 
 ### Controller Docstrings
 
-- [ ] T065 Update docstring for all 11 Agents endpoints in 18.0/extra-addons/quicksol_estate/controllers/agent_api.py (add User-Agent requirement note - see spec.md Appendix for template starting line 366)
-- [ ] T066 Update docstring for all 4 Properties endpoints in 18.0/extra-addons/quicksol_estate/controllers/property_api.py (add fingerprint validation note)
-- [ ] T067 Update docstring for Assignments endpoints (add session security notes)
-- [ ] T068 Update docstring for Commissions endpoints (add session security notes)
+- [X] T065 Update docstring for all 11 Agents endpoints in 18.0/extra-addons/quicksol_estate/controllers/agent_api.py (add User-Agent requirement note - see spec.md Appendix for template starting line 366)
+- [X] T066 Update docstring for all 4 Properties endpoints in 18.0/extra-addons/quicksol_estate/controllers/property_api.py (add fingerprint validation note)
+- [X] T067 Update docstring for Assignments endpoints (add session security notes)
+- [X] T068 Update docstring for Commissions endpoints (add session security notes)
 
 **Checkpoint**: Complete authentication and troubleshooting documentation
 
@@ -177,12 +177,12 @@
 
 ### Agents Domain E2E Test
 
-- [ ] T069 Create cypress/e2e/agents-dual-auth.cy.js with OAuth token acquisition in before() hook
-- [ ] T070 Add user login flow to get session_id in cypress/e2e/agents-dual-auth.cy.js
-- [ ] T071 Add test: "should reject request without bearer token" for GET /api/v1/agents
-- [ ] T072 Add test: "should reject request without session_id" for GET /api/v1/agents
-- [ ] T073 Add test: "should succeed with valid bearer + session" for GET /api/v1/agents
-- [ ] T074 Add test: "should reject request with different User-Agent (fingerprint)" for GET /api/v1/agents
+- [X] T069 Create cypress/e2e/agents-dual-auth.cy.js with OAuth token acquisition in before() hook
+- [X] T070 Add user login flow to get session_id in cypress/e2e/agents-dual-auth.cy.js
+- [X] T071 Add test: "should reject request without bearer token" for GET /api/v1/agents
+- [X] T072 Add test: "should reject request without session_id" for GET /api/v1/agents
+- [X] T073 Add test: "should succeed with valid bearer + session" for GET /api/v1/agents
+- [X] T074 Add test: "should reject request with different User-Agent (fingerprint)" for GET /api/v1/agents
 
 ### Properties Domain E2E Test
 
@@ -241,11 +241,11 @@
 
 ### Git Operations
 
-- [ ] T103 Commit middleware changes: `git add 18.0/extra-addons/thedevkitchen_apigateway/middleware.py && git commit -m "feat: remove debug logs and add session_id validation"`
-- [ ] T104 Commit Postman collection: `git add postman/QuicksolAPI_Complete.postman_collection.json && git commit -m "docs: create complete Postman API collection"`
-- [ ] T105 Commit E2E tests: `git add cypress/e2e/*-dual-auth.cy.js && git commit -m "test: add E2E validation tests for dual auth"`
-- [ ] T106 Commit documentation: `git add docs/api-authentication.md docs/troubleshooting-sessions.md && git commit -m "docs: add authentication and troubleshooting guides"`
-- [ ] T106a Push to GitHub: `git push origin 002-dual-auth-remaining-endpoints`
+- [X] T103 Commit middleware changes: `git add 18.0/extra-addons/thedevkitchen_apigateway/middleware.py && git commit -m "feat: remove debug logs and add session_id validation"`
+- [X] T104 Commit Postman collection: `git add postman/QuicksolAPI_Complete.postman_collection.json && git commit -m "docs: create complete Postman API collection"`
+- [X] T105 Commit E2E tests: `git add cypress/e2e/*-dual-auth.cy.js && git commit -m "test: add E2E validation tests for dual auth"`
+- [X] T106 Commit documentation: `git add docs/api-authentication.md docs/troubleshooting-sessions.md && git commit -m "docs: add authentication and troubleshooting guides"`
+- [X] T106a Push to GitHub: `git push origin 002-dual-auth-remaining-endpoints`
 
 ### Coverage Verification (Constitution Requirement)
 
@@ -255,9 +255,9 @@
 
 ### Status Updates
 
-- [ ] T108 Update specs/002-dual-auth-remaining-endpoints/SUMMARY.md with completion status
-- [ ] T109 Update docs/IMPLEMENTATION_STATUS.md with spec 002 completion
-- [ ] T110 Mark spec as complete in spec.md header: Status: Complete
+- [X] T108 Update specs/002-dual-auth-remaining-endpoints/SUMMARY.md with completion status
+- [X] T109 Update docs/IMPLEMENTATION_STATUS.md with spec 002 completion
+- [X] T110 Mark spec as complete in spec.md header: Status: Complete
 
 **Checkpoint**: All work complete, tested, coverage verified ≥80%, committed, and pushed
 

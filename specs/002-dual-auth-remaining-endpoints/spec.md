@@ -2,7 +2,8 @@
 
 **Feature ID**: 002-dual-auth-remaining-endpoints  
 **Created**: 2026-01-17  
-**Status**: Draft  
+**Status**: Complete  
+**Completed**: 2026-01-17  
 **Priority**: High (Security)
 
 ## Overview
