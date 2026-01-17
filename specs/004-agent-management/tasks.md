@@ -165,33 +165,33 @@
 
 ### Tests for User Story 4 (TDD - Write First)
 
-- [ ] T067 [P] [US4] Create test_commission_calculation.py with test_create_commission_rule in tests/
-- [ ] T068 [P] [US4] Write test_calculate_commission_percentage in tests/test_commission_calculation.py
-- [ ] T069 [P] [US4] Write test_calculate_commission_fixed_amount in tests/test_commission_calculation.py
-- [ ] T070 [P] [US4] Write test_commission_rule_non_retroactive in tests/test_commission_calculation.py
-- [ ] T071 [P] [US4] Write test_multi_agent_commission_split in tests/test_commission_calculation.py
+- [X] T067 [P] [US4] Create test_commission_calculation.py with test_create_commission_rule in tests/
+- [X] T068 [P] [US4] Write test_calculate_commission_percentage in tests/test_commission_calculation.py
+- [X] T069 [P] [US4] Write test_calculate_commission_fixed_amount in tests/test_commission_calculation.py
+- [X] T070 [P] [US4] Write test_commission_rule_non_retroactive in tests/test_commission_calculation.py
+- [X] T071 [P] [US4] Write test_multi_agent_commission_split in tests/test_commission_calculation.py
 - [ ] T072 [P] [US4] Write Cypress E2E test commission-rules.cy.js in cypress/e2e/
 
 ### Implementation for User Story 4
 
-- [ ] T073 [P] [US4] Create CommissionRule model in models/commission_rule.py with _name='real.estate.commission.rule'
-- [ ] T074 [P] [US4] Add commission rule fields (agent_id, company_id, transaction_type, structure_type, percentage, fixed_amount)
-- [ ] T075 [P] [US4] Add validation fields (min_value, max_value, valid_from, valid_until) in models/commission_rule.py
-- [ ] T076 [US4] Implement _check_percentage_range constraint (0-100) in models/commission_rule.py
-- [ ] T077 [US4] Implement _compute_is_active method checking valid_from/valid_until in models/commission_rule.py
-- [ ] T078 [US4] Add One2many field commission_rule_ids in models/agent.py
-- [ ] T079 [US4] Create CommissionTransaction model in models/commission_transaction.py
-- [ ] T080 [US4] Add commission transaction fields (transaction_id, agent_id, rule_id, rule_snapshot, commission_amount)
-- [ ] T081 [US4] Implement rule_snapshot JSON field storing immutable rule at transaction time in models/commission_transaction.py
-- [ ] T082 [US4] Create CommissionService with calculate_commission method in services/commission_service.py
-- [ ] T083 [US4] Implement get_active_rule_for_agent method in services/commission_service.py
-- [ ] T084 [US4] Implement create_commission_transaction method in services/commission_service.py
-- [ ] T085 [US4] Add security record rule commission_rule_company_rule in security/agent_security.xml
-- [ ] T086 [US4] Implement POST /api/v1/agents/{id}/commission-rules endpoint in controllers/agent_api.py
-- [ ] T087 [US4] Implement GET /api/v1/agents/{id}/commission-rules endpoint in controllers/agent_api.py
-- [ ] T088 [US4] Implement PUT /api/v1/commission-rules/{id} endpoint in controllers/agent_api.py
-- [ ] T089 [US4] Implement POST /api/v1/commission-transactions endpoint in controllers/agent_api.py
-- [ ] T090 [US4] Verify all US4 tests pass (run odoo --test-tags=quicksol_estate.test_commission_calculation)
+- [X] T073 [P] [US4] Create CommissionRule model in models/commission_rule.py with _name='real.estate.commission.rule'
+- [X] T074 [P] [US4] Add commission rule fields (agent_id, company_id, transaction_type, structure_type, percentage, fixed_amount)
+- [X] T075 [P] [US4] Add validation fields (min_value, max_value, valid_from, valid_until) in models/commission_rule.py
+- [X] T076 [US4] Implement _check_percentage_range constraint (0-100) in models/commission_rule.py
+- [X] T077 [US4] Implement _compute_is_active method checking valid_from/valid_until in models/commission_rule.py
+- [X] T078 [US4] Add One2many field commission_rule_ids in models/agent.py
+- [X] T079 [US4] Create CommissionTransaction model in models/commission_transaction.py
+- [X] T080 [US4] Add commission transaction fields (transaction_id, agent_id, rule_id, rule_snapshot, commission_amount)
+- [X] T081 [US4] Implement rule_snapshot JSON field storing immutable rule at transaction time in models/commission_transaction.py
+- [X] T082 [US4] Create CommissionService with calculate_commission method in services/commission_service.py
+- [X] T083 [US4] Implement get_active_rule_for_agent method in services/commission_service.py
+- [X] T084 [US4] Implement create_commission_transaction method in services/commission_service.py
+- [X] T085 [US4] Add security record rule commission_rule_company_rule in security/agent_security.xml
+- [X] T086 [US4] Implement POST /api/v1/agents/{id}/commission-rules endpoint in controllers/agent_api.py
+- [X] T087 [US4] Implement GET /api/v1/agents/{id}/commission-rules endpoint in controllers/agent_api.py
+- [X] T088 [US4] Implement PUT /api/v1/commission-rules/{id} endpoint in controllers/agent_api.py
+- [X] T089 [US4] Implement POST /api/v1/commission-transactions endpoint in controllers/agent_api.py
+- [X] T090 [US4] Verify all US4 tests pass (run odoo --test-tags=quicksol_estate.test_commission_calculation)
 
 **Checkpoint**: User Story 4 complete - commission rules configured and calculated correctly ✅
 
