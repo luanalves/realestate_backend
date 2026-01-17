@@ -36,17 +36,13 @@ describe('Commissions Domain - Dual Authentication', () => {
         'User-Agent': testUserAgent
       },
       body: {
-        jsonrpc: '2.0',
-        method: 'call',
-        params: {
-          grant_type: 'client_credentials',
-          client_id: clientId,
-          client_secret: clientSecret
-        }
+        grant_type: 'client_credentials',
+        client_id: clientId,
+        client_secret: clientSecret
       }
     }).then((response) => {
       expect(response.status).to.eq(200);
-      accessToken = response.body.result.access_token;
+      accessToken = response.body.access_token;
       cy.log(`✅ OAuth token obtained`);
     });
 

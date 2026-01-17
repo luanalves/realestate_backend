@@ -37,17 +37,13 @@ describe('Performance Domain - Dual Authentication', () => {
         'User-Agent': testUserAgent
       },
       body: {
-        jsonrpc: '2.0',
-        method: 'call',
-        params: {
-          grant_type: 'client_credentials',
-          client_id: clientId,
-          client_secret: clientSecret
-        }
+        grant_type: 'client_credentials',
+        client_id: clientId,
+        client_secret: clientSecret
       }
     }).then((response) => {
       expect(response.status).to.eq(200);
-      accessToken = response.body.result.access_token;
+      accessToken = response.body.access_token;
       cy.log(`✅ OAuth token obtained`);
     });
 
@@ -85,20 +81,13 @@ describe('Performance Domain - Dual Authentication', () => {
     cy.then(() => {
       cy.request({
         method: 'GET',
-        url: `${baseUrl}/api/v1/agents`,
+        url: `${baseUrl}/api/v1/agents?limit=1`,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${accessToken}`,
+          'X-Openerp-Session-Id': sessionId,
           'User-Agent': testUserAgent,
           'Accept-Language': 'pt-BR'
-        },
-        body: {
-          jsonrpc: '2.0',
-          method: 'call',
-          params: {
-            session_id: sessionId,
-            limit: 1
-          }
         },
         failOnStatusCode: false
       }).then((response) => {
@@ -153,15 +142,9 @@ describe('Performance Domain - Dual Authentication', () => {
           url: `${baseUrl}/api/v1/agents/${testAgentId}/performance`,
           headers: {
             'Content-Type': 'application/json',
+            'X-Openerp-Session-Id': sessionId,
             'User-Agent': testUserAgent
             // ❌ Missing Authorization header
-          },
-          body: {
-            jsonrpc: '2.0',
-            method: 'call',
-            params: {
-              session_id: sessionId
-            }
           },
           failOnStatusCode: false
         }).then((response) => {
@@ -185,13 +168,7 @@ describe('Performance Domain - Dual Authentication', () => {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${accessToken}`,
             'User-Agent': testUserAgent
-          },
-          body: {
-            jsonrpc: '2.0',
-            method: 'call',
-            params: {
-              // ❌ Missing session_id
-            }
+            // ❌ Missing X-Openerp-Session-Id header
           },
           failOnStatusCode: false
         }).then((response) => {
@@ -214,15 +191,9 @@ describe('Performance Domain - Dual Authentication', () => {
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${accessToken}`,
+            'X-Openerp-Session-Id': sessionId,
             'User-Agent': testUserAgent,
             'Accept-Language': 'pt-BR'
-          },
-          body: {
-            jsonrpc: '2.0',
-            method: 'call',
-            params: {
-              session_id: sessionId
-            }
           },
           failOnStatusCode: false
         }).then((response) => {
@@ -250,15 +221,9 @@ describe('Performance Domain - Dual Authentication', () => {
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${accessToken}`,
+            'X-Openerp-Session-Id': sessionId,
             'User-Agent': differentUserAgent,  // ❌ Different from login
             'Accept-Language': 'pt-BR'
-          },
-          body: {
-            jsonrpc: '2.0',
-            method: 'call',
-            params: {
-              session_id: sessionId
-            }
           },
           failOnStatusCode: false
         }).then((response) => {
