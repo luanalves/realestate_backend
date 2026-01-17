@@ -1,0 +1,1473 @@
+{
+	"info": {
+		"_postman_id": "quicksol-api-v1.1",
+		"name": "Quicksol Real Estate API",
+		"description": "Complete API documentation for Quicksol Real Estate Management System\n\n**Version:** 1.1.0\n**Last Updated:** 2026-01-17\n\n**Authentication Requirements:**\n- All endpoints (except OAuth token) require **Bearer Token** from OAuth 2.0\n- Business endpoints require **Session ID** from user login\n- Fingerprint validation active (IP + User-Agent + Accept-Language)\n- Session expires after 2 hours of inactivity\n\n**CRITICAL - Session ID Transmission:**\n- **GET requests** (type='http'): session_id via header `X-Openerp-Session-Id`\n- **POST/PUT/PATCH** (type='json'): session_id in JSON body (direct property, NOT in params wrapper)\n- **Never send session_id in body for GET requests** - it will be ignored!\n\n**IMPORTANT - JSON Format:**\n- **OAuth endpoints**: Direct JSON (no JSONRPC wrapper)\n- **Business endpoints**: Direct JSON (no JSONRPC wrapper)\n- **DO NOT use** {\"jsonrpc\": \"2.0\", \"method\": \"call\", \"params\": {...}}\n\n**User-Agent Consistency:**\nKeep User-Agent consistent during session lifetime to avoid fingerprint validation failures.\n\n**Standards Compliance:** This collection follows ADR-016 standards.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"version": "1.1.0"
+	},
+	"item": [
+		{
+			"name": "1. Authentication",
+			"description": "OAuth 2.0 token management endpoints (Bearer only - no session required)",
+			"item": [
+				{
+					"name": "Get OAuth Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const jsonData = pm.response.json();",
+									"if (jsonData && jsonData.access_token) {",
+									"    pm.environment.set('access_token', jsonData.access_token);",
+									"    console.log('✅ Access token saved to environment');",
+									"} else {",
+									"    console.error('❌ Failed to extract access_token from response');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"client_id\": \"{{client_id}}\",\n  \"client_secret\": \"{{client_secret}}\",\n  \"grant_type\": \"client_credentials\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/token",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"token"
+							]
+						},
+						"description": "**Authentication:** None required\n\nObtain OAuth 2.0 Bearer token for API access.\n\n**Grant Type:** client_credentials\n\n**Response:** Returns access_token, expires_in, and token_type\n\n**Note:** Direct JSON format (no JSONRPC wrapper)"
+					},
+					"response": []
+				},
+				{
+					"name": "Refresh Token",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"client_id\": \"{{client_id}}\",\n  \"client_secret\": \"{{client_secret}}\",\n  \"grant_type\": \"refresh_token\",\n  \"refresh_token\": \"{{refresh_token}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/token",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"token"
+							]
+						},
+						"description": "**Authentication:** None required\n\nRefresh an expired access token using refresh_token.\n\n**Grant Type:** refresh_token\n\n**Note:** Direct JSON format (no JSONRPC wrapper)"
+					},
+					"response": []
+				},
+				{
+					"name": "Revoke Token",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text",
+								"description": "OAuth 2.0 Bearer token"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"token\": \"{{access_token}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/revoke",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"revoke"
+							]
+						},
+						"description": "**Authentication:** Bearer Token required\n\nRevoke an active OAuth token.\n\n**Response:** 200 OK on success\n\n**Note:** Direct JSON format (no JSONRPC wrapper)"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "2. User Management",
+			"description": "User login/logout and session management (Dual Auth: Bearer + Session)",
+			"item": [
+				{
+					"name": "User Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const jsonData = pm.response.json();",
+									"if (jsonData && jsonData.result && jsonData.result.session_id) {",
+									"    pm.environment.set('session_id', jsonData.result.session_id);",
+									"    console.log('✅ Session ID saved to environment');",
+									"} else {",
+									"    console.error('❌ Failed to extract session_id from response');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text",
+								"description": "OAuth 2.0 Bearer token"
+							},
+							{
+								"key": "User-Agent",
+								"value": "{{user_agent}}",
+								"type": "text",
+								"description": "Required for session fingerprint validation"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"{{user_email}}\",\n  \"password\": \"{{user_password}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/users/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"users",
+								"login"
+							]
+						},
+						"description": "**Authentication:** Bearer Token required\n**Multi-tenancy:** Company context retrieved from user\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**User-Agent consistency:** Required for session validation\n**Session expiry:** 2 hours inactivity\n\nAuthenticate user and create session.\n\n**Response:** Returns session_id, user info, and company context\n\n**Note:** Direct JSON format (no JSONRPC wrapper)"
+					},
+					"response": []
+				},
+				{
+					"name": "User Logout",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text",
+								"description": "OAuth 2.0 Bearer token"
+							},
+							{
+								"key": "User-Agent",
+								"value": "{{user_agent}}",
+								"type": "text",
+								"description": "Required for session fingerprint validation"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"session_id\": \"{{session_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/users/logout",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"users",
+								"logout"
+							]
+						},
+						"description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For POST requests (type='json'), session_id MUST be sent in JSON body (direct property, NOT in params).\n\n**User-Agent consistency:** Required for session validation\n**Session expiry:** 2 hours inactivity\n\nInvalidate user session.\n\n**Note:** Direct JSON format (no JSONRPC wrapper)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Current User (/api/v1/me)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text",
+								"description": "OAuth 2.0 Bearer token"
+							},
+							{
+								"key": "User-Agent",
+								"value": "{{user_agent}}",
+								"type": "text",
+								"description": "Required for session fingerprint validation"
+							},
+							{
+								"key": "X-Openerp-Session-Id",
+								"value": "{{session_id}}",
+								"type": "text",
+								"description": "Session ID for fingerprint validation (REQUIRED for GET)"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/me",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"me"
+							]
+						},
+						"description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For GET requests (type='http'), session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in request body.\n\n**User-Agent consistency:** Required for session validation\n**Session expiry:** 2 hours inactivity\n\nGet authenticated user information and company context."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "3. Agents",
+			"description": "Agent management endpoints (Dual Auth: Bearer + Session + Company Isolation)",
+			"item": [
+				{
+					"name": "List Agents",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text",
+								"description": "OAuth 2.0 Bearer token"
+							},
+							{
+								"key": "User-Agent",
+								"value": "{{user_agent}}",
+								"type": "text",
+								"description": "Required for session fingerprint validation"
+							},
+							{
+								"key": "X-Openerp-Session-Id",
+								"value": "{{session_id}}",
+								"type": "text",
+								"description": "Session ID for fingerprint validation (REQUIRED for GET)"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/agents?limit=10&offset=0",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"agents"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Number of records to return"
+								},
+								{
+									"key": "offset",
+									"value": "0",
+									"description": "Number of records to skip"
+								}
+							]
+						},
+						"description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For GET requests (type='http'), session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in request body.\n\n**User-Agent consistency:** Required for session validation\n**Session expiry:** 2 hours inactivity\n\nList all agents accessible to the authenticated user's company."
+					},
+					"response": []
+				},
+				{
+					"name": "Create Agent",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text",
+								"description": "OAuth 2.0 Bearer token"
+							},
+							{
+								"key": "User-Agent",
+								"value": "{{user_agent}}",
+								"type": "text",
+								"description": "Required for session fingerprint validation"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"session_id\": \"{{session_id}}\",\n  \"name\": \"João Silva\",\n  \"creci\": \"F12345\",\n  \"email\": \"joao.silva@example.com\",\n  \"phone\": \"+5511999999999\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/agents",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"agents"
+							]
+						},
+						"description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For POST requests (type='json'), session_id MUST be sent in JSON body (direct property, NOT in params).\n\n**User-Agent consistency:** Required for session validation\n**Session expiry:** 2 hours inactivity\n\nCreate new agent in authenticated user's company.\n\n**Note:** Direct JSON format (no JSONRPC wrapper)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Agent",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text",
+								"description": "OAuth 2.0 Bearer token"
+							},
+							{
+								"key": "User-Agent",
+								"value": "{{user_agent}}",
+								"type": "text",
+								"description": "Required for session fingerprint validation"
+							},
+							{
+								"key": "X-Openerp-Session-Id",
+								"value": "{{session_id}}",
+								"type": "text",
+								"description": "Session ID for fingerprint validation (REQUIRED for GET)"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/agents/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"agents",
+								"1"
+							]
+						},
+						"description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For GET requests (type='http'), session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in request body.\n\n**User-Agent consistency:** Required for session validation\n**Session expiry:** 2 hours inactivity\n\nGet specific agent by ID (company-scoped)."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Agent",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text",
+								"description": "OAuth 2.0 Bearer token"
+							},
+							{
+								"key": "User-Agent",
+								"value": "{{user_agent}}",
+								"type": "text",
+								"description": "Required for session fingerprint validation"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"session_id\": \"{{session_id}}\",\n  \"name\": \"João Silva Santos\",\n  \"phone\": \"+5511988888888\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/agents/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"agents",
+								"1"
+							]
+						},
+						"description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For PUT requests (type='json'), session_id MUST be sent in JSON body (direct property, NOT in params).\n\n**User-Agent consistency:** Required for session validation\n**Session expiry:** 2 hours inactivity\n\nUpdate agent by ID (company-scoped).\n\n**Note:** Direct JSON format (no JSONRPC wrapper)"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Agent",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text",
+								"description": "OAuth 2.0 Bearer token"
+							},
+							{
+								"key": "User-Agent",
+								"value": "{{user_agent}}",
+								"type": "text",
+								"description": "Required for session fingerprint validation"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"session_id\": \"{{session_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/agents/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"agents",
+								"1"
+							]
+						},
+						"description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For DELETE requests (type='json'), session_id MUST be sent in JSON body (direct property, NOT in params).\n\n**User-Agent consistency:** Required for session validation\n**Session expiry:** 2 hours inactivity\n\nDelete agent by ID (company-scoped).\n\n**Note:** Direct JSON format (no JSONRPC wrapper)"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "4. Properties",
+			"description": "Property management endpoints (Dual Auth: Bearer + Session + Company Isolation)",
+			"item": [
+				{
+					"name": "List Properties",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text",
+								"description": "OAuth 2.0 Bearer token"
+							},
+							{
+								"key": "User-Agent",
+								"value": "{{user_agent}}",
+								"type": "text",
+								"description": "Required for session fingerprint validation"
+							},
+							{
+								"key": "X-Openerp-Session-Id",
+								"value": "{{session_id}}",
+								"type": "text",
+								"description": "Session ID for fingerprint validation (REQUIRED for GET)"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/properties?limit=10&offset=0",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"properties"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Number of records to return"
+								},
+								{
+									"key": "offset",
+									"value": "0",
+									"description": "Number of records to skip"
+								}
+							]
+						},
+						"description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For GET requests (type='http'), session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in request body.\n\n**User-Agent consistency:** Required for session validation\n**Session expiry:** 2 hours inactivity\n\nList all properties accessible to the authenticated user's company."
+					},
+					"response": []
+				},
+				{
+					"name": "Create Property",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text",
+								"description": "OAuth 2.0 Bearer token"
+							},
+							{
+								"key": "User-Agent",
+								"value": "{{user_agent}}",
+								"type": "text",
+								"description": "Required for session fingerprint validation"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"session_id\": \"{{session_id}}\",\n  \"name\": \"Casa Moderna\",\n  \"property_type\": \"house\",\n  \"bedrooms\": 3,\n  \"bathrooms\": 2,\n  \"area\": 150.5,\n  \"price\": 500000.00\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/properties",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"properties"
+							]
+						},
+						"description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For POST requests (type='json'), session_id MUST be sent in JSON body (direct property, NOT in params).\n\n**User-Agent consistency:** Required for session validation\n**Session expiry:** 2 hours inactivity\n\nCreate new property in authenticated user's company.\n\n**Note:** Direct JSON format (no JSONRPC wrapper)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Property",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text",
+								"description": "OAuth 2.0 Bearer token"
+							},
+							{
+								"key": "User-Agent",
+								"value": "{{user_agent}}",
+								"type": "text",
+								"description": "Required for session fingerprint validation"
+							},
+							{
+								"key": "X-Openerp-Session-Id",
+								"value": "{{session_id}}",
+								"type": "text",
+								"description": "Session ID for fingerprint validation (REQUIRED for GET)"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/properties/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"properties",
+								"1"
+							]
+						},
+						"description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For GET requests (type='http'), session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in request body.\n\n**User-Agent consistency:** Required for session validation\n**Session expiry:** 2 hours inactivity\n\nGet specific property by ID (company-scoped)."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Property",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text",
+								"description": "OAuth 2.0 Bearer token"
+							},
+							{
+								"key": "User-Agent",
+								"value": "{{user_agent}}",
+								"type": "text",
+								"description": "Required for session fingerprint validation"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"session_id\": \"{{session_id}}\",\n  \"price\": 520000.00\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/properties/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"properties",
+								"1"
+							]
+						},
+						"description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For PUT requests (type='json'), session_id MUST be sent in JSON body (direct property, NOT in params).\n\n**User-Agent consistency:** Required for session validation\n**Session expiry:** 2 hours inactivity\n\nUpdate property by ID (company-scoped).\n\n**Note:** Direct JSON format (no JSONRPC wrapper)"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Property",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text",
+								"description": "OAuth 2.0 Bearer token"
+							},
+							{
+								"key": "User-Agent",
+								"value": "{{user_agent}}",
+								"type": "text",
+								"description": "Required for session fingerprint validation"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"session_id\": \"{{session_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/properties/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"properties",
+								"1"
+							]
+						},
+						"description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For DELETE requests (type='json'), session_id MUST be sent in JSON body (direct property, NOT in params).\n\n**User-Agent consistency:** Required for session validation\n**Session expiry:** 2 hours inactivity\n\nDelete property by ID (company-scoped).\n\n**Note:** Direct JSON format (no JSONRPC wrapper)"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "5. Assignments",
+			"description": "Property-Agent assignment endpoints (Dual Auth: Bearer + Session + Company Isolation)",
+			"item": [
+				{
+					"name": "List Assignments",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text",
+								"description": "OAuth 2.0 Bearer token"
+							},
+							{
+								"key": "User-Agent",
+								"value": "{{user_agent}}",
+								"type": "text",
+								"description": "Required for session fingerprint validation"
+							},
+							{
+								"key": "X-Openerp-Session-Id",
+								"value": "{{session_id}}",
+								"type": "text",
+								"description": "Session ID for fingerprint validation (REQUIRED for GET)"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/assignments?limit=10&offset=0",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"assignments"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Number of records to return"
+								},
+								{
+									"key": "offset",
+									"value": "0",
+									"description": "Number of records to skip"
+								}
+							]
+						},
+						"description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For GET requests (type='http'), session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in request body.\n\n**User-Agent consistency:** Required for session validation\n**Session expiry:** 2 hours inactivity\n\nList all property-agent assignments accessible to the authenticated user's company."
+					},
+					"response": []
+				},
+				{
+					"name": "Create Assignment",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text",
+								"description": "OAuth 2.0 Bearer token"
+							},
+							{
+								"key": "User-Agent",
+								"value": "{{user_agent}}",
+								"type": "text",
+								"description": "Required for session fingerprint validation"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"session_id\": \"{{session_id}}\",\n  \"property_id\": 1,\n  \"agent_id\": 1,\n  \"role\": \"seller\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/assignments",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"assignments"
+							]
+						},
+						"description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For POST requests (type='json'), session_id MUST be sent in JSON body (direct property, NOT in params).\n\n**User-Agent consistency:** Required for session validation\n**Session expiry:** 2 hours inactivity\n\nAssign agent to property in authenticated user's company.\n\n**Note:** Direct JSON format (no JSONRPC wrapper)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Assignment",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text",
+								"description": "OAuth 2.0 Bearer token"
+							},
+							{
+								"key": "User-Agent",
+								"value": "{{user_agent}}",
+								"type": "text",
+								"description": "Required for session fingerprint validation"
+							},
+							{
+								"key": "X-Openerp-Session-Id",
+								"value": "{{session_id}}",
+								"type": "text",
+								"description": "Session ID for fingerprint validation (REQUIRED for GET)"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/assignments/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"assignments",
+								"1"
+							]
+						},
+						"description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For GET requests (type='http'), session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in request body.\n\n**User-Agent consistency:** Required for session validation\n**Session expiry:** 2 hours inactivity\n\nGet specific assignment by ID (company-scoped)."
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Assignment",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text",
+								"description": "OAuth 2.0 Bearer token"
+							},
+							{
+								"key": "User-Agent",
+								"value": "{{user_agent}}",
+								"type": "text",
+								"description": "Required for session fingerprint validation"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"session_id\": \"{{session_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/assignments/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"assignments",
+								"1"
+							]
+						},
+						"description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For DELETE requests (type='json'), session_id MUST be sent in JSON body (direct property, NOT in params).\n\n**User-Agent consistency:** Required for session validation\n**Session expiry:** 2 hours inactivity\n\nDelete assignment by ID (company-scoped).\n\n**Note:** Direct JSON format (no JSONRPC wrapper)"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "6. Commissions",
+			"description": "Commission calculation and management endpoints (Dual Auth: Bearer + Session + Company Isolation)",
+			"item": [
+				{
+					"name": "Calculate Commission",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text",
+								"description": "OAuth 2.0 Bearer token"
+							},
+							{
+								"key": "User-Agent",
+								"value": "{{user_agent}}",
+								"type": "text",
+								"description": "Required for session fingerprint validation"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"session_id\": \"{{session_id}}\",\n  \"property_id\": 1,\n  \"agent_id\": 1,\n  \"sale_price\": 500000.00\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/commissions/calculate",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"commissions",
+								"calculate"
+							]
+						},
+						"description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For POST requests (type='json'), session_id MUST be sent in JSON body (direct property, NOT in params).\n\n**User-Agent consistency:** Required for session validation\n**Session expiry:** 2 hours inactivity\n\nCalculate commission for property sale (company-scoped rules).\n\n**Note:** Endpoint not yet implemented. Direct JSON format (no JSONRPC wrapper)"
+					},
+					"response": []
+				},
+				{
+					"name": "List Commissions",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text",
+								"description": "OAuth 2.0 Bearer token"
+							},
+							{
+								"key": "User-Agent",
+								"value": "{{user_agent}}",
+								"type": "text",
+								"description": "Required for session fingerprint validation"
+							},
+							{
+								"key": "X-Openerp-Session-Id",
+								"value": "{{session_id}}",
+								"type": "text",
+								"description": "Session ID for fingerprint validation (REQUIRED for GET)"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/commissions?limit=10&offset=0",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"commissions"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Number of records to return"
+								},
+								{
+									"key": "offset",
+									"value": "0",
+									"description": "Number of records to skip"
+								}
+							]
+						},
+						"description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For GET requests (type='http'), session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in request body.\n\n**User-Agent consistency:** Required for session validation\n**Session expiry:** 2 hours inactivity\n\nList all commissions accessible to the authenticated user's company.\n\n**Note:** Endpoint not yet implemented."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Commission",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text",
+								"description": "OAuth 2.0 Bearer token"
+							},
+							{
+								"key": "User-Agent",
+								"value": "{{user_agent}}",
+								"type": "text",
+								"description": "Required for session fingerprint validation"
+							},
+							{
+								"key": "X-Openerp-Session-Id",
+								"value": "{{session_id}}",
+								"type": "text",
+								"description": "Session ID for fingerprint validation (REQUIRED for GET)"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/commissions/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"commissions",
+								"1"
+							]
+						},
+						"description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For GET requests (type='http'), session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in request body.\n\n**User-Agent consistency:** Required for session validation\n**Session expiry:** 2 hours inactivity\n\nGet specific commission by ID (company-scoped).\n\n**Note:** Endpoint not yet implemented."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Commission Status",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text",
+								"description": "OAuth 2.0 Bearer token"
+							},
+							{
+								"key": "User-Agent",
+								"value": "{{user_agent}}",
+								"type": "text",
+								"description": "Required for session fingerprint validation"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"session_id\": \"{{session_id}}\",\n  \"status\": \"paid\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/commissions/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"commissions",
+								"1"
+							]
+						},
+						"description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For PUT requests (type='json'), session_id MUST be sent in JSON body (direct property, NOT in params).\n\n**User-Agent consistency:** Required for session validation\n**Session expiry:** 2 hours inactivity\n\nUpdate commission status (company-scoped).\n\n**Note:** Endpoint not yet implemented. Direct JSON format (no JSONRPC wrapper)"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "7. Performance",
+			"description": "Agent performance analytics endpoints (Dual Auth: Bearer + Session + Company Isolation)",
+			"item": [
+				{
+					"name": "Agent Performance Report",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text",
+								"description": "OAuth 2.0 Bearer token"
+							},
+							{
+								"key": "User-Agent",
+								"value": "{{user_agent}}",
+								"type": "text",
+								"description": "Required for session fingerprint validation"
+							},
+							{
+								"key": "X-Openerp-Session-Id",
+								"value": "{{session_id}}",
+								"type": "text",
+								"description": "Session ID for fingerprint validation (REQUIRED for GET)"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/performance/agents/1?period=month",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"performance",
+								"agents",
+								"1"
+							],
+							"query": [
+								{
+									"key": "period",
+									"value": "month",
+									"description": "Period for analysis (day, week, month, year)"
+								}
+							]
+						},
+						"description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For GET requests (type='http'), session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in request body.\n\n**User-Agent consistency:** Required for session validation\n**Session expiry:** 2 hours inactivity\n\nGet agent performance metrics (company-scoped)."
+					},
+					"response": []
+				},
+				{
+					"name": "Company Performance Report",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text",
+								"description": "OAuth 2.0 Bearer token"
+							},
+							{
+								"key": "User-Agent",
+								"value": "{{user_agent}}",
+								"type": "text",
+								"description": "Required for session fingerprint validation"
+							},
+							{
+								"key": "X-Openerp-Session-Id",
+								"value": "{{session_id}}",
+								"type": "text",
+								"description": "Session ID for fingerprint validation (REQUIRED for GET)"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/performance/company?period=month",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"performance",
+								"company"
+							],
+							"query": [
+								{
+									"key": "period",
+									"value": "month",
+									"description": "Period for analysis (day, week, month, year)"
+								}
+							]
+						},
+						"description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For GET requests (type='http'), session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in request body.\n\n**User-Agent consistency:** Required for session validation\n**Session expiry:** 2 hours inactivity\n\nGet company-wide performance metrics."
+					},
+					"response": []
+				},
+				{
+					"name": "Top Performing Agents",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text",
+								"description": "OAuth 2.0 Bearer token"
+							},
+							{
+								"key": "User-Agent",
+								"value": "{{user_agent}}",
+								"type": "text",
+								"description": "Required for session fingerprint validation"
+							},
+							{
+								"key": "X-Openerp-Session-Id",
+								"value": "{{session_id}}",
+								"type": "text",
+								"description": "Session ID for fingerprint validation (REQUIRED for GET)"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/performance/top-agents?limit=10&period=month",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"performance",
+								"top-agents"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Number of top agents to return"
+								},
+								{
+									"key": "period",
+									"value": "month",
+									"description": "Period for analysis (day, week, month, year)"
+								}
+							]
+						},
+						"description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For GET requests (type='http'), session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in request body.\n\n**User-Agent consistency:** Required for session validation\n**Session expiry:** 2 hours inactivity\n\nGet ranking of top performing agents (company-scoped)."
+					},
+					"response": []
+				},
+				{
+					"name": "Sales Funnel Report",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text",
+								"description": "OAuth 2.0 Bearer token"
+							},
+							{
+								"key": "User-Agent",
+								"value": "{{user_agent}}",
+								"type": "text",
+								"description": "Required for session fingerprint validation"
+							},
+							{
+								"key": "X-Openerp-Session-Id",
+								"value": "{{session_id}}",
+								"type": "text",
+								"description": "Session ID for fingerprint validation (REQUIRED for GET)"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/performance/sales-funnel?period=month",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"performance",
+								"sales-funnel"
+							],
+							"query": [
+								{
+									"key": "period",
+									"value": "month",
+									"description": "Period for analysis (day, week, month, year)"
+								}
+							]
+						},
+						"description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For GET requests (type='http'), session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in request body.\n\n**User-Agent consistency:** Required for session validation\n**Session expiry:** 2 hours inactivity\n\nGet sales funnel conversion metrics (company-scoped)."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "8. Master Data",
+			"description": "Read-only reference data (Bearer token only - no session required)",
+			"item": [
+				{
+					"name": "List Countries",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text",
+								"description": "OAuth 2.0 Bearer token"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/master/countries",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"master",
+								"countries"
+							]
+						},
+						"description": "**Authentication:** Bearer Token only\n**Multi-tenancy:** Not applicable (global master data)\n**Fingerprint validation:** Not required\n\nList all available countries (read-only reference data)."
+					},
+					"response": []
+				},
+				{
+					"name": "List States",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text",
+								"description": "OAuth 2.0 Bearer token"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/master/states?country_id=1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"master",
+								"states"
+							],
+							"query": [
+								{
+									"key": "country_id",
+									"value": "1",
+									"description": "Filter states by country ID"
+								}
+							]
+						},
+						"description": "**Authentication:** Bearer Token only\n**Multi-tenancy:** Not applicable (global master data)\n**Fingerprint validation:** Not required\n\nList all available states/provinces (read-only reference data)."
+					},
+					"response": []
+				},
+				{
+					"name": "List Property Types",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text",
+								"description": "OAuth 2.0 Bearer token"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/master/property-types",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"master",
+								"property-types"
+							]
+						},
+						"description": "**Authentication:** Bearer Token only\n**Multi-tenancy:** Not applicable (global master data)\n**Fingerprint validation:** Not required\n\nList all available property types (read-only reference data)."
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}
