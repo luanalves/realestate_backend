@@ -1,0 +1,519 @@
+# Implementation Tasks: Dual Auth Remaining Endpoints
+
+**Feature**: 002-dual-auth-remaining-endpoints  
+**Total Tasks**: 100+  
+**Priority**: High (Security)
+
+---
+
+## Phase 1: Agents Controller (7 endpoints)
+
+### T001: Add @require_session to create_agent
+**File**: `18.0/extra-addons/thedevkitchen_apigateway/controllers/agents_controller.py`  
+**Endpoint**: `POST /api/v1/agents`  
+**Steps**:
+1. Locate `create_agent` function
+2. Add `@require_session` decorator after `@require_jwt`
+3. Verify decorator order: `@require_jwt` → `@require_session` → `@require_company`
+4. Test endpoint: should reject without session_id
+
+### T002: Add @require_session to get_agent
+**Endpoint**: `GET /api/v1/agents/{id}`  
+**Steps**:
+1. Locate `get_agent` function
+2. Add `@require_session` decorator
+3. Verify imports include `require_session`
+4. Test endpoint
+
+### T003: Add @require_session to update_agent
+**Endpoint**: `PUT /api/v1/agents/{id}`
+
+### T004: Add @require_session to delete_agent
+**Endpoint**: `DELETE /api/v1/agents/{id}`
+
+### T005: Add @require_session to list_agents
+**Endpoint**: `GET /api/v1/agents`
+
+### T006: Add @require_session to get_agent_properties
+**Endpoint**: `GET /api/v1/agents/{id}/properties`
+
+### T007: Add @require_session to get_agent_performance
+**Endpoint**: `GET /api/v1/agents/{id}/performance`
+
+---
+
+## Phase 2: Properties Controller (4 endpoints)
+
+### T008: Add @require_session to create_property
+**File**: `18.0/extra-addons/thedevkitchen_apigateway/controllers/properties_controller.py`  
+**Endpoint**: `POST /api/v1/properties`
+
+### T009: Add @require_session to get_property
+**Endpoint**: `GET /api/v1/properties/{id}`
+
+### T010: Add @require_session to update_property
+**Endpoint**: `PUT /api/v1/properties/{id}`
+
+### T011: Add @require_session to delete_property
+**Endpoint**: `DELETE /api/v1/properties/{id}`
+
+---
+
+## Phase 3: Assignments Controller (3 endpoints)
+
+### T012: Add @require_session to create_assignment
+**File**: `18.0/extra-addons/thedevkitchen_apigateway/controllers/assignments_controller.py`  
+**Endpoint**: `POST /api/v1/assignments`
+
+### T013: Add @require_session to get_assignment
+**Endpoint**: `GET /api/v1/assignments/{id}`
+
+### T014: Add @require_session to delete_assignment
+**Endpoint**: `DELETE /api/v1/assignments/{id}`
+
+---
+
+## Phase 4: Commissions Controller (4 endpoints)
+
+### T015: Add @require_session to calculate_commission
+**File**: `18.0/extra-addons/thedevkitchen_apigateway/controllers/commissions_controller.py`  
+**Endpoint**: `POST /api/v1/commissions/calculate`
+
+### T016: Add @require_session to get_commission
+**Endpoint**: `GET /api/v1/commissions/{id}`
+
+### T017: Add @require_session to list_commissions
+**Endpoint**: `GET /api/v1/commissions`
+
+### T018: Add @require_session to update_commission
+**Endpoint**: `PUT /api/v1/commissions/{id}`
+
+---
+
+## Phase 5: Performance Controller (2 endpoints)
+
+### T019: Add @require_session to get_agent_metrics
+**File**: `18.0/extra-addons/thedevkitchen_apigateway/controllers/performance_controller.py`  
+**Endpoint**: `GET /api/v1/performance/agents/{id}`
+
+### T020: Add @require_session to get_overview_metrics
+**Endpoint**: `GET /api/v1/performance/overview`
+
+---
+
+## Phase 6: Code Quality
+
+### T021: Remove debug logs from middleware
+**File**: `18.0/extra-addons/thedevkitchen_apigateway/controllers/middleware.py`  
+**Steps**:
+1. Search for `[SESSION DEBUG]` in file
+2. Remove all debug log statements
+3. Keep security warnings (HIJACKING, Invalid session)
+4. Verify no console spam in tests
+
+**Command**: `grep -n "\[SESSION DEBUG\]" middleware.py`
+
+### T022: Add session_id length validation
+**File**: `middleware.py` (in `@require_session` decorator)  
+**Steps**:
+1. Add length check: 60-100 characters
+2. Return clear error for invalid format
+3. Add log warning for malformed IDs
+4. Test with short/long/malformed session IDs
+
+### T023: Document User-Agent consistency requirement
+**Files**: All modified controllers  
+**Steps**:
+1. Add docstring note about User-Agent
+2. Mention fingerprint validation
+3. Document session duration (2 hours)
+
+---
+
+## Phase 7: Postman Collection - Agents
+
+### T024: Update create_agent Postman request
+**File**: `postman/QuicksolAPI_Complete.postman_collection.json`  
+**Endpoint**: `POST /api/v1/agents`  
+**Steps**:
+1. Add `session_id` to params: `"session_id": "{{session_id}}"`
+2. Update description with auth requirements
+3. Add example request with session_id
+4. Test in Postman: should work after login
+
+### T025: Update get_agent Postman request
+**Endpoint**: `GET /api/v1/agents/{id}`
+
+### T026: Update update_agent Postman request
+**Endpoint**: `PUT /api/v1/agents/{id}`
+
+### T027: Update delete_agent Postman request
+**Endpoint**: `DELETE /api/v1/agents/{id}`
+
+### T028: Update list_agents Postman request
+**Endpoint**: `GET /api/v1/agents`
+
+### T029: Update get_agent_properties Postman request
+**Endpoint**: `GET /api/v1/agents/{id}/properties`
+
+### T030: Update get_agent_performance Postman request
+**Endpoint**: `GET /api/v1/agents/{id}/performance`
+
+---
+
+## Phase 8: Postman Collection - Properties
+
+### T031: Update create_property Postman request
+**Endpoint**: `POST /api/v1/properties`
+
+### T032: Update get_property Postman request
+**Endpoint**: `GET /api/v1/properties/{id}`
+
+### T033: Update update_property Postman request
+**Endpoint**: `PUT /api/v1/properties/{id}`
+
+### T034: Update delete_property Postman request
+**Endpoint**: `DELETE /api/v1/properties/{id}`
+
+---
+
+## Phase 9: Postman Collection - Assignments
+
+### T035: Update create_assignment Postman request
+**Endpoint**: `POST /api/v1/assignments`
+
+### T036: Update get_assignment Postman request
+**Endpoint**: `GET /api/v1/assignments/{id}`
+
+### T037: Update delete_assignment Postman request
+**Endpoint**: `DELETE /api/v1/assignments/{id}`
+
+---
+
+## Phase 10: Postman Collection - Commissions
+
+### T038: Update calculate_commission Postman request
+**Endpoint**: `POST /api/v1/commissions/calculate`
+
+### T039: Update get_commission Postman request
+**Endpoint**: `GET /api/v1/commissions/{id}`
+
+### T040: Update list_commissions Postman request
+**Endpoint**: `GET /api/v1/commissions`
+
+### T041: Update update_commission Postman request
+**Endpoint**: `PUT /api/v1/commissions/{id}`
+
+---
+
+## Phase 11: Postman Collection - Performance
+
+### T042: Update get_agent_metrics Postman request
+**Endpoint**: `GET /api/v1/performance/agents/{id}`
+
+### T043: Update get_overview_metrics Postman request
+**Endpoint**: `GET /api/v1/performance/overview`
+
+---
+
+## Phase 12: Critical Postman Bug Fix
+
+### T044: Fix Login test script session_id capture
+**File**: `postman/QuicksolAPI_Complete.postman_collection.json`  
+**Critical Bug**: Login script overwrites session_id with cookie value  
+**Steps**:
+1. Locate Login endpoint test script (around lines 142-146)
+2. Remove line that captures from cookies: `pm.environment.set('session_id', pm.cookies.toObject().session_id);`
+3. Keep only body capture: `pm.environment.set('session_id', jsonData.result.session_id);`
+4. Add validation for session_id presence
+5. Add console logging for debugging
+6. Test: Login → verify session_id is ~80 chars, not cookie value
+
+**Current (WRONG)**:
+```javascript
+pm.environment.set('session_id', jsonData.result.session_id);
+pm.environment.set('session_id', pm.cookies.toObject().session_id); // BUG: overwrites
+```
+
+**Fixed (CORRECT)**:
+```javascript
+if (jsonData.result && jsonData.result.session_id) {
+    pm.environment.set('session_id', jsonData.result.session_id);
+    console.log('✅ Session ID: ' + jsonData.result.session_id);
+}
+```
+
+---
+
+## Phase 13: Integration Tests - Agents
+
+**File**: `18.0/extra-addons/thedevkitchen_apigateway/tests/test_agents_dual_auth.py`  
+**Test credentials from**: `.env` file
+
+### T045: Test create_agent without bearer token
+**Test**: `test_create_agent_no_bearer_token`  
+**Expected**: 401 "Bearer token required"
+
+### T046: Test create_agent without session_id
+**Test**: `test_create_agent_no_session_id`  
+**Expected**: 401 "Session required"
+
+### T047: Test create_agent with valid auth
+**Test**: `test_create_agent_valid_auth`  
+**Expected**: 201 with agent data
+
+### T048-T050: Repeat for get_agent (3 tests)
+### T051-T053: Repeat for update_agent (3 tests)
+### T054-T056: Repeat for delete_agent (3 tests)
+### T057-T059: Repeat for list_agents (3 tests)
+### T060-T062: Repeat for get_agent_properties (3 tests)
+### T063-T065: Repeat for get_agent_performance (3 tests)
+
+**Total**: 21 integration tests for Agents
+
+---
+
+## Phase 14: Integration Tests - Properties
+
+**File**: `test_properties_dual_auth.py`
+
+### T066-T068: Test create_property (3 tests)
+### T069-T071: Test get_property (3 tests)
+### T072-T074: Test update_property (3 tests)
+### T075-T077: Test delete_property (3 tests)
+
+**Total**: 12 integration tests for Properties
+
+---
+
+## Phase 15: Integration Tests - Assignments
+
+**File**: `test_assignments_dual_auth.py`
+
+### T078-T080: Test create_assignment (3 tests)
+### T081-T083: Test get_assignment (3 tests)
+### T084-T086: Test delete_assignment (3 tests)
+
+**Total**: 9 integration tests for Assignments
+
+---
+
+## Phase 16: Integration Tests - Commissions
+
+**File**: `test_commissions_dual_auth.py`
+
+### T087-T089: Test calculate_commission (3 tests)
+### T090-T092: Test get_commission (3 tests)
+### T093-T095: Test list_commissions (3 tests)
+### T096-T098: Test update_commission (3 tests)
+
+**Total**: 12 integration tests for Commissions
+
+---
+
+## Phase 17: Integration Tests - Performance
+
+**File**: `test_performance_dual_auth.py`
+
+### T099-T101: Test get_agent_metrics (3 tests)
+### T102-T104: Test get_overview_metrics (3 tests)
+
+**Total**: 6 integration tests for Performance
+
+**Grand Total Integration Tests**: 60
+
+---
+
+## Phase 18: E2E Tests (Cypress)
+
+### T105: Create agents-dual-auth.cy.js
+**File**: `cypress/e2e/agents-dual-auth.cy.js`  
+**Flow**:
+1. Login with .env credentials
+2. Capture session_id from response body
+3. Create agent with session_id → expect 201
+4. Get agent with session_id → expect 200
+5. Change User-Agent → expect 401 (fingerprint mismatch)
+
+### T106: Create properties-dual-auth.cy.js
+**File**: `cypress/e2e/properties-dual-auth.cy.js`
+
+### T107: Create assignments-dual-auth.cy.js
+**File**: `cypress/e2e/assignments-dual-auth.cy.js`
+
+### T108: Create commissions-dual-auth.cy.js
+**File**: `cypress/e2e/commissions-dual-auth.cy.js`
+
+### T109: Create performance-dual-auth.cy.js
+**File**: `cypress/e2e/performance-dual-auth.cy.js`
+
+**Total**: 5 E2E tests
+
+---
+
+## Phase 19: Manual Testing & Validation
+
+### T110: Test with Postman - Happy Path
+**Steps**:
+1. Import updated collection
+2. Run "User Login" → verify session_id captured
+3. Run all 20 endpoints → all should succeed
+4. Verify responses contain expected data
+
+### T111: Test without bearer token
+**Steps**:
+1. Remove Authorization header
+2. Call any endpoint → expect 401
+3. Verify error message: "Bearer token required"
+
+### T112: Test without session_id
+**Steps**:
+1. Remove session_id from request body
+2. Call any endpoint → expect 401
+3. Verify error message: "Session required"
+
+### T113: Test session hijacking prevention
+**Steps**:
+1. Login and capture session_id
+2. Change User-Agent in Postman
+3. Call any endpoint → expect 401
+4. Verify error: "Session validation failed"
+5. Check audit logs for HIJACKING DETECTED
+
+### T114: Test session expiration
+**Steps**:
+1. Login and capture session_id
+2. Wait 2+ hours (or manually expire in database)
+3. Call any endpoint → expect 401
+4. Verify error: "Session expired"
+
+### T115: Verify session_id NOT from cookie
+**Steps**:
+1. Run Login in Postman
+2. Check environment variable `session_id`
+3. Should be ~80 chars from response body
+4. Should NOT be Odoo web session cookie value
+
+---
+
+## Phase 20: Documentation
+
+### T116: Update IMPLEMENTATION_STATUS.md
+**Add**:
+- Spec 002 completed
+- All 20 endpoints protected with dual auth
+- Postman collection updated
+- 60 integration tests + 5 E2E tests
+
+### T117: Update README.md
+**Add**:
+- Dual auth requirement for API usage
+- User-Agent consistency requirement
+- Session duration and expiration
+- Troubleshooting guide for session issues
+
+### T118: Document User-Agent requirement
+**Create**: `docs/api-authentication.md`  
+**Content**:
+- User-Agent must remain consistent during session
+- Fingerprint includes IP, User-Agent, Accept-Language
+- Changing User-Agent invalidates session
+- How to handle in mobile apps
+
+### T119: Update Swagger/OpenAPI spec
+**File**: TBD (if Swagger exists)  
+**Steps**:
+1. Add security scheme for session_id
+2. Mark all endpoints as requiring: bearerAuth + sessionAuth
+3. Document session_id parameter for each endpoint
+4. Add examples with session_id
+
+### T120: Create troubleshooting guide
+**File**: `docs/troubleshooting-sessions.md`  
+**Content**:
+- "Session validation failed" → Check User-Agent
+- "Session required" → Include session_id in body
+- "Session expired" → Re-login to get new session
+- How to debug session issues in Postman
+
+---
+
+## Phase 21: Code Review & Cleanup
+
+### T121: Run linter
+**Command**: `cd 18.0 && ./lint.sh`  
+**Fix**: Any linting errors in modified files
+
+### T122: Run all tests
+**Command**: `python -m pytest 18.0/extra-addons/thedevkitchen_apigateway/tests/`  
+**Expected**: All new tests pass, fix any failures
+
+### T123: Run Cypress tests
+**Command**: `npx cypress run`  
+**Expected**: All 5 new E2E tests pass
+
+### T124: Check test coverage
+**Command**: Coverage report tool  
+**Expected**: > 80% coverage on modified controllers
+
+### T125: Verify no debug logs
+**Command**: `grep -r "\[SESSION DEBUG\]" 18.0/extra-addons/thedevkitchen_apigateway/`  
+**Expected**: No matches (all removed)
+
+### T126: Code review checklist
+- [ ] All 20 endpoints have `@require_session`
+- [ ] Decorator order correct everywhere
+- [ ] No debug logs in code
+- [ ] All tests passing
+- [ ] Postman collection updated and tested
+- [ ] Documentation complete
+- [ ] No TODOs or FIXMEs left in code
+
+---
+
+## Phase 22: Git Operations
+
+### T127: Commit controllers changes
+**Message**: `feat: add @require_session to Agents, Properties, Assignments, Commissions, Performance endpoints`
+
+### T128: Commit code quality improvements
+**Message**: `refactor: remove debug logs and add session_id validation`
+
+### T129: Commit Postman collection
+**Message**: `fix: update Postman collection with session_id params and fix login script bug`
+
+### T130: Commit tests
+**Message**: `test: add 60 integration tests and 5 E2E tests for dual auth`
+
+### T131: Commit documentation
+**Message**: `docs: update README, add troubleshooting guide, document User-Agent requirement`
+
+### T132: Push to GitHub
+**Command**: `git push origin 002-dual-auth-remaining-endpoints`
+
+---
+
+## Summary
+
+**Total Tasks**: 132  
+**Estimated Time**: 3-4 days  
+**Priority**: High (Security requirement)
+
+**Task Distribution**:
+- Controllers: 20 tasks (T001-T020)
+- Code Quality: 3 tasks (T021-T023)
+- Postman Updates: 20 tasks (T024-T043)
+- Postman Bug Fix: 1 task (T044)
+- Integration Tests: 60 tasks (T045-T104)
+- E2E Tests: 5 tasks (T105-T109)
+- Manual Testing: 6 tasks (T110-T115)
+- Documentation: 5 tasks (T116-T120)
+- Code Review: 6 tasks (T121-T126)
+- Git Operations: 6 tasks (T127-T132)
+
+**Success Criteria**:
+- ✅ All 132 tasks completed
+- ✅ All tests passing (60 integration + 5 E2E)
+- ✅ Postman collection working with dual auth
+- ✅ No debug logs in production code
+- ✅ Documentation complete and accurate
