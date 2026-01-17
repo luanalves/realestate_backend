@@ -155,8 +155,6 @@ def require_session(func):
         
         # 1. From kwargs (function parameters - highest priority for API calls)
         session_id = kwargs.get('session_id')
-        if session_id:
-            _logger.info(f'[SESSION DEBUG] Found session_id in kwargs: {session_id[:20]}...')
         
         # 2. From request body (for JSON-RPC calls)
         if not session_id:
@@ -164,10 +162,8 @@ def require_session(func):
                 json_data = request.get_json_data()
                 if json_data:
                     session_id = json_data.get('session_id')
-                    if session_id:
-                        _logger.info(f'[SESSION DEBUG] Found session_id in JSON body: {session_id[:20]}...')
-            except Exception as e:
-                _logger.warning(f'[SESSION DEBUG] Error reading JSON data: {e}')
+            except Exception:
+                pass
         
         # 3. From headers/cookies/session if not in body
         if not session_id:
@@ -176,7 +172,15 @@ def require_session(func):
                 request.httprequest.cookies.get('session_id') or
                 request.session.sid
             )
-            _logger.info(f'[SESSION DEBUG] Using session_id from headers/cookies: {session_id[:20] if session_id else "None"}...')
+
+        # Validate session_id format (length check)
+        if session_id and (len(session_id) < 60 or len(session_id) > 100):
+            return {
+                'error': {
+                    'status': 401,
+                    'message': 'Invalid session_id format (must be 60-100 characters)'
+                }
+            }
 
         valid, user, api_session, error_msg = SessionValidator.validate(session_id)
 
