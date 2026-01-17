@@ -2,7 +2,7 @@
 	"info": {
 		"_postman_id": "quicksol-api-complete-001",
 		"name": "Quicksol Real Estate API - Complete",
-		"description": "Complete API documentation for Quicksol Real Estate Management System\n\n**Authentication Requirements:**\n- All endpoints (except OAuth token) require **Bearer Token** from OAuth 2.0\n- Business endpoints require **Session ID** from user login\n- Fingerprint validation active (IP + User-Agent + Accept-Language)\n- Session expires after 2 hours of inactivity\n\n**Important:** Keep User-Agent consistent during session lifetime to avoid fingerprint validation failures.",
+		"description": "Complete API documentation for Quicksol Real Estate Management System\n\n**Authentication Requirements:**\n- All endpoints (except OAuth token) require **Bearer Token** from OAuth 2.0\n- Business endpoints require **Session ID** from user login\n- Fingerprint validation active (IP + User-Agent + Accept-Language)\n- Session expires after 2 hours of inactivity\n\n**CRITICAL - Session ID Transmission:**\n- **GET requests** (type='http'): session_id via header `X-Openerp-Session-Id`\n- **POST/PUT/PATCH** (type='json'): session_id in JSON body params\n- **Never send session_id in body for GET requests** - it will be ignored!\n\n**Important:** Keep User-Agent consistent during session lifetime to avoid fingerprint validation failures.",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
@@ -21,9 +21,9 @@
 									"const jsonData = pm.response.json();",
 									"if (jsonData && jsonData.result && jsonData.result.access_token) {",
 									"    pm.environment.set('access_token', jsonData.result.access_token);",
-									"    console.log('✅ Access token saved to environment');",
+									"    console.log('\u2705 Access token saved to environment');",
 									"} else {",
-									"    console.error('❌ Failed to extract access_token from response');",
+									"    console.error('\u274c Failed to extract access_token from response');",
 									"}"
 								],
 								"type": "text/javascript"
@@ -142,10 +142,10 @@
 									"if (jsonData && jsonData.result && jsonData.result.session_id) {",
 									"    const sessionId = jsonData.result.session_id;",
 									"    pm.environment.set('session_id', sessionId);",
-									"    console.log('✅ Session ID saved:', sessionId.substring(0, 20) + '...');",
-									"    console.log('📌 Session valid for 2 hours of inactivity');",
+									"    console.log('\u2705 Session ID saved:', sessionId.substring(0, 20) + '...');",
+									"    console.log('\ud83d\udccc Session valid for 2 hours of inactivity');",
 									"} else {",
-									"    console.error('❌ Failed to extract session_id from response body');",
+									"    console.error('\u274c Failed to extract session_id from response body');",
 									"    console.log('Response:', JSON.stringify(jsonData, null, 2));",
 									"}"
 								],
@@ -231,12 +231,13 @@
 							{
 								"key": "Authorization",
 								"value": "Bearer {{access_token}}"
+							},
+							{
+								"key": "X-Openerp-Session-Id",
+								"value": "{{session_id}}",
+								"description": "Session ID for fingerprint validation (required for GET)"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"call\",\n  \"params\": {\n    \"session_id\": \"{{session_id}}\"\n  }\n}"
-						},
 						"url": {
 							"raw": "{{odoo_base_url}}/api/v1/users/profile",
 							"host": [
@@ -299,12 +300,13 @@
 							{
 								"key": "Authorization",
 								"value": "Bearer {{access_token}}"
+							},
+							{
+								"key": "X-Openerp-Session-Id",
+								"value": "{{session_id}}",
+								"description": "Session ID for fingerprint validation (required for GET)"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"call\",\n  \"params\": {\n    \"session_id\": \"{{session_id}}\"\n  }\n}"
-						},
 						"url": {
 							"raw": "{{odoo_base_url}}/api/v1/me",
 							"host": [
@@ -338,14 +340,15 @@
 							{
 								"key": "Authorization",
 								"value": "Bearer {{access_token}}"
+							},
+							{
+								"key": "X-Openerp-Session-Id",
+								"value": "{{session_id}}",
+								"description": "Session ID for fingerprint validation (required for GET endpoints)"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"call\",\n  \"params\": {\n    \"session_id\": \"{{session_id}}\",\n    \"limit\": 10,\n    \"offset\": 0\n  }\n}"
-						},
 						"url": {
-							"raw": "{{odoo_base_url}}/api/v1/agents",
+							"raw": "{{odoo_base_url}}/api/v1/agents?limit=10&offset=0",
 							"host": [
 								"{{odoo_base_url}}"
 							],
@@ -353,9 +356,21 @@
 								"api",
 								"v1",
 								"agents"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Number of records to return"
+								},
+								{
+									"key": "offset",
+									"value": "0",
+									"description": "Number of records to skip"
+								}
 							]
 						},
-						"description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\nList all agents accessible to the authenticated user's company.\n\n**User-Agent consistency:** Required for session validation\n**Session expiry:** 2 hours inactivity"
+						"description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\n**IMPORTANT:** For GET requests (type='http'), session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in request body.\n\nList all agents accessible to the authenticated user's company.\n\n**User-Agent consistency:** Required for session validation\n**Session expiry:** 2 hours inactivity"
 					},
 					"response": []
 				},
@@ -375,7 +390,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"call\",\n  \"params\": {\n    \"session_id\": \"{{session_id}}\",\n    \"name\": \"João Silva\",\n    \"creci\": \"F12345\",\n    \"email\": \"joao.silva@example.com\",\n    \"phone\": \"+5511999999999\"\n  }\n}"
+							"raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"call\",\n  \"params\": {\n    \"session_id\": \"{{session_id}}\",\n    \"name\": \"Jo\u00e3o Silva\",\n    \"creci\": \"F12345\",\n    \"email\": \"joao.silva@example.com\",\n    \"phone\": \"+5511999999999\"\n  }\n}"
 						},
 						"url": {
 							"raw": "{{odoo_base_url}}/api/v1/agents",
@@ -404,12 +419,13 @@
 							{
 								"key": "Authorization",
 								"value": "Bearer {{access_token}}"
+							},
+							{
+								"key": "X-Openerp-Session-Id",
+								"value": "{{session_id}}",
+								"description": "Session ID for fingerprint validation"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"call\",\n  \"params\": {\n    \"session_id\": \"{{session_id}}\"\n  }\n}"
-						},
 						"url": {
 							"raw": "{{odoo_base_url}}/api/v1/agents/:agent_id",
 							"host": [
@@ -448,7 +464,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"call\",\n  \"params\": {\n    \"session_id\": \"{{session_id}}\",\n    \"name\": \"João Silva Updated\",\n    \"phone\": \"+5511988888888\"\n  }\n}"
+							"raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"call\",\n  \"params\": {\n    \"session_id\": \"{{session_id}}\",\n    \"name\": \"Jo\u00e3o Silva Updated\",\n    \"phone\": \"+5511988888888\"\n  }\n}"
 						},
 						"url": {
 							"raw": "{{odoo_base_url}}/api/v1/agents/:agent_id",
@@ -566,12 +582,13 @@
 							{
 								"key": "Authorization",
 								"value": "Bearer {{access_token}}"
+							},
+							{
+								"key": "X-Openerp-Session-Id",
+								"value": "{{session_id}}",
+								"description": "Session ID for fingerprint validation (required for GET)"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"call\",\n  \"params\": {\n    \"session_id\": \"{{session_id}}\"\n  }\n}"
-						},
 						"url": {
 							"raw": "{{odoo_base_url}}/api/v1/agents/:agent_id/properties",
 							"host": [
@@ -607,12 +624,13 @@
 							{
 								"key": "Authorization",
 								"value": "Bearer {{access_token}}"
+							},
+							{
+								"key": "X-Openerp-Session-Id",
+								"value": "{{session_id}}",
+								"description": "Session ID for fingerprint validation (required for GET)"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"call\",\n  \"params\": {\n    \"session_id\": \"{{session_id}}\"\n  }\n}"
-						},
 						"url": {
 							"raw": "{{odoo_base_url}}/api/v1/agents/:agent_id/performance",
 							"host": [
@@ -648,12 +666,13 @@
 							{
 								"key": "Authorization",
 								"value": "Bearer {{access_token}}"
+							},
+							{
+								"key": "X-Openerp-Session-Id",
+								"value": "{{session_id}}",
+								"description": "Session ID for fingerprint validation (required for GET)"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"call\",\n  \"params\": {\n    \"session_id\": \"{{session_id}}\"\n  }\n}"
-						},
 						"url": {
 							"raw": "{{odoo_base_url}}/api/v1/agents/ranking",
 							"host": [
@@ -723,12 +742,13 @@
 							{
 								"key": "Authorization",
 								"value": "Bearer {{access_token}}"
+							},
+							{
+								"key": "X-Openerp-Session-Id",
+								"value": "{{session_id}}",
+								"description": "Session ID for fingerprint validation (required for GET)"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"call\",\n  \"params\": {\n    \"session_id\": \"{{session_id}}\"\n  }\n}"
-						},
 						"url": {
 							"raw": "{{odoo_base_url}}/api/v1/agents/:agent_id/commission-rules",
 							"host": [
@@ -803,12 +823,13 @@
 							{
 								"key": "Authorization",
 								"value": "Bearer {{access_token}}"
+							},
+							{
+								"key": "X-Openerp-Session-Id",
+								"value": "{{session_id}}",
+								"description": "Session ID for fingerprint validation (required for GET)"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"call\",\n  \"params\": {\n    \"session_id\": \"{{session_id}}\"\n  }\n}"
-						},
 						"url": {
 							"raw": "{{odoo_base_url}}/api/v1/properties/:property_id",
 							"host": [
@@ -962,12 +983,13 @@
 							{
 								"key": "Authorization",
 								"value": "Bearer {{access_token}}"
+							},
+							{
+								"key": "X-Openerp-Session-Id",
+								"value": "{{session_id}}",
+								"description": "Session ID for fingerprint validation (required for GET)"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"call\",\n  \"params\": {\n    \"session_id\": \"{{session_id}}\"\n  }\n}"
-						},
 						"url": {
 							"raw": "{{odoo_base_url}}/api/v1/assignments/:assignment_id",
 							"host": [
@@ -1115,12 +1137,13 @@
 							{
 								"key": "Authorization",
 								"value": "Bearer {{access_token}}"
+							},
+							{
+								"key": "X-Openerp-Session-Id",
+								"value": "{{session_id}}",
+								"description": "Session ID for fingerprint validation (required for GET)"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"call\",\n  \"params\": {\n    \"session_id\": \"{{session_id}}\",\n    \"limit\": 10\n  }\n}"
-						},
 						"url": {
 							"raw": "{{odoo_base_url}}/api/v1/commissions",
 							"host": [
@@ -1154,6 +1177,11 @@
 							{
 								"key": "Authorization",
 								"value": "Bearer {{access_token}}"
+							},
+							{
+								"key": "X-Openerp-Session-Id",
+								"value": "{{session_id}}",
+								"description": "Session ID for fingerprint validation (required for GET)"
 							}
 						],
 						"url": {
