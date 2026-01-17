@@ -186,35 +186,35 @@
 
 ### Properties Domain E2E Test
 
-- [ ] T075 Create cypress/e2e/properties-dual-auth.cy.js with complete auth flow
-- [ ] T076 Add test: "should reject request without bearer token" for GET /api/v1/properties/{id}
-- [ ] T077 Add test: "should reject request without session_id" for GET /api/v1/properties/{id}
-- [ ] T078 Add test: "should succeed with valid bearer + session" for GET /api/v1/properties/{id}
-- [ ] T079 Add test: "should reject request with different User-Agent" for GET /api/v1/properties/{id}
+- [X] T075 Create cypress/e2e/properties-dual-auth.cy.js with complete auth flow
+- [X] T076 Add test: "should reject request without bearer token" for GET /api/v1/properties/{id}
+- [X] T077 Add test: "should reject request without session_id" for GET /api/v1/properties/{id}
+- [X] T078 Add test: "should succeed with valid bearer + session" for GET /api/v1/properties/{id}
+- [X] T079 Add test: "should reject request with different User-Agent" for GET /api/v1/properties/{id}
 
 ### Assignments Domain E2E Test
 
-- [ ] T080 Create cypress/e2e/assignments-dual-auth.cy.js with complete auth flow
-- [ ] T081 Add test: "should reject request without bearer token" for POST /api/v1/assignments
-- [ ] T082 Add test: "should reject request without session_id" for POST /api/v1/assignments
-- [ ] T083 Add test: "should succeed with valid bearer + session" for POST /api/v1/assignments
-- [ ] T084 Add test: "should reject request with different User-Agent" for POST /api/v1/assignments
+- [X] T080 Create cypress/e2e/assignments-dual-auth.cy.js with complete auth flow
+- [X] T081 Add test: "should reject request without bearer token" for POST /api/v1/assignments
+- [X] T082 Add test: "should reject request without session_id" for POST /api/v1/assignments
+- [X] T083 Add test: "should succeed with valid bearer + session" for POST /api/v1/assignments
+- [X] T084 Add test: "should reject request with different User-Agent" for POST /api/v1/assignments
 
 ### Commissions Domain E2E Test
 
-- [ ] T085 Create cypress/e2e/commissions-dual-auth.cy.js with complete auth flow
-- [ ] T086 Add test: "should reject request without bearer token" for POST /api/v1/commissions/calculate
-- [ ] T087 Add test: "should reject request without session_id" for POST /api/v1/commissions/calculate
-- [ ] T088 Add test: "should succeed with valid bearer + session" for POST /api/v1/commissions/calculate
-- [ ] T089 Add test: "should reject request with different User-Agent" for POST /api/v1/commissions/calculate
+- [X] T085 Create cypress/e2e/commissions-dual-auth.cy.js with complete auth flow
+- [X] T086 Add test: "should reject request without bearer token" for POST /api/v1/commissions/calculate
+- [X] T087 Add test: "should reject request without session_id" for POST /api/v1/commissions/calculate
+- [X] T088 Add test: "should succeed with valid bearer + session" for POST /api/v1/commissions/calculate
+- [X] T089 Add test: "should reject request with different User-Agent" for POST /api/v1/commissions/calculate
 
 ### Performance Domain E2E Test
 
-- [ ] T090 Create cypress/e2e/performance-dual-auth.cy.js with complete auth flow
-- [ ] T091 Add test: "should reject request without bearer token" for GET /api/v1/agents/{id}/performance
-- [ ] T092 Add test: "should reject request without session_id" for GET /api/v1/agents/{id}/performance
-- [ ] T093 Add test: "should succeed with valid bearer + session" for GET /api/v1/agents/{id}/performance
-- [ ] T094 Add test: "should reject request with different User-Agent" for GET /api/v1/agents/{id}/performance
+- [X] T090 Create cypress/e2e/performance-dual-auth.cy.js with complete auth flow
+- [X] T091 Add test: "should reject request without bearer token" for GET /api/v1/agents/{id}/performance
+- [X] T092 Add test: "should reject request without session_id" for GET /api/v1/agents/{id}/performance
+- [X] T093 Add test: "should succeed with valid bearer + session" for GET /api/v1/agents/{id}/performance
+- [X] T094 Add test: "should reject request with different User-Agent" for GET /api/v1/agents/{id}/performance
 
 **Checkpoint**: 5 E2E tests complete, all passing
 
