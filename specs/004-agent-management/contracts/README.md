@@ -94,19 +94,6 @@ openapi-generator-cli generate \
 - `GET /api/v1/commission-transactions` - Listar transações
 - `PUT /api/v1/commission-transactions/{id}/mark-paid` - Marcar como pago
 
-## Autenticação
-
-Todos os endpoints requerem autenticação dual (ADR-011):
-
-```bash
-# JWT Bearer Token
-curl -H "Authorization: Bearer <token>" \
-  http://localhost:8069/api/v1/agents
-
-# Session Cookie
-curl -b "session_id=<session_id>" \
-  http://localhost:8069/api/v1/agents
-```
 
 ## Exemplos de uso
 

@@ -132,18 +132,8 @@ Todos os endpoints (exceto OAuth token) **DEVEM** incluir os seguintes headers:
 
 **Para endpoints POST/PUT/PATCH (`type='json'`)**:
 
-Session ID vai no **body JSON**, não no header:
+Session ID vai no **body JSON** (formato direto, sem wrapper JSONRPC):
 
-```json
-{
-  "jsonrpc": "2.0",
-  "method": "call",
-  "params": {
-    "session_id": "{{session_id}}",
-    ...outros parâmetros
-  }
-}
-```
 
 ### 4. OAuth Token Endpoint
 
@@ -293,17 +283,7 @@ Cada endpoint **DEVE** ter descrição documentando:
 
 ### Collection Metadata
 
-```json
-{
-  "info": {
-    "_postman_id": "quicksol-api-v1.1",
-    "name": "Quicksol Real Estate API v1.1",
-    "description": "Complete API documentation...",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "version": "1.1.0"
-  }
-}
-```
+
 
 ### Endpoint GET Correto
 
@@ -333,28 +313,6 @@ Cada endpoint **DEVE** ter descrição documentando:
 
 ### Endpoint POST Correto
 
-```json
-{
-  "name": "Create Agent",
-  "request": {
-    "method": "POST",
-    "header": [
-      {"key": "Content-Type", "value": "application/json"},
-      {"key": "Authorization", "value": "Bearer {{access_token}}"},
-      {"key": "User-Agent", "value": "PostmanRuntime/7.26.8"}
-    ],
-    "body": {
-      "mode": "raw",
-      "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"call\",\n  \"params\": {\n    \"session_id\": \"{{session_id}}\",\n    \"name\": \"João Silva\",\n    \"creci\": \"F12345\"\n  }\n}"
-    },
-    "url": {
-      "raw": "{{base_url}}/api/v1/agents",
-      "host": ["{{base_url}}"],
-      "path": ["api", "v1", "agents"]
-    }
-  }
-}
-```
 
 ---
 

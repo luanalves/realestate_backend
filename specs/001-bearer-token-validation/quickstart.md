@@ -76,7 +76,7 @@ curl -X POST http://localhost:8069/api/v1/users/login \
 }
 ```
 
-**Note**: Session cookie automatically saved to `cookies.txt` for subsequent requests.
+**Important**: The `session_id` is returned in the JSON response body (the `"session_id"` field) and must be extracted from that response. The `-c cookies.txt` flag will save any Set-Cookie headers for subsequent requests, but the session_id value itself comes from the response body, not from cookies. Extract and store the `session_id` value for use in the `X-Session-ID` header in protected endpoints.
 
 ---
 

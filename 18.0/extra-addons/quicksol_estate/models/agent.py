@@ -246,15 +246,7 @@ class RealEstateAgent(models.Model):
     _sql_constraints = [
         ('cpf_company_unique',
          'UNIQUE(cpf, company_id)',
-         'CPF já cadastrado para esta imobiliária'),
-        
-        ('creci_company_unique',
-         'UNIQUE(creci_normalized, company_id) WHERE creci_normalized IS NOT NULL',
-         'CRECI já cadastrado para esta imobiliária'),
-        
-        ('user_unique',
-         'UNIQUE(user_id) WHERE user_id IS NOT NULL',
-         'Este usuário já está vinculado a outro agente')
+         'CPF já cadastrado para esta imobiliária')
     ]
     
     # ==================== COMPUTED FIELDS ====================
@@ -335,6 +327,21 @@ class RealEstateAgent(models.Model):
                         raise ValidationError(
                             _('CRECI %s já cadastrado para esta imobiliária') % agent.creci_normalized
                         )
+    
+    @api.constrains('user_id', 'company_id')
+    def _check_user_unique(self):
+        """Ensure user is not linked to multiple agents in the same company"""
+        for agent in self:
+            if agent.user_id:
+                duplicate = self.search([
+                    ('id', '!=', agent.id),
+                    ('user_id', '=', agent.user_id.id),
+                    ('company_id', '=', agent.company_id.id)
+                ], limit=1)
+                if duplicate:
+                    raise ValidationError(
+                        _('Este usuário já está vinculado a outro agente nesta imobiliária')
+                    )
     
     @api.constrains('email')
     def _check_email_format(self):

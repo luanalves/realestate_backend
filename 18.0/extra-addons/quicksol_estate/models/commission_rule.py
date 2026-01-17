@@ -93,7 +93,7 @@ class RealEstateCommissionRule(models.Model):
     currency_id = fields.Many2one(
         'res.currency',
         'Currency',
-        default=lambda self: self.env.ref('base.BRL').id,
+        default=lambda self: self._get_default_currency(),
         required=True,
         help='Currency for monetary fields (default: BRL - Brazilian Real)'
     )
@@ -298,6 +298,19 @@ class RealEstateCommissionRule(models.Model):
         if hasattr(user, 'estate_company_ids') and user.estate_company_ids:
             return user.estate_company_ids[0].id
         return None
+    
+    def _get_default_currency(self):
+        """
+        Get default currency for commission rules.
+        Tries to use BRL (Brazilian Real) as default, falls back to company currency.
+        """
+        try:
+            return self.env.ref('base.BRL').id
+        except ValueError:
+            # BRL currency not installed, fall back to company currency
+            if self.env.company.currency_id:
+                return self.env.company.currency_id.id
+            return None
     
     def name_get(self):
         """Custom display name for commission rules"""

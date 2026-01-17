@@ -238,14 +238,20 @@ class AgentPropertyAssignment(models.Model):
     def _check_company_consistency(self):
         """Ensure agent and property belong to same company"""
         for record in self:
-            if record.agent_id and record.property_id:
-                # Check if agent belongs to assignment's company
-                if record.company_id not in record.agent_id.company_ids:
+            if record.agent_id and record.property_id and record.company_id:
+                # Check if agent belongs to assignment's company using scalar ID comparison
+                assignment_company_id = record.company_id.id
+                agent_company_ids = record.agent_id.company_ids.ids
+                
+                if assignment_company_id not in agent_company_ids:
                     raise ValidationError(
                         f"Agent {record.agent_id.name} does not belong to company {record.company_id.name}"
                     )
-                # Check if property belongs to assignment's company
-                if record.company_id not in record.property_id.company_ids:
+                
+                # Check if property belongs to assignment's company using scalar ID comparison
+                property_company_ids = record.property_id.company_ids.ids
+                
+                if assignment_company_id not in property_company_ids:
                     raise ValidationError(
                         f"Property {record.property_id.name} does not belong to company {record.company_id.name}"
                     )

@@ -468,6 +468,9 @@ class AgentController(http.Controller):
 ```python
 # 18.0/extra-addons/quicksol_estate/migrations/1.0.2/post-migration.py
 from odoo import api, SUPERUSER_ID
+import logging
+
+_logger = logging.getLogger(__name__)
 
 def migrate(cr, version):
     """
@@ -477,27 +480,40 @@ def migrate(cr, version):
     1. Adds 'active' column if not exists (handled by Odoo automatically)
     2. Sets all existing agents to active=True
     3. Adds index on active field for performance
+    
+    Transaction-safe: Uses cr.commit() and cr.rollback() for data integrity.
     """
     env = api.Environment(cr, SUPERUSER_ID, {})
     
-    # Update all existing agents to active=True
-    cr.execute("""
-        UPDATE real_estate_agent
-        SET active = TRUE
-        WHERE active IS NULL;
-    """)
-    
-    # Create index on active field (if not auto-created)
-    cr.execute("""
-        CREATE INDEX IF NOT EXISTS real_estate_agent_active_idx
-        ON real_estate_agent (active);
-    """)
-    
-    # Optional: Create index on company relation for multi-tenancy
-    cr.execute("""
-        CREATE INDEX IF NOT EXISTS thedevkitchen_company_agent_rel_company_idx
-        ON thedevkitchen_company_agent_rel (company_id);
-    """)
+    try:
+        # Update all existing agents to active=True
+        cr.execute("""
+            UPDATE real_estate_agent
+            SET active = TRUE
+            WHERE active IS NULL;
+        """)
+        
+        # Create index on active field (if not auto-created)
+        cr.execute("""
+            CREATE INDEX IF NOT EXISTS real_estate_agent_active_idx
+            ON real_estate_agent (active);
+        """)
+        
+        # Optional: Create index on company relation for multi-tenancy
+        cr.execute("""
+            CREATE INDEX IF NOT EXISTS thedevkitchen_company_agent_rel_company_idx
+            ON thedevkitchen_company_agent_rel (company_id);
+        """)
+        
+        # Commit transaction if all statements succeed
+        cr.commit()
+        _logger.info('Migration: Soft-delete fields added to real_estate_agent successfully')
+        
+    except Exception as e:
+        # Rollback on any error to maintain data consistency
+        cr.rollback()
+        _logger.error('Migration failed: Unable to add soft-delete fields to real_estate_agent: %s', str(e))
+        raise
 ```
 
 #### 7. Testing Strategies for Soft-Delete

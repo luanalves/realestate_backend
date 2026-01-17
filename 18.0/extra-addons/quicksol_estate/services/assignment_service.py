@@ -48,7 +48,9 @@ class AssignmentService:
             company_id (int, optional): Company ID for additional validation
             
         Returns:
-            assignment: Created assignment record
+            tuple: (assignment_record, created) where:
+                - assignment_record: The created or updated assignment record
+                - created (bool): True if a new assignment was created, False if updated
             
         Raises:
             ValidationError: If agent or property doesn't exist
@@ -111,7 +113,7 @@ class AssignmentService:
                 'responsibility_type': responsibility_type,
                 'notes': notes,
             })
-            return existing_assignment
+            return (existing_assignment, False)  # Returns tuple: (assignment, created=False)
         
         # Create new assignment
         assignment = self.Assignment.create({
@@ -126,7 +128,7 @@ class AssignmentService:
             f'(type: {responsibility_type})'
         )
         
-        return assignment
+        return (assignment, True)  # Returns tuple: (assignment, created=True)
     
     def unassign_agent_from_property(self, assignment_id, company_id=None):
         """
@@ -276,14 +278,14 @@ class AssignmentService:
         
         for property_id in property_ids:
             try:
-                assignment = self.assign_agent_to_property(
+                assignment, created = self.assign_agent_to_property(
                     agent_id=agent_id,
                     property_id=property_id,
                     responsibility_type=responsibility_type,
                     company_id=company_id
                 )
                 
-                if assignment.create_date == assignment.write_date:
+                if created:
                     results['created'].append(assignment.id)
                 else:
                     results['updated'].append(assignment.id)

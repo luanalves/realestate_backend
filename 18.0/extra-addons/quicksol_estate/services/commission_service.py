@@ -15,7 +15,8 @@ ADRs: ADR-001 (Service Architecture), ADR-008 (Multi-tenancy)
 """
 
 from odoo import _
-from odoo.exceptions import ValidationError, UserError
+from odoo.exceptions import ValidationError, UserError, AccessError
+from odoo.sql_db import Cursor
 from datetime import datetime, date
 import logging
 import json
@@ -293,28 +294,43 @@ class CommissionService:
         created_transactions = []
         errors = []
         
-        for i, data in enumerate(transactions_data):
-            try:
-                transaction = self.create_commission_transaction(
-                    agent_id=data['agent_id'],
-                    transaction_type=data['transaction_type'],
-                    transaction_amount=data['transaction_amount'],
-                    transaction_date=data.get('transaction_date'),
-                    transaction_reference=data.get('transaction_reference'),
+        # Use savepoint for transactional integrity - all or nothing
+        savepoint = self.env.cr.savepoint()
+        try:
+            for i, data in enumerate(transactions_data):
+                try:
+                    transaction = self.create_commission_transaction(
+                        agent_id=data['agent_id'],
+                        transaction_type=data['transaction_type'],
+                        transaction_amount=data['transaction_amount'],
+                        transaction_date=data.get('transaction_date'),
+                        transaction_reference=data.get('transaction_reference'),
+                    )
+                    created_transactions.append(transaction)
+                except (ValidationError, UserError) as e:
+                    error_msg = f'Transaction {i+1}: {str(e)}'
+                    errors.append(error_msg)
+                    _logger.error('Bulk transaction creation failed: %s', error_msg)
+            
+            if errors:
+                # Rollback all changes if any error occurred
+                savepoint.__exit__(True, None, None)
+                raise UserError(
+                    _('Failed to create %(count)s transaction(s):\n%(errors)s') % {
+                        'count': len(errors),
+                        'errors': '\n'.join(errors)
+                    }
                 )
-                created_transactions.append(transaction)
-            except (ValidationError, UserError) as e:
-                error_msg = f'Transaction {i+1}: {str(e)}'
-                errors.append(error_msg)
-                _logger.error('Bulk transaction creation failed: %s', error_msg)
-        
-        if errors:
-            raise UserError(
-                _('Failed to create %(count)s transaction(s):\n%(errors)s') % {
-                    'count': len(errors),
-                    'errors': '\n'.join(errors)
-                }
-            )
+            
+            # Commit the savepoint if all transactions succeeded
+            savepoint.__exit__(False, None, None)
+        except Exception:
+            # Ensure savepoint is cleaned up on unexpected errors
+            try:
+                savepoint.__exit__(True, None, None)
+            except Exception:
+                pass
+            raise
         
         _logger.info(
             'Bulk created %s commission transactions successfully',
@@ -326,6 +342,9 @@ class CommissionService:
     def get_agent_commission_summary(self, agent_id, date_from=None, date_to=None):
         """
         Get commission summary for an agent within date range.
+        
+        Enforces company isolation: verifies the agent belongs to a company
+        accessible to the current user before returning commission data.
         
         Args:
             agent_id: int - Agent ID
@@ -340,6 +359,9 @@ class CommissionService:
                 - pending_commission: float
                 - transactions: list of transaction records
                 
+        Raises:
+            AccessError: If the agent's company is not accessible to current user
+            
         Example:
             >>> service = CommissionService(env)
             >>> summary = service.get_agent_commission_summary(
@@ -349,6 +371,19 @@ class CommissionService:
             ... )
             >>> print(f"Total commission: R$ {summary['total_commission']:.2f}")
         """
+        # Load agent and verify company isolation
+        agent = self.env['real.estate.agent'].browse(agent_id)
+        
+        if not agent.exists():
+            raise ValidationError(_('Agent with ID %s does not exist') % agent_id)
+        
+        # Check if agent's company is accessible to current user
+        user_accessible_companies = self.env.user.company_ids
+        if user_accessible_companies and agent.company_id not in user_accessible_companies:
+            raise AccessError(
+                _('You do not have access to the company of agent %s') % agent.name
+            )
+        
         domain = [('agent_id', '=', agent_id)]
         
         if date_from:

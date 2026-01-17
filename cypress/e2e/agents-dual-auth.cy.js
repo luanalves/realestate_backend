@@ -19,11 +19,31 @@ describe('Agents Domain - Dual Authentication', () => {
   const testUserAgent = 'CypressTest/1.0 (E2E Testing)';
   const differentUserAgent = 'DifferentClient/2.0 (Attack Simulation)';
   
+  // Configuration with fail-fast validation for required env vars
   const baseUrl = Cypress.env('ODOO_BASE_URL') || 'http://localhost:8069';
-  const clientId = Cypress.env('OAUTH_CLIENT_ID') || 'client_EEQix5KVT6JsSUARsdUGnw';
-  const clientSecret = Cypress.env('OAUTH_CLIENT_SECRET') || 'Xu5l7zL9Je6HKcx6EbJJiLwy9JAA0QHozcDE37TGjjC5skPEWfkigZPouqTWzDBG';
-  const testEmail = Cypress.env('TEST_USER_A_EMAIL') || 'joao@imobiliaria.com';
-  const testPassword = Cypress.env('TEST_USER_A_PASSWORD') || 'test123';
+  
+  // Auth-related values must come from environment - no hardcoded fallbacks
+  const clientId = Cypress.env('OAUTH_CLIENT_ID');
+  const clientSecret = Cypress.env('OAUTH_CLIENT_SECRET');
+  const testEmail = Cypress.env('TEST_USER_A_EMAIL');
+  const testPassword = Cypress.env('TEST_USER_A_PASSWORD');
+  
+  // Validate required env vars are present
+  before(() => {
+    const missingVars = [];
+    if (!clientId) missingVars.push('OAUTH_CLIENT_ID');
+    if (!clientSecret) missingVars.push('OAUTH_CLIENT_SECRET');
+    if (!testEmail) missingVars.push('TEST_USER_A_EMAIL');
+    if (!testPassword) missingVars.push('TEST_USER_A_PASSWORD');
+    
+    if (missingVars.length > 0) {
+      throw new Error(
+        `Missing required environment variables for dual-auth tests:\n` +
+        `${missingVars.map(v => `  - ${v}`).join('\n')}\n` +
+        `Please configure these values in cypress.env.json or set them as environment variables.`
+      );
+    }
+  });
 
   before(() => {
     cy.log('🔐 Phase 1: Get OAuth Token');

@@ -49,7 +49,8 @@ def require_jwt(func):
             app = app_model.search([('client_id', '=', payload.get('client_id'))], limit=1)
             
             if not app:
-                _logger.warning(f"JWT valid but application not found: {payload.get('client_id')}")
+                client_id = payload.get('client_id', '')
+                _logger.warning("JWT valid but application not found: %s", repr(client_id)[:100])
                 return error_response(401, 'Invalid token')
             
             # Inject token payload into request

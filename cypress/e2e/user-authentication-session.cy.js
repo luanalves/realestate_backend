@@ -35,6 +35,7 @@ describe('User Authentication - Bearer Token and Session Validation (T023)', () 
       `
     }).then((result) => {
       const appId = result.rows[0]?.id || 1;
+      const token = `cypress-e2e-token-${Date.now()}`;
 
       // Create OAuth token
       cy.task('db:query', {
@@ -44,8 +45,8 @@ describe('User Authentication - Bearer Token and Session Validation (T023)', () 
             revoked, create_date, write_date, create_uid, write_uid
           )
           VALUES (
-            ${appId}, 
-            'cypress-e2e-token-${Date.now()}', 
+            $1, 
+            $2, 
             'Bearer', 
             NOW() + INTERVAL '24 hours',
             false,
@@ -53,9 +54,10 @@ describe('User Authentication - Bearer Token and Session Validation (T023)', () 
           )
           ON CONFLICT DO NOTHING
           RETURNING access_token;
-        `
+        `,
+        params: [appId, token]
       }).then((result) => {
-        bearerToken = result.rows[0]?.access_token || 'cypress-e2e-token';
+        bearerToken = result.rows[0]?.access_token || token;
         cy.log(`Bearer token created: ${bearerToken}`);
       });
     });
@@ -74,16 +76,17 @@ describe('User Authentication - Bearer Token and Session Validation (T023)', () 
           create_date, write_date, create_uid, write_uid
         )
         VALUES (
-          '${testUser.email}',
-          '${testUser.email}',
-          crypt('${testUser.password}', gen_salt('bf', 12)),
-          '${testUser.name}',
+          $1,
+          $2,
+          crypt($3, gen_salt('bf', 12)),
+          $4,
           true,
           NOW(), NOW(), 2, 2
         )
         ON CONFLICT (login) DO NOTHING
         RETURNING id;
-      `
+      `,
+      params: [testUser.email, testUser.email, testUser.password, testUser.name]
     }).then((result) => {
       testUser.id = result.rows[0]?.id;
       cy.log(`Test user created: ${testUser.email} (ID: ${testUser.id})`);
@@ -94,11 +97,20 @@ describe('User Authentication - Bearer Token and Session Validation (T023)', () 
     // Cleanup: Remove test data
     if (testUser?.id) {
       cy.task('db:query', {
-        query: `
-          DELETE FROM res_users WHERE id = ${testUser.id};
-          DELETE FROM thedevkitchen_api_session WHERE user_id = ${testUser.id};
-          DELETE FROM thedevkitchen_oauth_token WHERE access_token = '${bearerToken}';
-        `
+        query: `DELETE FROM thedevkitchen_api_session WHERE user_id = $1;`,
+        params: [testUser.id]
+      });
+
+      cy.task('db:query', {
+        query: `DELETE FROM res_users WHERE id = $1;`,
+        params: [testUser.id]
+      });
+    }
+
+    if (bearerToken) {
+      cy.task('db:query', {
+        query: `DELETE FROM thedevkitchen_oauth_token WHERE access_token = $1;`,
+        params: [bearerToken]
       });
     }
   });

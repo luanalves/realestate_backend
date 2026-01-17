@@ -181,6 +181,14 @@ class AgentDataMigration:
         if null_count > 0:
             _logger.info(f'Setting active=True for {null_count} agents with NULL status')
             
+            # Select IDs to be updated before modifying
+            select_query = """
+                SELECT id FROM real_estate_agent
+                WHERE active IS NULL
+            """
+            self.env.cr.execute(select_query)
+            affected_ids = [row[0] for row in self.env.cr.fetchall()]
+            
             # Update using SQL for efficiency
             update_query = """
                 UPDATE real_estate_agent
@@ -189,7 +197,12 @@ class AgentDataMigration:
             """
             
             self.env.cr.execute(update_query)
-            _logger.info(f'Updated {null_count} agents to active=True')
+            
+            # Invalidate cache for updated records so ORM sees new values
+            if affected_ids:
+                self.Agent.invalidate_cache(ids=affected_ids, fields=['active'])
+            
+            _logger.info(f'Updated {null_count} agents to active=True and invalidated cache')
         else:
             _logger.info('All agents have active status set')
     

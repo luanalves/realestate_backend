@@ -437,8 +437,9 @@ class AgentApiController(http.Controller):
             try:
                 data = json.loads(request.httprequest.data.decode('utf-8'))
                 reason = data.get('reason')
-            except:
-                pass
+            except (json.JSONDecodeError, UnicodeDecodeError) as e:
+                _logger.warning('Failed to parse deactivation request body: %s', str(e), exc_info=True)
+                reason = None
             
             # Get agent
             Agent = request.env['real.estate.agent']

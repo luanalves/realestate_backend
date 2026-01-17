@@ -123,19 +123,21 @@ Line 179: _logger.info(f'[SESSION DEBUG] Using session_id from headers/cookies..
 
 ```bash
 # OAuth 2.0 Credentials
-OAUTH_CLIENT_ID=client_EEQix5KVT6JsSUARsdUGnw
-OAUTH_CLIENT_SECRET=Xu5l7zL9Je6HKcx6EbJJiLwy9JAA0QHozcDE37TGjjC5skPEWfkigZPouqTWzDBG
+OAUTH_CLIENT_ID=<see .env file>
+OAUTH_CLIENT_SECRET=<see .env file>
 
 # Test Users
-TEST_USER_A_EMAIL=joao@imobiliaria.com
-TEST_USER_A_PASSWORD=test123
+TEST_USER_A_EMAIL=<see .env file>
+TEST_USER_A_PASSWORD=<see .env file>
 
-TEST_USER_B_EMAIL=pedro@imobiliaria.com
-TEST_USER_B_PASSWORD=test123
+TEST_USER_B_EMAIL=<see .env file>
+TEST_USER_B_PASSWORD=<see .env file>
 
 # Odoo Base URL
 ODOO_BASE_URL=http://localhost:8069
 ```
+
+> **⚠️ Note**: Real OAuth credentials, test user email addresses, and passwords are stored in the `18.0/.env` file. For security reasons, they are not exposed in this documentation. Always retrieve actual values from the `.env` file or your secure credential management system.
 
 ---
 

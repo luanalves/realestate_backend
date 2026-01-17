@@ -312,28 +312,59 @@ class AgentAPI(http.Controller):
             return error_response(400, str(e))
 ```
 
-### 6. Database Schema
+### 6. Database Schema & Uniqueness Enforcement
+
+**Important**: The CRECI uniqueness constraint is enforced primarily through **application-level validation** in the `real.estate.agent` model, not purely at the database level.
+
+#### Current Agent Model Structure
+
+The `real.estate.agent` model uses:
+- **`company_id`** (Many2one to `thedevkitchen.estate.company`): The primary/current company
+- **`company_ids`** (Many2many, deprecated): Legacy field for backward compatibility
+
+#### CRECI Uniqueness Enforcement
+
+Uniqueness per company is enforced via the `_check_creci_format()` constraint method in the Agent model:
+
+```python
+@api.constrains('creci', 'creci_normalized', 'company_id')
+def _check_creci_format(self):
+    """Validate CRECI format and uniqueness"""
+    for agent in self:
+        if agent.creci:
+            # Validate format
+            normalized = CreciValidator.normalize(agent.creci)
+            CreciValidator.validate(normalized)
+            
+            # Check uniqueness within company
+            if agent.company_id and agent.creci_normalized:
+                duplicate = self.search([
+                    ('id', '!=', agent.id),
+                    ('creci_normalized', '=', agent.creci_normalized),
+                    ('company_id', '=', agent.company_id.id)
+                ], limit=1)
+                if duplicate:
+                    raise ValidationError(
+                        _('CRECI %s já cadastrado para esta imobiliária') % agent.creci_normalized
+                    )
+```
+
+#### Supporting Database Indexes (Optional)
+
+While uniqueness is enforced at the application level, the following indexes may improve performance for lookups:
 
 ```sql
--- PostgreSQL migration
-ALTER TABLE real_estate_agent 
-ADD COLUMN creci VARCHAR(20);
-
--- Partial unique index (ignores NULL values)
-CREATE UNIQUE INDEX idx_agent_creci_company 
-ON real_estate_agent (creci, company_id) 
-WHERE creci IS NOT NULL;
-
--- Index for lookups
+-- PostgreSQL indexes (optional, for lookup performance)
 CREATE INDEX idx_agent_creci 
 ON real_estate_agent (creci) 
 WHERE creci IS NOT NULL;
+
+CREATE INDEX idx_agent_creci_company 
+ON real_estate_agent (creci, company_id) 
+WHERE creci IS NOT NULL;
 ```
 
-**Rationale for partial index**:
-- Unique constraint only applies when CRECI is provided
-- Allows multiple agents with NULL CRECI
-- Enforces uniqueness per company (many-to-many handled in application logic)
+**Note**: These are performance indexes only. They do NOT enforce uniqueness due to the dynamic nature of agent/company relationships. Uniqueness is enforced by the `_check_creci_format()` constraint in the Agent model.
 
 ### 7. Edge Cases & Special Scenarios
 
