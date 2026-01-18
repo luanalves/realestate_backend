@@ -660,7 +660,7 @@ When implementing new features, follow this response structure:
   - Added detailed examples of correct vs wrong menu structure
   - Updated Problem #6 to include top-level menu creation issue
   - Added menu parent verification to checklist
-- **2025-12-02 (v2.2)**: Added clean code and comments policy:
+- **2025-10-14 (v2.2)**: Added clean code and comments policy:
   - **NEW SECTION**: Code Quality and Comments (section 11)
   - Object-oriented design principles
   - Comments policy: only when truly necessary
@@ -668,6 +668,16 @@ When implementing new features, follow this response structure:
   - Examples of good vs bad comment usage
   - Rationale: properly designed OOP code doesn't need excessive comments
   - Updated Context section to include "Clean Code" as core requirement
+- **2026-01-17**: Cross-reference to ADR-018:
+  - Added reference to ADR-018 for API input validation patterns
+  - Validation requirements apply to both models and controllers
 
 ---
+
+## Referências Cruzadas
+
+- [ADR-018: Input Validation and Schema Validation for REST APIs](ADR-018-input-validation-schema-validation-rest-apis.md) - Detalhes sobre como implementar validação de entrada em endpoints da API
+
+---
+
 **Note**: This ADR is a living document and should be updated when guidelines evolve or new requirements emerge. All team members should review changes and provide feedback.

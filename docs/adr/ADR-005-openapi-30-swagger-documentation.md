@@ -136,3 +136,9 @@ Parâmetros de path e query devem ter `example`:
 5. **Contract testing facilitado**: Testes podem validar se API está de acordo com a especificação
 6. **Onboarding mais rápido**: Novos desenvolvedores entendem a API pela documentação interativa
 7. **Consistência**: Todos os endpoints seguem o mesmo padrão de documentação
+
+## Referências
+
+- [OpenAPI 3.0 Specification](https://spec.openapis.org/oas/v3.0.3)
+- [JSON Schema Specification](https://json-schema.org/)
+- [ADR-018: Input Validation and Schema Validation for REST APIs](ADR-018-input-validation-schema-validation-rest-apis.md) - Complementa ADR-005 com validação runtime dos schemas
