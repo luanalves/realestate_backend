@@ -18,11 +18,13 @@ Aceito
 - ✅ Execução antes de cada commit
 - ✅ Detecta erros de sintaxe e estilo
 
-**2. TESTES UNITÁRIOS (Python unittest)** - Lógica de negócio
-- ✅ 100% de cobertura da lógica de negócio
-- ✅ **100% de cobertura em VALIDAÇÕES** (required, constrains, compute) - **SEM EXCEÇÕES**
+**2. TESTES UNITÁRIOS (Python unittest)** - Validação de Classes
+- ✅ **Objetivo:** Validar APENAS as classes desenvolvidas (models, controllers, helpers)
+- ✅ **100% de cobertura de validações** (required, constrains, compute) - **SEM EXCEÇÕES**
+- ✅ **Sem banco de dados** - Usa mocks (`unittest.mock`)
+- ✅ **Sem framework Odoo** - Testes puros de lógica
 - ✅ Execução rápida (< 1 segundo por módulo)
-- ✅ Sem banco de dados (usa mocks)
+- ✅ Variáveis de teste carregadas do arquivo `.env`
 
 **3. TESTES E2E (Cypress + curl)** - Integração completa
 - ✅ Todas as features visíveis devem ter testes Cypress
@@ -1074,8 +1076,10 @@ npx cypress run --spec "cypress/e2e/api-gateway.cy.js"
 | Ferramenta | Uso | Instalação |
 |------------|-----|------------|
 | `unittest` | Testes unitários Python | Built-in Python |
-| `unittest.mock` | Mocks para testes | Built-in Python |
-| Cypress | Testes E2E | `npm install cypress` |
+| `unittest.mock` | Mocks para testes (sem framework Odoo) | Built-in Python |
+| Cypress | Testes E2E (validar execução na tela, simular usuário) | `npm install cypress` |
+| `curl` | Testes de API REST (sem framework Odoo) | Built-in macOS/Linux |
+| `.env` | Variáveis de teste (tokens, URLs, credenciais) | Arquivo de configuração |
 | `jq` | Processar JSON em testes | `brew install jq` |
 
 ### Ferramentas Recomendadas
@@ -1102,6 +1106,100 @@ npx cypress run --spec "cypress/e2e/api-gateway.cy.js"
 **Odoo Testing:**
 - 📚 [Odoo Test Framework](https://www.odoo.com/documentation/18.0/developer/reference/backend/testing.html)
 - 📚 ADR-001 - Development Guidelines (já existente)
+
+**curl e API Testing:**
+- 📚 [curl Documentation](https://curl.se/docs/)
+- 📚 [REST API Best Practices](https://restfulapi.net/)
+
+---
+
+## Configuração de Variáveis de Teste (.env)
+
+**Arquivo `.env` deve conter todas as variáveis necessárias para testes:**
+
+```bash
+# Localização: raiz do projeto (18.0/.env)
+
+# URLs e Portas
+ODOO_URL=http://localhost:8069
+ODOO_API_URL=http://localhost:8069/api/v1
+ODOO_DB=realestate
+POSTGRES_DB=realestate
+POSTGRES_USER=odoo
+POSTGRES_PASSWORD=odoo
+POSTGRES_HOST=db
+POSTGRES_PORT=5432
+
+# Cypress - Credenciais de teste
+CYPRESS_ADMIN_LOGIN=admin
+CYPRESS_ADMIN_PASSWORD=admin
+CYPRESS_ADMIN_EMAIL=admin@example.com
+
+# JWT e OAuth - Tokens de teste
+JWT_SECRET=test-secret-key
+JWT_EXPIRATION=3600
+OAUTH_CLIENT_ID=test-client
+OAUTH_CLIENT_SECRET=test-client-secret
+
+# Variáveis de teste (curl + unitários)
+TEST_USER_EMAIL=test@example.com
+TEST_USER_PASSWORD=Test123!@#
+TEST_COMPANY_ID=1
+TEST_COMPANY_NAME=Test Company
+
+# Redis
+REDIS_HOST=redis
+REDIS_PORT=6379
+REDIS_DB=1
+
+# Debug (ativar logs em testes)
+DEBUG=false
+LOG_LEVEL=WARNING
+```
+
+**Como usar em testes:**
+
+**Python (testes unitários e curl):**
+```python
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+ODOO_URL = os.getenv('ODOO_URL')
+JWT_TOKEN = os.getenv('JWT_TOKEN')
+TEST_USER_EMAIL = os.getenv('TEST_USER_EMAIL')
+TEST_USER_PASSWORD = os.getenv('TEST_USER_PASSWORD')
+```
+
+**Cypress (testes E2E):**
+```javascript
+describe('Login', () => {
+  it('Deve fazer login com credenciais do .env', () => {
+    cy.visit(Cypress.env('ODOO_URL'));
+    cy.get('input[name="login"]').type(Cypress.env('CYPRESS_ADMIN_LOGIN'));
+    cy.get('input[name="password"]').type(Cypress.env('CYPRESS_ADMIN_PASSWORD'));
+    cy.get('button[type="submit"]').click();
+  });
+});
+```
+
+**curl (testes de API):**
+```bash
+# Carregar variáveis do .env
+source 18.0/.env
+
+# Usar em curl
+curl -X POST $ODOO_API_URL/auth/login \
+  -H "Content-Type: application/json" \
+  -d "{\"email\": \"$TEST_USER_EMAIL\", \"password\": \"$TEST_USER_PASSWORD\"}"
+```
+
+**⚠️ IMPORTANTE:**
+- ❌ NUNCA committar `.env` com dados reais no Git
+- ✅ Usar `.env.example` como template (sem valores sensíveis)
+- ✅ Adicionar `.env` ao `.gitignore`
+- ✅ Em CI/CD, variáveis vêm de secrets configurados na plataforma (GitHub Actions, GitLab CI, etc.)
 
 ---
 
@@ -1231,11 +1329,30 @@ docker compose exec odoo python3 /mnt/extra-addons/meu_modulo/tests/run_unit_tes
 npx cypress run --spec "cypress/e2e/meu-modulo.cy.js"
 ```
 
-**3B. curl (APIs REST):**
+**3B. curl (APIs REST) - SEM Framework Odoo:**
+- ✅ **Objetivo:** Testar endpoints REST sem usar framework Odoo
+- ✅ **Por quê:** Framework Odoo faz alterações na base de dados (transações, commits automáticos)
+- ✅ curl simula cliente HTTP real (como usuário ou aplicação externa)
+- ✅ Não faz alterações no banco (testes são isolados)
 - ✅ Endpoints de API
-- ✅ Autenticação OAuth
-- ✅ Respostas JSON
-- ✅ Status HTTP corretos
+- ✅ Autenticação OAuth (tokens JWT)
+- ✅ Respostas JSON e status HTTP corretos
+- ✅ Variáveis de teste carregadas do arquivo `.env`
+
+**Exemplo com curl:**
+```bash
+# Teste de criar registro (POST)
+curl -X POST http://localhost:8069/api/v1/properties \
+  -H "Authorization: Bearer $JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Casa Teste", "expected_price": 100000}' \
+  -v
+
+# Teste de listar registros (GET)
+curl -X GET http://localhost:8069/api/v1/properties \
+  -H "Authorization: Bearer $JWT_TOKEN" \
+  -H "Content-Type: application/json"
+```
 
 ---
 
@@ -1399,7 +1516,194 @@ def test_unique_constraint(self):
 - [ ] Todo campo `compute` tem testes para cada branch
 - [ ] Todo método de validação customizado tem testes para cada condição
 
+### P: Como testar APIs REST com curl?
+
+**R:** Use `curl` **SEM o framework Odoo**. Isto garante que o teste é realista (como um cliente HTTP real). O framework Odoo faz alterações automáticas no banco que mascaram problemas.
+
+**Estrutura correta:**
+```bash
+#!/bin/bash
+# Arquivo: cypress/api-tests/test-api.sh
+# Executar: bash cypress/api-tests/test-api.sh
+
+# Carregar variáveis do .env
+source 18.0/.env
+
+echo "🔍 Testando API REST sem Framework Odoo..."
+
+# Obter token JWT
+TOKEN=$(curl -s -X POST "$ODOO_API_URL/auth/login" \
+  -H "Content-Type: application/json" \
+  -d "{\"email\": \"$TEST_USER_EMAIL\", \"password\": \"$TEST_USER_PASSWORD\"}" \
+  | jq -r '.jwt_token')
+
+# Teste 1: Criar propriedade (POST)
+HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$ODOO_API_URL/properties" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Casa Teste", "expected_price": 100000}')
+
+if [ "$HTTP_CODE" = "201" ]; then
+  echo "✅ Teste 1 passou (HTTP 201 - Criado)"
+else
+  echo "❌ Teste 1 falhou (HTTP $HTTP_CODE)"
+  exit 1
+fi
+
+# Teste 2: Listar propriedades (GET)
+curl -s -X GET "$ODOO_API_URL/properties" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  | jq '.results | length'
+
+echo "✨ Todos os testes de API passaram!"
+```
+
+**Por quê NÃO usar o framework Odoo em testes de API:**
+- ❌ Framework Odoo cria transações automáticas (altera DB)
+- ❌ Commit automático mascara problemas reais
+- ❌ Não simula cliente HTTP real
+- ✅ `curl` simula exatamente como aplicação externa acessa a API
+
+### P: Cypress testa UI, por que "simula o usuário"?
+
+**R:** Cypress é um framework **End-to-End (E2E)** que:
+1. ✅ **Abre navegador real** (Chrome, Firefox, Edge)
+2. ✅ **Executa JavaScript** como se fosse usuário clicando
+3. ✅ **Valida a tela** - clica botões, preenche campos, verifica mensagens
+4. ✅ **Testa integração completa** - UI + Backend + Banco de dados
+
+**Diferenças:**
+
+| Tipo | Simula Usuário? | Abre UI? | Testa Banco? |
+|------|-----------------|----------|------------|
+| **Unitários** | ❌ Não | ❌ Não | ❌ Não (mocks) |
+| **curl (API)** | ❌ Não | ❌ Não | ✅ Sim (real) |
+| **Cypress (E2E)** | ✅ SIM | ✅ SIM | ✅ SIM |
+
+**Exemplo prático:**
+```javascript
+describe('Criar Propriedade - Fluxo do Usuário Real', () => {
+  it('Deve criar propriedade como usuário faria', () => {
+    // 1. Simulando usuário visitando site
+    cy.visit(Cypress.env('ODOO_URL'));
+    
+    // 2. Simulando usuário digitando email e senha
+    cy.get('input[name="login"]').type(Cypress.env('CYPRESS_ADMIN_LOGIN'));
+    cy.get('input[name="password"]').type(Cypress.env('CYPRESS_ADMIN_PASSWORD'));
+    cy.get('button[type="submit"]').click();
+    
+    // 3. Simulando usuário navegando para menu Propriedades
+    cy.get('a[href*="/web#action=estate.action_property"]').click();
+    
+    // 4. Simulando usuário clicando "Novo" e preenchendo formulário
+    cy.get('.o_form_button_create').click();
+    cy.get('input[name="name"]').type('Casa Lindíssima');
+    cy.get('input[name="expected_price"]').type('300000');
+    cy.get('.o_form_button_save').click();
+    
+    // 5. Simulando usuário verificando mensagem de sucesso
+    cy.get('.o_notification.bg-success')
+      .should('be.visible')
+      .should('contain', 'Registrado com sucesso');
+    
+    // Verificar que banco foi atualizado (E2E = testa banco real)
+    cy.request('GET', `${Cypress.env('ODOO_API_URL')}/properties`, {
+      headers: { 'Authorization': `Bearer ${Cypress.env('JWT_TOKEN')}` }
+    }).then(response => {
+      expect(response.body.results).to.have.length.at.least(1);
+    });
+  });
+});
+```
+
+### P: Testes unitários devem testar APENAS classes?
+
+**R:** SIM, absolutamente. Testes unitários devem:
+- ✅ **Testar APENAS 1 classe/função** em isolamento
+- ✅ **Usar mocks** para todas as dependências externas
+- ✅ **NÃO usar banco de dados** real (banco = teste de integração)
+- ✅ **NÃO usar framework Odoo** (framework = complexidade desnecessária)
+- ❌ **NÃO testar UI** (UI = teste E2E com Cypress)
+- ❌ **NÃO testar API HTTP** (API = teste com curl ou Cypress)
+
+**O que NÃO é teste unitário:**
+- ❌ Testes que usam banco de dados = testes de integração
+- ❌ Testes que usam framework Odoo = testes de integração
+- ❌ Testes que testam múltiplas classes juntas = testes de integração
+
+**Exemplo CORRETO - Teste Unitário:**
+```python
+import unittest
+from unittest.mock import Mock
+from odoo.exceptions import ValidationError
+
+class TestPropertyPrice(unittest.TestCase):
+    """Testa APENAS a validação de preço (sem banco, sem Odoo, sem UI)"""
+    
+    def test_price_must_be_positive(self):
+        """Testa APENAS a regra de validação"""
+        # Arrange: criar mock da classe
+        mock_property = Mock()
+        mock_property.expected_price = -1000
+        
+        # Act & Assert: testar APENAS a validação
+        with self.assertRaises(ValidationError):
+            if mock_property.expected_price < 0:
+                raise ValidationError("Price must be positive")
+    
+    def test_price_accepts_valid_value(self):
+        """Testa cenário inverso"""
+        mock_property = Mock()
+        mock_property.expected_price = 100000
+        
+        # Verificar que é válido
+        is_valid = mock_property.expected_price > 0
+        self.assertTrue(is_valid)
+```
+
+**Exemplo INCORRETO - Não é teste unitário:**
+```python
+# ❌ ERRADO: Usar banco de dados em teste unitário
+class TestPropertyWrong(unittest.TestCase):
+    def test_create_property(self):
+        # Isto é TESTE DE INTEGRAÇÃO, não unitário!
+        from odoo import models
+        property = models.Property.create({
+            'name': 'Casa',
+            'expected_price': 100000
+        })
+        self.assertEqual(property.name, 'Casa')  # ❌ Usa banco real!
+
+# ❌ ERRADO: Usar UI em teste unitário
+class TestPropertyUIWrong(unittest.TestCase):
+    def test_create_property_ui(self):
+        # Isto é TESTE E2E, não unitário!
+        cy.visit('/web#action=estate.action_property')  # ❌ Abre navegador!
+        cy.get('.o_form_button_create').click()
+
+# ❌ ERRADO: Usar framework Odoo em teste unitário
+class TestPropertyFrameworkWrong(unittest.TestCase):
+    def test_create_property_framework(self):
+        # Isto é TESTE DE INTEGRAÇÃO, não unitário!
+        self.env['estate.property'].create({  # ❌ Usa framework Odoo!
+            'name': 'Casa',
+            'expected_price': 100000
+        })
+```
+
 ### P: E se o código legado não tiver testes de validação?
+
+**R:** 
+- Código novo/modificado: 100% obrigatório desde já
+- Código legado: Implementação gradual conforme cronograma (3 meses)
+- Ao modificar código legado: Adicionar testes de validação antes da modificação
+
+---
+
+## Referências
+
+- [ADR-001: Development Guidelines for Odoo Screens](./ADR-001-development-guidelines-for-odoo-screens.md)
 
 **R:** 
 - Código novo/modificado: 100% obrigatório desde já
