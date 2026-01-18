@@ -46,6 +46,7 @@ Technical Details:
     'data': [
         'security/security.xml',
         'security/ir.model.access.csv',
+        'data/auth_endpoints_data.xml',
         'views/menu_root.xml',
         'views/oauth_application_views.xml',
         'views/oauth_token_views.xml',

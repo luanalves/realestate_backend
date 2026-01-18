@@ -37,6 +37,10 @@ from . import test_company_unit
 from . import test_agent_unit
 from . import test_utils_unit
 from . import test_odoo_bridge
+from . import test_agent_crud
+from . import test_assignment
+from . import test_commission_calculation
+from . import test_performance
 
 # HTTP/API integration tests (tagged post_install)
 from .api import test_property_api

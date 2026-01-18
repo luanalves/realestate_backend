@@ -24,9 +24,14 @@ class TestPropertyAPIAuth(HttpCase):
             'name': 'Test Auth App'
         })
         
-        # Get client secret
+        # Get client secret from cache using correct cache key
         from odoo.addons.thedevkitchen_apigateway.models.oauth_application import _PLAINTEXT_CACHE
-        cls.client_secret = _PLAINTEXT_CACHE.get(cls.oauth_app.client_id)
+        cache_key = f'oauth_app_{cls.oauth_app.id}_plaintext'
+        cached_data = _PLAINTEXT_CACHE.get(cache_key)
+        if cached_data:
+            cls.client_secret, _ = cached_data
+        else:
+            raise Exception(f"Client secret not found in cache for application {cls.oauth_app.id}")
         
         # Create test property
         cls.property_type = cls.env['real.estate.property.type'].create({
@@ -69,6 +74,7 @@ class TestPropertyAPIAuth(HttpCase):
     def _get_access_token(self):
         """Helper to get valid access token"""
         response = self.url_open('/api/v1/auth/token', data=json.dumps({
+            'grant_type': 'client_credentials',
             'client_id': self.oauth_app.client_id,
             'client_secret': self.client_secret
         }), headers={'Content-Type': 'application/json'})
@@ -174,14 +180,14 @@ class TestPropertyAPIAuth(HttpCase):
     def test_09_token_expiration(self):
         """Expired token should return 401"""
         # Create expired token
-        import datetime
+        from odoo import fields
+        from datetime import timedelta
         expired_token = self.env['thedevkitchen.oauth.token'].create({
             'application_id': self.oauth_app.id,
             'token_type': 'access',
             'access_token': 'expired_token_123',
             'refresh_token': 'refresh_123',
-            'expires_in': 3600,
-            'created_at': (datetime.datetime.now() - datetime.timedelta(hours=2)).isoformat(),
+            'expires_at': fields.Datetime.now() - timedelta(hours=2),
             'revoked': False
         })
         
@@ -195,12 +201,14 @@ class TestPropertyAPIAuth(HttpCase):
     def test_10_revoked_token(self):
         """Revoked token should return 401"""
         # Create revoked token
+        from odoo import fields
+        from datetime import timedelta
         revoked_token = self.env['thedevkitchen.oauth.token'].create({
             'application_id': self.oauth_app.id,
             'token_type': 'access',
             'access_token': 'revoked_token_123',
             'refresh_token': 'refresh_456',
-            'expires_in': 3600,
+            'expires_at': fields.Datetime.now() + timedelta(seconds=3600),
             'revoked': True
         })
         
@@ -248,7 +256,7 @@ class TestPropertyAPIAuth(HttpCase):
             headers=headers
         )
         
-        self.assertEqual(response.headers.get('Content-Type'), 'application/json')
+        self.assertTrue(response.headers.get('Content-Type').startswith('application/json'))
         data = json.loads(response.content.decode('utf-8'))
         self.assertIsInstance(data, dict)
     

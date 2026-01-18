@@ -1,0 +1,239 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        
+        <!-- User Authentication & Profile Endpoints -->
+        
+        <record id="api_endpoint_users_login" model="thedevkitchen.api.endpoint">
+            <field name="name">User Login</field>
+            <field name="path">/api/v1/users/login</field>
+            <field name="method">POST</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="False"/>
+            <field name="tags">User Authentication</field>
+            <field name="summary">User login with credentials</field>
+            <field name="description">Authenticate user with login and password. Returns JWT access token and user session.
+
+**Required Fields:**
+- `login`: User email or username (string)
+- `password`: User password (string)
+
+**Optional Fields:**
+- `db`: Database name (defaults to current database)
+
+**Request Example:**
+```json
+{
+  "login": "admin",
+  "password": "admin"
+}
+```
+
+**Response Format (200 OK):**
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "Bearer",
+  "expires_in": 3600,
+  "user": {
+    "id": 2,
+    "name": "Admin User",
+    "email": "admin@example.com",
+    "companies": [{"id": 1, "name": "My Company"}],
+    "default_company_id": 1
+  }
+}
+```
+
+**Error Responses:**
+- **400 Bad Request**: Missing login or password
+- **401 Unauthorized**: Invalid credentials
+- **500 Internal Server Error**: Server error</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_users_logout" model="thedevkitchen.api.endpoint">
+            <field name="name">User Logout</field>
+            <field name="path">/api/v1/users/logout</field>
+            <field name="method">POST</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">User Authentication</field>
+            <field name="summary">User logout (invalidate session and token)</field>
+            <field name="description">Logout current user, invalidate session and revoke access token.
+
+**Authentication:**
+Requires Bearer token in Authorization header.
+
+**Request Example:**
+```bash
+curl -X POST 'http://localhost:8069/api/v1/users/logout' \
+  -H 'Authorization: Bearer YOUR_ACCESS_TOKEN'
+```
+
+**Response Format (200 OK):**
+```json
+{
+  "message": "Logged out successfully"
+}
+```
+
+**Error Responses:**
+- **401 Unauthorized**: Invalid or missing token
+- **500 Internal Server Error**: Server error</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_users_me" model="thedevkitchen.api.endpoint">
+            <field name="name">Get Current User</field>
+            <field name="path">/api/v1/me</field>
+            <field name="method">GET</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">User Authentication</field>
+            <field name="summary">Get current authenticated user info</field>
+            <field name="description">Returns detailed information about the currently authenticated user.
+
+**Authentication:**
+Requires Bearer token in Authorization header.
+
+**Request Example:**
+```bash
+curl 'http://localhost:8069/api/v1/me' \
+  -H 'Authorization: Bearer YOUR_ACCESS_TOKEN'
+```
+
+**Response Format (200 OK):**
+```json
+{
+  "id": 2,
+  "name": "John Doe",
+  "email": "john@example.com",
+  "login": "john",
+  "phone": "1133334444",
+  "mobile": "11999998888",
+  "companies": [
+    {
+      "id": 1,
+      "name": "Real Estate Company",
+      "is_default": true
+    }
+  ],
+  "current_company": {
+    "id": 1,
+    "name": "Real Estate Company"
+  },
+  "roles": ["Real Estate Manager"],
+  "permissions": {
+    "can_manage_properties": true,
+    "can_manage_agents": true,
+    "can_view_reports": true
+  }
+}
+```
+
+**Error Responses:**
+- **401 Unauthorized**: Invalid or missing token
+- **500 Internal Server Error**: Server error</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_users_profile" model="thedevkitchen.api.endpoint">
+            <field name="name">Update User Profile</field>
+            <field name="path">/api/v1/users/profile</field>
+            <field name="method">PATCH</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">User Authentication</field>
+            <field name="summary">Update user profile</field>
+            <field name="description">Partially update logged-in user profile (email, phone, mobile). Requires Bearer token. Only own profile can be updated.
+
+**Authentication:**
+Requires Bearer token in Authorization header.
+
+**Optional Fields (at least one required):**
+- `email`: User email - must be unique (string)
+- `phone`: User phone number (string)
+- `mobile`: User mobile number (string)
+
+**Request Example:**
+```json
+{
+  "email": "newemail@example.com",
+  "phone": "1144445555",
+  "mobile": "11988887777"
+}
+```
+
+**Response Format (200 OK):**
+```json
+{
+  "user": {
+    "id": 2,
+    "name": "John Doe",
+    "email": "newemail@example.com",
+    "phone": "1144445555",
+    "mobile": "11988887777",
+    "companies": [{"id": 1, "name": "Real Estate Company"}],
+    "default_company_id": 1
+  },
+  "message": "Profile updated successfully"
+}
+```
+
+**Error Responses:**
+- **400 Bad Request**: No fields provided or invalid data
+- **401 Unauthorized**: Invalid or missing token
+- **409 Conflict**: Email already in use by another user
+- **500 Internal Server Error**: Server error</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_users_change_password" model="thedevkitchen.api.endpoint">
+            <field name="name">Change User Password</field>
+            <field name="path">/api/v1/users/change-password</field>
+            <field name="method">POST</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">User Authentication</field>
+            <field name="summary">Change user password</field>
+            <field name="description">Change logged-in user password. Requires current password and new password confirmation. Minimum 8 characters.
+
+**Authentication:**
+Requires Bearer token in Authorization header.
+
+**Required Fields:**
+- `current_password`: Current user password (string)
+- `new_password`: New password - min 8 characters (string)
+- `confirm_password`: Confirm new password - must match new_password (string)
+
+**Request Example:**
+```json
+{
+  "current_password": "OldPass123!",
+  "new_password": "NewPass123!",
+  "confirm_password": "NewPass123!"
+}
+```
+
+**Response Format (200 OK):**
+```json
+{
+  "message": "Password changed successfully"
+}
+```
+
+**Error Responses:**
+- **400 Bad Request**: Missing fields, passwords don't match, or new password too short (&lt;8 characters)
+- **401 Unauthorized**: Current password incorrect or invalid token
+- **500 Internal Server Error**: Server error
+
+**Password Requirements:**
+- Minimum 8 characters
+- Must match confirmation
+- Current password must be correct</field>
+            <field name="active" eval="True"/>
+        </record>
+
+    </data>
+</odoo>

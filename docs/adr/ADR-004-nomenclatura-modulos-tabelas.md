@@ -25,6 +25,8 @@ Exemplos de problemas potenciais:
 
 **Todos os módulos customizados desenvolvidos para este projeto DEVEM seguir a nomenclatura padronizada com o prefixo `thedevkitchen_`.**
 
+**Todos os modelos DEVEM utilizar os campos nativos de auditoria do Odoo (`create_date`, `write_date`, `create_uid`, `write_uid`) que são criados automaticamente em formato TIMESTAMP.**
+
 ### Regras de Nomenclatura
 
 #### 1. **Nome do Módulo (Diretório)**
@@ -146,8 +148,82 @@ class OAuthApplication(models.Model):
 - Tabela: `thedevkitchen_oauth_application` (automaticamente criada pelo Odoo)
 - Identificável, sem conflitos, manutenível
 
+### Campos Automáticos de Auditoria (Timestamps)
+
+**Importante**: Todos os modelos Odoo herdam automaticamente os campos de auditoria nativa:
+
+#### Campos Nativos do Odoo (Automáticos)
+
+O Odoo cria automaticamente os seguintes campos em **todas** as tabelas:
+
+| Campo | Tipo | Descrição | Preenchimento |
+|-------|------|-----------|---------------|
+| `create_date` | `TIMESTAMP` | Data/hora de criação do registro | Automático pelo ORM |
+| `write_date` | `TIMESTAMP` | Data/hora da última modificação | Automático pelo ORM |
+| `create_uid` | `INTEGER` | ID do usuário que criou | Automático pelo ORM |
+| `write_uid` | `INTEGER` | ID do usuário que modificou | Automático pelo ORM |
+
+**NÃO é necessário declarar esses campos** no modelo Python - eles são criados automaticamente pelo framework Odoo.
+
+#### Formato dos Timestamps
+
+- **Tipo no PostgreSQL**: `TIMESTAMP WITHOUT TIME ZONE`
+- **Formato de armazenamento**: UTC (sempre)
+- **Exemplo SQL**: `2026-01-09 14:30:45.123456`
+- **Precisão**: Microsegundos (6 dígitos decimais)
+
+#### Quando Declarar Campos de Data Customizados
+
+Se o modelo precisar de campos de data **além** dos nativos (`create_date`/`write_date`), use a seguinte convenção:
+
+```python
+class OAuthApplication(models.Model):
+    _name = 'thedevkitchen.oauth.application'
+    
+    # Campo customizado para data de expiração
+    expires_at = fields.Datetime(
+        string='Expires At',
+        help='Token expiration date/time (UTC)'
+    )
+    
+    # Campo customizado para última atividade
+    last_activity_at = fields.Datetime(
+        string='Last Activity',
+        help='Timestamp of last user activity'
+    )
+```
+
+**Convenção de nomenclatura para campos de data customizados:**
+- Sufixo `_at` para timestamps específicos: `expires_at`, `published_at`, `activated_at`
+- Sufixo `_date` para datas sem hora: `birth_date`, `due_date`
+- Prefixo `last_` para última ocorrência: `last_activity_at`, `last_login_at`
+
+#### Exemplo de Query SQL
+
+```sql
+-- Os campos create_date e write_date estão sempre disponíveis
+SELECT 
+    id,
+    name,
+    create_date,
+    write_date,
+    create_uid,
+    write_uid
+FROM thedevkitchen_oauth_application
+ORDER BY create_date DESC;
+```
+
+#### Importante
+
+⚠️ **NUNCA criar campos `created_at` ou `updated_at`** - use os nativos `create_date` e `write_date` do Odoo
+
+⚠️ **NUNCA sobrescrever `create_date` ou `write_date`** no modelo - isso quebraria a auditoria nativa
+
+✅ **Sempre usar `create_date` e `write_date`** para ordenação e filtros de auditoria
+
 ### Referências
 
 - [Odoo Model Naming Best Practices](https://www.odoo.com/documentation/18.0/developer/reference/backend/orm.html)
+- [Odoo Automatic Fields Documentation](https://www.odoo.com/documentation/18.0/developer/reference/backend/orm.html#automatic-fields)
 - Plano de migração: `docs/PLANO_RENOMEACAO_API_GATEWAY.md`
 - Scripts: `scripts/migrate_api_gateway_to_thedevkitchen.sql`

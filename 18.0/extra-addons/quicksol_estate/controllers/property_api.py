@@ -455,3 +455,10 @@ class PropertyApiController(http.Controller):
         except Exception as e:
             _logger.error(f"Error in delete_property: {e}")
             return error_response(500, 'Internal server error')
+
+
+# Aliases for backward compatibility with tests
+_serialize_property = serialize_property
+_validate_property_access = validate_property_access
+_error_response = error_response
+_success_response = success_response

@@ -91,7 +91,11 @@ class TestUtilsSerializers(TransactionCase):
             'area': 100.0,
             'num_rooms': 3,
             'num_bathrooms': 2,
-            'num_parking': 1
+            'num_parking': 1,
+            'zip_code': '01310-100',
+            'city': 'São Paulo',
+            'street': 'Avenida Paulista',
+            'street_number': '1578',
         })
     
     def test_serialize_property_import(self):

@@ -147,7 +147,7 @@ from odoo.addons.thedevkitchen_apigateway.decorators import (
 @http.route('/api/v1/endpoint', type='http', auth='none', 
             methods=['GET'], csrf=False, cors='*')
 @require_jwt       # Valida JWT do Authorization header
-@require_session   # Valida session_id do cookie e carrega contexto
+@require_session   # Valida session_id do header/cookie/body
 @require_company   # Valida X-Company-ID e aplica isolamento
 def endpoint(self, **kwargs):
     # request.session.uid - ID do usuário
@@ -156,12 +156,18 @@ def endpoint(self, **kwargs):
     pass
 ```
 
+**IMPORTANTE**: A transmissão de `session_id` depende do tipo de endpoint:
+- **`type='http'`** (GET): session_id via header `X-Openerp-Session-Id` ou query string
+- **`type='json'`** (POST/PUT): session_id no body JSON
+
+O decorator `@require_session` suporta ambos os métodos automaticamente (ver [api-authentication.md](../api-authentication.md#session-id-transmission) para detalhes).
+
 **Por que os três decoradores?**
 
 | Decorador | O que valida | Fonte | Previne |
 |-----------|--------------|-------|---------|
 | `@require_jwt` | Token OAuth válido e não expirado | Header `Authorization` + PostgreSQL | Aplicações não autorizadas |
-| `@require_session` | Session ID válido e ativo | Cookie `session_id` + Redis | Session hijacking, perda de contexto |
+| `@require_session` | Session ID válido e ativo | Header/Cookie/Body + Redis | Session hijacking, perda de contexto |
 | `@require_company` | Company ID válido e autorizado | Header `X-Company-ID` + PostgreSQL | Data leakage entre empresas |
 
 **NÃO são redundantes**: JWT autentica a **aplicação externa**, session_id autentica o **usuário e seu contexto**, company_id garante **isolamento multi-tenancy**.

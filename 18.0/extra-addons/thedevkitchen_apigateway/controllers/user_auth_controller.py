@@ -181,6 +181,7 @@ class UserAuthController(http.Controller):
 
     @http.route('/api/v1/users/logout', type='json', auth='none', methods=['POST'], csrf=False, cors='*')
     @require_jwt
+    @require_session
     def logout(self):
         try:
             session_id = request.get_json_data().get('session_id')

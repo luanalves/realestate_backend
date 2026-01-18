@@ -1,0 +1,408 @@
+openapi: 3.0.3
+info:
+  title: User Authentication API - Bearer Token Validation
+  description: |
+    User Authentication endpoints with comprehensive bearer token and session validation.
+    
+    **Security Model**:
+    - All endpoints except `/login` require both OAuth 2.0 bearer token AND active HTTP session
+    - Login endpoint requires only OAuth bearer token (creates the session)
+    - Bearer tokens must be valid, non-expired, and non-revoked
+    - Sessions must be active, non-expired, and match security fingerprint (IP/User-Agent/Language)
+    
+    **Error Response Formats**:
+    - JWT validation errors: `{"error": {"code": "...", "message": "..."}}`
+    - Session validation errors: `{"error": "...", "message": "...", "code": 401}` OR `{"error": {"status": 401, "message": "..."}}`
+  version: 1.1.0
+  contact:
+    name: Realestate Platform Team
+    
+servers:
+  - url: http://localhost:8069
+    description: Local development
+  - url: https://api.realestate.example.com
+    description: Production
+
+security:
+  - BearerAuth: []
+  - SessionCookie: []
+
+paths:
+  /api/v1/users/login:
+    post:
+      summary: User login
+      description: |
+        Authenticates user credentials and creates a new session.
+        
+        **Security**: Requires only OAuth bearer token (application authentication).
+        No pre-existing user session required.
+        
+        **Session Creation**: On successful authentication, creates HTTP session
+        and returns session_id cookie.
+      operationId: login
+      tags:
+        - User Authentication
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: user@example.com
+                password:
+                  type: string
+                  format: password
+                  example: "SecurePass123!"
+      responses:
+        '200':
+          description: Login successful
+          headers:
+            Set-Cookie:
+              description: Session cookie for authenticated requests
+              schema:
+                type: string
+                example: session_id=abc123...; HttpOnly; SameSite=Lax; Path=/
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  session_id:
+                    type: string
+                    example: abc123def456...
+                  user:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: Invalid credentials or token expired
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/JWTError'
+                  - $ref: '#/components/schemas/CredentialsError'
+        '403':
+          description: User inactive
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/users/logout:
+    post:
+      summary: User logout
+      description: |
+        Terminates the current user session.
+        
+        **Security**: Requires BOTH OAuth bearer token AND active session.
+        
+        **Session Termination**: Invalidates session in Redis and clears session cookie.
+      operationId: logout
+      tags:
+        - User Authentication
+      security:
+        - BearerAuth: []
+          SessionCookie: []
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Logged out successfully
+        '401':
+          description: Unauthorized - missing or invalid token/session
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/JWTError'
+                  - $ref: '#/components/schemas/SessionError'
+
+  /api/v1/users/profile:
+    patch:
+      summary: Update user profile
+      description: |
+        Updates the authenticated user's profile information.
+        
+        **Security**: Requires BOTH OAuth bearer token AND active session.
+        
+        **Validation**: Session fingerprint (IP/User-Agent/Language) must match
+        to prevent session hijacking.
+      operationId: updateProfile
+      tags:
+        - User Authentication
+      security:
+        - BearerAuth: []
+          SessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: John Doe
+                email:
+                  type: string
+                  format: email
+                  example: john.doe@example.com
+                phone:
+                  type: string
+                  example: "+55 11 98765-4321"
+      responses:
+        '200':
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  user:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: Unauthorized - missing or invalid token/session
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/JWTError'
+                  - $ref: '#/components/schemas/SessionError'
+
+  /api/v1/users/change-password:
+    post:
+      summary: Change user password
+      description: |
+        Changes the authenticated user's password.
+        
+        **Security**: Requires BOTH OAuth bearer token AND active session.
+        
+        **Validation**: 
+        - Requires current password for verification
+        - Session fingerprint must match to prevent hijacking
+        - New password must meet complexity requirements
+      operationId: changePassword
+      tags:
+        - User Authentication
+      security:
+        - BearerAuth: []
+          SessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - old_password
+                - new_password
+              properties:
+                old_password:
+                  type: string
+                  format: password
+                  example: "OldPass123!"
+                new_password:
+                  type: string
+                  format: password
+                  example: "NewSecurePass456!"
+      responses:
+        '200':
+          description: Password changed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Password changed successfully
+        '401':
+          description: Unauthorized - missing or invalid token/session/password
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/JWTError'
+                  - $ref: '#/components/schemas/SessionError'
+                  - $ref: '#/components/schemas/CredentialsError'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        OAuth 2.0 JWT access token.
+        
+        **Obtain via**: POST /oauth2/token with grant_type=password
+        
+        **Format**: `Authorization: Bearer <access_token>`
+        
+        **Validation**: Token must exist in database, be non-expired, and non-revoked
+        
+    SessionCookie:
+      type: apiKey
+      in: cookie
+      name: session_id
+      description: |
+        HTTP session identifier.
+        
+        **Obtain via**: POST /api/v1/users/login
+        
+        **Format**: HttpOnly cookie with SameSite=Lax
+        
+        **Validation**: Session must exist in Redis, be non-expired, and match fingerprint
+        
+        **Fingerprint**: IP address, User-Agent, Accept-Language headers
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 42
+        name:
+          type: string
+          example: John Doe
+        email:
+          type: string
+          format: email
+          example: john.doe@example.com
+        login:
+          type: string
+          example: john.doe@example.com
+        active:
+          type: boolean
+          example: true
+        estate_company_ids:
+          type: array
+          items:
+            type: integer
+          example: [1, 2]
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            status:
+              type: integer
+              example: 401
+            message:
+              type: string
+              example: Unauthorized
+
+    JWTError:
+      type: object
+      description: Error response from @require_jwt decorator
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              enum:
+                - unauthorized
+                - invalid_token
+                - token_expired
+                - token_revoked
+              example: unauthorized
+            message:
+              type: string
+              example: Authorization header is required
+      examples:
+        - error:
+            code: unauthorized
+            message: Authorization header is required
+        - error:
+            code: invalid_token
+            message: 'Authorization header must be "Bearer <token>"'
+        - error:
+            code: token_expired
+            message: Token has expired
+        - error:
+            code: token_revoked
+            message: Token has been revoked
+
+    SessionError:
+      type: object
+      description: Error response from @require_session decorator
+      oneOf:
+        - type: object
+          properties:
+            error:
+              type: string
+              example: unauthorized
+            message:
+              type: string
+              example: Session required
+            code:
+              type: integer
+              example: 401
+        - type: object
+          properties:
+            error:
+              type: object
+              properties:
+                status:
+                  type: integer
+                  example: 401
+                message:
+                  type: string
+                  example: Session validation failed
+      examples:
+        - error: unauthorized
+          message: Session required
+          code: 401
+        - error: unauthorized
+          message: Session expired
+          code: 401
+        - error:
+            status: 401
+            message: Session validation failed
+
+    CredentialsError:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            status:
+              type: integer
+              example: 401
+            message:
+              type: string
+              example: Invalid credentials
+
+tags:
+  - name: User Authentication
+    description: User login, logout, profile management, and password operations

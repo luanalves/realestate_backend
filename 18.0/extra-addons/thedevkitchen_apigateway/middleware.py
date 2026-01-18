@@ -150,21 +150,47 @@ def require_session(func):
 
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
-        session_id = (
-            request.httprequest.headers.get('X-Openerp-Session-Id') or
-            request.httprequest.cookies.get('session_id') or
-            request.session.sid
-        )
+        # Try to get session_id from multiple sources
+        session_id = None
+        
+        # 1. From kwargs (function parameters - highest priority for API calls)
+        session_id = kwargs.get('session_id')
+        
+        # 2. From request body (for JSON-RPC calls)
+        if not session_id:
+            try:
+                json_data = request.get_json_data()
+                if json_data:
+                    session_id = json_data.get('session_id')
+            except Exception:
+                pass
+        
+        # 3. From headers/cookies/session if not in body
+        if not session_id:
+            session_id = (
+                request.httprequest.headers.get('X-Openerp-Session-Id') or
+                request.httprequest.cookies.get('session_id') or
+                request.session.sid
+            )
+
+        # Validate session_id format (length check)
+        if session_id and (len(session_id) < 60 or len(session_id) > 100):
+            return request.make_json_response({
+                'error': {
+                    'status': 401,
+                    'message': 'Invalid session_id format (must be 60-100 characters)'
+                }
+            }, status=401)
 
         valid, user, api_session, error_msg = SessionValidator.validate(session_id)
 
         if not valid:
-            return {
+            return request.make_json_response({
                 'error': {
                     'status': 401,
-                    'message': error_msg or 'Unauthorized'
+                    'message': error_msg or 'Session required'
                 }
-            }
+            }, status=401)
 
         # SECURITY: Validate JWT token (MANDATORY for APIs)
         # This prevents session hijacking by validating UID + fingerprint (IP/UA/Lang)
@@ -176,23 +202,23 @@ def require_session(func):
                 f'[SESSION SECURITY] No JWT token found for session {session_id[:16]}... '
                 f'user_id={user.id}'
             )
-            return {
+            return request.make_json_response({
                 'error': {
                     'status': 401,
                     'message': 'Session token required'
                 }
-            }
+            }, status=401)
         
         try:
             secret = config.get('database_secret') or config.get('admin_passwd')
             if not secret:
                 _logger.critical("No secret configured for JWT validation (database_secret or admin_passwd required)")
-                return {
+                return request.make_json_response({
                     'error': {
                         'status': 500,
                         'message': 'Server configuration error'
                     }
-                }
+                }, status=500)
             
             payload = jwt.decode(stored_token, secret, algorithms=['HS256'])
             token_uid = payload.get('uid')
@@ -204,12 +230,12 @@ def require_session(func):
                     f'JWT uid={token_uid} != session user_id={user.id} '
                     f'session_id={session_id[:16]}...'
                 )
-                return {
+                return request.make_json_response({
                     'error': {
                         'status': 401,
                         'message': 'Session validation failed'
                     }
-                }
+                }, status=401)
             
             # Validate fingerprint (IP/UA/Lang) for APIs
             token_fingerprint = payload.get('fingerprint', {})
@@ -223,53 +249,53 @@ def require_session(func):
                     f'Token IP={token_fingerprint.get("ip")} != Current IP={current_ip} '
                     f'user_id={user.id} session_id={session_id[:16]}...'
                 )
-                return {
+                return request.make_json_response({
                     'error': {
                         'status': 401,
                         'message': 'Session validation failed'
                     }
-                }
+                }, status=401)
             
             if token_fingerprint.get('ua') and token_fingerprint.get('ua') != current_ua:
                 _logger.warning(
                     f'[SESSION HIJACKING DETECTED - USER-AGENT MISMATCH] '
                     f'user_id={user.id} session_id={session_id[:16]}...'
                 )
-                return {
+                return request.make_json_response({
                     'error': {
                         'status': 401,
                         'message': 'Session validation failed'
                     }
-                }
+                }, status=401)
             
             if token_fingerprint.get('lang') and token_fingerprint.get('lang') != current_lang:
                 _logger.warning(
                     f'[SESSION HIJACKING DETECTED - LANGUAGE MISMATCH] '
                     f'user_id={user.id} session_id={session_id[:16]}...'
                 )
-                return {
+                return request.make_json_response({
                     'error': {
                         'status': 401,
                         'message': 'Session validation failed'
                     }
-                }
+                }, status=401)
             
         except jwt.ExpiredSignatureError:
             _logger.warning(f'JWT token expired for session {session_id[:16]}...')
-            return {
+            return request.make_json_response({
                 'error': {
                     'status': 401,
                     'message': 'Session expired'
                 }
-            }
+            }, status=401)
         except jwt.InvalidTokenError as e:
             _logger.warning(f'Invalid JWT token for session {session_id[:16]}...: {e}')
-            return {
+            return request.make_json_response({
                 'error': {
                     'status': 401,
                     'message': 'Invalid session token'
                 }
-            }
+            }, status=401)
 
         request.env = request.env(user=user)
         return func(*args, **kwargs)

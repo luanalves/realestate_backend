@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        
+        <!-- OAuth 2.0 Authentication Endpoints -->
+        
+        <record id="api_endpoint_auth_token" model="thedevkitchen.api.endpoint">
+            <field name="name">Get Access Token</field>
+            <field name="path">/api/v1/auth/token</field>
+            <field name="method">POST</field>
+            <field name="module_name">thedevkitchen_apigateway</field>
+            <field name="protected" eval="False"/>
+            <field name="tags">Authentication</field>
+            <field name="summary">Get access token</field>
+            <field name="description">OAuth 2.0 Client Credentials Grant. Accepts both JSON and form-urlencoded.
+
+**Request Methods:**
+- Content-Type: application/json
+- Content-Type: application/x-www-form-urlencoded
+
+**Required Fields:**
+- `grant_type`: Must be "client_credentials" (string)
+- `client_id`: OAuth client ID from your application (string)
+- `client_secret`: OAuth client secret from your application (string)
+
+**Request Example (JSON):**
+```json
+{
+  "grant_type": "client_credentials",
+  "client_id": "your_client_id_here",
+  "client_secret": "your_client_secret_here"
+}
+```
+
+**Request Example (Form):**
+```bash
+curl -X POST 'http://localhost:8069/api/v1/auth/token' \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d 'grant_type=client_credentials&amp;client_id=YOUR_CLIENT&amp;client_secret=YOUR_SECRET'
+```
+
+**Response Format (200 OK):**
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "Bearer",
+  "expires_in": 3600,
+  "refresh_token": "def502004a8f1b..."
+}
+```
+
+**How to Use:**
+1. Go to Odoo Settings → API Gateway → OAuth Applications
+2. Create new application (Save to get client_id and client_secret)
+3. Use credentials in this endpoint to get access_token
+4. Use access_token in Authorization header: `Bearer YOUR_ACCESS_TOKEN`
+
+**Error Responses:**
+- **400 Bad Request**: Invalid grant_type, missing fields, or invalid credentials
+- **500 Internal Server Error**: Server error</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_auth_refresh" model="thedevkitchen.api.endpoint">
+            <field name="name">Refresh Access Token</field>
+            <field name="path">/api/v1/auth/refresh</field>
+            <field name="method">POST</field>
+            <field name="module_name">thedevkitchen_apigateway</field>
+            <field name="protected" eval="False"/>
+            <field name="tags">Authentication</field>
+            <field name="summary">Refresh access token</field>
+            <field name="description">Get new access token using refresh token. Accepts both JSON and form-urlencoded. grant_type is optional (defaults to 'refresh_token').
+
+**Request Methods:**
+- Content-Type: application/json
+- Content-Type: application/x-www-form-urlencoded
+
+**Required Fields:**
+- `refresh_token`: Refresh token from initial authentication (string)
+
+**Optional Fields:**
+- `grant_type`: Defaults to "refresh_token" if not provided (string)
+- `client_id`: OAuth client ID for validation (string)
+
+**Request Example (JSON):**
+```json
+{
+  "refresh_token": "def502004a8f1b...",
+  "grant_type": "refresh_token",
+  "client_id": "your_client_id_here"
+}
+```
+
+**Request Example (Form):**
+```bash
+curl -X POST 'http://localhost:8069/api/v1/auth/refresh' \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d 'refresh_token=YOUR_REFRESH_TOKEN'
+```
+
+**Response Format (200 OK):**
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "Bearer",
+  "expires_in": 3600,
+  "refresh_token": "def502004a8f1b..."
+}
+```
+
+**Usage:**
+- When access_token expires (after 3600 seconds), use this endpoint
+- Provide the refresh_token received from /api/v1/auth/token
+- Get new access_token without needing client credentials again
+
+**Error Responses:**
+- **400 Bad Request**: Missing refresh_token or invalid format
+- **401 Unauthorized**: Invalid or expired refresh_token
+- **500 Internal Server Error**: Server error</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_auth_revoke" model="thedevkitchen.api.endpoint">
+            <field name="name">Revoke Token</field>
+            <field name="path">/api/v1/auth/revoke</field>
+            <field name="method">POST</field>
+            <field name="module_name">thedevkitchen_apigateway</field>
+            <field name="protected" eval="False"/>
+            <field name="tags">Authentication</field>
+            <field name="summary">Revoke access or refresh token</field>
+            <field name="description">Revoke (invalidate) an access token or refresh token. Use for logout functionality.
+
+**Request Methods:**
+- Content-Type: application/json
+- Content-Type: application/x-www-form-urlencoded
+
+**Required Fields:**
+- `token`: Access token or refresh token to revoke (string)
+
+**Optional Fields:**
+- `token_type_hint`: Type of token ("access_token" or "refresh_token")
+
+**Request Example (JSON):**
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type_hint": "access_token"
+}
+```
+
+**Request Example (Form):**
+```bash
+curl -X POST 'http://localhost:8069/api/v1/auth/revoke' \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d 'token=YOUR_TOKEN&amp;token_type_hint=access_token'
+```
+
+**Response Format (200 OK):**
+```json
+{
+  "message": "Token revoked successfully"
+}
+```
+
+**Usage:**
+- Call this endpoint when user logs out
+- Token becomes invalid immediately
+- Can revoke either access_token or refresh_token
+- If access_token is revoked, user needs to get new token via /api/v1/auth/token
+
+**Error Responses:**
+- **400 Bad Request**: Missing token parameter
+- **200 OK**: Always returns 200 even if token is already invalid (OAuth 2.0 spec)</field>
+            <field name="active" eval="True"/>
+        </record>
+
+    </data>
+</odoo>
