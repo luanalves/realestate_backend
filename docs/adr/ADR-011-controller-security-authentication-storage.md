@@ -124,10 +124,13 @@ appendonly: yes (AOF)
            "allowed_company_ids": [1]
        },
        "company_id": 1,
-       "last_activity": <timestamp>
+       "last_activity": <timestamp>,
+       "_security_token": "<jwt>"  // ← ADR-017: JWT fingerprint para prevenir hijacking
    }
    TTL: 7200s
    ```
+   
+   **Nota:** O campo `_security_token` (JWT com fingerprint) é adicionado pela ADR-017 como camada adicional de segurança contra session hijacking. Ver [ADR-017](ADR-017-session-hijacking-prevention-jwt-fingerprint.md) para detalhes.
 
 2. **Cache ORM do Odoo**
 3. **Cache de assets estáticos** (CSS, JS)
@@ -281,6 +284,7 @@ ORDER BY l.create_date DESC;
 
 - [ADR-008: API Security & Multi-Tenancy](ADR-008-api-security-multi-tenancy.md)
 - [ADR-009: Headless Authentication & User Context](ADR-009-headless-authentication-user-context.md)
+- [ADR-017: Session Hijacking Prevention](ADR-017-session-hijacking-prevention-jwt-fingerprint.md) - Complementa este ADR com proteção contra session hijacking
 - [OAuth 2.0 RFC 6749](https://tools.ietf.org/html/rfc6749)
 - [Odoo External API Documentation](https://www.odoo.com/documentation/18.0/developer/reference/external_api.html)
 - [Redis Session Management Best Practices](https://redis.io/docs/manual/keyspace/)

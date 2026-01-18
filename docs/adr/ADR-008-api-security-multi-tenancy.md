@@ -95,4 +95,5 @@ Adotar **5 princípios de segurança obrigatórios** para todos os endpoints de 
 - OWASP API Security: https://owasp.org/API-Security/
 - CWE-639: Authorization Bypass Through User-Controlled Key
 - ADR-003: Mandatory Test Coverage
+- ADR-017: Session Hijacking Prevention - Complementa este ADR com proteção de sessões
 - Odoo Security: https://www.odoo.com/documentation/18.0/developer/reference/backend/security.html
