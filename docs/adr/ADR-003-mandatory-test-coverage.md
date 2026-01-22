@@ -498,6 +498,58 @@ class TestEstatePropertyValidations(unittest.TestCase):
 4. **Sem exceções:**
    - ❌ Não é permitido pular testes de validação
    - ❌ Não é permitido cobertura < 100% em validações
+
+### Padrão de Testes para Observer Pattern (ADR-020)
+
+**Problema:** Observers dinâmicos (criados em tempo de execução) não registram corretamente no Odoo.
+
+**Solução:** Criar modelos reais de observer para testes em `models/test_observer.py`:
+
+```python
+# models/test_observer.py
+from odoo import models, api
+
+class TestConcreteObserver(models.AbstractModel):
+    _name = 'test.concrete.observer'
+    _inherit = 'quicksol.abstract.observer'
+    _description = 'Test Observer for Unit Tests'
+    
+    @api.model
+    def can_handle(self, event_name):
+        return event_name in ['test.event', 'test.another.event']
+    
+    @api.model
+    def handle(self, event_name, data):
+        return {'status': 'handled', 'event': event_name, 'data': data}
+```
+
+**Registrar no `models/__init__.py`:**
+```python
+from . import test_observer  # Test observer for unit tests
+```
+
+**Uso nos testes:**
+```python
+class TestAbstractObserver(TransactionCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.observer = cls.env['test.concrete.observer']
+    
+    def test_can_handle_returns_true_for_supported_events(self):
+        self.assertTrue(self.observer.can_handle('test.event'))
+```
+
+**❌ Não fazer:**
+- Criar classes dinamicamente em `setUpClass`
+- Tentar mockar métodos read-only de AbstractModel (`search`, `handle`)
+- Usar `MagicMock` para simular observers
+
+**✅ Fazer:**
+- Criar observer real em `models/test_observer.py`
+- Registrar no `__init__.py`
+- Usar o observer real nos testes via `self.env['test.concrete.observer']`
+
    - ❌ Code review deve REJEITAR PR sem 100% de validações testadas
 
 **Por que 100% de cobertura em validações é CRÍTICA:**
