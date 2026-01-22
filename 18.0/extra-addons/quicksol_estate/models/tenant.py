@@ -7,6 +7,7 @@ class Tenant(models.Model):
     _description = 'Tenant'
 
     name = fields.Char(string='Tenant Name', required=True)
+    partner_id = fields.Many2one('res.partner', string='Related Partner', help='Partner record for tenant (enables Portal access)')
     phone = fields.Char(string='Phone Number')
     email = fields.Char(string='Email')
     company_ids = fields.Many2many('thedevkitchen.estate.company', 'thedevkitchen_company_tenant_rel', 'tenant_id', 'company_id', string='Real Estate Companies')

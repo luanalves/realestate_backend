@@ -10,6 +10,7 @@ class PropertyOwner(models.Model):
     _rec_name = 'name'
 
     name = fields.Char(string='Owner Name', required=True, tracking=True)
+    partner_id = fields.Many2one('res.partner', string='Related Partner', help='Partner record for owner (enables Portal access)', tracking=True)
     cpf = fields.Char(string='CPF', size=14)
     cnpj = fields.Char(string='CNPJ', size=18)
     rg = fields.Char(string='RG', size=20)

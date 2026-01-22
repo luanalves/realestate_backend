@@ -42,8 +42,34 @@ class ResUsers(models.Model):
         if self.main_estate_company_id and self.main_estate_company_id not in self.estate_company_ids:
             self.estate_company_ids = [(4, self.main_estate_company_id.id)]
     
+    @api.model_create_multi
+    def create(self, vals_list):
+        """Emit user.before_create event for validation (ADR-020)."""
+        for vals in vals_list:
+            self.env['quicksol.event.bus'].emit('user.before_create', {
+                'vals': vals,
+                'user_id': self.env.uid
+            })
+        
+        return super().create(vals_list)
+    
     def write(self, vals):
-        """Override write para sincronizar agentes quando usuário é modificado"""
+        """Emit user.before_write event for validation + sync agents (ADR-020)."""
+        # Track security group changes for LGPD audit (T135)
+        groups_changed = 'groups_id' in vals
+        old_groups = {}
+        
+        if groups_changed:
+            # Store old groups before write
+            for user in self:
+                old_groups[user.id] = set(user.groups_id.mapped('name'))
+        
+        self.env['quicksol.event.bus'].emit('user.before_write', {
+            'vals': vals,
+            'user_id': self.env.uid,
+            'target_user_ids': self.ids
+        })
+        
         result = super().write(vals)
         
         # Se as imobiliárias do usuário mudaram, atualizar agentes relacionados
@@ -52,5 +78,36 @@ class ResUsers(models.Model):
                 agents = self.env['real.estate.agent'].search([('user_id', '=', user.id)])
                 if agents and user.estate_company_ids:
                     agents.write({'company_ids': [(6, 0, user.estate_company_ids.ids)]})
+        
+        # Emit groups_changed event for LGPD audit logging (T135)
+        if groups_changed:
+            # Only emit events if EventBus model is available (skip during install)
+            try:
+                event_bus = self.env['quicksol.event.bus']
+                
+                for user in self:
+                    new_groups = set(user.groups_id.mapped('name'))
+                    user_old_groups = old_groups.get(user.id, set())
+                    
+                    added_groups = list(new_groups - user_old_groups)
+                    removed_groups = list(user_old_groups - new_groups)
+                    
+                    if added_groups or removed_groups:
+                        event_bus.emit('user.groups_changed', {
+                            'user': user,
+                            'added_groups': added_groups,
+                            'removed_groups': removed_groups,
+                            'changed_by': self.env.user,
+                        }, env=self.env)
+            except (ImportError, AttributeError, KeyError):
+                # EventBus not available during module installation
+                pass
+        
+        # Emit async audit event (non-blocking)
+        self.env['quicksol.event.bus'].emit('user.updated', {
+            'user_ids': self.ids,
+            'vals': vals,
+            'updated_by': self.env.uid
+        })
         
         return result

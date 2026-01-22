@@ -18,6 +18,7 @@ class Property(models.Model):
     # ========== OWNER DATA ==========
     owner_id = fields.Many2one('real.estate.property.owner', string='Owner', tracking=True)
     owner_name = fields.Char(string='Owner Name', related='owner_id.name', readonly=True)
+    owner_partner_id = fields.Many2one('res.partner', string='Owner Partner', related='owner_id.partner_id', readonly=True, store=True, help='Related partner for Portal access')
     phone_ids = fields.One2many('real.estate.property.phone', 'property_id', string='Contact Phones')
     email_ids = fields.One2many('real.estate.property.email', 'property_id', string='Contact Emails')
     origin_media = fields.Selection([
@@ -207,6 +208,12 @@ class Property(models.Model):
     # ========== RELATIONSHIPS ==========
     company_ids = fields.Many2many('thedevkitchen.estate.company', 'thedevkitchen_company_property_rel', 'property_id', 'company_id', string='Real Estate Companies')
     agent_id = fields.Many2one('real.estate.agent', string='Responsible Agent', tracking=True)
+    prospector_id = fields.Many2one(
+        'real.estate.agent', 
+        string='Prospector', 
+        tracking=True,
+        help='Agent who originally prospected/registered this property. Earns commission split when another agent completes the sale.'
+    )
     tenant_id = fields.Many2one('real.estate.tenant', string='Current Tenant')
     sale_id = fields.Many2one('real.estate.sale', string='Sale')
     lease_id = fields.Many2one('real.estate.lease', string='Lease')
@@ -392,10 +399,22 @@ class Property(models.Model):
     
     @api.model_create_multi
     def create(self, vals_list):
+        # Emit property.before_create event for each property (sync validation)
+        event_bus = self.env['quicksol.event.bus']
         for vals in vals_list:
+            event_bus.emit('property.before_create', vals, force_sync=True)
+            
+            # Auto-generate reference code if not provided
             if not vals.get('reference_code'):
                 vals['reference_code'] = self.env['ir.sequence'].next_by_code('real.estate.property') or 'NEW'
-        return super().create(vals_list)
+        
+        properties = super().create(vals_list)
+        
+        # Emit property.created event for each created property (async notifications)
+        for prop in properties:
+            event_bus.emit('property.created', {'property_id': prop.id, 'property': prop})
+        
+        return properties
 
 
 class PropertyType(models.Model):

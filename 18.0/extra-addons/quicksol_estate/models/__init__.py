@@ -1,6 +1,12 @@
 # Import helpers
 from . import file_validator
 
+# Import Observer Pattern components (ADR-020)
+from . import event_bus
+from . import abstract_observer
+from . import observers
+from . import test_observer  # Test observer for unit tests
+
 # Import auxiliary models FIRST (before property)
 from . import state
 from . import location_type

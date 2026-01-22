@@ -334,6 +334,101 @@ class RealEstateCommissionRule(models.Model):
         
         return result
     
+    def calculate_split_commission(self, property_id, transaction_amount, transaction_type='sale'):
+        """
+        Calculate commission split when property has both agent_id and prospector_id.
+        
+        Args:
+            property_id: Property record (real.estate.property)
+            transaction_amount: Sale/rental amount (float)
+            transaction_type: 'sale' or 'rental' (default: 'sale')
+        
+        Returns:
+            dict: {
+                'prospector_commission': float,
+                'agent_commission': float,
+                'total_commission': float,
+                'split_percentage': float,  # Prospector's share (0.0-1.0)
+            }
+        
+        Business Logic (FR-054 to FR-060):
+            - If prospector_id == agent_id OR prospector_id is empty → no split (100% to agent)
+            - If prospector_id != agent_id:
+                * Get split percentage from system parameter (default 30%)
+                * Calculate total commission using agent's commission rule
+                * Prospector receives: total_commission * split_percentage
+                * Agent receives: total_commission * (1 - split_percentage)
+        
+        Example:
+            Property sale: R$ 500,000
+            Agent commission rule: 6% = R$ 30,000 total
+            Split percentage: 30%
+            → Prospector: R$ 9,000 (30% of R$ 30,000)
+            → Agent: R$ 21,000 (70% of R$ 30,000)
+        """
+        self.ensure_one()
+        
+        if not property_id or not property_id.agent_id:
+            raise ValidationError(_('Property must have an assigned agent to calculate commission.'))
+        
+        # Check if split applies (prospector_id exists and differs from agent_id)
+        if not property_id.prospector_id or property_id.prospector_id == property_id.agent_id:
+            # No split: 100% to agent
+            total_commission = self._calculate_commission_amount(transaction_amount)
+            return {
+                'prospector_commission': 0.0,
+                'agent_commission': total_commission,
+                'total_commission': total_commission,
+                'split_percentage': 0.0,
+            }
+        
+        # Get split percentage from system parameter
+        IrConfigParameter = self.env['ir.config_parameter'].sudo()
+        split_percentage = float(
+            IrConfigParameter.get_param(
+                'quicksol_estate.prospector_commission_percentage',
+                default='0.30'
+            )
+        )
+        
+        # Validate split percentage (0.0-1.0)
+        if not 0.0 <= split_percentage <= 1.0:
+            raise ValidationError(
+                _('Invalid prospector commission split percentage: %(percentage).2f%%. '
+                  'Must be between 0.0 and 1.0.') % {'percentage': split_percentage}
+            )
+        
+        # Calculate total commission using agent's rule
+        total_commission = self._calculate_commission_amount(transaction_amount)
+        
+        # Calculate split
+        prospector_commission = total_commission * split_percentage
+        agent_commission = total_commission * (1 - split_percentage)
+        
+        return {
+            'prospector_commission': prospector_commission,
+            'agent_commission': agent_commission,
+            'total_commission': total_commission,
+            'split_percentage': split_percentage,
+        }
+    
+    def _calculate_commission_amount(self, transaction_amount):
+        """
+        Helper method: Calculate commission amount based on rule structure.
+        
+        Args:
+            transaction_amount: Sale/rental value (float)
+        
+        Returns:
+            float: Commission amount
+        """
+        self.ensure_one()
+        
+        if self.structure_type == 'percentage':
+            return transaction_amount * (self.percentage / 100.0)
+        else:
+            return self.fixed_amount
+    
     # ==================== SQL CONSTRAINTS ====================
     
     _sql_constraints = [
