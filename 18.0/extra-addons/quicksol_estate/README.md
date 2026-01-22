@@ -41,6 +41,35 @@ Complete real estate management solution for Odoo 18.0 with multi-tenancy suppor
 - Cross-company data isolation
 - ADR-008 compliant security architecture
 
+### 🛡️ Role-Based Access Control (RBAC) - NEW!
+**9 Predefined User Profiles** with granular permissions:
+
+| Profile | Code | Access Level | Key Permissions |
+|---------|------|--------------|-----------------|
+| **Owner** | `group_real_estate_owner` | Full Control | Manage companies, assign users, full CRUD |
+| **Director** | `group_real_estate_director` | Executive | All Manager permissions + BI dashboards, financial reports |
+| **Manager** | `group_real_estate_manager` | Supervisory | Manage all company data, assign agents, approve commissions |
+| **User** | `group_real_estate_user` | Standard | Basic CRUD within assigned companies |
+| **Agent** | `group_real_estate_agent` | Field Staff | Manage own properties, view own commissions |
+| **Prospector** | `group_real_estate_prospector` | Lead Generation | Track prospected properties, view split commissions |
+| **Receptionist** | `group_real_estate_receptionist` | Front Desk | Read-only: properties, sales, leases |
+| **Financial** | `group_real_estate_financial` | Accounting | Read sales/leases, CRUD commissions |
+| **Legal** | `group_real_estate_legal` | Compliance | Read-only contracts, add legal notes |
+| **Portal User** | `group_real_estate_portal_user` | Client Access | View own contracts only (partner-level isolation) |
+
+**Security Features**:
+- **Multi-Tenancy**: All users restricted by `estate_company_ids` (Many2many)
+- **Record Rules**: 42 active rules enforcing row-level security
+- **Audit Logging**: LGPD-compliant logging of all permission changes
+- **Event-Driven**: SecurityGroupAuditObserver tracks group changes
+- **Defense-in-Depth**: ACLs + Record Rules + Field-level security
+
+**Commission Split**:
+- Prospectors receive 30% of sale commission (configurable)
+- Agents receive 70% of sale commission
+- Automatic split calculation via Observer pattern
+- Event: `sale.created` → CommissionSplitObserver → Transaction records
+
 ### 🌐 REST API
 - OpenAPI 3.0 documentation
 - JWT authentication

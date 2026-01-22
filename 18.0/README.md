@@ -47,11 +47,30 @@ docker run -d --name odoo18 --network odoo-net \
 - **Username:** `odoo`
 - **Password:** `odoo`
 
-#### Redis Cache Access (Optional)
+#### Redis Cache
 - **Host:** `localhost`
 - **Port:** `6379`
 - **DB Index:** `1` (configured in odoo.conf)
 - **No password required** (local development)
+- **CLI Access:** `docker compose exec redis redis-cli`
+
+#### RabbitMQ (Message Broker)
+- **Management UI:** [http://localhost:15672](http://localhost:15672)
+- **Username:** `odoo`
+- **Password:** `odoo`
+- **AMQP Port:** `5672` (for application connections)
+- **Purpose:** Celery task queue management
+
+#### Flower (Celery Monitoring)
+- **URL:** [http://localhost:5555](http://localhost:5555)
+- **Purpose:** Real-time monitoring of Celery workers and tasks
+- **No authentication required** (development mode)
+
+#### Celery Workers (Background Tasks)
+- **Commission Worker:** Processes commission calculations
+- **Notification Worker:** Handles email/SMS notifications  
+- **Audit Worker:** Logs security and data changes
+- **Status:** Check with `docker compose ps` or Flower UI
 
 ---
 

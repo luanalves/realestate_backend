@@ -69,10 +69,126 @@ services:
     networks:
       - odoo-net
 
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: rabbitmq
+    env_file: .env
+    ports:
+      - "5672:5672"   # AMQP protocol
+      - "15672:15672" # Management UI (http://localhost:15672)
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+      RABBITMQ_DEFAULT_VHOST: /
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - odoo-net
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  celery_commission_worker:
+    build:
+      context: ./celery_worker
+      dockerfile: Dockerfile
+    image: custom-celery-worker:18.0
+    container_name: celery_commission_worker
+    env_file: .env
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      odoo:
+        condition: service_started
+    command: celery -A tasks worker --loglevel=info --queues=commission_events --concurrency=2
+    environment:
+      ODOO_URL: http://odoo:8069
+      ODOO_DB: ${DB_NAME}
+      ODOO_USER: admin
+      ODOO_PASSWORD: admin
+      CELERY_BROKER_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672//
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    networks:
+      - odoo-net
+
+  celery_audit_worker:
+    build:
+      context: ./celery_worker
+      dockerfile: Dockerfile
+    image: custom-celery-worker:18.0
+    container_name: celery_audit_worker
+    env_file: .env
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      odoo:
+        condition: service_started
+    command: celery -A tasks worker --loglevel=info --queues=audit_events --concurrency=1
+    environment:
+      ODOO_URL: http://odoo:8069
+      ODOO_DB: ${DB_NAME}
+      ODOO_USER: admin
+      ODOO_PASSWORD: admin
+      CELERY_BROKER_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672//
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    networks:
+      - odoo-net
+
+  celery_notification_worker:
+    build:
+      context: ./celery_worker
+      dockerfile: Dockerfile
+    image: custom-celery-worker:18.0
+    container_name: celery_notification_worker
+    env_file: .env
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      odoo:
+        condition: service_started
+    command: celery -A tasks worker --loglevel=info --queues=notification_events --concurrency=1
+    environment:
+      ODOO_URL: http://odoo:8069
+      ODOO_DB: ${DB_NAME}
+      ODOO_USER: admin
+      ODOO_PASSWORD: admin
+      CELERY_BROKER_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672//
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    networks:
+      - odoo-net
+
+  flower:
+    image: mher/flower:2.0
+    container_name: flower
+    env_file: .env
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "5555:5555"  # UI: http://localhost:5555
+    command: celery --broker=amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672// flower --port=5555
+    environment:
+      CELERY_BROKER_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672//
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      FLOWER_BASIC_AUTH: ${FLOWER_USER}:${FLOWER_PASSWORD}
+    networks:
+      - odoo-net
+
 volumes:
   odoo18-db:
   odoo18-data:
   odoo18-redis:
+  rabbitmq-data:
 
 networks:
   odoo-net:
