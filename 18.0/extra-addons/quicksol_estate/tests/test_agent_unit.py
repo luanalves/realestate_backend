@@ -39,7 +39,7 @@ class TestAgentUnit(TransactionCase):
             'name': 'John Agent User',
             'login': 'john@agent.com',
             'email': 'john@agent.com',
-            'estate_company_ids': [(6, 0, [self.company_1.id, self.company_2.id])]
+            'estate_company_ids': [(6, 0, [self.company_1.id, self.company_2.id])],
         })
         
         # Create real user without estate companies 
@@ -55,7 +55,9 @@ class TestAgentUnit(TransactionCase):
         # Act - Create agent with user, without explicit company_ids
         agent = self.env['real.estate.agent'].create({
             'name': 'Test Agent',
-            'user_id': self.user_with_companies.id
+            'user_id': self.user_with_companies.id,
+            'cpf': '123.456.789-09',  # Valid test CPF
+            'hire_date': '2024-01-01',
         })
         
         # Assert - Agent should inherit companies from user automatically
@@ -72,6 +74,7 @@ class TestAgentUnit(TransactionCase):
         agent = self.env['real.estate.agent'].create({
             'name': 'Initial Name',
             'email': 'initial@email.com',
+            'cpf': '234.567.890-10',
         })
         
         # Trigger onchange by setting user_id (in form context)
@@ -135,7 +138,8 @@ class TestAgentUnit(TransactionCase):
                 # Should not raise ValidationError
                 agent = self.env['real.estate.agent'].create({
                     'name': 'Test Agent',
-                    'email': email
+                    'email': email,
+                    'cpf': f'{100 + valid_emails.index(email)}.444.777-35',
                 })
                 
                 self.assertEqual(agent.email, email)
@@ -146,6 +150,7 @@ class TestAgentUnit(TransactionCase):
         # Create agent without user
         agent = self.env['real.estate.agent'].create({
             'name': 'Test Agent',
+            'cpf': '987.654.321-00',
         })
         
         self.assertEqual(len(agent.company_ids), 0)
@@ -165,6 +170,7 @@ class TestAgentUnit(TransactionCase):
         # Create agent without user
         agent = self.env['real.estate.agent'].create({
             'name': 'Test Agent',
+            'cpf': '741.852.963-07',
         })
         
         # Act - Update both user_id AND company_ids explicitly
@@ -185,6 +191,7 @@ class TestAgentUnit(TransactionCase):
         # Create agent
         agent = self.env['real.estate.agent'].create({
             'name': 'Test Agent',
+            'cpf': '258.369.147-08',
         })
         
         # Act - Update to user without estate companies
@@ -202,6 +209,7 @@ class TestAgentUnit(TransactionCase):
             'name': 'Original Name',
             'email': 'original@email.com',
             'user_id': self.user_with_companies.id,
+            'cpf': '369.258.147-09',
         })
         
         # Companies should be synced on creation
@@ -211,7 +219,7 @@ class TestAgentUnit(TransactionCase):
         # Act - Update other fields (not user_id)
         agent.write({
             'name': 'Updated Name',
-            'phone': '+55 11 99999-9999'
+            'phone': '+55 11 99999-9999',
         })
         
         # Assert - Companies should remain unchanged
@@ -225,7 +233,8 @@ class TestAgentUnit(TransactionCase):
         # Create agent with companies
         agent = self.env['real.estate.agent'].create({
             'name': 'Relationship Agent',
-            'company_ids': [(6, 0, [self.company_1.id, self.company_2.id])]
+            'company_ids': [(6, 0, [self.company_1.id, self.company_2.id])],
+            'cpf': '147.258.369-52',
         })
         
         # Assert relationships
@@ -238,7 +247,8 @@ class TestAgentUnit(TransactionCase):
         
         # Create agent with minimal data
         agent = self.env['real.estate.agent'].create({
-            'name': 'Default Test Agent'
+            'name': 'Default Test Agent',
+            'cpf': '753.951.456-08',
         })
         
         # Assert default values
@@ -279,13 +289,14 @@ class TestAgentBusinessLogic(TransactionCase):
         # Create agent without companies
         agent = self.env['real.estate.agent'].create({
             'name': 'Workflow Agent',
+            'cpf': '159.753.486-37',
         })
         
         self.assertEqual(len(agent.company_ids), 0)
         
         # Act - Assign companies
         agent.write({
-            'company_ids': [(6, 0, [self.company_1.id, self.company_2.id, self.company_3.id])]
+            'company_ids': [(6, 0, [self.company_1.id, self.company_2.id, self.company_3.id])],
         })
         
         # Assert
@@ -300,7 +311,8 @@ class TestAgentBusinessLogic(TransactionCase):
         # Scenario 1: Agent with user
         agent_with_user = self.env['real.estate.agent'].create({
             'name': 'Agent With User',
-            'user_id': self.test_user.id
+            'user_id': self.test_user.id,
+            'cpf': '246.813.579-10',
         })
         
         self.assertTrue(agent_with_user.user_id)
@@ -309,6 +321,7 @@ class TestAgentBusinessLogic(TransactionCase):
         # Scenario 2: Agent without user (external agent)
         agent_without_user = self.env['real.estate.agent'].create({
             'name': 'External Agent',
+            'cpf': '345.678.901-21',
         })
         
         self.assertFalse(agent_without_user.user_id)
@@ -322,7 +335,8 @@ class TestAgentBusinessLogic(TransactionCase):
             'email': 'valid@agent.com',
             'phone': '+55 11 99999-8888',
             'agency_name': 'Top Realty',
-            'years_experience': 5
+            'years_experience': 5,
+            'cpf': '456.789.012-32',
         })
         
         # Assert - All fields should be properly set
@@ -339,7 +353,8 @@ class TestAgentBusinessLogic(TransactionCase):
         # Edge case 1: Very long name
         long_name = 'A' * 100
         agent_long_name = self.env['real.estate.agent'].create({
-            'name': long_name
+            'name': long_name,
+            'cpf': '567.890.123-43',
         })
         
         self.assertEqual(len(agent_long_name.name), 100)
@@ -347,7 +362,8 @@ class TestAgentBusinessLogic(TransactionCase):
         # Edge case 2: Zero experience
         agent_zero_exp = self.env['real.estate.agent'].create({
             'name': 'New Agent',
-            'years_experience': 0
+            'years_experience': 0,
+            'cpf': '678.901.234-54',
         })
         
         self.assertEqual(agent_zero_exp.years_experience, 0)
@@ -355,7 +371,8 @@ class TestAgentBusinessLogic(TransactionCase):
         # Edge case 3: High experience
         agent_high_exp = self.env['real.estate.agent'].create({
             'name': 'Senior Agent',
-            'years_experience': 50
+            'years_experience': 50,
+            'cpf': '789.012.345-65',
         })
         
         self.assertEqual(agent_high_exp.years_experience, 50)

@@ -74,6 +74,7 @@ class BaseRealEstateTest(unittest.TestCase):
         self.mock_agent_data = {
             'id': 1,
             'name': 'Test Agent',
+            'cpf': '333.444.555-66',
             'email': 'agent@test.com',
             'phone': '+55 11 99999-9999',
             'user_id': 1,

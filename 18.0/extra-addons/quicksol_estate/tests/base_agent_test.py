@@ -27,6 +27,7 @@ class BaseAgentTest(unittest.TestCase):
         self.agent_data = {
             'id': 1,
             'name': 'Test Agent',
+            'cpf': '444.555.666-77',
             'email': 'agent@test.com',
             'phone': '+55 11 99999-9999',
             'user_id': 1,

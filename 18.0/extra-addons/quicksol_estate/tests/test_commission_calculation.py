@@ -309,18 +309,20 @@ class TestCommissionCalculation(TransactionCase):
                 'valid_until': datetime.now().date() + timedelta(days=365),
             })
         
-        # Test negative percentage - database constraint will raise error  
-        with self.assertRaises(Exception, msg="Should reject negative percentage"):
-            self.env['real.estate.commission.rule'].create({
-                'agent_id': self.agent_1.id,
-                'company_id': self.company_a.id,
-                'transaction_type': 'sale',
-                'structure_type': 'percentage',
-                'percentage': -5.0,  # Invalid: negative
-                'fixed_amount': 0.0,
-                'valid_from': datetime.now().date(),
-                'valid_until': datetime.now().date() + timedelta(days=365),
-            })
+        # Test negative percentage - database constraint will raise psycopg2.IntegrityError
+        from psycopg2 import IntegrityError
+        with self.assertRaises(IntegrityError, msg="Should reject negative percentage"):
+            with self.env.cr.savepoint():
+                self.env['real.estate.commission.rule'].create({
+                    'agent_id': self.agent_1.id,
+                    'company_id': self.company_a.id,
+                    'transaction_type': 'sale',
+                    'structure_type': 'percentage',
+                    'percentage': -5.0,  # Invalid: negative
+                    'fixed_amount': 0.0,
+                    'valid_from': datetime.now().date(),
+                    'valid_until': datetime.now().date() + timedelta(days=365),
+                })
     
     def test_company_isolation_commission_rules(self):
         """Test: Should isolate commission rules by company (multi-tenancy)"""

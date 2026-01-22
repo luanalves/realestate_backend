@@ -46,6 +46,7 @@ class TestAgentPerformance(TransactionCase):
             'email': 'agent.a1@test.com',
             'company_id': self.company_a.id,
             'active': True,
+            'cpf': '333.444.555-26',
         })
         
         self.agent_a2 = self.env['real.estate.agent'].create({
@@ -53,6 +54,7 @@ class TestAgentPerformance(TransactionCase):
             'email': 'agent.a2@test.com',
             'company_id': self.company_a.id,
             'active': True,
+            'cpf': '222.333.444-15',
         })
         
         # Create agent for company B
@@ -61,6 +63,7 @@ class TestAgentPerformance(TransactionCase):
             'email': 'agent.b1@test.com',
             'company_id': self.company_b.id,
             'active': True,
+            'cpf': '111.222.333-04',
         })
         
         # Create commission rules for testing
