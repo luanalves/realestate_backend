@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- System Parameter: Prospector Commission Split Percentage -->
+        <record id="prospector_commission_percentage" model="ir.config_parameter">
+            <field name="key">quicksol_estate.prospector_commission_percentage</field>
+            <field name="value">0.30</field>
+        </record>
+    </data>
+</odoo>

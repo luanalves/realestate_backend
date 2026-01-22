@@ -1,0 +1,291 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Demo Companies -->
+        <record id="demo_company_sp" model="res.company">
+            <field name="name">QuickSol São Paulo</field>
+            <field name="email">sp@quicksol.com.br</field>
+            <field name="phone">+55 11 3456-7890</field>
+            <field name="street">Av. Paulista, 1000</field>
+            <field name="city">São Paulo</field>
+            <field name="state_id" ref="base.state_br_sp"/>
+            <field name="country_id" ref="base.br"/>
+            <field name="zip">01310-100</field>
+        </record>
+
+        <record id="demo_company_rj" model="res.company">
+            <field name="name">QuickSol Rio de Janeiro</field>
+            <field name="email">rj@quicksol.com.br</field>
+            <field name="phone">+55 21 2345-6789</field>
+            <field name="street">Av. Atlântica, 500</field>
+            <field name="city">Rio de Janeiro</field>
+            <field name="state_id" ref="base.state_br_rj"/>
+            <field name="country_id" ref="base.br"/>
+            <field name="zip">22010-000</field>
+        </record>
+
+        <!-- Demo User: Owner -->
+        <record id="demo_user_owner" model="res.users">
+            <field name="name">Maria Silva (Owner)</field>
+            <field name="login">maria.owner@quicksol.com.br</field>
+            <field name="email">maria.owner@quicksol.com.br</field>
+            <field name="password">demo123</field>
+            <field name="groups_id" eval="[(4, ref('quicksol_estate.group_real_estate_owner'))]"/>
+            <field name="company_id" ref="demo_company_sp"/>
+            <field name="company_ids" eval="[(4, ref('demo_company_sp')), (4, ref('demo_company_rj'))]"/>
+        </record>
+
+        <!-- Demo User: Director -->
+        <record id="demo_user_director" model="res.users">
+            <field name="name">Carlos Eduardo (Director)</field>
+            <field name="login">carlos.director@quicksol.com.br</field>
+            <field name="email">carlos.director@quicksol.com.br</field>
+            <field name="password">demo123</field>
+            <field name="groups_id" eval="[(4, ref('quicksol_estate.group_real_estate_director'))]"/>
+            <field name="company_id" ref="demo_company_sp"/>
+            <field name="company_ids" eval="[(4, ref('demo_company_sp'))]"/>
+        </record>
+
+        <!-- Demo User: Manager -->
+        <record id="demo_user_manager" model="res.users">
+            <field name="name">Ana Paula (Manager)</field>
+            <field name="login">ana.manager@quicksol.com.br</field>
+            <field name="email">ana.manager@quicksol.com.br</field>
+            <field name="password">demo123</field>
+            <field name="groups_id" eval="[(4, ref('quicksol_estate.group_real_estate_manager'))]"/>
+            <field name="company_id" ref="demo_company_sp"/>
+            <field name="company_ids" eval="[(4, ref('demo_company_sp'))]"/>
+        </record>
+
+        <!-- Demo User: User (Standard) -->
+        <record id="demo_user_standard" model="res.users">
+            <field name="name">João Santos (User)</field>
+            <field name="login">joao.user@quicksol.com.br</field>
+            <field name="email">joao.user@quicksol.com.br</field>
+            <field name="password">demo123</field>
+            <field name="groups_id" eval="[(4, ref('quicksol_estate.group_real_estate_user'))]"/>
+            <field name="company_id" ref="demo_company_sp"/>
+            <field name="company_ids" eval="[(4, ref('demo_company_sp'))]"/>
+        </record>
+
+        <!-- Demo User: Agent -->
+        <record id="demo_user_agent" model="res.users">
+            <field name="name">Pedro Oliveira (Agent)</field>
+            <field name="login">pedro.agent@quicksol.com.br</field>
+            <field name="email">pedro.agent@quicksol.com.br</field>
+            <field name="password">demo123</field>
+            <field name="groups_id" eval="[(4, ref('quicksol_estate.group_real_estate_agent'))]"/>
+            <field name="company_id" ref="demo_company_sp"/>
+            <field name="company_ids" eval="[(4, ref('demo_company_sp'))]"/>
+        </record>
+
+        <!-- Demo Agent Record for Pedro -->
+        <record id="demo_agent_pedro" model="real.estate.agent">
+            <field name="name">Pedro Oliveira</field>
+            <field name="creci">F-12345/SP</field>
+            <field name="phone">+55 11 98765-4321</field>
+            <field name="email">pedro.agent@quicksol.com.br</field>
+            <field name="user_id" ref="demo_user_agent"/>
+            <field name="estate_company_ids" eval="[(4, ref('demo_company_sp'))]"/>
+        </record>
+
+        <!-- Demo User: Prospector -->
+        <record id="demo_user_prospector" model="res.users">
+            <field name="name">Juliana Costa (Prospector)</field>
+            <field name="login">juliana.prospector@quicksol.com.br</field>
+            <field name="email">juliana.prospector@quicksol.com.br</field>
+            <field name="password">demo123</field>
+            <field name="groups_id" eval="[(4, ref('quicksol_estate.group_real_estate_prospector'))]"/>
+            <field name="company_id" ref="demo_company_sp"/>
+            <field name="company_ids" eval="[(4, ref('demo_company_sp'))]"/>
+        </record>
+
+        <!-- Demo Agent Record for Juliana -->
+        <record id="demo_agent_juliana" model="real.estate.agent">
+            <field name="name">Juliana Costa</field>
+            <field name="creci">F-67890/SP</field>
+            <field name="phone">+55 11 91234-5678</field>
+            <field name="email">juliana.prospector@quicksol.com.br</field>
+            <field name="user_id" ref="demo_user_prospector"/>
+            <field name="estate_company_ids" eval="[(4, ref('demo_company_sp'))]"/>
+        </record>
+
+        <!-- Demo User: Receptionist -->
+        <record id="demo_user_receptionist" model="res.users">
+            <field name="name">Fernanda Lima (Receptionist)</field>
+            <field name="login">fernanda.receptionist@quicksol.com.br</field>
+            <field name="email">fernanda.receptionist@quicksol.com.br</field>
+            <field name="password">demo123</field>
+            <field name="groups_id" eval="[(4, ref('quicksol_estate.group_real_estate_receptionist'))]"/>
+            <field name="company_id" ref="demo_company_sp"/>
+            <field name="company_ids" eval="[(4, ref('demo_company_sp'))]"/>
+        </record>
+
+        <!-- Demo User: Financial -->
+        <record id="demo_user_financial" model="res.users">
+            <field name="name">Roberto Almeida (Financial)</field>
+            <field name="login">roberto.financial@quicksol.com.br</field>
+            <field name="email">roberto.financial@quicksol.com.br</field>
+            <field name="password">demo123</field>
+            <field name="groups_id" eval="[(4, ref('quicksol_estate.group_real_estate_financial'))]"/>
+            <field name="company_id" ref="demo_company_sp"/>
+            <field name="company_ids" eval="[(4, ref('demo_company_sp'))]"/>
+        </record>
+
+        <!-- Demo User: Legal -->
+        <record id="demo_user_legal" model="res.users">
+            <field name="name">Luciana Martins (Legal)</field>
+            <field name="login">luciana.legal@quicksol.com.br</field>
+            <field name="email">luciana.legal@quicksol.com.br</field>
+            <field name="password">demo123</field>
+            <field name="groups_id" eval="[(4, ref('quicksol_estate.group_real_estate_legal'))]"/>
+            <field name="company_id" ref="demo_company_sp"/>
+            <field name="company_ids" eval="[(4, ref('demo_company_sp'))]"/>
+        </record>
+
+        <!-- Demo Partners for Portal Users -->
+        <record id="demo_partner_buyer1" model="res.partner">
+            <field name="name">Bruno Ferreira</field>
+            <field name="email">bruno.buyer@gmail.com</field>
+            <field name="phone">+55 11 99876-5432</field>
+            <field name="street">Rua das Flores, 123</field>
+            <field name="city">São Paulo</field>
+            <field name="state_id" ref="base.state_br_sp"/>
+            <field name="country_id" ref="base.br"/>
+            <field name="zip">01234-567</field>
+            <field name="is_company" eval="False"/>
+        </record>
+
+        <record id="demo_partner_tenant1" model="res.partner">
+            <field name="name">Claudia Souza</field>
+            <field name="email">claudia.tenant@gmail.com</field>
+            <field name="phone">+55 21 98765-4321</field>
+            <field name="street">Av. Rio Branco, 456</field>
+            <field name="city">Rio de Janeiro</field>
+            <field name="state_id" ref="base.state_br_rj"/>
+            <field name="country_id" ref="base.br"/>
+            <field name="zip">20040-001</field>
+            <field name="is_company" eval="False"/>
+        </record>
+
+        <!-- Demo Portal User: Buyer -->
+        <record id="demo_portal_user_buyer" model="res.users">
+            <field name="name">Bruno Ferreira (Portal)</field>
+            <field name="login">bruno.buyer@gmail.com</field>
+            <field name="email">bruno.buyer@gmail.com</field>
+            <field name="password">demo123</field>
+            <field name="partner_id" ref="demo_partner_buyer1"/>
+            <field name="groups_id" eval="[(4, ref('quicksol_estate.group_real_estate_portal_user'))]"/>
+            <field name="company_id" ref="demo_company_sp"/>
+            <field name="company_ids" eval="[(4, ref('demo_company_sp'))]"/>
+        </record>
+
+        <!-- Demo Portal User: Tenant -->
+        <record id="demo_portal_user_tenant" model="res.users">
+            <field name="name">Claudia Souza (Portal)</field>
+            <field name="login">claudia.tenant@gmail.com</field>
+            <field name="email">claudia.tenant@gmail.com</field>
+            <field name="password">demo123</field>
+            <field name="partner_id" ref="demo_partner_tenant1"/>
+            <field name="groups_id" eval="[(4, ref('quicksol_estate.group_real_estate_portal_user'))]"/>
+            <field name="company_id" ref="demo_company_rj"/>
+            <field name="company_ids" eval="[(4, ref('demo_company_rj'))]"/>
+        </record>
+
+        <!-- Demo Property Owner -->
+        <record id="demo_partner_owner1" model="res.partner">
+            <field name="name">Ricardo Mendes Imóveis</field>
+            <field name="email">ricardo.owner@gmail.com</field>
+            <field name="phone">+55 11 3234-5678</field>
+            <field name="street">Av. Brigadeiro Faria Lima, 1000</field>
+            <field name="city">São Paulo</field>
+            <field name="state_id" ref="base.state_br_sp"/>
+            <field name="country_id" ref="base.br"/>
+            <field name="zip">01451-000</field>
+            <field name="is_company" eval="True"/>
+        </record>
+
+        <!-- Demo Property -->
+        <record id="demo_property_1" model="real.estate.property">
+            <field name="name">Apartamento 3 quartos - Jardins</field>
+            <field name="description">Amplo apartamento de 120m² com 3 quartos, 2 banhões, sala de estar e jantar integradas. Andar alto com vista para o parque.</field>
+            <field name="postcode">01452-000</field>
+            <field name="bedrooms">3</field>
+            <field name="living_area">120.0</field>
+            <field name="facades">2</field>
+            <field name="garage" eval="True"/>
+            <field name="garden" eval="False"/>
+            <field name="expected_price">850000.0</field>
+            <field name="best_offer">0.0</field>
+            <field name="selling_price">0.0</field>
+            <field name="property_type_id" ref="quicksol_estate.property_type_apartment"/>
+            <field name="state">new</field>
+            <field name="agent_ids" eval="[(4, ref('demo_agent_pedro'))]"/>
+            <field name="prospector_id" ref="demo_agent_juliana"/>
+            <field name="estate_company_ids" eval="[(4, ref('demo_company_sp'))]"/>
+        </record>
+
+        <!-- Create PropertyOwner linking property to partner -->
+        <record id="demo_property_owner_1" model="real.estate.property_owner">
+            <field name="property_id" ref="demo_property_1"/>
+            <field name="partner_id" ref="demo_partner_owner1"/>
+            <field name="ownership_percentage">100.0</field>
+            <field name="start_date" eval="(DateTime.now() - timedelta(days=365)).strftime('%Y-%m-%d')"/>
+            <field name="estate_company_ids" eval="[(4, ref('demo_company_sp'))]"/>
+        </record>
+
+        <!-- Demo Sale -->
+        <record id="demo_sale_1" model="real.estate.sale">
+            <field name="property_id" ref="demo_property_1"/>
+            <field name="buyer_partner_id" ref="demo_partner_buyer1"/>
+            <field name="sale_date" eval="DateTime.now().strftime('%Y-%m-%d')"/>
+            <field name="sale_price">850000.0</field>
+            <field name="commission_rate">6.0</field>
+            <field name="commission_amount">51000.0</field>
+            <field name="state">pending</field>
+            <field name="estate_company_ids" eval="[(4, ref('demo_company_sp'))]"/>
+        </record>
+
+        <!-- Demo Commission for Agent (70%) -->
+        <record id="demo_commission_agent" model="real.estate.commission">
+            <field name="sale_id" ref="demo_sale_1"/>
+            <field name="agent_id" ref="demo_agent_pedro"/>
+            <field name="amount">35700.0</field>
+            <field name="percentage">70.0</field>
+            <field name="state">pending</field>
+            <field name="notes">Comissão principal do corretor responsável</field>
+            <field name="estate_company_ids" eval="[(4, ref('demo_company_sp'))]"/>
+        </record>
+
+        <!-- Demo Commission for Prospector (30%) -->
+        <record id="demo_commission_prospector" model="real.estate.commission">
+            <field name="sale_id" ref="demo_sale_1"/>
+            <field name="agent_id" ref="demo_agent_juliana"/>
+            <field name="amount">15300.0</field>
+            <field name="percentage">30.0</field>
+            <field name="state">pending</field>
+            <field name="notes">Comissão do prospector que trouxe o imóvel</field>
+            <field name="estate_company_ids" eval="[(4, ref('demo_company_sp'))]"/>
+        </record>
+
+        <!-- Demo Property for Rio de Janeiro -->
+        <record id="demo_property_2" model="real.estate.property">
+            <field name="name">Cobertura 4 quartos - Copacabana</field>
+            <field name="description">Cobertura duplex de 200m² com vista para o mar. 4 suítes, piscina privativa, churrasqueira.</field>
+            <field name="postcode">22070-002</field>
+            <field name="bedrooms">4</field>
+            <field name="living_area">200.0</field>
+            <field name="facades">3</field>
+            <field name="garage" eval="True"/>
+            <field name="garden" eval="True"/>
+            <field name="garden_area">50.0</field>
+            <field name="expected_price">1500000.0</field>
+            <field name="best_offer">0.0</field>
+            <field name="selling_price">0.0</field>
+            <field name="property_type_id" ref="quicksol_estate.property_type_penthouse"/>
+            <field name="state">new</field>
+            <field name="estate_company_ids" eval="[(4, ref('demo_company_rj'))]"/>
+        </record>
+
+    </data>
+</odoo>
