@@ -1,0 +1,9 @@
+/* Custom branding styles */
+
+/* Login page logo */
+.oe_login_form img,
+.oe_single_form_container img {
+    content: url('/thedevkitchen_branding/static/src/img/logo.png');
+    max-height: 120px !important;
+    max-width: 100% !important;
+}

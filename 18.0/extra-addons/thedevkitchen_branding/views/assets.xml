@@ -1,31 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <!-- Replace Favicon -->
-    <template id="layout" inherit_id="web.layout" name="Custom Favicon">
+    <template id="layout_favicon" inherit_id="web.layout" name="Custom Favicon">
         <xpath expr="//link[@rel='shortcut icon']" position="replace">
             <link rel="shortcut icon" href="/thedevkitchen_branding/static/src/img/favicon.ico" type="image/x-icon"/>
-        </xpath>
-    </template>
-
-    <!-- Replace Login Page Logo -->
-    <template id="web.login" inherit_id="web.login" name="Custom Login Logo">
-        <xpath expr="//div[hasclass('oe_single_form_container')]//img" position="replace">
-            <img src="/thedevkitchen_branding/static/src/img/logo.png" alt="Logo" style="max-height: 120px; max-width: 100%;"/>
-        </xpath>
-    </template>
-
-    <!-- Replace Navbar Logo -->
-    <template id="navbar_logo" inherit_id="web.webclient_bootstrap" name="Custom Navbar Logo">
-        <xpath expr="//nav[@class='o_main_navbar']//a[@class='o_menu_brand']" position="attributes">
-            <attribute name="style">
-                background-image: url('/thedevkitchen_branding/static/src/img/logo_navbar.png');
-                background-size: contain;
-                background-repeat: no-repeat;
-                background-position: center;
-                width: 150px;
-                height: 40px;
-                text-indent: -9999px;
-            </attribute>
         </xpath>
     </template>
 </odoo>
