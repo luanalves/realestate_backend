@@ -37,3 +37,11 @@ cypress/downloads/
 # OS specific
 .DS_Store
 Thumbs.db
+
+# RBAC temporary files
+18.0/fix_*.py
+*.bak
+*.bak2
+
+# Celery worker (development only)
+18.0/celery_worker/
