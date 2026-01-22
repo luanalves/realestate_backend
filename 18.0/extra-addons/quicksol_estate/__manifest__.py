@@ -1,13 +1,21 @@
 {
     'name': 'Real Estate Management - Kenlo Imóveis Edition',
-    'version': '2.0.2',
+    'version': '18.0.2.0.0',
     'category': 'Real Estate',
-    'summary': 'Complete property management system following Kenlo Imóveis standards',
+    'summary': 'Complete property management system following Kenlo Imóveis standards with RBAC',
     'description': """
 Real Estate Management Module - Kenlo Imóveis Edition
 =====================================================
 
 This module provides a complete property management system for real estate agencies following Kenlo Imóveis standards.
+
+Version 18.0.2.0.0 Changes:
+===========================
+- **RBAC User Profiles**: 9 predefined user profiles (Owner, Director, Manager, Agent, Prospector, Receptionist, Financial, Legal, Portal User)
+- **Observer Pattern**: Event-driven architecture for decoupled business logic (ADR-020)
+- **Async Messaging**: RabbitMQ + Celery for background processing (ADR-021)
+- **Commission Split**: Prospector + Agent commission split functionality
+- **Multi-Tenancy**: Enhanced company isolation with comprehensive record rules
 
 Key Features:
 ============
@@ -64,6 +72,8 @@ Property Form Sections:
         'data/agent_seed.xml',
         'data/api_endpoints.xml',
         'data/user_auth_endpoints_data.xml',
+        'data/system_parameters.xml',
+        # 'data/default_groups.xml',  # Demo data temporarily disabled - complex dependencies
         
         # Views (actions must be loaded before menus that reference them)
         'views/company_views.xml',
