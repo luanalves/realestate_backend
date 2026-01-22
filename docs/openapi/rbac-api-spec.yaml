@@ -1,0 +1,653 @@
+openapi: 3.0.3
+info:
+  title: QuickSol Real Estate API - RBAC & Event System
+  version: 18.0.2.0.0
+  description: |
+    Complete API documentation for QuickSol Real Estate Management System with Role-Based Access Control (RBAC).
+
+    ## Authentication
+    - **OAuth 2.0**: Bearer token required for all endpoints
+    - **Session**: Session ID required for business endpoints (user context)
+    - **Fingerprint**: IP + User-Agent + Accept-Language validation
+
+    ## RBAC Profiles
+    The system supports 9 security profiles with granular permissions:
+    
+    | Profile | Access Level | Key Permissions |
+    |---------|--------------|-----------------|
+    | Owner | Full CRUD | Company management, all data |
+    | Director | Executive | Inherits Manager + BI access |
+    | Manager | Company-wide | All models, full CRUD |
+    | User | Standard | Basic CRUD within assigned companies |
+    | Agent | Field Staff | Own properties, own commissions |
+    | Prospector | Lead Generation | Create properties, split commissions |
+    | Receptionist | Front Desk | Read-only: properties, sales, leases |
+    | Financial | Accounting | Read sales/leases, CRUD commissions |
+    | Legal | Compliance | Read-only contracts |
+    | Portal User | Client Access | View own contracts only |
+
+    ## Multi-Tenancy
+    - All data filtered by `estate_company_ids` (Many2many)
+    - Users assigned to one or more companies
+    - Record rules enforce company-level isolation
+    - Portal users see only partner-related data
+
+    ## Event System (Async)
+    - **EventBus**: Centralized event dispatcher
+    - **RabbitMQ**: Message broker (3 queues)
+    - **Celery**: 3 workers (commission, audit, notification)
+    - **Observers**: 4 registered (Commission, Prospector, UserValidator, SecurityAudit)
+
+    ## Standards Compliance
+    - ADR-005: OpenAPI 3.0 documentation
+    - ADR-007: HATEOAS links in responses
+    - ADR-008: Multi-tenancy security
+    - ADR-009: Headless authentication
+
+  contact:
+    name: QuickSol Technologies
+    url: https://quicksol.ca
+  license:
+    name: LGPL-3
+    url: https://www.gnu.org/licenses/lgpl-3.0.html
+
+servers:
+  - url: http://localhost:8069
+    description: Local development server
+  - url: https://api.quicksol.ca
+    description: Production server
+
+tags:
+  - name: Authentication
+    description: OAuth 2.0 token management
+  - name: Properties
+    description: Real estate property management
+  - name: Agents
+    description: Agent management and assignments
+  - name: Sales
+    description: Property sales and contracts
+  - name: Commissions
+    description: Commission management and splits
+  - name: RBAC
+    description: Role-based access control testing
+  - name: Events
+    description: Async event system (Observer pattern)
+  - name: Audit
+    description: LGPD compliance audit logging
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: OAuth 2.0 Bearer token from /api/v1/auth/token
+    
+    SessionAuth:
+      type: apiKey
+      in: header
+      name: X-Openerp-Session-Id
+      description: Session ID from /api/v1/users/login (required for business endpoints)
+
+  schemas:
+    Property:
+      type: object
+      required:
+        - name
+        - postcode
+        - expected_price
+        - estate_company_ids
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          example: "Apartamento 3 quartos - Jardins"
+        postcode:
+          type: string
+          example: "01452-000"
+        expected_price:
+          type: number
+          format: float
+          example: 850000.0
+        bedrooms:
+          type: integer
+          example: 3
+        living_area:
+          type: number
+          format: float
+          example: 120.0
+        agent_ids:
+          type: array
+          items:
+            type: integer
+          description: Many2many relationship to agents
+        prospector_id:
+          type: integer
+          description: Agent who prospected this property (earns 30% commission split)
+          x-rbac: "Manager, Owner only"
+        estate_company_ids:
+          type: array
+          items:
+            type: integer
+          description: Multi-tenancy company assignment
+
+    Agent:
+      type: object
+      required:
+        - name
+        - creci
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          example: "Pedro Oliveira"
+        creci:
+          type: string
+          example: "F-12345/SP"
+          description: Brazilian real estate license number
+        phone:
+          type: string
+          example: "+55 11 98765-4321"
+        email:
+          type: string
+          format: email
+        user_id:
+          type: integer
+          description: Linked user account
+        estate_company_ids:
+          type: array
+          items:
+            type: integer
+
+    Sale:
+      type: object
+      required:
+        - property_id
+        - buyer_partner_id
+        - sale_price
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        property_id:
+          type: integer
+        buyer_partner_id:
+          type: integer
+          description: Partner (buyer) for portal isolation
+        sale_price:
+          type: number
+          format: float
+          example: 850000.0
+        commission_rate:
+          type: number
+          format: float
+          example: 6.0
+          x-rbac: "Financial, Manager, Owner only"
+        commission_amount:
+          type: number
+          format: float
+          readOnly: true
+        state:
+          type: string
+          enum: [pending, confirmed, cancelled]
+        estate_company_ids:
+          type: array
+          items:
+            type: integer
+
+    Commission:
+      type: object
+      required:
+        - sale_id
+        - agent_id
+        - amount
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        sale_id:
+          type: integer
+        agent_id:
+          type: integer
+        amount:
+          type: number
+          format: float
+          example: 35700.0
+        percentage:
+          type: number
+          format: float
+          example: 70.0
+          description: Percentage of total commission (70% for agent, 30% for prospector)
+        state:
+          type: string
+          enum: [pending, paid, cancelled]
+        notes:
+          type: string
+        estate_company_ids:
+          type: array
+          items:
+            type: integer
+
+    Event:
+      type: object
+      description: Async event dispatched via EventBus
+      properties:
+        event_name:
+          type: string
+          enum:
+            - sale.created
+            - property.created
+            - user.groups_changed
+            - commission.calculated
+          example: "sale.created"
+        data:
+          type: object
+          description: Event-specific payload
+          properties:
+            user:
+              type: object
+              description: User object for user.groups_changed event
+            added_groups:
+              type: array
+              items:
+                type: string
+              description: Groups added (user.groups_changed)
+            removed_groups:
+              type: array
+              items:
+                type: string
+              description: Groups removed (user.groups_changed)
+            changed_by:
+              type: object
+              description: User who made the change
+            sale:
+              type: object
+              description: Sale record for sale.created event
+            property:
+              type: object
+              description: Property record for property.created event
+        env:
+          type: object
+          description: Odoo environment (automatically added by EventBus)
+
+    AuditLog:
+      type: object
+      description: LGPD compliance audit log (mail.message)
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        model:
+          type: string
+          example: "res.users"
+        res_id:
+          type: integer
+          description: Record ID being audited
+        body:
+          type: string
+          description: HTML-formatted audit message
+          example: |
+            User: admin (ID: 2, admin)<br/>
+            Groups Added: Real Estate Manager<br/>
+            Groups Removed: Real Estate User<br/>
+            Changed By: Administrator<br/>
+            Timestamp: 2026-01-20 15:30:45
+        subtype_id:
+          type: integer
+          description: Message subtype (note for audit logs)
+        create_date:
+          type: string
+          format: date-time
+          readOnly: true
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Access Denied"
+        message:
+          type: string
+          example: "You do not have permission to access this resource"
+        code:
+          type: integer
+          example: 403
+
+paths:
+  /api/v1/properties:
+    get:
+      tags:
+        - Properties
+        - RBAC
+      summary: List properties (RBAC filtered)
+      description: |
+        Returns properties based on user's RBAC profile and company assignment.
+        
+        **RBAC Filtering:**
+        - **Owner/Manager**: All company properties
+        - **Agent**: Only assigned properties (agent_ids contains user's agent)
+        - **Prospector**: Only prospected properties (prospector_id = user's agent)
+        - **Receptionist**: Read-only, all company properties
+        - **Portal User**: No access (properties not client-facing)
+        
+        **Multi-Tenancy:** Filters by estate_company_ids
+      security:
+        - BearerAuth: []
+        - SessionAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: state
+          in: query
+          schema:
+            type: string
+            enum: [new, offer_received, offer_accepted, sold, cancelled]
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Property'
+                  total:
+                    type: integer
+                  links:
+                    type: object
+                    description: HATEOAS navigation links (ADR-007)
+        '403':
+          description: Forbidden (RBAC restriction)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      tags:
+        - Properties
+        - RBAC
+      summary: Create property (Auto-assign prospector)
+      description: |
+        Creates a new property. If user is in Prospector group, prospector_id is auto-assigned.
+        
+        **RBAC Permissions:**
+        - **Owner/Manager**: Full access
+        - **Prospector**: Can create, prospector_id auto-assigned
+        - **Agent**: Can create if assigned to property
+        - **Receptionist**: No create permission (403)
+        
+        **Observer:** ProspectorAutoAssignObserver sets prospector_id on create
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/Property'
+                - type: object
+                  required:
+                    - session_id
+                  properties:
+                    session_id:
+                      type: string
+                      description: Session ID from login
+      responses:
+        '201':
+          description: Property created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Property'
+        '403':
+          description: Forbidden (insufficient permissions)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/commissions:
+    get:
+      tags:
+        - Commissions
+        - RBAC
+      summary: List commissions (RBAC filtered)
+      description: |
+        Returns commissions based on user's RBAC profile.
+        
+        **RBAC Filtering:**
+        - **Owner/Manager/Financial**: All company commissions
+        - **Agent**: Only own commissions (agent_id = user's agent)
+        - **Prospector**: Only prospector commissions (agent_id = user's agent)
+        - **Receptionist/Legal**: No access (financial data restricted)
+        
+        **Commission Split:** Prospector earns 30%, Agent earns 70% (configurable via system parameter)
+      security:
+        - BearerAuth: []
+        - SessionAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Commission'
+        '403':
+          description: Forbidden (financial data restricted)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/sales:
+    get:
+      tags:
+        - Sales
+        - RBAC
+      summary: List sales (RBAC filtered)
+      description: |
+        Returns sales based on user's RBAC profile and partner relationship.
+        
+        **RBAC Filtering:**
+        - **Owner/Manager/Financial/Legal**: All company sales
+        - **Receptionist**: Read-only access to all company sales
+        - **Agent**: Sales for assigned properties
+        - **Portal User**: Only own sales (buyer_partner_id = user.partner_id)
+        
+        **Multi-Tenancy:** Filters by estate_company_ids
+        **Partner Isolation:** Portal users see only their contracts
+      security:
+        - BearerAuth: []
+        - SessionAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Sale'
+
+  /api/v1/events/emit:
+    post:
+      tags:
+        - Events
+      summary: Emit async event (Internal)
+      description: |
+        Internal endpoint for emitting async events via EventBus.
+        
+        **Event Flow:**
+        1. Controller calls EventBus.emit()
+        2. Event dispatched to RabbitMQ queue
+        3. Celery worker picks up event
+        4. Observers handle event asynchronously
+        
+        **Registered Observers:**
+        - **CommissionSplitObserver**: Calculates agent/prospector split on sale.created
+        - **ProspectorAutoAssignObserver**: Auto-assigns prospector on property.created
+        - **UserCompanyValidatorObserver**: Validates user-company relationships
+        - **SecurityGroupAuditObserver**: LGPD audit logging on user.groups_changed
+        
+        **Queues:**
+        - commission_events (CommissionSplitObserver)
+        - audit_events (SecurityGroupAuditObserver)
+        - notification_events (future use)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - event_name
+                - data
+              properties:
+                event_name:
+                  type: string
+                  enum: [sale.created, property.created, user.groups_changed]
+                data:
+                  type: object
+                  description: Event-specific payload
+      responses:
+        '202':
+          description: Event accepted for processing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "accepted"
+                  event_id:
+                    type: string
+                    description: Unique event identifier
+
+  /api/v1/audit/logs:
+    get:
+      tags:
+        - Audit
+      summary: List LGPD audit logs
+      description: |
+        Returns audit logs for permission changes (LGPD compliance).
+        
+        **Observer:** SecurityGroupAuditObserver
+        **Storage:** mail.message model
+        **Event:** user.groups_changed
+        
+        **Audit Fields:**
+        - User who was modified
+        - Groups added/removed
+        - Who made the change
+        - Timestamp (ISO 8601)
+        
+        **RBAC:** Owner/Director only
+      security:
+        - BearerAuth: []
+        - SessionAuth: []
+      parameters:
+        - name: user_id
+          in: query
+          schema:
+            type: integer
+          description: Filter by user ID
+        - name: date_from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: date_to
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AuditLog'
+        '403':
+          description: Forbidden (Owner/Director only)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/rbac/test/multi-tenancy:
+    get:
+      tags:
+        - RBAC
+      summary: Test multi-tenancy isolation
+      description: |
+        Test endpoint to verify cross-company data isolation.
+        
+        **Test Scenario:**
+        1. Create 2 companies (Company A, Company B)
+        2. Assign user to Company A only
+        3. Verify user cannot see Company B data
+        
+        **Expected Behavior:**
+        - User sees only Company A properties
+        - Attempting to access Company B property returns 403
+        - Multi-company users see combined data
+        
+        **Record Rule:** estate_company_ids in user.estate_company_ids.ids
+      security:
+        - BearerAuth: []
+        - SessionAuth: []
+      responses:
+        '200':
+          description: Multi-tenancy test results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user_companies:
+                    type: array
+                    items:
+                      type: integer
+                  visible_properties:
+                    type: integer
+                    description: Count of properties user can see
+                  isolation_verified:
+                    type: boolean
+
+security:
+  - BearerAuth: []
+  - SessionAuth: []
