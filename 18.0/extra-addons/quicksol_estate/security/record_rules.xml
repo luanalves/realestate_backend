@@ -2,6 +2,289 @@
 <odoo>
     <data noupdate="1">
         
+        <!-- ===== RBAC v18.0.2.0.0 - OWNER PROFILE RULES ===== -->
+        
+        <!-- Owner: Manage users in their companies (cannot assign to other companies) -->
+        <record id="rule_owner_company_users" model="ir.rule">
+            <field name="name">Owner: Manage Company Users</field>
+            <field name="model_id" ref="base.model_res_users"/>
+            <field name="domain_force">[('company_ids', 'in', user.estate_company_ids.ids)]</field>
+            <field name="groups" eval="[(4, ref('group_real_estate_owner'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+        
+        <!-- Owner: Full access to properties in their companies -->
+        <record id="rule_owner_properties" model="ir.rule">
+            <field name="name">Owner: Company Properties</field>
+            <field name="model_id" ref="model_real_estate_property"/>
+            <field name="domain_force">[('company_ids', 'in', user.estate_company_ids.ids)]</field>
+            <field name="groups" eval="[(4, ref('group_real_estate_owner'))]"/>
+        </record>
+        
+        <!-- Owner: Full access to agents in their companies -->
+        <record id="rule_owner_agents" model="ir.rule">
+            <field name="name">Owner: Company Agents</field>
+            <field name="model_id" ref="model_real_estate_agent"/>
+            <field name="domain_force">[('company_ids', 'in', user.estate_company_ids.ids)]</field>
+            <field name="groups" eval="[(4, ref('group_real_estate_owner'))]"/>
+        </record>
+        
+        <!-- Owner: Full access to commission rules in their companies -->
+        <record id="rule_owner_commission_rules" model="ir.rule">
+            <field name="name">Owner: Commission Rules</field>
+            <field name="model_id" ref="model_real_estate_commission_rule"/>
+            <field name="domain_force">[('company_id', 'in', user.estate_company_ids.ids)]</field>
+            <field name="groups" eval="[(4, ref('group_real_estate_owner'))]"/>
+        </record>
+        
+        <!-- ===== RBAC v18.0.2.0.0 - AGENT PROFILE RULES ===== -->
+        
+        <!-- Agent: Own properties (agent_id.user_id = user.id) -->
+        <record id="rule_agent_own_properties" model="ir.rule">
+            <field name="name">Agent: Own Properties</field>
+            <field name="model_id" ref="model_real_estate_property"/>
+            <field name="domain_force">['|', ('agent_id.user_id', '=', user.id), ('assignment_ids.agent_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_real_estate_agent'))]"/>
+        </record>
+        
+        <!-- Agent: Own assignments -->
+        <record id="rule_agent_own_assignments" model="ir.rule">
+            <field name="name">Agent: Own Assignments</field>
+            <field name="model_id" ref="model_real_estate_agent_property_assignment"/>
+            <field name="domain_force">[('agent_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_real_estate_agent'))]"/>
+        </record>
+        
+        <!-- Agent: Own sales -->
+        <record id="rule_agent_own_sales" model="ir.rule">
+            <field name="name">Agent: Own Sales</field>
+            <field name="model_id" ref="model_real_estate_sale"/>
+            <field name="domain_force">[('property_id.agent_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_real_estate_agent'))]"/>
+        </record>
+        
+        <!-- Agent: Own leases -->
+        <record id="rule_agent_own_leases" model="ir.rule">
+            <field name="name">Agent: Own Leases</field>
+            <field name="model_id" ref="model_real_estate_lease"/>
+            <field name="domain_force">[('property_id.agent_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_real_estate_agent'))]"/>
+        </record>
+        
+        <!-- ===== RBAC v18.0.2.0.0 - PROSPECTOR PROFILE RULES ===== -->
+        
+        <!-- Prospector: Only prospected properties (prospector_id = current user's agent) -->
+        <record id="rule_prospector_own_properties" model="ir.rule">
+            <field name="name">Prospector: Own Prospected Properties</field>
+            <field name="model_id" ref="model_real_estate_property"/>
+            <field name="domain_force">[('prospector_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_real_estate_prospector'))]"/>
+        </record>
+        
+        <!-- Prospector: Read-only sales where prospector_id = current user -->
+        <record id="rule_prospector_own_sales" model="ir.rule">
+            <field name="name">Prospector: Own Sales</field>
+            <field name="model_id" ref="model_real_estate_sale"/>
+            <field name="domain_force">[('property_id.prospector_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_real_estate_prospector'))]"/>
+        </record>
+        
+        <!-- ===== RBAC v18.0.2.0.0 - MANAGER PROFILE RULES ===== -->
+        
+        <!-- Manager: All company properties -->
+        <record id="rule_manager_all_company_properties" model="ir.rule">
+            <field name="name">Manager: All Company Properties</field>
+            <field name="model_id" ref="model_real_estate_property"/>
+            <field name="domain_force">[('company_ids', 'in', user.estate_company_ids.ids)]</field>
+            <field name="groups" eval="[(4, ref('group_real_estate_manager'))]"/>
+        </record>
+        
+        <!-- Manager: All company agents -->
+        <record id="rule_manager_all_company_agents" model="ir.rule">
+            <field name="name">Manager: All Company Agents</field>
+            <field name="model_id" ref="model_real_estate_agent"/>
+            <field name="domain_force">[('company_ids', 'in', user.estate_company_ids.ids)]</field>
+            <field name="groups" eval="[(4, ref('group_real_estate_manager'))]"/>
+        </record>
+        
+        <!-- Manager: All company sales -->
+        <record id="rule_manager_all_company_sales" model="ir.rule">
+            <field name="name">Manager: All Company Sales</field>
+            <field name="model_id" ref="model_real_estate_sale"/>
+            <field name="domain_force">[('company_ids', 'in', user.estate_company_ids.ids)]</field>
+            <field name="groups" eval="[(4, ref('group_real_estate_manager'))]"/>
+        </record>
+        
+        <!-- Manager: All company leases -->
+        <record id="rule_manager_all_company_leases" model="ir.rule">
+            <field name="name">Manager: All Company Leases</field>
+            <field name="model_id" ref="model_real_estate_lease"/>
+            <field name="domain_force">[('company_ids', 'in', user.estate_company_ids.ids)]</field>
+            <field name="groups" eval="[(4, ref('group_real_estate_manager'))]"/>
+        </record>
+        
+        <!-- Manager: All company assignments -->
+        <record id="rule_manager_all_company_assignments" model="ir.rule">
+            <field name="name">Manager: All Company Assignments</field>
+            <field name="model_id" ref="model_real_estate_agent_property_assignment"/>
+            <field name="domain_force">[('property_id.company_ids', 'in', user.estate_company_ids.ids)]</field>
+            <field name="groups" eval="[(4, ref('group_real_estate_manager'))]"/>
+        </record>
+        
+        <!-- ===== RBAC v18.0.2.0.0 - RECEPTIONIST PROFILE RULES ===== -->
+        
+        <!-- Receptionist: Read-only access to all company properties -->
+        <record id="rule_receptionist_read_properties" model="ir.rule">
+            <field name="name">Receptionist: Read Company Properties</field>
+            <field name="model_id" ref="model_real_estate_property"/>
+            <field name="domain_force">[('company_ids', 'in', user.estate_company_ids.ids)]</field>
+            <field name="groups" eval="[(4, ref('group_real_estate_receptionist'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+        
+        <!-- Receptionist: CRUD leases -->
+        <record id="rule_receptionist_crud_leases" model="ir.rule">
+            <field name="name">Receptionist: CRUD Leases</field>
+            <field name="model_id" ref="model_real_estate_lease"/>
+            <field name="domain_force">[('company_ids', 'in', user.estate_company_ids.ids)]</field>
+            <field name="groups" eval="[(4, ref('group_real_estate_receptionist'))]"/>
+        </record>
+        
+        <!-- Receptionist: CRUD property keys (if model exists) -->
+        <record id="rule_receptionist_crud_keys" model="ir.rule">
+            <field name="name">Receptionist: CRUD Property Keys</field>
+            <field name="model_id" ref="model_real_estate_property_key"/>
+            <field name="domain_force">[('property_id.company_ids', 'in', user.estate_company_ids.ids)]</field>
+            <field name="groups" eval="[(4, ref('group_real_estate_receptionist'))]"/>
+        </record>
+        
+        <!-- ===== FINANCIAL STAFF RECORD RULES ===== -->
+        <!-- FR-051: Financial officer manages commissions and views sales/leases -->
+        
+        <!-- Financial: Read all sales -->
+        <record id="rule_financial_read_sales" model="ir.rule">
+            <field name="name">Financial: Read All Company Sales</field>
+            <field name="model_id" ref="model_real_estate_sale"/>
+            <field name="domain_force">[('company_ids', 'in', user.estate_company_ids.ids)]</field>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+            <field name="groups" eval="[(4, ref('group_real_estate_financial'))]"/>
+        </record>
+        
+        <!-- Financial: Read all leases -->
+        <record id="rule_financial_read_leases" model="ir.rule">
+            <field name="name">Financial: Read All Company Leases</field>
+            <field name="model_id" ref="model_real_estate_lease"/>
+            <field name="domain_force">[('company_ids', 'in', user.estate_company_ids.ids)]</field>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+            <field name="groups" eval="[(4, ref('group_real_estate_financial'))]"/>
+        </record>
+        
+        <!-- Financial: CRUD commission rules -->
+        <record id="rule_financial_crud_commission_rules" model="ir.rule">
+            <field name="name">Financial: CRUD Commission Rules</field>
+            <field name="model_id" ref="model_real_estate_commission_rule"/>
+            <field name="domain_force">[('company_id', 'in', user.estate_company_ids.ids)]</field>
+            <field name="groups" eval="[(4, ref('group_real_estate_financial'))]"/>
+        </record>
+        
+        <!-- Financial: CRUD commission transactions -->
+        <record id="rule_financial_crud_commission_transactions" model="ir.rule">
+            <field name="name">Financial: CRUD Commission Transactions</field>
+            <field name="model_id" ref="model_real_estate_commission_transaction"/>
+            <field name="domain_force">[('company_id', 'in', user.estate_company_ids.ids)]</field>
+            <field name="groups" eval="[(4, ref('group_real_estate_financial'))]"/>
+        </record>
+        
+        <!-- ===== LEGAL STAFF RECORD RULES ===== -->
+        <!-- FR-052: Legal counsel reviews contracts (read-only) -->
+        
+        <!-- Legal: Read all contracts (sales and leases) -->
+        <record id="rule_legal_read_contracts" model="ir.rule">
+            <field name="name">Legal: Read All Company Contracts</field>
+            <field name="model_id" ref="model_real_estate_sale"/>
+            <field name="domain_force">[('company_ids', 'in', user.estate_company_ids.ids)]</field>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+            <field name="groups" eval="[(4, ref('group_real_estate_legal'))]"/>
+        </record>
+        
+        <!-- Legal: Read all leases -->
+        <record id="rule_legal_read_leases" model="ir.rule">
+            <field name="name">Legal: Read All Company Leases</field>
+            <field name="model_id" ref="model_real_estate_lease"/>
+            <field name="domain_force">[('company_ids', 'in', user.estate_company_ids.ids)]</field>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+            <field name="groups" eval="[(4, ref('group_real_estate_legal'))]"/>
+        </record>
+        
+        <!-- Legal: Read properties for contract context -->
+        <record id="rule_legal_read_properties" model="ir.rule">
+            <field name="name">Legal: Read Properties for Contract Review</field>
+            <field name="model_id" ref="model_real_estate_property"/>
+            <field name="domain_force">[('company_ids', 'in', user.estate_company_ids.ids)]</field>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+            <field name="groups" eval="[(4, ref('group_real_estate_legal'))]"/>
+        </record>
+        
+        <!-- ===== PORTAL USER RECORD RULES ===== -->
+        <!-- FR-053: Client/tenant portal access (partner-level isolation) -->
+        
+        <!-- Portal: See only own contracts (sales where buyer = partner) -->
+        <record id="rule_portal_own_sales" model="ir.rule">
+            <field name="name">Portal: Own Sale Contracts Only</field>
+            <field name="model_id" ref="model_real_estate_sale"/>
+            <field name="domain_force">[('buyer_partner_id', '=', user.partner_id.id)]</field>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+            <field name="groups" eval="[(4, ref('group_real_estate_portal_user'))]"/>
+        </record>
+        
+        <!-- Portal: See only own leases (where tenant = partner) -->
+        <record id="rule_portal_own_leases" model="ir.rule">
+            <field name="name">Portal: Own Lease Contracts Only</field>
+            <field name="model_id" ref="model_real_estate_lease"/>
+            <field name="domain_force">[('tenant_id.partner_id', '=', user.partner_id.id)]</field>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+            <field name="groups" eval="[(4, ref('group_real_estate_portal_user'))]"/>
+        </record>
+        
+        <!-- Portal: See own assignments (if applicable) -->
+        <record id="rule_portal_own_assignments" model="ir.rule">
+            <field name="name">Portal: Own Property Assignments</field>
+            <field name="model_id" ref="model_real_estate_agent_property_assignment"/>
+            <field name="domain_force">[('property_id.owner_partner_id', '=', user.partner_id.id)]</field>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+            <field name="groups" eval="[(4, ref('group_real_estate_portal_user'))]"/>
+        </record>
+        
         <!-- ===== REGRAS DE SEGURANÇA - MULTI-TENANCY ===== -->
         
         <!-- Regra para propriedades: usuários veem apenas propriedades das suas empresas -->

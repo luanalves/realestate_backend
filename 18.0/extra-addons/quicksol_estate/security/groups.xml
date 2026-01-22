@@ -8,20 +8,63 @@
             <field name="sequence">10</field>
         </record>
 
-        <!-- Company Manager - Acesso total à sua imobiliária -->
-        <record id="group_real_estate_manager" model="res.groups">
-            <field name="name">Real Estate Company Manager</field>
-            <field name="category_id" ref="module_category_real_estate"/>
-            <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
-            <field name="comment">Pode gerenciar completamente sua imobiliária: criar, editar, excluir propriedades, agentes, contratos e inquilinos</field>
-        </record>
-
-        <!-- Company User - Acesso limitado à sua imobiliária -->
+        <!-- RBAC User Profiles v18.0.2.0.0 - ADR-011 -->
+        <!-- Hierarchy: Owner → Director → Manager → User → Specialized profiles -->
+        
+        <!-- Company User - Base group (must be defined FIRST) -->
         <record id="group_real_estate_user" model="res.groups">
             <field name="name">Real Estate Company User</field>
             <field name="category_id" ref="module_category_real_estate"/>
             <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
-            <field name="comment">Pode visualizar e editar registros de sua imobiliária, mas não pode excluir</field>
+            <field name="comment">Base group for internal real estate users. Provides foundational access to company data. Read access to most models, limited write (inherited by specialized profiles).</field>
+        </record>
+
+        <!-- Company Manager - Operational manager (inherits User) -->
+        <record id="group_real_estate_manager" model="res.groups">
+            <field name="name">Real Estate Company Manager</field>
+            <field name="category_id" ref="module_category_real_estate"/>
+            <field name="implied_ids" eval="[(4, ref('group_real_estate_user'))]"/>
+            <field name="comment">Operational manager: CRUD on properties, agents, contracts, leads. Can reassign leads, generate reports. Cannot create users (only Owner can).</field>
+        </record>
+
+        <!-- Director - Executive access (inherits Manager + financial reports) -->
+        <record id="group_real_estate_director" model="res.groups">
+            <field name="name">Real Estate Director</field>
+            <field name="category_id" ref="module_category_real_estate"/>
+            <field name="implied_ids" eval="[(4, ref('group_real_estate_manager'))]"/>
+            <field name="comment">Executive with all Manager permissions plus access to financial reports, dashboards, and business intelligence. Cannot create users.</field>
+        </record>
+
+        <!-- Owner - Full administrative access to their company -->
+        <record id="group_real_estate_owner" model="res.groups">
+            <field name="name">Real Estate Owner</field>
+            <field name="category_id" ref="module_category_real_estate"/>
+            <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+            <field name="comment">Company owner with full CRUD access to all company data. Can manage users, properties, commissions, and financial records. Multi-tenant isolated (cannot access other companies).</field>
+        </record>
+
+        <!-- Receptionist - Front desk operations -->
+        <record id="group_real_estate_receptionist" model="res.groups">
+            <field name="name">Real Estate Receptionist</field>
+            <field name="category_id" ref="module_category_real_estate"/>
+            <field name="implied_ids" eval="[(4, ref('group_real_estate_user'))]"/>
+            <field name="comment">Front desk staff: Read properties, CRUD leases/keys, schedule viewings. Cannot edit properties or commissions.</field>
+        </record>
+
+        <!-- Financial - Commission and financial management -->
+        <record id="group_real_estate_financial" model="res.groups">
+            <field name="name">Real Estate Financial</field>
+            <field name="category_id" ref="module_category_real_estate"/>
+            <field name="implied_ids" eval="[(4, ref('group_real_estate_user'))]"/>
+            <field name="comment">Financial officer: CRUD commission rules/transactions, read-only sales/leases. Cannot modify contracts or properties.</field>
+        </record>
+
+        <!-- Legal - Contract review and compliance -->
+        <record id="group_real_estate_legal" model="res.groups">
+            <field name="name">Real Estate Legal</field>
+            <field name="category_id" ref="module_category_real_estate"/>
+            <field name="implied_ids" eval="[(4, ref('group_real_estate_user'))]"/>
+            <field name="comment">Legal counsel: Read-only contracts (sales/leases), properties, and documents. Cannot modify financial terms or commissions.</field>
         </record>
 
         <!-- Company Agent - Corretor da imobiliária -->
@@ -29,7 +72,15 @@
             <field name="name">Real Estate Agent</field>
             <field name="category_id" ref="module_category_real_estate"/>
             <field name="implied_ids" eval="[(4, ref('group_real_estate_user'))]"/>
-            <field name="comment">Corretor com acesso limitado às suas próprias propriedades e contratos</field>
+            <field name="comment">Real estate agent/broker: CRUD on own properties and leads. Can create proposals. Cannot modify commissions or change clients on proposals. Sees properties where agent_id.user_id = user.id OR in assignment_ids.</field>
+        </record>
+
+        <!-- Prospector - Property lead generator with commission split -->
+        <record id="group_real_estate_prospector" model="res.groups">
+            <field name="name">Real Estate Prospector</field>
+            <field name="category_id" ref="module_category_real_estate"/>
+            <field name="implied_ids" eval="[(4, ref('group_real_estate_user'))]"/>
+            <field name="comment">Prospector: Creates properties (auto-assigned to prospector_id), earns commission split (default 30%) when another agent sells. Read-only on own prospected properties. Sees properties where prospector_id.user_id = user.id.</field>
         </record>
 
         <!-- Portal User - Cliente/Inquilino -->
