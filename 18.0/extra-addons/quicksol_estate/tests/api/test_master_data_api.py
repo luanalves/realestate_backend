@@ -229,6 +229,7 @@ class TestMasterDataAPI(HttpCase):
         if not self.env['real.estate.agent'].search([], limit=1):
             self.env['real.estate.agent'].create({
                 'name': 'Test Agent',
+                'cpf': '555.666.777-88',
                 'email': 'agent@test.com',
                 'phone': '(11) 99999-0000'
             })

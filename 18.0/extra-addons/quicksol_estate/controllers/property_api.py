@@ -332,10 +332,12 @@ class PropertyApiController(http.Controller):
         try:
             user = request.env.user
             
-            # Parse request body
+            # Parse request body - use get_json_data() to avoid consuming request body twice
             try:
-                data = json.loads(request.httprequest.data.decode('utf-8'))
-            except (ValueError, UnicodeDecodeError):
+                data = request.get_json_data()
+                if data is None:
+                    return error_response(400, 'Invalid JSON in request body')
+            except Exception:
                 return error_response(400, 'Invalid JSON in request body')
             
             # IMPORTANTE: Bloquear alteração de company_ids via API

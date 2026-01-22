@@ -125,30 +125,28 @@ class TestPropertyAPIAuth(HttpCase):
     
     def test_05_update_property_without_token(self):
         """PUT without token should return 401"""
-        data = json.dumps({'price': 350000.00})
-        response = self.url_open(
-            f'/api/v1/properties/{self.test_property.id}',
-            data=data,
-            headers={'Content-Type': 'application/json'}
+        data = {'price': 350000.00}
+        response = self.opener.put(
+            f'{self.base_url()}/api/v1/properties/{self.test_property.id}',
+            json=data,
+            timeout=12
         )
         self.assertEqual(response.status_code, 401)
     
     def test_06_update_property_with_valid_token(self):
         """PUT with valid token should return 200"""
         token = self._get_access_token()
-        headers = {
-            'Authorization': f'Bearer {token}',
-            'Content-Type': 'application/json'
-        }
-        data = json.dumps({
+        headers = {'Authorization': f'Bearer {token}'}
+        data = {
             'price': 350000.00,
             'num_rooms': 3
-        })
+        }
         
-        response = self.url_open(
-            f'/api/v1/properties/{self.test_property.id}',
-            data=data,
-            headers=headers
+        response = self.opener.put(
+            f'{self.base_url()}/api/v1/properties/{self.test_property.id}',
+            json=data,
+            headers=headers,
+            timeout=12
         )
         self.assertEqual(response.status_code, 200)
         
@@ -165,10 +163,11 @@ class TestPropertyAPIAuth(HttpCase):
             'Content-Type': 'application/json'
         }
         
-        response = self.url_open(
-            f'/api/v1/properties/{self.test_property.id}',
+        response = self.opener.put(
+            f'{self.base_url()}/api/v1/properties/{self.test_property.id}',
             data='invalid json',
-            headers=headers
+            headers=headers,
+            timeout=12
         )
         self.assertEqual(response.status_code, 400)
     
@@ -263,21 +262,19 @@ class TestPropertyAPIAuth(HttpCase):
     def test_15_update_only_allowed_fields(self):
         """PUT should only update allowed fields"""
         token = self._get_access_token()
-        headers = {
-            'Authorization': f'Bearer {token}',
-            'Content-Type': 'application/json'
-        }
+        headers = {'Authorization': f'Bearer {token}'}
         
         # Try to update allowed and disallowed fields
-        data = json.dumps({
+        data = {
             'price': 400000.00,  # allowed
             'some_invalid_field': 'test'  # not allowed
-        })
+        }
         
-        response = self.url_open(
-            f'/api/v1/properties/{self.test_property.id}',
-            data=data,
-            headers=headers
+        response = self.opener.put(
+            f'{self.base_url()}/api/v1/properties/{self.test_property.id}',
+            json=data,
+            headers=headers,
+            timeout=12
         )
         
         self.assertEqual(response.status_code, 200)

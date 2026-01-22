@@ -72,6 +72,7 @@ class TestPropertyAPI(HttpCase):
         # Create agent record linked to agent_user
         cls.agent = cls.env['real.estate.agent'].create({
             'name': 'Test Agent',
+            'cpf': '111.222.333-44',
             'email': 'agent@test.com',
             'user_id': cls.agent_user.id,
             'company_ids': [(6, 0, [cls.company.id])]
@@ -79,6 +80,7 @@ class TestPropertyAPI(HttpCase):
         
         cls.other_agent = cls.env['real.estate.agent'].create({
             'name': 'Other Agent',
+            'cpf': '666.777.888-99',
             'email': 'other@test.com',
             'company_ids': [(6, 0, [cls.company.id])]
         })
@@ -685,10 +687,10 @@ class TestPropertyAPIHTTP(HttpCase):
         """PUT property without auth should return 401"""
         payload = {'price': 600000.00}
         
-        response = self.url_open(
-            f'/api/v1/properties/{self.test_property.id}',
-            data=json.dumps(payload),
-            headers={'Content-Type': 'application/json'}
+        response = self.opener.put(
+            f'{self.base_url()}/api/v1/properties/{self.test_property.id}',
+            json=payload,
+            timeout=12
         )
         self.assertEqual(response.status_code, 401)
     
@@ -698,13 +700,11 @@ class TestPropertyAPIHTTP(HttpCase):
         
         payload = {'price': 600000.00}
         
-        response = self.url_open(
-            '/api/v1/properties/999999',
-            data=json.dumps(payload),
-            headers={
-                'Content-Type': 'application/json',
-                'Authorization': f'Bearer {token}'
-            }
+        response = self.opener.put(
+            f'{self.base_url()}/api/v1/properties/999999',
+            json=payload,
+            headers={'Authorization': f'Bearer {token}'},
+            timeout=12
         )
         self.assertEqual(response.status_code, 404)
     
@@ -715,13 +715,11 @@ class TestPropertyAPIHTTP(HttpCase):
         # Price as string instead of number
         payload = {'price': 'not-a-number'}
         
-        response = self.url_open(
-            f'/api/v1/properties/{self.test_property.id}',
-            data=json.dumps(payload),
-            headers={
-                'Content-Type': 'application/json',
-                'Authorization': f'Bearer {token}'
-            }
+        response = self.opener.put(
+            f'{self.base_url()}/api/v1/properties/{self.test_property.id}',
+            json=payload,
+            headers={'Authorization': f'Bearer {token}'},
+            timeout=12
         )
         self.assertIn(response.status_code, [400, 500])
     
@@ -735,16 +733,14 @@ class TestPropertyAPIHTTP(HttpCase):
             'num_rooms': 4
         }
         
-        response = self.url_open(
-            f'/api/v1/properties/{self.test_property.id}',
-            data=json.dumps(payload),
-            headers={
-                'Content-Type': 'application/json',
-                'Authorization': f'Bearer {token}'
-            }
+        response = self.opener.put(
+            f'{self.base_url()}/api/v1/properties/{self.test_property.id}',
+            json=payload,
+            headers={'Authorization': f'Bearer {token}'},
+            timeout=12
         )
         self.assertEqual(response.status_code, 200)
-        data = json.loads(response.content.decode('utf-8'))
+        data = response.json()
         self.assertEqual(data['price'], 550000.00)
         self.assertEqual(data['description'], 'Updated description')
     
