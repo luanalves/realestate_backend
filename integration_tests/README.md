@@ -1,12 +1,26 @@
 # Integration Tests - REST API E2E
 
-**Purpose**: Test REST API endpoints against real running services (NOT HttpCase)
+**Location**: `/integration_tests/` (raiz do repositório)  
+**Framework**: curl/bash scripts  
+**Purpose**: Test REST API endpoints against real running Odoo instance
 
-According to **ADR-002**, API testing must use **curl scripts** against real services because:
-- ❌ HttpCase runs in read-only transactions
-- ❌ OAuth tokens cannot be persisted
-- ❌ Sessions don't work correctly
-- ✅ curl tests execute against real database
+## ⚠️ Diferença Importante
+
+Este diretório é **diferente** de `18.0/extra-addons/quicksol_estate/tests/integration/`:
+
+| Localização | Framework | Propósito |
+|-------------|-----------|-----------|
+| **`integration_tests/`** (raiz) | curl/bash | Testa **endpoints REST** via HTTP |
+| `quicksol_estate/tests/integration/` | TransactionCase | Testa **models Odoo** via ORM |
+
+## Por que curl em vez de HttpCase?
+
+Segundo **ADR-002**, HttpCase é proibido porque:
+- ❌ Executa em transações read-only
+- ❌ OAuth tokens não podem ser persistidos
+- ❌ Sessions não funcionam corretamente
+- ❌ Dados não persistem entre requisições
+- ✅ **curl testa contra Odoo real** com persistência completa
 
 ## Test Structure
 

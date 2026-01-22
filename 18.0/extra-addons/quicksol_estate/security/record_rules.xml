@@ -4,6 +4,18 @@
         
         <!-- ===== RBAC v18.0.2.0.0 - OWNER PROFILE RULES ===== -->
         
+        <!-- Owner: Access only their estate companies -->
+        <record id="rule_owner_estate_companies" model="ir.rule">
+            <field name="name">Owner: Own Estate Companies</field>
+            <field name="model_id" ref="model_thedevkitchen_estate_company"/>
+            <field name="domain_force">[('id', 'in', user.estate_company_ids.ids)]</field>
+            <field name="groups" eval="[(4, ref('group_real_estate_owner'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+        
         <!-- Owner: Manage users in their companies (cannot assign to other companies) -->
         <record id="rule_owner_company_users" model="ir.rule">
             <field name="name">Owner: Manage Company Users</field>
@@ -22,6 +34,10 @@
             <field name="model_id" ref="model_real_estate_property"/>
             <field name="domain_force">[('company_ids', 'in', user.estate_company_ids.ids)]</field>
             <field name="groups" eval="[(4, ref('group_real_estate_owner'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
         </record>
         
         <!-- Owner: Full access to agents in their companies -->
@@ -30,6 +46,10 @@
             <field name="model_id" ref="model_real_estate_agent"/>
             <field name="domain_force">[('company_ids', 'in', user.estate_company_ids.ids)]</field>
             <field name="groups" eval="[(4, ref('group_real_estate_owner'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
         </record>
         
         <!-- Owner: Full access to commission rules in their companies -->
@@ -38,9 +58,25 @@
             <field name="model_id" ref="model_real_estate_commission_rule"/>
             <field name="domain_force">[('company_id', 'in', user.estate_company_ids.ids)]</field>
             <field name="groups" eval="[(4, ref('group_real_estate_owner'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
         </record>
         
         <!-- ===== RBAC v18.0.2.0.0 - AGENT PROFILE RULES ===== -->
+        
+        <!-- Agent: Access only their estate companies -->
+        <record id="rule_agent_estate_companies" model="ir.rule">
+            <field name="name">Agent: Own Estate Companies</field>
+            <field name="model_id" ref="model_thedevkitchen_estate_company"/>
+            <field name="domain_force">[('id', 'in', user.estate_company_ids.ids)]</field>
+            <field name="groups" eval="[(4, ref('group_real_estate_agent'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
         
         <!-- Agent: Own properties (agent_id.user_id = user.id) -->
         <record id="rule_agent_own_properties" model="ir.rule">
@@ -48,6 +84,10 @@
             <field name="model_id" ref="model_real_estate_property"/>
             <field name="domain_force">['|', ('agent_id.user_id', '=', user.id), ('assignment_ids.agent_id.user_id', '=', user.id)]</field>
             <field name="groups" eval="[(4, ref('group_real_estate_agent'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
         </record>
         
         <!-- Agent: Own assignments -->
@@ -56,6 +96,10 @@
             <field name="model_id" ref="model_real_estate_agent_property_assignment"/>
             <field name="domain_force">[('agent_id.user_id', '=', user.id)]</field>
             <field name="groups" eval="[(4, ref('group_real_estate_agent'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
         </record>
         
         <!-- Agent: Own sales -->
@@ -64,6 +108,10 @@
             <field name="model_id" ref="model_real_estate_sale"/>
             <field name="domain_force">[('property_id.agent_id.user_id', '=', user.id)]</field>
             <field name="groups" eval="[(4, ref('group_real_estate_agent'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
         </record>
         
         <!-- Agent: Own leases -->
@@ -72,6 +120,10 @@
             <field name="model_id" ref="model_real_estate_lease"/>
             <field name="domain_force">[('property_id.agent_id.user_id', '=', user.id)]</field>
             <field name="groups" eval="[(4, ref('group_real_estate_agent'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
         </record>
         
         <!-- ===== RBAC v18.0.2.0.0 - PROSPECTOR PROFILE RULES ===== -->
@@ -82,6 +134,10 @@
             <field name="model_id" ref="model_real_estate_property"/>
             <field name="domain_force">[('prospector_id.user_id', '=', user.id)]</field>
             <field name="groups" eval="[(4, ref('group_real_estate_prospector'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
         </record>
         
         <!-- Prospector: Read-only sales where prospector_id = current user -->
@@ -90,9 +146,25 @@
             <field name="model_id" ref="model_real_estate_sale"/>
             <field name="domain_force">[('property_id.prospector_id.user_id', '=', user.id)]</field>
             <field name="groups" eval="[(4, ref('group_real_estate_prospector'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
         </record>
         
         <!-- ===== RBAC v18.0.2.0.0 - MANAGER PROFILE RULES ===== -->
+        
+        <!-- Manager: Access only their estate companies -->
+        <record id="rule_manager_estate_companies" model="ir.rule">
+            <field name="name">Manager: Own Estate Companies</field>
+            <field name="model_id" ref="model_thedevkitchen_estate_company"/>
+            <field name="domain_force">[('id', 'in', user.estate_company_ids.ids)]</field>
+            <field name="groups" eval="[(4, ref('group_real_estate_manager'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
         
         <!-- Manager: All company properties -->
         <record id="rule_manager_all_company_properties" model="ir.rule">
@@ -100,6 +172,10 @@
             <field name="model_id" ref="model_real_estate_property"/>
             <field name="domain_force">[('company_ids', 'in', user.estate_company_ids.ids)]</field>
             <field name="groups" eval="[(4, ref('group_real_estate_manager'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
         </record>
         
         <!-- Manager: All company agents -->
@@ -108,6 +184,10 @@
             <field name="model_id" ref="model_real_estate_agent"/>
             <field name="domain_force">[('company_ids', 'in', user.estate_company_ids.ids)]</field>
             <field name="groups" eval="[(4, ref('group_real_estate_manager'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
         </record>
         
         <!-- Manager: All company sales -->
@@ -116,6 +196,10 @@
             <field name="model_id" ref="model_real_estate_sale"/>
             <field name="domain_force">[('company_ids', 'in', user.estate_company_ids.ids)]</field>
             <field name="groups" eval="[(4, ref('group_real_estate_manager'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
         </record>
         
         <!-- Manager: All company leases -->
@@ -124,6 +208,10 @@
             <field name="model_id" ref="model_real_estate_lease"/>
             <field name="domain_force">[('company_ids', 'in', user.estate_company_ids.ids)]</field>
             <field name="groups" eval="[(4, ref('group_real_estate_manager'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
         </record>
         
         <!-- Manager: All company assignments -->
@@ -132,6 +220,10 @@
             <field name="model_id" ref="model_real_estate_agent_property_assignment"/>
             <field name="domain_force">[('property_id.company_ids', 'in', user.estate_company_ids.ids)]</field>
             <field name="groups" eval="[(4, ref('group_real_estate_manager'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
         </record>
         
         <!-- ===== RBAC v18.0.2.0.0 - RECEPTIONIST PROFILE RULES ===== -->

@@ -263,6 +263,14 @@ class TestCommissionDB(TransactionCase):
 
 **Independent Test**: Create company, assign owner user, verify owner can log in and access all company data with full CRUD permissions. Verify multi-tenant isolation (cannot see other companies).
 
+### Test Generation for User Story 1 🤖
+
+**Run `@speckit.tests 005-rbac-user-profiles` to auto-generate all tests below:**
+
+- [X] T024.A [US1] E2E Test: Owner logs in and sees full access → `integration_tests/test_us1_s1_owner_login.sh` ✅
+- [ ] T024.B [US1] E2E Test: Owner can CRUD all company records → `integration_tests/test_us1_s2_owner_crud.sh`
+- [ ] T024.C [US1] E2E Test: Multi-tenancy isolation (no cross-company access) → `integration_tests/test_us1_s3_multitenancy.sh`
+
 ### Implementation for User Story 1
 
 - [X] T025 [P] [US1] Create group_real_estate_owner definition in 18.0/extra-addons/quicksol_estate/security/groups.xml
@@ -310,6 +318,15 @@ class TestCommissionDB(TransactionCase):
 
 **Independent Test**: Owner creates users with different profiles, each user logs in and sees only what their role permits. Verify role-based filtering works correctly.
 
+### Test Generation for User Story 2 🤖
+
+**Run `@speckit.tests 005-rbac-user-profiles` to auto-generate all tests below:**
+
+- [ ] T038.A [US2] E2E Test: Create user with agent profile → `integration_tests/test_us2_s1_create_agent.sh`
+- [ ] T038.B [US2] Cypress Test: Different profiles see different menus → `cypress/e2e/test_us2_s2_profile_menus.cy.js`
+- [ ] T038.C [US2] E2E Test: User assigned to company → `integration_tests/test_us2_s3_company_assignment.sh`
+- [ ] T038.D [US2] E2E Test: Cannot assign to other companies → `integration_tests/test_us2_s4_no_cross_company.sh`
+
 ### Implementation for User Story 2
 
 - [X] T039 [P] [US2] Create group_real_estate_director definition (inherits Manager) in 18.0/extra-addons/quicksol_estate/security/groups.xml
@@ -341,6 +358,16 @@ class TestCommissionDB(TransactionCase):
 **Goal**: Enable agents to create properties (auto-assigned to them), view only their properties, and manage their leads
 
 **Independent Test**: Agent creates properties, verify they can only see their own properties. Agent cannot see other agents' properties.
+
+### Test Generation for User Story 3 🤖
+
+**Run `@speckit.tests 005-rbac-user-profiles` to auto-generate all tests below:**
+
+- [ ] T054.A [US3] E2E Test: Property auto-assigned to agent → `integration_tests/test_us3_s1_auto_assign.sh`
+- [ ] T054.B [US3] E2E Test: Agent sees only own properties → `integration_tests/test_us3_s2_own_properties.sh`
+- [ ] T054.C [US3] E2E Test: Agent can view and update leads → `integration_tests/test_us3_s3_lead_access.sh`
+- [ ] T054.D [US3] E2E Test: Cannot see other agents' properties → `integration_tests/test_us3_s4_no_other_props.sh`
+- [ ] T054.E [US3] E2E Test: Multi-company isolation → `integration_tests/test_us3_s5_company_isolation.sh`
 
 ### Implementation for User Story 3
 
