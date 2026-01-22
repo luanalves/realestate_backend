@@ -332,8 +332,8 @@ class RealEstateCommissionTransaction(models.Model):
         
         result = super().write(vals)
         
-        # Log payment status changes
-        if 'payment_status' in vals:
+        # Log payment status changes (skip if tracking is disabled)
+        if 'payment_status' in vals and not self.env.context.get('tracking_disable'):
             for transaction in self:
                 transaction.message_post(
                     body=_('Payment status changed to: %s') 
