@@ -1468,6 +1468,382 @@
 					"response": []
 				}
 			]
+		},
+		{
+			"name": "8. RBAC Testing",
+			"description": "Role-Based Access Control testing scenarios for 9 user profiles",
+			"item": [
+				{
+					"name": "Agent - View Own Properties",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "X-Openerp-Session-Id",
+								"value": "{{session_id}}",
+								"type": "text",
+								"description": "Session ID from /api/v1/users/login"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/properties",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"properties"
+							]
+						},
+						"description": "**Profile:** Agent\n**Expected:** Returns only properties assigned to logged-in agent\n**Record Rule:** agent_ids contains current user's agent record\n**Test:** Login as agent user, should see filtered results"
+					},
+					"response": []
+				},
+				{
+					"name": "Prospector - Create Property",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"session_id\": \"{{session_id}}\",\n  \"name\": \"Prospector Test Property\",\n  \"postcode\": \"01234-567\",\n  \"expected_price\": 500000,\n  \"estate_company_ids\": [[4, 1]]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/properties",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"properties"
+							]
+						},
+						"description": "**Profile:** Prospector\n**Expected:** Property created with prospector_id auto-assigned\n**Observer:** ProspectorAutoAssignObserver sets prospector_id\n**Test:** Login as prospector, create property, verify prospector_id matches user's agent"
+					},
+					"response": []
+				},
+				{
+					"name": "Receptionist - View Sales (Read-Only)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "X-Openerp-Session-Id",
+								"value": "{{session_id}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/sales",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"sales"
+							]
+						},
+						"description": "**Profile:** Receptionist\n**Expected:** Can view sales data (read-only)\n**ACL:** perm_read=True, perm_write=False\n**Test:** Login as receptionist, can GET but cannot POST/PUT/DELETE"
+					},
+					"response": []
+				},
+				{
+					"name": "Receptionist - Update Sale (Should Fail)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"session_id\": \"{{session_id}}\",\n  \"sale_price\": 600000\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/sales/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"sales",
+								"1"
+							]
+						},
+						"description": "**Profile:** Receptionist\n**Expected:** 403 Forbidden (AccessError)\n**ACL:** perm_write=False for receptionist group\n**Test:** Verify write operations denied for read-only profiles"
+					},
+					"response": []
+				},
+				{
+					"name": "Financial - View Commissions",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "X-Openerp-Session-Id",
+								"value": "{{session_id}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/commissions",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"commissions"
+							]
+						},
+						"description": "**Profile:** Financial\n**Expected:** Can view all company commissions\n**Record Rule:** estate_company_ids filtering applies\n**Test:** Login as financial user, verify commission visibility"
+					},
+					"response": []
+				},
+				{
+					"name": "Financial - Update Commission Status",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"session_id\": \"{{session_id}}\",\n  \"state\": \"paid\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/commissions/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"commissions",
+								"1"
+							]
+						},
+						"description": "**Profile:** Financial\n**Expected:** Can update commission state\n**ACL:** perm_write=True for financial group on commission model\n**Test:** Verify financial users can modify commission data"
+					},
+					"response": []
+				},
+				{
+					"name": "Legal - View Contracts (Read-Only)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "X-Openerp-Session-Id",
+								"value": "{{session_id}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/sales",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"sales"
+							]
+						},
+						"description": "**Profile:** Legal\n**Expected:** Read-only access to sales (contracts)\n**ACL:** perm_read=True, perm_write=False\n**Test:** Legal can view but not modify contract data"
+					},
+					"response": []
+				},
+				{
+					"name": "Portal User - View Own Contracts",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "X-Openerp-Session-Id",
+								"value": "{{session_id}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/sales",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"sales"
+							]
+						},
+						"description": "**Profile:** Portal User\n**Expected:** Only sees sales where buyer_partner_id = user.partner_id\n**Record Rule:** Partner-level isolation\n**Test:** Login as portal user, verify only own contracts visible"
+					},
+					"response": []
+				},
+				{
+					"name": "Multi-Tenancy - Company Isolation",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "X-Openerp-Session-Id",
+								"value": "{{session_id}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/properties",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"properties"
+							]
+						},
+						"description": "**Test:** Multi-Tenancy Isolation\n**Expected:** User only sees data from assigned companies\n**Record Rule:** estate_company_ids in user.estate_company_ids.ids\n**Setup:** Create 2 companies, assign user to Company A only\n**Validation:** User cannot see Company B data"
+					},
+					"response": []
+				},
+				{
+					"name": "Audit Log - Permission Changes",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "X-Openerp-Session-Id",
+								"value": "{{session_id}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/messages?model=res.users&subtype=note",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"messages"
+							],
+							"query": [
+								{
+									"key": "model",
+									"value": "res.users"
+								},
+								{
+									"key": "subtype",
+									"value": "note"
+								}
+							]
+						},
+						"description": "**Feature:** LGPD Audit Logging\n**Expected:** mail.message records when user groups change\n**Observer:** SecurityGroupAuditObserver\n**Fields:** user, added_groups, removed_groups, changed_by, timestamp\n**Test:** Change user permissions, verify audit log created"
+					},
+					"response": []
+				}
+			]
 		}
 	]
 }

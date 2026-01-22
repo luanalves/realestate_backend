@@ -13,3 +13,5 @@ Validar sincronização entre documentação e implementação via testes automa
 - o processo de login tem algumas formas de melhorar a performance, porque esta utilizando recursos do banco de dados, podemos substituir por cache na memoria (redis/memcached), também podemos utilizar tokens JWT para evitar consultas ao banco de dados.
 - repassar limites da tabela thedevkitchen_api_session, falta indice e validar se faz sentido ter o ID porque o session_id já é unico e o id pode ser limitador para grandes volumes de dados
 - incluir a consulta do session_id e do JWT no redis, para ganho de performance. Aproveitar e validar as melhorias das tabelas que gerenciam estas ações
+- arquivos que tem o skip como tracking_disable, podem ser problema de segurança, validar se é necessário manter desta forma?
+- melhorar a documentação técnica do sistema de RBAC e dos perfis de usuários

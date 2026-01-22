@@ -53,3 +53,43 @@ Os módulos customizados devem ser adicionados no diretório `18.0/extra-addons/
 
 - Docker source: https://github.com/odoo/docker
 - Odoo Documentation: https://www.odoo.com/documentation/18.0
+
+## 🔌 Acessos aos Componentes Docker
+
+### Odoo Web Application
+- **URL:** http://localhost:8069
+- **Usuário:** `admin`
+- **Senha:** `admin`
+
+### PostgreSQL Database
+- **Host:** `localhost`
+- **Port:** `5432`
+- **Database:** `realestate`
+- **Username:** `odoo`
+- **Password:** `odoo`
+- **Ferramentas:** DBeaver, pgAdmin, psql
+
+### Redis Cache
+- **Host:** `localhost`
+- **Port:** `6379`
+- **DB Index:** `1` (configurado no odoo.conf)
+- **CLI Access:** `docker compose exec redis redis-cli`
+
+### RabbitMQ (Message Broker)
+- **Management UI:** http://localhost:15672
+- **Username:** `odoo`
+- **Password:** `odoo_rabbitmq_secret_2026`
+- **AMQP Port:** `5672` (para conexões de aplicação)
+- **Purpose:** Gerenciamento de filas Celery
+
+### Flower (Celery Monitoring)
+- **URL:** http://localhost:5555
+- **Username:** `admin`
+- **Password:** `flower_admin_2026`
+- **Purpose:** Monitoramento em tempo real dos workers Celery
+
+### Celery Workers (Background Tasks)
+- **Commission Worker:** Processa cálculos de comissão
+- **Notification Worker:** Gerencia notificações email/SMS
+- **Audit Worker:** Registra alterações de segurança e dados
+- **Status:** `docker compose ps` ou Flower UI
