@@ -100,8 +100,7 @@ COMPANY_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
             \"method\": \"create\",
             \"args\": [{
                 \"name\": \"$COMPANY_NAME\",
-                \"cnpj\": \"$CNPJ\",
-                \"state\": \"active\"
+                \"cnpj\": \"$CNPJ\"
             }],
             \"kwargs\": {}
         },
