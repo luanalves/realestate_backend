@@ -104,8 +104,7 @@ COMPANY_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
             \"method\": \"create\",
             \"args\": [{
                 \"name\": \"$COMPANY_NAME\",
-                \"cnpj\": \"$CNPJ\",
-                \"state\": \"active\"
+                \"cnpj\": \"$CNPJ\"
             }],
             \"kwargs\": {}
         },
@@ -201,6 +200,118 @@ AGENT2_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
 
 AGENT2_UID=$(echo "$AGENT2_RESPONSE" | jq -r '.result // empty')
 echo "✅ Agent 2 created: UID=$AGENT2_UID"
+
+# Create agent records with CPF for Manager, Agent1, and Agent2
+CPF_MANAGER=$(python3 << 'PYTHON_EOF'
+def calc_cpf_digit(cpf, weights):
+    s = sum(int(d) * w for d, w in zip(cpf, weights))
+    remainder = s % 11
+    return '0' if remainder < 2 else str(11 - remainder)
+
+base = "66677788"
+d1 = calc_cpf_digit(base, range(10, 1, -1))
+d2 = calc_cpf_digit(base + d1, range(11, 1, -1))
+cpf = f"{base[0:3]}.{base[3:6]}.{base[6:8]}{d1}-{d2}"
+print(cpf)
+PYTHON_EOF
+)
+
+MANAGER_AGENT_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
+    -H "Content-Type: application/json" \
+    -b cookies.txt \
+    -d "{
+        \"jsonrpc\": \"2.0\",
+        \"method\": \"call\",
+        \"params\": {
+            \"model\": \"real.estate.agent\",
+            \"method\": \"create\",
+            \"args\": [{
+                \"name\": \"Manager US2S3\",
+                \"user_id\": $MANAGER_UID,
+                \"cpf\": \"$CPF_MANAGER\",
+                \"company_ids\": [[6, 0, [$COMPANY_ID]]]
+            }],
+            \"kwargs\": {}
+        },
+        \"id\": 6
+    }")
+
+MANAGER_AGENT_ID=$(echo "$MANAGER_AGENT_RESPONSE" | jq -r '.result // empty')
+echo "✅ Manager agent record created: ID=$MANAGER_AGENT_ID"
+
+CPF_AGENT1=$(python3 << 'PYTHON_EOF'
+def calc_cpf_digit(cpf, weights):
+    s = sum(int(d) * w for d, w in zip(cpf, weights))
+    remainder = s % 11
+    return '0' if remainder < 2 else str(11 - remainder)
+
+base = "77788899"
+d1 = calc_cpf_digit(base, range(10, 1, -1))
+d2 = calc_cpf_digit(base + d1, range(11, 1, -1))
+cpf = f"{base[0:3]}.{base[3:6]}.{base[6:8]}{d1}-{d2}"
+print(cpf)
+PYTHON_EOF
+)
+
+AGENT1_AGENT_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
+    -H "Content-Type: application/json" \
+    -b cookies.txt \
+    -d "{
+        \"jsonrpc\": \"2.0\",
+        \"method\": \"call\",
+        \"params\": {
+            \"model\": \"real.estate.agent\",
+            \"method\": \"create\",
+            \"args\": [{
+                \"name\": \"Agent 1 US2S3\",
+                \"user_id\": $AGENT1_UID,
+                \"cpf\": \"$CPF_AGENT1\",
+                \"company_ids\": [[6, 0, [$COMPANY_ID]]]
+            }],
+            \"kwargs\": {}
+        },
+        \"id\": 7
+    }")
+
+AGENT1_AGENT_ID=$(echo "$AGENT1_AGENT_RESPONSE" | jq -r '.result // empty')
+echo "✅ Agent 1 agent record created: ID=$AGENT1_AGENT_ID"
+
+CPF_AGENT2=$(python3 << 'PYTHON_EOF'
+def calc_cpf_digit(cpf, weights):
+    s = sum(int(d) * w for d, w in zip(cpf, weights))
+    remainder = s % 11
+    return '0' if remainder < 2 else str(11 - remainder)
+
+base = "88899900"
+d1 = calc_cpf_digit(base, range(10, 1, -1))
+d2 = calc_cpf_digit(base + d1, range(11, 1, -1))
+cpf = f"{base[0:3]}.{base[3:6]}.{base[6:8]}{d1}-{d2}"
+print(cpf)
+PYTHON_EOF
+)
+
+AGENT2_AGENT_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
+    -H "Content-Type: application/json" \
+    -b cookies.txt \
+    -d "{
+        \"jsonrpc\": \"2.0\",
+        \"method\": \"call\",
+        \"params\": {
+            \"model\": \"real.estate.agent\",
+            \"method\": \"create\",
+            \"args\": [{
+                \"name\": \"Agent 2 US2S3\",
+                \"user_id\": $AGENT2_UID,
+                \"cpf\": \"$CPF_AGENT2\",
+                \"company_ids\": [[6, 0, [$COMPANY_ID]]]
+            }],
+            \"kwargs\": {}
+        },
+        \"id\": 8
+    }")
+
+AGENT2_AGENT_ID=$(echo "$AGENT2_AGENT_RESPONSE" | jq -r '.result // empty')
+echo "✅ Agent 2 agent record created: ID=$AGENT2_AGENT_ID"
 
 ################################################################################
 # Step 3.5: Retrieve Reference Data for Properties
@@ -300,9 +411,9 @@ PROPERTY1_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"city\": \"São Paulo\",
                 \"street\": \"Rua Teste\",
                 \"street_number\": \"100\",
-                \"bedrooms\": 2,
-                \"bathrooms\": 1,
-                \"parking_spaces\": 1,
+                \"num_rooms\": 2,
+                \"num_bathrooms\": 1,
+                \"num_parking\": 1,
                 \"area\": 80.0,
                 \"price\": 300000.0,
                 \"property_status\": \"available\",
@@ -334,9 +445,9 @@ PROPERTY2_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"city\": \"São Paulo\",
                 \"street\": \"Rua Teste\",
                 \"street_number\": \"200\",
-                \"bedrooms\": 3,
-                \"bathrooms\": 2,
-                \"parking_spaces\": 2,
+                \"num_rooms\": 3,
+                \"num_bathrooms\": 2,
+                \"num_parking\": 2,
                 \"area\": 150.0,
                 \"price\": 500000.0,
                 \"property_status\": \"available\",
@@ -398,7 +509,7 @@ ASSIGN1_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
             \"method\": \"write\",
             \"args\": [
                 [$PROPERTY1_ID],
-                {\"agent_id\": $AGENT1_UID}
+                {\"agent_id\": $AGENT1_AGENT_ID}
             ],
             \"kwargs\": {}
         },
@@ -432,7 +543,7 @@ ASSIGN2_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
             \"method\": \"write\",
             \"args\": [
                 [$PROPERTY2_ID],
-                {\"agent_id\": $AGENT2_UID}
+                {\"agent_id\": $AGENT2_AGENT_ID}
             ],
             \"kwargs\": {}
         },
@@ -476,17 +587,17 @@ PROPERTIES_CHECK=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
 PROP1_AGENT=$(echo "$PROPERTIES_CHECK" | jq -r ".result[] | select(.id == $PROPERTY1_ID) | .agent_id[0] // empty")
 PROP2_AGENT=$(echo "$PROPERTIES_CHECK" | jq -r ".result[] | select(.id == $PROPERTY2_ID) | .agent_id[0] // empty")
 
-if [ "$PROP1_AGENT" == "$AGENT1_UID" ]; then
+if [ "$PROP1_AGENT" == "$AGENT1_AGENT_ID" ]; then
     echo "✅ Property 1 correctly assigned to Agent 1"
 else
-    echo "❌ Property 1 assignment verification failed (expected: $AGENT1_UID, got: $PROP1_AGENT)"
+    echo "❌ Property 1 assignment verification failed (expected: $AGENT1_AGENT_ID, got: $PROP1_AGENT)"
     exit 1
 fi
 
-if [ "$PROP2_AGENT" == "$AGENT2_UID" ]; then
+if [ "$PROP2_AGENT" == "$AGENT2_AGENT_ID" ]; then
     echo "✅ Property 2 correctly assigned to Agent 2"
 else
-    echo "❌ Property 2 assignment verification failed (expected: $AGENT2_UID, got: $PROP2_AGENT)"
+    echo "❌ Property 2 assignment verification failed (expected: $AGENT2_AGENT_ID, got: $PROP2_AGENT)"
     exit 1
 fi
 
@@ -507,7 +618,7 @@ REASSIGN_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
             \"method\": \"write\",
             \"args\": [
                 [$PROPERTY1_ID],
-                {\"agent_id\": $AGENT2_UID}
+                {\"agent_id\": $AGENT2_AGENT_ID}
             ],
             \"kwargs\": {}
         },
@@ -550,7 +661,7 @@ FINAL_CHECK=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
 
 FINAL_AGENT=$(echo "$FINAL_CHECK" | jq -r '.result[0].agent_id[0] // empty')
 
-if [ "$FINAL_AGENT" == "$AGENT2_UID" ]; then
+if [ "$FINAL_AGENT" == "$AGENT2_AGENT_ID" ]; then
     echo "✅ Property 1 now correctly assigned to Agent 2"
 else
     echo "❌ Reassignment verification failed"

@@ -122,8 +122,7 @@ COMPANY_A_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
             \"method\": \"create\",
             \"args\": [{
                 \"name\": \"$COMPANY_A_NAME\",
-                \"cnpj\": \"$CNPJ_A\",
-                \"state\": \"active\"
+                \"cnpj\": \"$CNPJ_A\"
             }],
             \"kwargs\": {}
         },
@@ -144,8 +143,7 @@ COMPANY_B_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
             \"method\": \"create\",
             \"args\": [{
                 \"name\": \"$COMPANY_B_NAME\",
-                \"cnpj\": \"$CNPJ_B\",
-                \"state\": \"active\"
+                \"cnpj\": \"$CNPJ_B\"
             }],
             \"kwargs\": {}
         },
@@ -208,6 +206,81 @@ MANAGER_B_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
 
 MANAGER_B_UID=$(echo "$MANAGER_B_RESPONSE" | jq -r '.result // empty')
 echo "✅ Manager B created: UID=$MANAGER_B_UID (assigned to Company B)"
+
+# Create agent records with CPF for both managers
+CPF_MANAGER_A=$(python3 << 'PYTHON_EOF'
+def calc_cpf_digit(cpf, weights):
+    s = sum(int(d) * w for d, w in zip(cpf, weights))
+    remainder = s % 11
+    return '0' if remainder < 2 else str(11 - remainder)
+
+base = "11122233"
+d1 = calc_cpf_digit(base, range(10, 1, -1))
+d2 = calc_cpf_digit(base + d1, range(11, 1, -1))
+cpf = f"{base[0:3]}.{base[3:6]}.{base[6:8]}{d1}-{d2}"
+print(cpf)
+PYTHON_EOF
+)
+
+MANAGER_A_AGENT_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
+    -H "Content-Type: application/json" \
+    -b cookies.txt \
+    -d "{
+        \"jsonrpc\": \"2.0\",
+        \"method\": \"call\",
+        \"params\": {
+            \"model\": \"real.estate.agent\",
+            \"method\": \"create\",
+            \"args\": [{
+                \"name\": \"Manager A US2S4\",
+                \"user_id\": $MANAGER_A_UID,
+                \"cpf\": \"$CPF_MANAGER_A\",
+                \"company_ids\": [[6, 0, [$COMPANY_A_ID]]]
+            }],
+            \"kwargs\": {}
+        },
+        \"id\": 6
+    }")
+
+MANAGER_A_AGENT_ID=$(echo "$MANAGER_A_AGENT_RESPONSE" | jq -r '.result // empty')
+echo "✅ Manager A agent record created: ID=$MANAGER_A_AGENT_ID"
+
+CPF_MANAGER_B=$(python3 << 'PYTHON_EOF'
+def calc_cpf_digit(cpf, weights):
+    s = sum(int(d) * w for d, w in zip(cpf, weights))
+    remainder = s % 11
+    return '0' if remainder < 2 else str(11 - remainder)
+
+base = "22233344"
+d1 = calc_cpf_digit(base, range(10, 1, -1))
+d2 = calc_cpf_digit(base + d1, range(11, 1, -1))
+cpf = f"{base[0:3]}.{base[3:6]}.{base[6:8]}{d1}-{d2}"
+print(cpf)
+PYTHON_EOF
+)
+
+MANAGER_B_AGENT_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
+    -H "Content-Type: application/json" \
+    -b cookies.txt \
+    -d "{
+        \"jsonrpc\": \"2.0\",
+        \"method\": \"call\",
+        \"params\": {
+            \"model\": \"real.estate.agent\",
+            \"method\": \"create\",
+            \"args\": [{
+                \"name\": \"Manager B US2S4\",
+                \"user_id\": $MANAGER_B_UID,
+                \"cpf\": \"$CPF_MANAGER_B\",
+                \"company_ids\": [[6, 0, [$COMPANY_B_ID]]]
+            }],
+            \"kwargs\": {}
+        },
+        \"id\": 7
+    }")
+
+MANAGER_B_AGENT_ID=$(echo "$MANAGER_B_AGENT_RESPONSE" | jq -r '.result // empty')
+echo "✅ Manager B agent record created: ID=$MANAGER_B_AGENT_ID"
 
 ################################################################################
 # Step 3.5: Retrieve Reference Data for Properties
@@ -307,9 +380,9 @@ PROPERTY_A_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"city\": \"São Paulo\",
                 \"street\": \"Rua Teste\",
                 \"street_number\": \"100\",
-                \"bedrooms\": 2,
-                \"bathrooms\": 1,
-                \"parking_spaces\": 1,
+                \"num_rooms\": 2,
+                \"num_bathrooms\": 1,
+                \"num_parking\": 1,
                 \"area\": 80.0,
                 \"price\": 300000.0,
                 \"property_status\": \"available\",
@@ -341,9 +414,9 @@ PROPERTY_B_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"city\": \"São Paulo\",
                 \"street\": \"Rua Teste\",
                 \"street_number\": \"200\",
-                \"bedrooms\": 3,
-                \"bathrooms\": 2,
-                \"parking_spaces\": 2,
+                \"num_rooms\": 3,
+                \"num_bathrooms\": 2,
+                \"num_parking\": 2,
                 \"area\": 150.0,
                 \"price\": 500000.0,
                 \"property_status\": \"available\",

@@ -160,6 +160,81 @@ OTHER_AGENT_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
 OTHER_AGENT_UID=$(echo "$OTHER_AGENT_RESPONSE" | jq -r '.result // empty')
 echo "✅ Other Agent created: UID=$OTHER_AGENT_UID"
 
+# Create agent records with CPF for both agents
+CPF_AGENT=$(python3 << 'PYTHON_EOF'
+def calc_cpf_digit(cpf, weights):
+    s = sum(int(d) * w for d, w in zip(cpf, weights))
+    remainder = s % 11
+    return '0' if remainder < 2 else str(11 - remainder)
+
+base = "66677788"
+d1 = calc_cpf_digit(base, range(10, 1, -1))
+d2 = calc_cpf_digit(base + d1, range(11, 1, -1))
+cpf = f"{base[0:3]}.{base[3:6]}.{base[6:8]}{d1}-{d2}"
+print(cpf)
+PYTHON_EOF
+)
+
+AGENT_AGENT_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
+    -H "Content-Type: application/json" \
+    -b cookies.txt \
+    -d "{
+        \"jsonrpc\": \"2.0\",
+        \"method\": \"call\",
+        \"params\": {
+            \"model\": \"real.estate.agent\",
+            \"method\": \"create\",
+            \"args\": [{
+                \"name\": \"Agent US3S3\",
+                \"user_id\": $AGENT_UID,
+                \"cpf\": \"$CPF_AGENT\",
+                \"company_ids\": [[6, 0, [$COMPANY_ID]]]
+            }],
+            \"kwargs\": {}
+        },
+        \"id\": 5
+    }")
+
+AGENT_AGENT_ID=$(echo "$AGENT_AGENT_RESPONSE" | jq -r '.result // empty')
+echo "✅ Agent agent record created: ID=$AGENT_AGENT_ID"
+
+CPF_OTHER_AGENT=$(python3 << 'PYTHON_EOF'
+def calc_cpf_digit(cpf, weights):
+    s = sum(int(d) * w for d, w in zip(cpf, weights))
+    remainder = s % 11
+    return '0' if remainder < 2 else str(11 - remainder)
+
+base = "77788899"
+d1 = calc_cpf_digit(base, range(10, 1, -1))
+d2 = calc_cpf_digit(base + d1, range(11, 1, -1))
+cpf = f"{base[0:3]}.{base[3:6]}.{base[6:8]}{d1}-{d2}"
+print(cpf)
+PYTHON_EOF
+)
+
+OTHER_AGENT_AGENT_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
+    -H "Content-Type: application/json" \
+    -b cookies.txt \
+    -d "{
+        \"jsonrpc\": \"2.0\",
+        \"method\": \"call\",
+        \"params\": {
+            \"model\": \"real.estate.agent\",
+            \"method\": \"create\",
+            \"args\": [{
+                \"name\": \"Other Agent US3S3\",
+                \"user_id\": $OTHER_AGENT_UID,
+                \"cpf\": \"$CPF_OTHER_AGENT\",
+                \"company_ids\": [[6, 0, [$COMPANY_ID]]]
+            }],
+            \"kwargs\": {}
+        },
+        \"id\": 6
+    }")
+
+OTHER_AGENT_AGENT_ID=$(echo "$OTHER_AGENT_AGENT_RESPONSE" | jq -r '.result // empty')
+echo "✅ Other Agent agent record created: ID=$OTHER_AGENT_AGENT_ID"
+
 ################################################################################
 # Step 2.5: Retrieve Reference Data for Properties (for consistency)
 ################################################################################

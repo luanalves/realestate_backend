@@ -152,6 +152,44 @@ fi
 
 echo "✅ Agent created: UID=$AGENT_UID"
 
+# Create agent record with CPF
+CPF_AGENT=$(python3 << 'PYTHON_EOF'
+def calc_cpf_digit(cpf, weights):
+    s = sum(int(d) * w for d, w in zip(cpf, weights))
+    remainder = s % 11
+    return '0' if remainder < 2 else str(11 - remainder)
+
+base = "55566677"
+d1 = calc_cpf_digit(base, range(10, 1, -1))
+d2 = calc_cpf_digit(base + d1, range(11, 1, -1))
+cpf = f"{base[0:3]}.{base[3:6]}.{base[6:8]}{d1}-{d2}"
+print(cpf)
+PYTHON_EOF
+)
+
+AGENT_AGENT_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
+    -H "Content-Type: application/json" \
+    -b cookies.txt \
+    -d "{
+        \"jsonrpc\": \"2.0\",
+        \"method\": \"call\",
+        \"params\": {
+            \"model\": \"real.estate.agent\",
+            \"method\": \"create\",
+            \"args\": [{
+                \"name\": \"Agent US3S2\",
+                \"user_id\": $AGENT_UID,
+                \"cpf\": \"$CPF_AGENT\",
+                \"company_ids\": [[6, 0, [$COMPANY_ID]]]
+            }],
+            \"kwargs\": {}
+        },
+        \"id\": 4
+    }")
+
+AGENT_AGENT_ID=$(echo "$AGENT_AGENT_RESPONSE" | jq -r '.result // empty')
+echo "✅ Agent agent record created: ID=$AGENT_AGENT_ID"
+
 ################################################################################
 # Step 3.5: Retrieve Reference Data for Properties
 ################################################################################
@@ -281,9 +319,9 @@ PROPERTY_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"city\": \"São Paulo\",
                 \"street\": \"Rua Teste\",
                 \"street_number\": \"100\",
-                \"bedrooms\": 2,
-                \"bathrooms\": 1,
-                \"parking_spaces\": 1,
+                \"num_rooms\": 2,
+                \"num_bathrooms\": 1,
+                \"num_parking\": 1,
                 \"area\": 85.0,
                 \"price\": 350000.0,
                 \"property_status\": \"available\",
@@ -396,9 +434,9 @@ for i in 2 3 4; do
                     \"city\": \"São Paulo\",
                     \"street\": \"Rua Teste\",
                     \"street_number\": \"$((100 + $i))\",
-                    \"bedrooms\": 2,
-                    \"bathrooms\": 1,
-                    \"parking_spaces\": 1,
+                    \"num_rooms\": 2,
+                    \"num_bathrooms\": 1,
+                    \"num_parking\": 1,
                     \"area\": 80.0,
                     \"price\": 300000.0,
                     \"property_status\": \"available\",

@@ -172,6 +172,81 @@ AGENT2_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
 AGENT2_UID=$(echo "$AGENT2_RESPONSE" | jq -r '.result // empty')
 echo "✅ Agent 2 created: UID=$AGENT2_UID"
 
+# Create agent records with CPF for Agent1 and Agent2
+CPF_AGENT1=$(python3 << 'PYTHON_EOF'
+def calc_cpf_digit(cpf, weights):
+    s = sum(int(d) * w for d, w in zip(cpf, weights))
+    remainder = s % 11
+    return '0' if remainder < 2 else str(11 - remainder)
+
+base = "33344455"
+d1 = calc_cpf_digit(base, range(10, 1, -1))
+d2 = calc_cpf_digit(base + d1, range(11, 1, -1))
+cpf = f"{base[0:3]}.{base[3:6]}.{base[6:8]}{d1}-{d2}"
+print(cpf)
+PYTHON_EOF
+)
+
+AGENT1_AGENT_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
+    -H "Content-Type: application/json" \
+    -b cookies.txt \
+    -d "{
+        \"jsonrpc\": \"2.0\",
+        \"method\": \"call\",
+        \"params\": {
+            \"model\": \"real.estate.agent\",
+            \"method\": \"create\",
+            \"args\": [{
+                \"name\": \"Agent 1 US3S1\",
+                \"user_id\": $AGENT1_UID,
+                \"cpf\": \"$CPF_AGENT1\",
+                \"company_ids\": [[6, 0, [$COMPANY_ID]]]
+            }],
+            \"kwargs\": {}
+        },
+        \"id\": 5
+    }")
+
+AGENT1_AGENT_ID=$(echo "$AGENT1_AGENT_RESPONSE" | jq -r '.result // empty')
+echo "✅ Agent 1 agent record created: ID=$AGENT1_AGENT_ID"
+
+CPF_AGENT2=$(python3 << 'PYTHON_EOF'
+def calc_cpf_digit(cpf, weights):
+    s = sum(int(d) * w for d, w in zip(cpf, weights))
+    remainder = s % 11
+    return '0' if remainder < 2 else str(11 - remainder)
+
+base = "44455566"
+d1 = calc_cpf_digit(base, range(10, 1, -1))
+d2 = calc_cpf_digit(base + d1, range(11, 1, -1))
+cpf = f"{base[0:3]}.{base[3:6]}.{base[6:8]}{d1}-{d2}"
+print(cpf)
+PYTHON_EOF
+)
+
+AGENT2_AGENT_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
+    -H "Content-Type: application/json" \
+    -b cookies.txt \
+    -d "{
+        \"jsonrpc\": \"2.0\",
+        \"method\": \"call\",
+        \"params\": {
+            \"model\": \"real.estate.agent\",
+            \"method\": \"create\",
+            \"args\": [{
+                \"name\": \"Agent 2 US3S1\",
+                \"user_id\": $AGENT2_UID,
+                \"cpf\": \"$CPF_AGENT2\",
+                \"company_ids\": [[6, 0, [$COMPANY_ID]]]
+            }],
+            \"kwargs\": {}
+        },
+        \"id\": 6
+    }")
+
+AGENT2_AGENT_ID=$(echo "$AGENT2_AGENT_RESPONSE" | jq -r '.result // empty')
+echo "✅ Agent 2 agent record created: ID=$AGENT2_AGENT_ID"
+
 ################################################################################
 # Step 3.5: Retrieve Reference Data for Properties
 ################################################################################
@@ -273,14 +348,14 @@ for i in 1 2 3 4 5; do
                     \"city\": \"São Paulo\",
                     \"street\": \"Rua Teste\",
                     \"street_number\": \"$((100 + $i))\",
-                    \"bedrooms\": 2,
-                    \"bathrooms\": 1,
-                    \"parking_spaces\": 1,
+                    \"num_rooms\": 2,
+                    \"num_bathrooms\": 1,
+                    \"num_parking\": 1,
                     \"area\": 80.0,
                     \"price\": 300000.0,
                     \"property_status\": \"available\",
                     \"company_ids\": [[6, 0, [$COMPANY_ID]]],
-                    \"agent_id\": $AGENT1_UID
+                    \"agent_id\": $AGENT1_AGENT_ID
                 }],
                 \"kwargs\": {}
             },
@@ -313,14 +388,14 @@ for i in 1 2 3; do
                     \"city\": \"São Paulo\",
                     \"street\": \"Rua Teste\",
                     \"street_number\": \"$((200 + $i))\",
-                    \"bedrooms\": 3,
-                    \"bathrooms\": 2,
-                    \"parking_spaces\": 2,
+                    \"num_rooms\": 3,
+                    \"num_bathrooms\": 2,
+                    \"num_parking\": 2,
                     \"area\": 150.0,
                     \"price\": 500000.0,
                     \"property_status\": \"available\",
                     \"company_ids\": [[6, 0, [$COMPANY_ID]]],
-                    \"agent_id\": $AGENT2_UID
+                    \"agent_id\": $AGENT2_AGENT_ID
                 }],
                 \"kwargs\": {}
             },
