@@ -122,8 +122,7 @@ COMPANY_A_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
             \"method\": \"create\",
             \"args\": [{
                 \"name\": \"$COMPANY_A_NAME\",
-                \"cnpj\": \"$CNPJ_A\",
-                \"state\": \"active\"
+                \"cnpj\": \"$CNPJ_A\"
             }],
             \"kwargs\": {}
         },
@@ -144,8 +143,7 @@ COMPANY_B_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
             \"method\": \"create\",
             \"args\": [{
                 \"name\": \"$COMPANY_B_NAME\",
-                \"cnpj\": \"$CNPJ_B\",
-                \"state\": \"active\"
+                \"cnpj\": \"$CNPJ_B\"
             }],
             \"kwargs\": {}
         },
@@ -258,6 +256,78 @@ AGENT_B_ID=$(echo "$AGENT_B_RECORD_RESPONSE" | jq -r '.result // empty')
 echo "✅ Agent B record created: ID=$AGENT_B_ID"
 
 ################################################################################
+# Step 3.5: Get Reference Data (Property Type, Location Type, State)
+################################################################################
+echo ""
+echo "Step 3.5: Retrieving reference data..."
+
+# Get property type
+PROPERTY_TYPE_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
+    -H "Content-Type: application/json" \
+    -b cookies.txt \
+    -d "{
+        \"jsonrpc\": \"2.0\",
+        \"method\": \"call\",
+        \"params\": {
+            \"model\": \"real.estate.property.type\",
+            \"method\": \"search_read\",
+            \"args\": [[]],
+            \"kwargs\": {
+                \"fields\": [\"id\", \"name\"],
+                \"limit\": 1
+            }
+        },
+        \"id\": 42
+    }")
+
+PROPERTY_TYPE_ID=$(echo "$PROPERTY_TYPE_RESPONSE" | jq -r '.result[0].id // empty')
+echo "✅ Property Type ID: $PROPERTY_TYPE_ID"
+
+# Get location type
+LOCATION_TYPE_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
+    -H "Content-Type: application/json" \
+    -b cookies.txt \
+    -d "{
+        \"jsonrpc\": \"2.0\",
+        \"method\": \"call\",
+        \"params\": {
+            \"model\": \"real.estate.location.type\",
+            \"method\": \"search_read\",
+            \"args\": [[]],
+            \"kwargs\": {
+                \"fields\": [\"id\", \"name\"],
+                \"limit\": 1
+            }
+        },
+        \"id\": 43
+    }")
+
+LOCATION_TYPE_ID=$(echo "$LOCATION_TYPE_RESPONSE" | jq -r '.result[0].id // empty')
+echo "✅ Location Type ID: $LOCATION_TYPE_ID"
+
+# Get state (São Paulo)
+STATE_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
+    -H "Content-Type: application/json" \
+    -b cookies.txt \
+    -d "{
+        \"jsonrpc\": \"2.0\",
+        \"method\": \"call\",
+        \"params\": {
+            \"model\": \"real.estate.state\",
+            \"method\": \"search_read\",
+            \"args\": [[]],
+            \"kwargs\": {
+                \"fields\": [\"id\", \"name\"],
+                \"limit\": 1
+            }
+        },
+        \"id\": 44
+    }")
+
+STATE_ID=$(echo "$STATE_RESPONSE" | jq -r '.result[0].id // empty')
+echo "✅ State ID: $STATE_ID"
+
+################################################################################
 # Step 4: Create Properties in Both Companies
 ################################################################################
 echo ""
@@ -277,15 +347,18 @@ for i in 1 2 3; do
                 \"method\": \"create\",
                 \"args\": [{
                     \"name\": \"Property CompanyA-$i US3S5\",
-                    \"property_type\": \"apartment\",
-                    \"bedrooms\": 2,
-                    \"bathrooms\": 1,
-                    \"parking_spaces\": 1,
+                    \"property_type_id\": $PROPERTY_TYPE_ID,
+                    \"location_type_id\": $LOCATION_TYPE_ID,
+                    \"zip_code\": \"01310-100\",
+                    \"state_id\": $STATE_ID,
+                    \"city\": \"São Paulo\",
+                    \"street\": \"Av Paulista\",
+                    \"street_number\": \"$((1000 + $i))\",
                     \"area\": 80.0,
-                    \"selling_price\": 300000.0,
-                    \"state\": \"available\",
-                    \"company_id\": $COMPANY_A_ID,
-                    "agent_id": $AGENT_A_ID
+                    \"price\": 300000.0,
+                    \"property_status\": \"available\",
+                    \"company_ids\": [[6, 0, [$COMPANY_A_ID]]],
+                    \"agent_id\": $AGENT_A_ID
                 }],
                 \"kwargs\": {}
             },
@@ -311,15 +384,18 @@ for i in 1 2; do
                 \"method\": \"create\",
                 \"args\": [{
                     \"name\": \"Property CompanyB-$i US3S5\",
-                    \"property_type\": \"house\",
-                    \"bedrooms\": 3,
-                    \"bathrooms\": 2,
-                    \"parking_spaces\": 2,
+                    \"property_type_id\": $PROPERTY_TYPE_ID,
+                    \"location_type_id\": $LOCATION_TYPE_ID,
+                    \"zip_code\": \"04571-000\",
+                    \"state_id\": $STATE_ID,
+                    \"city\": \"São Paulo\",
+                    \"street\": \"Av Brigadeiro\",
+                    \"street_number\": \"$((2000 + $i))\",
                     \"area\": 150.0,
-                    \"selling_price\": 500000.0,
-                    \"state\": \"available\",
-                    \"company_id\": $COMPANY_B_ID,
-                    "agent_id": $AGENT_B_ID
+                    \"price\": 500000.0,
+                    \"property_status\": \"available\",
+                    \"company_ids\": [[6, 0, [$COMPANY_B_ID]]],
+                    \"agent_id\": $AGENT_B_ID
                 }],
                 \"kwargs\": {}
             },
@@ -373,7 +449,7 @@ AGENT_A_PROPS=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
             \"method\": \"search_read\",
             \"args\": [[]],
             \"kwargs\": {
-                \"fields\": [\"id\", \"name\", \"company_id\", \"agent_id\"]
+                \"fields\": [\"id\", \"name\", \"company_ids\", \"agent_id\"]
             }
         },
         \"id\": 12
@@ -393,7 +469,7 @@ fi
 # Verify all visible properties belong to Company A
 ALL_FROM_COMPANY_A=true
 for prop_id in $AGENT_A_PROPS_IDS; do
-    COMPANY_OF_PROP=$(echo "$AGENT_A_PROPS" | jq -r ".result[] | select(.id == $prop_id) | .company_id[0] // empty")
+    COMPANY_OF_PROP=$(echo "$AGENT_A_PROPS" | jq -r ".result[] | select(.id == $prop_id) | .company_ids[0] // empty")
     if [ "$COMPANY_OF_PROP" != "$COMPANY_A_ID" ]; then
         ALL_FROM_COMPANY_A=false
         echo "⚠️  Property $prop_id not from Company A (company: $COMPANY_OF_PROP)"
@@ -479,7 +555,7 @@ AGENT_B_PROPS=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
             \"method\": \"search_read\",
             \"args\": [[]],
             \"kwargs\": {
-                \"fields\": [\"id\", \"name\", \"company_id\"]
+                \"fields\": [\"id\", \"name\", \"company_ids\", \"agent_id\"]
             }
         },
         \"id\": 15
@@ -497,7 +573,7 @@ fi
 AGENT_B_PROPS_IDS=$(echo "$AGENT_B_PROPS" | jq -r '.result[].id')
 ALL_FROM_COMPANY_B=true
 for prop_id in $AGENT_B_PROPS_IDS; do
-    COMPANY_OF_PROP=$(echo "$AGENT_B_PROPS" | jq -r ".result[] | select(.id == $prop_id) | .company_id[0] // empty")
+    COMPANY_OF_PROP=$(echo "$AGENT_B_PROPS" | jq -r ".result[] | select(.id == $prop_id) | .company_ids[0] // empty")
     if [ "$COMPANY_OF_PROP" != "$COMPANY_B_ID" ]; then
         ALL_FROM_COMPANY_B=false
     fi
