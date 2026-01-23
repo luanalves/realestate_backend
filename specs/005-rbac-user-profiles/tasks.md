@@ -267,9 +267,9 @@ class TestCommissionDB(TransactionCase):
 
 **Run `@speckit.tests 005-rbac-user-profiles` to auto-generate all tests below:**
 
-- [X] T024.A [US1] E2E Test: Owner logs in and sees full access → `integration_tests/test_us1_s1_owner_login.sh` ✅
-- [ ] T024.B [US1] E2E Test: Owner can CRUD all company records → `integration_tests/test_us1_s2_owner_crud.sh`
-- [ ] T024.C [US1] E2E Test: Multi-tenancy isolation (no cross-company access) → `integration_tests/test_us1_s3_multitenancy.sh`
+- [X] T024.A [US1] E2E Test: Owner logs in and sees full access → `integration_tests/test_us1_s1_owner_login.sh` ✅ PASSING
+- [X] T024.B [US1] E2E Test: Owner can CRUD all company records → `integration_tests/test_us1_s2_owner_crud.sh` ✅ PASSING
+- [X] T024.C [US1] E2E Test: Multi-tenancy isolation (no cross-company access) → `integration_tests/test_us1_s3_multitenancy.sh` ✅ PASSING
 
 ### Implementation for User Story 1
 
@@ -322,10 +322,10 @@ class TestCommissionDB(TransactionCase):
 
 **Run `@speckit.tests 005-rbac-user-profiles` to auto-generate all tests below:**
 
-- [ ] T038.A [US2] E2E Test: Create user with agent profile → `integration_tests/test_us2_s1_create_agent.sh`
-- [ ] T038.B [US2] Cypress Test: Different profiles see different menus → `cypress/e2e/test_us2_s2_profile_menus.cy.js`
-- [ ] T038.C [US2] E2E Test: User assigned to company → `integration_tests/test_us2_s3_company_assignment.sh`
-- [ ] T038.D [US2] E2E Test: Cannot assign to other companies → `integration_tests/test_us2_s4_no_cross_company.sh`
+- [X] T038.A [US2] E2E Test: Manager creates agent → `integration_tests/test_us2_s1_manager_creates_agent.sh` ✅ PASSING (expected restriction)
+- [ ] T038.B [US2] E2E Test: Manager menus → `integration_tests/test_us2_s2_manager_menus.sh` ⚠️ NEEDS REFACTOR (legacy fields)
+- [ ] T038.C [US2] E2E Test: Manager assigns properties → `integration_tests/test_us2_s3_manager_assigns_properties.sh` ⚠️ NEEDS REFACTOR
+- [ ] T038.D [US2] E2E Test: Manager isolation → `integration_tests/test_us2_s4_manager_isolation.sh` ⚠️ NEEDS REFACTOR
 
 ### Implementation for User Story 2
 
@@ -363,11 +363,11 @@ class TestCommissionDB(TransactionCase):
 
 **Run `@speckit.tests 005-rbac-user-profiles` to auto-generate all tests below:**
 
-- [ ] T054.A [US3] E2E Test: Property auto-assigned to agent → `integration_tests/test_us3_s1_auto_assign.sh`
-- [ ] T054.B [US3] E2E Test: Agent sees only own properties → `integration_tests/test_us3_s2_own_properties.sh`
-- [ ] T054.C [US3] E2E Test: Agent can view and update leads → `integration_tests/test_us3_s3_lead_access.sh`
-- [ ] T054.D [US3] E2E Test: Cannot see other agents' properties → `integration_tests/test_us3_s4_no_other_props.sh`
-- [ ] T054.E [US3] E2E Test: Multi-company isolation → `integration_tests/test_us3_s5_company_isolation.sh`
+- [ ] T054.A [US3] E2E Test: Agent assigned properties → `integration_tests/test_us3_s1_agent_assigned_properties.sh` ⚠️ NEEDS REFACTOR
+- [ ] T054.B [US3] E2E Test: Agent auto-assignment → `integration_tests/test_us3_s2_agent_auto_assignment.sh` ⚠️ NEEDS REFACTOR
+- [ ] T054.C [US3] E2E Test: Agent own leads → `integration_tests/test_us3_s3_agent_own_leads.sh` ⚠️ NEEDS REFACTOR
+- [X] T054.D [US3] E2E Test: Cannot modify others → `integration_tests/test_us3_s4_agent_cannot_modify_others.sh` ✅ PASSING
+- [X] T054.E [US3] E2E Test: Multi-company isolation → `integration_tests/test_us3_s5_agent_company_isolation.sh` ✅ PASSING (commit 761401c)
 
 ### Implementation for User Story 3
 
