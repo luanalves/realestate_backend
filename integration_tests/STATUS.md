@@ -2,9 +2,9 @@
 
 **Data**: 2026-01-26  
 **Feature**: RBAC User Profiles (Spec 005)  
-**Test Coverage**: 21/21 passing (100% ✅)
+**Test Coverage**: 20/21 passing (95.2% ✅) + 1 SKIP (CRM)
 
-## 🎉 ALL TESTS PASSING! (2026-01-26)
+## 🎉 20/21 TESTS PASSING! (2026-01-26)
 
 ### Final Implementation - US3-S2 Complete
 
@@ -56,10 +56,10 @@
 - US2-S3: Manager Assigns Properties ✅
 - US2-S4: Manager Isolation ✅
 
-**User Story 3 - Agent Operations (5/5)** ✅
+**User Story 3 - Agent Operations (4/5 + 1 SKIP)** ✅
 - US3-S1: Agent Assigned Properties ✅ **FIXED**
 - US3-S2: Agent Auto Assignment ✅ **COMPLETED**
-- US3-S3: Agent Own Leads ✅ (skips gracefully - CRM not available)
+- US3-S3: Agent Own Leads ⏭️ **SKIP** (CRM module not implemented)
 - US3-S4: Agent Cannot Modify Others ✅
 - US3-S5: Agent Company Isolation ✅
 
@@ -76,9 +76,61 @@
 
 **User Story 6 - Receptionist Manages Leases (2/2)** ✅
 - US6-S1: Receptionist Lease Management ✅
-- US6-S2: Receptionist Restrictions ✅
+- US6-S2: Receptionist Restrictions ✅ **FIXED - Critical Security**
 
 ## 🔧 Technical Changes Made
+
+### Receptionist Security Fix (2026-01-26) ✅
+
+**Critical Security Bug Fixed**: Receptionist could create properties despite read-only role.
+
+**Root Cause**: Group inheritance chain gave excessive permissions:
+- Receptionist inherited from `group_real_estate_user`
+- User group had CREATE permission on properties
+- Test used hardcoded group ID that pointed to wrong group
+
+**Solution Implemented** (3 files):
+
+1. **File**: `18.0/extra-addons/quicksol_estate/security/groups.xml` (Line 51)
+   ```xml
+   <!-- BEFORE: Inherited User group with CREATE permission -->
+   <field name="implied_ids" eval="[(4, ref('group_real_estate_user'))]"/>
+   
+   <!-- AFTER: Only inherits base.group_user -->
+   <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+   ```
+   - Comment added: "DOES NOT inherit from Company User to enforce strict read-only"
+
+2. **File**: `18.0/extra-addons/quicksol_estate/security/ir.model.access.csv` (Line 85)
+   ```csv
+   # BEFORE: User group could CREATE properties (1,1,1,0)
+   access_company_user_property,Company User: Properties,model_real_estate_property,group_real_estate_user,1,1,1,0
+   
+   # AFTER: Removed CREATE permission (1,1,0,0)
+   access_company_user_property,Company User: Properties,model_real_estate_property,group_real_estate_user,1,1,0,0
+   ```
+   - Format: read, write, create, unlink
+   - User group: read+write only (no create/delete)
+
+3. **File**: `integration_tests/test_us6_s2_receptionist_restrictions.sh` (Lines 113-130)
+   - Fixed hardcoded group ID (was pointing to Owner group)
+   - Implemented dynamic group lookup via API:
+     ```bash
+     search_read([["name", "=", "Real Estate Receptionist"]])
+     ```
+   - Test now reliable across database changes
+
+**Validation Results**:
+- ✓ Receptionist cannot create properties
+- ✓ Receptionist cannot create agents
+- ✓ Receptionist cannot create leads
+- ✓ Receptionist cannot create sales
+- ✓ Receptionist cannot access leads
+- ✓ Receptionist cannot access sales
+
+**Committed**: 2ce112c "fix: receptionist security - prevent property creation"
+
+---
 
 ### Record Rules Updated
 File: `18.0/extra-addons/quicksol_estate/security/record_rules.xml`
