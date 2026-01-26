@@ -476,7 +476,7 @@ fi
 ALL_BELONG_TO_AGENT1=true
 for prop_id in $AGENT1_PROPS_IDS; do
     AGENT_OF_PROP=$(echo "$AGENT1_PROPS_CHECK" | jq -r ".result[] | select(.id == $prop_id) | .agent_id[0] // empty")
-    if [ "$AGENT_OF_PROP" != "$AGENT1_UID" ]; then
+    if [ "$AGENT_OF_PROP" != "$AGENT1_AGENT_ID" ]; then
         ALL_BELONG_TO_AGENT1=false
         echo "⚠️  Property $prop_id not assigned to Agent 1"
     fi

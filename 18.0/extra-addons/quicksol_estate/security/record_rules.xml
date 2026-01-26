@@ -380,11 +380,13 @@
         <!-- ===== REGRAS DE SEGURANÇA - MULTI-TENANCY ===== -->
         
         <!-- Regra para propriedades: usuários veem apenas propriedades das suas empresas -->
+        <!-- NOTE: Manager group is explicitly listed (though it inherits User).
+             Agent group is NOT listed here because agents have their own restrictive rule. -->
         <record id="rule_property_multi_company" model="ir.rule">
             <field name="name">Property: Multi-company Access</field>
             <field name="model_id" ref="model_real_estate_property"/>
             <field name="domain_force">[('company_ids', 'in', user.estate_company_ids.ids)]</field>
-            <field name="groups" eval="[(4, ref('group_real_estate_user')), (4, ref('group_real_estate_manager'))]"/>
+            <field name="groups" eval="[(4, ref('group_real_estate_manager'))]"/>
         </record>
 
         <!-- Regra para agentes: acessam propriedades das suas empresas -->
