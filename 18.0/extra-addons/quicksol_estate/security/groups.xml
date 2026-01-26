@@ -47,8 +47,8 @@
         <record id="group_real_estate_receptionist" model="res.groups">
             <field name="name">Real Estate Receptionist</field>
             <field name="category_id" ref="module_category_real_estate"/>
-            <field name="implied_ids" eval="[(4, ref('group_real_estate_user'))]"/>
-            <field name="comment">Front desk staff: Read properties, CRUD leases/keys, schedule viewings. Cannot edit properties or commissions.</field>
+            <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+            <field name="comment">Front desk staff: Read properties, CRUD leases/keys, schedule viewings. Cannot edit properties or commissions. DOES NOT inherit from Company User to enforce strict read-only on properties.</field>
         </record>
 
         <!-- Financial - Commission and financial management -->

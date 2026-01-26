@@ -110,9 +110,25 @@ COMPANY_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
 COMPANY_ID=$(echo "$COMPANY_RESPONSE" | jq -r '.result // empty')
 echo "✓ Company created: ID=$COMPANY_ID"
 
-# Create receptionist user
-RECEPTIONIST_GROUP_ID=19
+# Get receptionist group ID
+RECEPTIONIST_GROUP_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
+    -H "Content-Type: application/json" \
+    -b cookies.txt \
+    -d "{
+        \"jsonrpc\": \"2.0\",
+        \"method\": \"call\",
+        \"params\": {
+            \"model\": \"res.groups\",
+            \"method\": \"search_read\",
+            \"args\": [[[\"name\", \"=\", \"Real Estate Receptionist\"]], [\"id\"]],
+            \"kwargs\": {}
+        },
+        \"id\": 2.5
+    }")
 
+RECEPTIONIST_GROUP_ID=$(echo "$RECEPTIONIST_GROUP_RESPONSE" | jq -r '.result[0].id // empty')
+
+# Create receptionist user
 RECEPTIONIST_USER_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
     -H "Content-Type: application/json" \
     -b cookies.txt \
