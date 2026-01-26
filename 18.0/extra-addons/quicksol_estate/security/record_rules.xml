@@ -90,6 +90,18 @@
             <field name="perm_unlink" eval="False"/>
         </record>
         
+        <!-- Agent: Create properties in own company (auto-assigned) -->
+        <record id="rule_agent_create_properties" model="ir.rule">
+            <field name="name">Agent: Create Properties</field>
+            <field name="model_id" ref="model_real_estate_property"/>
+            <field name="domain_force">[('company_ids', 'in', user.estate_company_ids.ids)]</field>
+            <field name="groups" eval="[(4, ref('group_real_estate_agent'))]"/>
+            <field name="perm_read" eval="False"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+        
         <!-- Agent: Own assignments -->
         <record id="rule_agent_own_assignments" model="ir.rule">
             <field name="name">Agent: Own Assignments</field>

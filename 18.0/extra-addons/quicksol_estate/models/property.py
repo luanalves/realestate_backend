@@ -401,12 +401,26 @@ class Property(models.Model):
     def create(self, vals_list):
         # Emit property.before_create event for each property (sync validation)
         event_bus = self.env['quicksol.event.bus']
+        
+        # Get current user's agent/prospector record for auto-assignment
+        current_agent = self.env['real.estate.agent'].search([('user_id', '=', self.env.uid)], limit=1)
+        
         for vals in vals_list:
             event_bus.emit('property.before_create', vals, force_sync=True)
             
             # Auto-generate reference code if not provided
             if not vals.get('reference_code'):
                 vals['reference_code'] = self.env['ir.sequence'].next_by_code('real.estate.property') or 'NEW'
+            
+            # Auto-assign agent/prospector if user is an agent and no prospector_id provided
+            if current_agent and not vals.get('prospector_id'):
+                # Check if user is a prospector (has Prospector group)
+                if self.env.user.has_group('quicksol_estate.group_real_estate_prospector'):
+                    vals['prospector_id'] = current_agent.id
+                # Check if user is an agent (has Agent group)
+                elif self.env.user.has_group('quicksol_estate.group_real_estate_agent'):
+                    if not vals.get('agent_id'):
+                        vals['agent_id'] = current_agent.id
         
         properties = super().create(vals_list)
         

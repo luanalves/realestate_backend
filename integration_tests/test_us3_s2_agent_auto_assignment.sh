@@ -368,7 +368,7 @@ PROPERTY_CHECK=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 [\"id\", \"=\", $PROPERTY_ID]
             ]],
             \"kwargs\": {
-                \"fields\": [\"id\", \"name\", \"agent_id\", \"company_id\"]
+                \"fields\": [\"id\", \"name\", \"agent_id\", \"company_ids\"]
             }
         },
         \"id\": 6
@@ -380,30 +380,31 @@ if [ -z "$ASSIGNED_AGENT" ] || [ "$ASSIGNED_AGENT" == "null" ]; then
     echo "⚠️  Property was created but agent_id is not set"
     echo "This may indicate auto-assignment logic is not implemented"
     echo "Property data: $(echo "$PROPERTY_CHECK" | jq -r '.result[0]')"
+    echo "Full response: $(echo "$PROPERTY_CHECK" | jq -c '.')"
     
     echo ""
     echo "====================================="
     echo "⚠️  TEST INCOMPLETE: Auto-assignment not working"
     echo "====================================="
     echo ""
-    echo "Expected: Property should automatically get agent_id=$AGENT_UID"
+    echo "Expected: Property should automatically get agent_id=$AGENT_AGENT_ID"
     echo "Actual: agent_id is empty"
     echo ""
     echo "This is expected if auto-assignment hasn't been implemented yet."
     echo "Implement auto-assignment in the create() method of real.estate.property:"
     echo "  - Check if agent_id is not set"
     echo "  - Check if current user has Real Estate Agent group"
-    echo "  - If yes, set agent_id = current user's ID"
+    echo "  - If yes, set agent_id = current user's agent record ID"
     echo ""
     
     exit 1
 fi
 
-if [ "$ASSIGNED_AGENT" == "$AGENT_UID" ]; then
-    echo "✅ Property automatically assigned to agent (agent_id=$AGENT_UID)"
+if [ "$ASSIGNED_AGENT" == "$AGENT_AGENT_ID" ]; then
+    echo "✅ Property automatically assigned to agent (agent_id=$AGENT_AGENT_ID)"
 else
     echo "❌ Property assigned to wrong agent"
-    echo "Expected: $AGENT_UID, Got: $ASSIGNED_AGENT"
+    echo "Expected: $AGENT_AGENT_ID, Got: $ASSIGNED_AGENT"
     exit 1
 fi
 
@@ -472,10 +473,10 @@ for i in 2 3 4; do
         
         PROP_AGENT=$(echo "$PROP_CHECK" | jq -r '.result[0].agent_id[0] // empty')
         
-        if [ "$PROP_AGENT" == "$AGENT_UID" ]; then
+        if [ "$PROP_AGENT" == "$AGENT_AGENT_ID" ]; then
             echo "✅ Property $i auto-assigned correctly"
         else
-            echo "❌ Property $i not correctly assigned (expected: $AGENT_UID, got: $PROP_AGENT)"
+            echo "❌ Property $i not correctly assigned (expected: $AGENT_AGENT_ID, got: $PROP_AGENT)"
             ALL_ASSIGNED=false
         fi
     fi

@@ -393,7 +393,7 @@ COMPANY_CHECK=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 [\"id\", \"=\", $COMPANY_ID]
             ]],
             \"kwargs\": {
-                \"fields\": [\"name\", \"cnpj\", \"state\"]
+                \"fields\": [\"name\", \"cnpj\"]
             }
         },
         \"id\": 9
