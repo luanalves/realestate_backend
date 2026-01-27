@@ -2,9 +2,9 @@
 	"info": {
 		"_postman_id": "quicksol-api-v1.1",
 		"name": "Quicksol Real Estate API",
-		"description": "Complete API documentation for Quicksol Real Estate Management System\n\n**Version:** 1.1.0\n**Last Updated:** 2026-01-17\n\n**Authentication Requirements:**\n- All endpoints (except OAuth token) require **Bearer Token** from OAuth 2.0\n- Business endpoints require **Session ID** from user login\n- Fingerprint validation active (IP + User-Agent + Accept-Language)\n- Session expires after 2 hours of inactivity\n\n**CRITICAL - Session ID Transmission:**\n- **GET requests** (type='http'): session_id via header `X-Openerp-Session-Id`\n- **POST/PUT/PATCH** (type='json'): session_id in JSON body (direct property, NOT in params wrapper)\n- **Never send session_id in body for GET requests** - it will be ignored!\n\n**IMPORTANT - JSON Format:**\n- **OAuth endpoints**: Direct JSON (no JSONRPC wrapper)\n- **Business endpoints**: Direct JSON (no JSONRPC wrapper)\n- **DO NOT use** {\"jsonrpc\": \"2.0\", \"method\": \"call\", \"params\": {...}}\n\n**User-Agent Consistency:**\nKeep User-Agent consistent during session lifetime to avoid fingerprint validation failures.\n\n**Standards Compliance:** This collection follows ADR-016 standards.",
+		"description": "Complete API documentation for Quicksol Real Estate Management System\n\n**Version:** 1.2.0\n**Last Updated:** 2026-01-27\n\n**RBAC Coverage:** 20/21 E2E tests passing (95.2%) + 1 skip (CRM)\n**Test Journeys:** 6 complete user stories validated (US1-US6)\n\n**Authentication Requirements:**\n- All endpoints (except OAuth token) require **Bearer Token** from OAuth 2.0\n- Business endpoints require **Session ID** from user login\n- Fingerprint validation active (IP + User-Agent + Accept-Language)\n- Session expires after 2 hours of inactivity\n\n**CRITICAL - Session ID Transmission:**\n- **GET requests** (type='http'): session_id via header `X-Openerp-Session-Id`\n- **POST/PUT/PATCH** (type='json'): session_id in JSON body (direct property, NOT in params wrapper)\n- **Never send session_id in body for GET requests** - it will be ignored!\n\n**IMPORTANT - JSON Format:**\n- **OAuth endpoints**: Direct JSON (no JSONRPC wrapper)\n- **Business endpoints**: Direct JSON (no JSONRPC wrapper)\n- **DO NOT use** {\"jsonrpc\": \"2.0\", \"method\": \"call\", \"params\": {...}}\n\n**User-Agent Consistency:**\nKeep User-Agent consistent during session lifetime to avoid fingerprint validation failures.\n\n**Standards Compliance:** This collection follows ADR-016 standards.",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"version": "1.1.0"
+		"version": "1.2.0"
 	},
 	"item": [
 		{
@@ -1466,6 +1466,611 @@
 						"description": "**Authentication:** Bearer Token only\n**Multi-tenancy:** Not applicable (global master data)\n**Fingerprint validation:** Not required\n\nList all available property types (read-only reference data)."
 					},
 					"response": []
+				}
+			]
+		},
+		{
+			"name": "9. Test Journeys (E2E)",
+			"description": "Complete End-to-End test journeys validating RBAC implementation\n\n**Coverage:** 20/21 passing (95.2%) + 1 skip (CRM module)\n**Spec:** 005-rbac-user-profiles\n**Validation:** All 9 user profiles tested with multi-tenancy isolation\n\n**User Stories Covered:**\n- US1: Owner Onboards New Company (3/3 scenarios)\n- US2: Manager Creates Team Members (4/4 scenarios)\n- US3: Agent Manages Properties (4/5 scenarios + 1 skip)\n- US4: Manager Oversees Operations (3/3 scenarios)\n- US5: Prospector Creates Properties (4/4 scenarios)\n- US6: Receptionist Manages Leases (2/2 scenarios)\n\n**Each journey tests:**\n- Authentication and authorization\n- CRUD operations with proper permissions\n- Record rules and data isolation\n- Multi-tenancy filtering\n- Security group enforcement",
+			"item": [
+				{
+					"name": "US1 - Owner Onboarding",
+					"description": "Owner creates company, manages properties, validates multi-tenancy",
+					"item": [
+						{
+							"name": "US1-S1: Owner Login",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"db\": \"realestate\",\n  \"login\": \"owner@company.com\",\n  \"password\": \"owner123\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/web/session/authenticate",
+									"host": ["{{base_url}}"],
+									"path": ["web", "session", "authenticate"]
+								},
+								"description": "**Test:** US1-S1 Owner Login\n**Status:** ✅ PASS\n\n**Validates:**\n- Owner user authentication via JSON-RPC\n- Company creation with valid CNPJ\n- Owner security group assignment (group_real_estate_owner)\n- Session creation and user context\n\n**Expected Result:**\n- Successful login with session_id\n- User has estate_company_ids populated\n- Access to company data verified"
+							},
+							"response": []
+						},
+						{
+							"name": "US1-S2: Owner CRUD Operations",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"session_id\": \"{{session_id}}\",\n  \"name\": \"Test Property\",\n  \"property_type_id\": 1,\n  \"location_type_id\": 1,\n  \"area\": 100.0,\n  \"price\": 500000.0,\n  \"property_status\": \"available\",\n  \"zip_code\": \"01310-100\",\n  \"state_id\": 1,\n  \"city\": \"São Paulo\",\n  \"street\": \"Av Paulista\",\n  \"street_number\": \"1000\",\n  \"company_ids\": [[6, 0, [1]]]\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/v1/properties",
+									"host": ["{{base_url}}"],
+									"path": ["api", "v1", "properties"]
+								},
+								"description": "**Test:** US1-S2 Owner CRUD\n**Status:** ✅ PASS\n\n**Validates:**\n- Owner can CREATE properties\n- Owner can READ own properties\n- Owner can UPDATE properties\n- Owner can DELETE properties\n\n**ACL Permissions:**\n- model_real_estate_property: 1,1,1,1 (full CRUD)\n\n**Note:** Requires property types setup"
+							},
+							"response": []
+						},
+						{
+							"name": "US1-S3: Multi-tenancy Isolation",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									},
+									{
+										"key": "X-Openerp-Session-Id",
+										"value": "{{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/v1/properties",
+									"host": ["{{base_url}}"],
+									"path": ["api", "v1", "properties"]
+								},
+								"description": "**Test:** US1-S3 Multi-tenancy\n**Status:** ✅ PASS\n\n**Validates:**\n- Owner A sees only Company A data\n- Owner B sees only Company B data\n- Cross-company access blocked\n\n**Record Rule:**\n- Domain: [('company_ids', 'in', user.estate_company_ids.ids)]\n\n**Test Setup:**\n1. Create Company A with Owner A\n2. Create Company B with Owner B\n3. Owner A lists properties → sees only Company A\n4. Owner B lists properties → sees only Company B"
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "US2 - Manager Team Creation",
+					"description": "Manager creates team members, assigns properties, validates isolation",
+					"item": [
+						{
+							"name": "US2-S1: Manager Creates Agent (Expected Fail)",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"session_id\": \"{{session_id}}\",\n  \"login\": \"agent@company.com\",\n  \"password\": \"agent123\",\n  \"name\": \"Test Agent\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/v1/users",
+									"host": ["{{base_url}}"],
+									"path": ["api", "v1", "users"]
+								},
+								"description": "**Test:** US2-S1 Manager Creates Agent\n**Status:** ✅ PASS (Expected restriction)\n\n**Validates:**\n- Manager CANNOT create users\n- Error: \"You are not allowed to create 'User' (res.users) records\"\n- Only Owner/Admin can create users\n\n**Security Working Correctly:**\n- ACL: perm_create=False for managers on res.users\n- Expected behavior validated"
+							},
+							"response": []
+						},
+						{
+							"name": "US2-S2: Manager Menu Access",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									},
+									{
+										"key": "X-Openerp-Session-Id",
+										"value": "{{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/v1/properties",
+									"host": ["{{base_url}}"],
+									"path": ["api", "v1", "properties"]
+								},
+								"description": "**Test:** US2-S2 Manager Menus\n**Status:** ✅ PASS\n\n**Validates:**\n- Manager login successful\n- Manager accesses company data\n- Manager sees properties menu\n- Manager sees agents menu\n\n**Record Rule:**\n- rule_manager_properties: company filtering applies"
+							},
+							"response": []
+						},
+						{
+							"name": "US2-S3: Manager Assigns Properties",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"session_id\": \"{{session_id}}\",\n  \"agent_id\": 1\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/v1/properties/1",
+									"host": ["{{base_url}}"],
+									"path": ["api", "v1", "properties", "1"]
+								},
+								"description": "**Test:** US2-S3 Property Assignment\n**Status:** ✅ PASS\n\n**Validates:**\n- Manager can assign properties to agents\n- Manager has write permission on properties\n- agent_id field updated correctly\n\n**ACL:**\n- access_manager_property: 1,1,1,0 (read, write, create, no unlink)"
+							},
+							"response": []
+						},
+						{
+							"name": "US2-S4: Manager Company Isolation",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									},
+									{
+										"key": "X-Openerp-Session-Id",
+										"value": "{{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/v1/properties",
+									"host": ["{{base_url}}"],
+									"path": ["api", "v1", "properties"]
+								},
+								"description": "**Test:** US2-S4 Manager Isolation\n**Status:** ✅ PASS\n\n**Validates:**\n- Manager A sees only Company A data\n- Manager B sees only Company B data\n- Cross-company access blocked for managers\n\n**Record Rule:**\n- Domain: [('company_ids', 'in', user.estate_company_ids.ids)]"
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "US3 - Agent Property Management",
+					"description": "Agent manages assigned properties, validates auto-assignment and isolation",
+					"item": [
+						{
+							"name": "US3-S1: Agent Assigned Properties",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									},
+									{
+										"key": "X-Openerp-Session-Id",
+										"value": "{{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/v1/properties",
+									"host": ["{{base_url}}"],
+									"path": ["api", "v1", "properties"]
+								},
+								"description": "**Test:** US3-S1 Agent Properties\n**Status:** ✅ PASS\n\n**Validates:**\n- Agent sees only assigned properties\n- Properties filtered by agent_id\n\n**Record Rule:**\n- rule_agent_own_properties\n- Domain: [('agent_id', '=', user.id)] OR agent record check\n\n**Expected:** Agent sees properties where agent_id matches their record"
+							},
+							"response": []
+						},
+						{
+							"name": "US3-S2: Agent Auto-Assignment",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"session_id\": \"{{session_id}}\",\n  \"name\": \"Agent Created Property\",\n  \"property_type_id\": 1,\n  \"location_type_id\": 1,\n  \"area\": 80.0,\n  \"price\": 400000.0,\n  \"property_status\": \"available\",\n  \"zip_code\": \"01310-100\",\n  \"state_id\": 1,\n  \"city\": \"São Paulo\",\n  \"street\": \"Av Paulista\",\n  \"street_number\": \"2000\",\n  \"company_ids\": [[6, 0, [1]]]\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/v1/properties",
+									"host": ["{{base_url}}"],
+									"path": ["api", "v1", "properties"]
+								},
+								"description": "**Test:** US3-S2 Auto-Assignment\n**Status:** ✅ PASS\n\n**Validates:**\n- Agent creates property\n- agent_id auto-assigned to current user's agent record\n\n**Implementation:**\n- property.py create() override (lines 400-433)\n- Searches for agent record where user_id = current user\n- Sets agent_id if Agent group present"
+							},
+							"response": []
+						},
+						{
+							"name": "US3-S3: Agent Own Leads (CRM)",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									},
+									{
+										"key": "X-Openerp-Session-Id",
+										"value": "{{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/v1/leads",
+									"host": ["{{base_url}}"],
+									"path": ["api", "v1", "leads"]
+								},
+								"description": "**Test:** US3-S3 Agent Leads\n**Status:** ⏭️ SKIP\n\n**Reason:** Requires Odoo CRM module (crm.lead model)\n\n**Impact:** None - Core RBAC validated\n\n**Coverage:** 20/21 tests = 95.2%\n\n**Options:**\n1. Install CRM module: Add 'crm' to dependencies\n2. Create custom lead model: real.estate.lead\n3. Keep as skip: Acceptable for production\n\n**Recommendation:** Keep as skip"
+							},
+							"response": []
+						},
+						{
+							"name": "US3-S4: Agent Cannot Modify Others",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"session_id\": \"{{session_id}}\",\n  \"price\": 600000.0\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/v1/properties/2",
+									"host": ["{{base_url}}"],
+									"path": ["api", "v1", "properties", "2"]
+								},
+								"description": "**Test:** US3-S4 Agent Restrictions\n**Status:** ✅ PASS\n\n**Validates:**\n- Agent can update own property\n- Agent cannot see other agents' properties\n- 404 when accessing unassigned property (record rule blocks)\n\n**Record Rule:**\n- rule_agent_own_properties filters list\n- Attempting to access other agent's property returns empty"
+							},
+							"response": []
+						},
+						{
+							"name": "US3-S5: Agent Company Isolation",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									},
+									{
+										"key": "X-Openerp-Session-Id",
+										"value": "{{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/v1/properties",
+									"host": ["{{base_url}}"],
+									"path": ["api", "v1", "properties"]
+								},
+								"description": "**Test:** US3-S5 Agent Multi-tenancy\n**Status:** ✅ PASS\n\n**Validates:**\n- Agent A sees 3 Company A properties\n- Agent B sees 2 Company B properties\n- Cross-company access blocked\n\n**Record Rules Applied:**\n1. Company filtering: company_ids check\n2. Agent filtering: agent assignment check\n\n**Template Test:** Reference for other E2E tests"
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "US4 - Manager Oversight",
+					"description": "Manager oversees all company operations, reassigns properties, validates data access",
+					"item": [
+						{
+							"name": "US4-S1: Manager All Data",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									},
+									{
+										"key": "X-Openerp-Session-Id",
+										"value": "{{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/v1/properties",
+									"host": ["{{base_url}}"],
+									"path": ["api", "v1", "properties"]
+								},
+								"description": "**Test:** US4-S1 Manager Visibility\n**Status:** ✅ PASS\n\n**Validates:**\n- Manager sees all company properties (5 properties from 2 agents)\n- Manager sees all company agents (2 agents)\n- Full visibility into company data\n\n**Record Rule:**\n- rule_manager_properties: company-level access\n- No agent_id filtering for managers"
+							},
+							"response": []
+						},
+						{
+							"name": "US4-S2: Manager Reassign Properties",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"session_id\": \"{{session_id}}\",\n  \"agent_id\": 2\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/v1/properties/1",
+									"host": ["{{base_url}}"],
+									"path": ["api", "v1", "properties", "1"]
+								},
+								"description": "**Test:** US4-S2 Property Reassignment\n**Status:** ✅ PASS\n\n**Validates:**\n- Manager reassigns property from Agent 1 to Agent 2\n- Manager has write permissions on properties\n- Assignment persists and validates\n\n**ACL:**\n- access_manager_property: perm_write=True"
+							},
+							"response": []
+						},
+						{
+							"name": "US4-S4: Manager Multi-tenancy",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									},
+									{
+										"key": "X-Openerp-Session-Id",
+										"value": "{{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/v1/properties",
+									"host": ["{{base_url}}"],
+									"path": ["api", "v1", "properties"]
+								},
+								"description": "**Test:** US4-S4 Manager Isolation\n**Status:** ✅ PASS\n\n**Validates:**\n- Manager A cannot see Company B data\n- Manager B cannot see Company A data\n- Multi-tenancy isolation working correctly\n\n**Test Setup:**\n- Company A: Manager A + 2 properties\n- Company B: Manager B + 2 properties\n- Each manager sees only own company"
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "US5 - Prospector Property Creation",
+					"description": "Prospector creates properties, validates auto-assignment and visibility",
+					"item": [
+						{
+							"name": "US5-S1: Prospector Creates Property",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"session_id\": \"{{session_id}}\",\n  \"name\": \"Prospector Property\",\n  \"property_type_id\": 1,\n  \"location_type_id\": 1,\n  \"area\": 120.0,\n  \"price\": 800000.0,\n  \"property_status\": \"available\",\n  \"zip_code\": \"01310-200\",\n  \"state_id\": 1,\n  \"city\": \"São Paulo\",\n  \"street\": \"Av Paulista\",\n  \"street_number\": \"3000\",\n  \"company_ids\": [[6, 0, [1]]]\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/v1/properties",
+									"host": ["{{base_url}}"],
+									"path": ["api", "v1", "properties"]
+								},
+								"description": "**Test:** US5-S1 Prospector Creates Property\n**Status:** ✅ PASS\n\n**Validates:**\n- Property created with prospector_id auto-set\n- prospector_id = current user's agent record\n\n**Implementation:**\n- property.py create() (lines 400-433)\n- Checks for Prospector group\n- Auto-assigns prospector_id"
+							},
+							"response": []
+						},
+						{
+							"name": "US5-S2: Prospector Agent Assignment",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"session_id\": \"{{session_id}}\",\n  \"agent_id\": 1\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/v1/properties/1",
+									"host": ["{{base_url}}"],
+									"path": ["api", "v1", "properties", "1"]
+								},
+								"description": "**Test:** US5-S2 Agent Assignment\n**Status:** ✅ PASS\n\n**Validates:**\n- Manager assigns selling agent to prospected property\n- prospector_id remains unchanged\n- agent_id set by manager\n\n**Workflow:**\n1. Prospector creates property (prospector_id auto-set)\n2. Manager assigns selling agent (agent_id set)\n3. Both fields coexist for commission split"
+							},
+							"response": []
+						},
+						{
+							"name": "US5-S3: Prospector Visibility",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									},
+									{
+										"key": "X-Openerp-Session-Id",
+										"value": "{{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/v1/properties",
+									"host": ["{{base_url}}"],
+									"path": ["api", "v1", "properties"]
+								},
+								"description": "**Test:** US5-S3 Prospector Visibility\n**Status:** ✅ PASS\n\n**Validates:**\n- Prospector sees only own prospected properties\n- Filtered by prospector_id\n\n**Record Rule:**\n- rule_prospector_own_properties\n- Domain: [('prospector_id', '=', user.agent_record_id)]"
+							},
+							"response": []
+						},
+						{
+							"name": "US5-S4: Prospector Restrictions",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									},
+									{
+										"key": "X-Openerp-Session-Id",
+										"value": "{{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/v1/leads",
+									"host": ["{{base_url}}"],
+									"path": ["api", "v1", "leads"]
+								},
+								"description": "**Test:** US5-S4 Prospector Restrictions\n**Status:** ✅ PASS\n\n**Validates:**\n- Prospector cannot access leads\n- Prospector cannot access sales\n- Read-only on properties (no write after creation)\n\n**ACL:**\n- access_prospector_lead: 0,0,0,0 (all denied)\n- access_prospector_sale: 0,0,0,0 (all denied)"
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "US6 - Receptionist Lease Management",
+					"description": "Receptionist manages leases, validates read-only restrictions on properties",
+					"item": [
+						{
+							"name": "US6-S1: Receptionist Lease Management",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"session_id\": \"{{session_id}}\",\n  \"property_id\": 1,\n  \"partner_id\": 1,\n  \"monthly_rent\": 3000.0,\n  \"start_date\": \"2026-02-01\",\n  \"end_date\": \"2027-02-01\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/v1/leases",
+									"host": ["{{base_url}}"],
+									"path": ["api", "v1", "leases"]
+								},
+								"description": "**Test:** US6-S1 Lease Management\n**Status:** ✅ PASS\n\n**Validates:**\n- Full CRUD on leases validated\n- Receptionist can create leases\n- Receptionist can read leases\n- Receptionist can update leases\n- Receptionist can delete leases\n\n**ACL:**\n- access_receptionist_lease: 1,1,1,1 (full CRUD)"
+							},
+							"response": []
+						},
+						{
+							"name": "US6-S2: Receptionist Restrictions",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"session_id\": \"{{session_id}}\",\n  \"name\": \"Unauthorized Property\",\n  \"property_type_id\": 1,\n  \"location_type_id\": 1,\n  \"area\": 50.0,\n  \"price\": 200000.0\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/v1/properties",
+									"host": ["{{base_url}}"],
+									"path": ["api", "v1", "properties"]
+								},
+								"description": "**Test:** US6-S2 Receptionist Restrictions\n**Status:** ✅ PASS\n\n**SECURITY FIX APPLIED** (Commit 2ce112c)\n\n**Validates:**\n- ✓ Cannot create properties\n- ✓ Cannot create agents\n- ✓ Cannot create leads\n- ✓ Cannot create sales\n- ✓ Cannot access leads\n- ✓ Cannot access sales\n\n**Fix Applied:**\n1. groups.xml: Changed inheritance from User to base.group_user\n2. ir.model.access.csv: Removed CREATE from User group (1,1,1,0 → 1,1,0,0)\n3. Test: Dynamic group lookup (not hardcoded)\n\n**Result:** Read-only on properties enforced"
+							},
+							"response": []
+						}
+					]
 				}
 			]
 		},
