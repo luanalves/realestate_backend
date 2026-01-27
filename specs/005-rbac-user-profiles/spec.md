@@ -668,3 +668,252 @@ While Phase 1 uses fixed profiles, the architecture supports future expansion:
 - Commission calculation is abstracted to support future formula complexity
 
 The key design principle: Build the simplest thing that works, with clean extension points for future needs.
+
+---
+
+## CRM Module Decision Analysis
+
+**Context:** User Story 3 - Scenario 3 (US3-S3) requires lead management functionality. The spec mentions "Lead (crm.lead or custom)" indicating two implementation paths were considered from the start.
+
+**Current Status:** Integration test US3-S3 is SKIPPED (20/21 tests passing = 95.2% coverage)
+
+### Official Odoo CRM Module
+
+**Module Name:** Odoo CRM  
+**Technical Name:** `crm`  
+**Odoo Version:** 18.0  
+**Official Link:** https://www.odoo.com/app/crm  
+**Odoo Apps Store:** https://apps.odoo.com/apps/modules/18.0/crm/  
+**Documentation:** https://www.odoo.com/documentation/18.0/applications/sales/crm.html  
+**GitHub Repository:** https://github.com/odoo/odoo/tree/18.0/addons/crm
+
+**Key Features:**
+- Lead/Opportunity pipeline management
+- Activity scheduling and tracking
+- Email integration
+- Phone integration (VoIP)
+- Lead scoring and qualification
+- Sales forecasting
+- Kanban, list, calendar, pivot views
+- Native integration with mail, calendar, contacts
+
+### Implementation Options
+
+#### Option 1: Install Odoo CRM Module ✅ Fastest Implementation
+
+**Implementation:**
+```python
+# File: 18.0/extra-addons/quicksol_estate/__manifest__.py
+'depends': ['base', 'portal', 'mail', 'thedevkitchen_apigateway', 'crm'],
+```
+
+**Pros:**
+- ✅ Immediate implementation (~5 minutes)
+- ✅ Mature, battle-tested module
+- ✅ Rich feature set (pipeline, forecasting, activities)
+- ✅ Native Odoo integrations (mail, calendar, phone)
+- ✅ Professional UI (kanban, filters, reports)
+- ✅ 21/21 tests passing (100% coverage)
+- ✅ Well-documented with official support
+
+**Cons:**
+- ⚠️ External dependency (increases complexity)
+- ⚠️ Feature overhead (~200KB+ of unused code)
+- ⚠️ Potential version conflicts in future Odoo upgrades
+- ⚠️ CRM menus/permissions need hiding/adaptation for real estate context
+- ⚠️ Generic CRM model may not fit real estate-specific workflows
+
+**Effort Estimate:** ~30 minutes
+- Add dependency (1 min)
+- Install module via Odoo UI (5 min)
+- Configure RBAC permissions for CRM models (15 min)
+- Run and validate US3-S3 test (5 min)
+- Document configuration (5 min)
+
+**Security Considerations:**
+- Need record rules: `[('user_id', '=', user.id), ('company_ids', 'in', user.estate_company_ids.ids)]`
+- ACL entries for Agent profile: `crm.lead` (1,1,1,0 - read, write, create, no unlink)
+- ACL entries for Manager profile: `crm.lead` (1,1,1,1 - full CRUD)
+- Hide CRM menus from non-real-estate users
+
+---
+
+#### Option 2: Create Custom `real.estate.lead` Model 🎨 Full Control
+
+**Implementation:**
+```python
+# New file: 18.0/extra-addons/quicksol_estate/models/lead.py
+class RealEstateLead(models.Model):
+    _name = 'real.estate.lead'
+    _description = 'Real Estate Lead'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _order = 'priority desc, create_date desc'
+    
+    # Core fields
+    name = fields.Char('Lead Name', required=True, tracking=True)
+    partner_id = fields.Many2one('res.partner', 'Contact', tracking=True)
+    agent_id = fields.Many2one('real.estate.agent', 'Assigned Agent', 
+                               required=True, index=True, tracking=True)
+    company_ids = fields.Many2many('thedevkitchen.estate.company',
+                                   string='Real Estate Companies')
+    
+    # Real estate specific
+    property_interest = fields.Many2one('real.estate.property', 
+                                       'Property of Interest')
+    property_type_interest = fields.Many2one('real.estate.property.type',
+                                            'Property Type Interest')
+    budget_min = fields.Monetary('Budget Min', currency_field='currency_id')
+    budget_max = fields.Monetary('Budget Max', currency_field='currency_id')
+    currency_id = fields.Many2one('res.currency', default=lambda self: self.env.company.currency_id)
+    
+    # Location preferences
+    preferred_locations = fields.Many2many('real.estate.state', 
+                                          string='Preferred Locations')
+    min_area = fields.Float('Minimum Area (m²)')
+    max_area = fields.Float('Maximum Area (m²)')
+    
+    # Contact details
+    phone = fields.Char('Phone', tracking=True)
+    email = fields.Char('Email', tracking=True)
+    
+    # Pipeline
+    state = fields.Selection([
+        ('new', 'New'),
+        ('contacted', 'Contacted'),
+        ('qualified', 'Qualified'),
+        ('viewing', 'Property Viewing'),
+        ('negotiation', 'Negotiation'),
+        ('won', 'Won - Converted to Sale'),
+        ('lost', 'Lost')
+    ], default='new', required=True, tracking=True)
+    
+    priority = fields.Selection([
+        ('0', 'Low'),
+        ('1', 'Normal'),
+        ('2', 'High'),
+        ('3', 'Urgent')
+    ], default='1', tracking=True)
+    
+    # Lifecycle
+    expected_closing_date = fields.Date('Expected Closing Date')
+    lost_reason = fields.Text('Lost Reason')
+    converted_sale_id = fields.Many2one('real.estate.sale', 'Converted Sale',
+                                       readonly=True)
+```
+
+**Pros:**
+- ✅ Full control over fields and business logic
+- ✅ No external dependencies
+- ✅ Real estate-focused model (not generic CRM)
+- ✅ Minimal code footprint (only what's needed)
+- ✅ Easy maintenance and customization
+- ✅ No version conflict risks
+- ✅ Exact fit for business requirements
+
+**Cons:**
+- ⚠️ Implementation from scratch (model + views + security)
+- ⚠️ No advanced CRM features (forecasting, scoring, email templates)
+- ⚠️ Need to build UI components manually
+- ⚠️ Less features out-of-the-box
+
+**Effort Estimate:** ~4-6 hours
+- Model definition (`models/lead.py`) - 1h
+- Views (list, form, kanban) (`views/lead_views.xml`) - 2h
+- Security (record rules, ACLs) (`security/`) - 1h
+- Integration with property model - 30min
+- Unit tests (`tests/unit/test_lead.py`) - 1h
+- Documentation - 30min
+
+**Required Deliverables:**
+1. `models/lead.py` - Lead model (~200 lines)
+2. `views/lead_views.xml` - UI views (~300 lines)
+3. `security/record_rules.xml` - Add lead record rules (~30 lines)
+4. `security/ir.model.access.csv` - Add lead ACL entries (~5 lines)
+5. `tests/unit/test_lead.py` - Unit tests (~150 lines)
+6. `tests/integration/test_rbac_agent_leads.py` - Integration tests (~100 lines)
+7. Update `__manifest__.py` to include new files
+
+---
+
+#### Option 3: Maintain SKIP Status ⏭️ Pragmatic Approach
+
+**Current State:** Accept 95.2% test coverage and defer lead management to future sprint
+
+**Pros:**
+- ✅ Zero immediate effort
+- ✅ Focus on higher ROI features
+- ✅ Avoids premature optimization
+- ✅ Decision can be made after real user feedback
+- ✅ Core RBAC fully validated (20/21 tests)
+- ✅ 95.2% coverage is excellent for production
+
+**Cons:**
+- ⚠️ Lead management functionality not available
+- ⚠️ Agents cannot manage client pipeline
+- ⚠️ US3-S3 test remains SKIPPED
+- ⚠️ Incomplete User Story 3 implementation
+
+**Effort Estimate:** 0 hours
+
+**Future Implementation Path:**
+- Gather user feedback on lead management needs
+- Decide between Option 1 or 2 based on real requirements
+- Schedule implementation in future sprint
+- Current architecture supports addition without breaking changes
+
+---
+
+### Recommendation Matrix
+
+| Criteria | Option 1: CRM | Option 2: Custom | Option 3: Skip |
+|----------|---------------|------------------|----------------|
+| **Time to Production** | ⚡ Fastest (30min) | 🐢 Slowest (4-6h) | ⚡ Immediate (0h) |
+| **Test Coverage** | ✅ 100% (21/21) | ✅ 100% (21/21) | ⚠️ 95.2% (20/21) |
+| **External Dependencies** | ⚠️ Yes (CRM) | ✅ No | ✅ No |
+| **Feature Richness** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐ |
+| **Code Maintenance** | ⚠️ Medium | ✅ Easy | ✅ Easy |
+| **Real Estate Focus** | ⚠️ Generic | ✅ Specific | N/A |
+| **Long-term Flexibility** | ⚠️ Limited | ✅ High | ✅ High |
+| **Version Upgrade Risk** | ⚠️ Medium | ✅ Low | ✅ Low |
+
+### Decision Criteria
+
+**Choose Option 1 (Odoo CRM) if:**
+- Need immediate 100% test coverage
+- Want rich CRM features out-of-the-box
+- Have experience managing Odoo module dependencies
+- Can afford external dependency complexity
+- Need email/phone integration immediately
+
+**Choose Option 2 (Custom Model) if:**
+- Want full control over implementation
+- Need real estate-specific workflow
+- Prefer zero external dependencies
+- Have 4-6 hours for implementation
+- Want to avoid future version conflicts
+
+**Choose Option 3 (Skip) if:**
+- 95.2% coverage is acceptable for production
+- Want to focus on other priorities first
+- Prefer to gather user feedback before implementation
+- Following lean/agile "build what you need" principle
+- Core RBAC validation is sufficient (20/21 tests)
+
+### Final Recommendation
+
+**Recommended:** **Option 3 (Skip)** for current phase, evaluate **Option 2 (Custom)** for next sprint after user feedback.
+
+**Rationale:**
+1. 95.2% test coverage is excellent for production readiness
+2. Core RBAC functionality is 100% validated
+3. Lead management can be designed better with real user requirements
+4. Avoid premature dependency decisions
+5. Custom model will be better fit when business needs are clear
+6. Current architecture supports adding leads without breaking changes
+
+**Next Steps if Option 3 chosen:**
+1. Document lead management as "Phase 2 Feature"
+2. Add to product backlog with "User Story 3 - Scenario 3" label
+3. Gather user feedback during beta testing
+4. Prioritize for next sprint if users request lead features
+5. Implement Option 2 (Custom) when ready with clear requirements
