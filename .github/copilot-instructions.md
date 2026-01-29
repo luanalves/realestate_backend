@@ -102,3 +102,19 @@ This project follows documented architectural decisions. **Always consult the AD
 **ADR Directory:** [docs/adr](../docs/adr/)
 
 **Important:** When writing code, creating tests, documenting APIs, naming modules/tables, or making architectural decisions, always check the ADR directory for relevant guidelines. If there's a conflict between a request and an ADR, mention the ADR guideline and ask for clarification.
+
+## Instruction Files
+
+This project uses specialized instruction files that are automatically applied by GitHub Copilot when working with specific types of files:
+
+<instruction>
+<file>.github/instructions/controllers.instructions.md</file>
+<applyTo>18.0/extra-addons/**/controllers/**/*.py</applyTo>
+</instruction>
+
+<instruction>
+<file>.github/instructions/test-strategy.instructions.md</file>
+<applyTo>18.0/extra-addons/**/tests/**/*.py, cypress/e2e/**/*.cy.js, integration_tests/**/*.sh</applyTo>
+</instruction>
+
+When the user is working on these file types, always consult the corresponding instruction file for specific guidelines.
