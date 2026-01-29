@@ -142,6 +142,25 @@ Platform employs dual-interface design:
 - **Integration**: All CRUD endpoints (success + 401 + validation + 404 + permissions)
 - **E2E**: At least one complete journey per major feature
 
+### Test Creation - Prompts Obrigatórios
+Para criação de testes, **DEVEM ser utilizados** os prompts e agents especializados:
+
+| Recurso | Arquivo | Propósito |
+|---------|---------|-----------|
+| **Test Strategy Agent** | `.github/prompts/test-strategy.prompt.md` | Consultor que analisa e recomenda o tipo de teste correto (aplica "Regra de Ouro") |
+| **Test Executor Agent** | `.github/prompts/test-executor.prompt.md` | Executor que cria código de teste automaticamente baseado nas recomendações |
+| **SpecKit Tests Agent** | `.github/agents/speckit.tests.agent.md` | Gerador completo de testes baseado em cenários de aceitação (spec.md) |
+
+**Fluxo Recomendado:**
+```
+1. Test Strategy Agent → Analisa código e recomenda tipo de teste
+2. Test Executor Agent → Cria código baseado na recomendação
+   OU
+   SpecKit Tests Agent → Gera múltiplos testes a partir da spec.md
+```
+
+**Rationale**: Prompts especializados garantem consistência, aderência à ADR-003 e uso correto de credenciais do `.env`.
+
 ### Code Quality Gates
 - Linting: `ruff` + `black` (automated via `./lint.sh`)
 - Coverage: ≥80% (measured, enforced in CI)
