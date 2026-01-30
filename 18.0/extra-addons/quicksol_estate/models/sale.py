@@ -7,7 +7,12 @@ class Sale(models.Model):
     property_id = fields.Many2one('real.estate.property', string='Property', required=True)
     buyer_name = fields.Char(string='Buyer Name', required=True)
     buyer_partner_id = fields.Many2one('res.partner', string='Buyer Contact', help='Partner record for buyer (enables Portal access)')
+    buyer_phone = fields.Char('Buyer Phone', size=20, help='Buyer contact phone')
+    buyer_email = fields.Char('Buyer Email', size=120, help='Buyer contact email')
     company_ids = fields.Many2many('thedevkitchen.estate.company', 'thedevkitchen_company_sale_rel', 'sale_id', 'company_id', string='Real Estate Companies')
+    company_id = fields.Many2one('thedevkitchen.estate.company', string='Primary Company', help='Primary company for sale')
+    agent_id = fields.Many2one('real.estate.agent', string='Agent', help='Agent who closed the sale')
+    lead_id = fields.Many2one('real.estate.lead', string='Source Lead', help='Lead that was converted to this sale')
     sale_date = fields.Date(string='Sale Date', required=True)
     sale_price = fields.Float(string='Sale Price', required=True)
     

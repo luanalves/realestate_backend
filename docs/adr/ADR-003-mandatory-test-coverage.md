@@ -26,6 +26,18 @@ O framework `odoo.tests.common.HttpCase` **não persiste dados** no banco de dad
 
 **Por isso, utilizamos curl para testes de API** - ele executa contra a instância real do Odoo, persistindo dados normalmente.
 
+### ⚠️ NUNCA use JSON-RPC em testes
+
+Endpoints REST deste projeto **NÃO usam formato JSON-RPC**. Envie JSON direto no body:
+
+```json
+// ✅ CORRETO - JSON direto
+{"email": "user@example.com", "password": "secret"}
+
+// ❌ ERRADO - wrapper JSON-RPC (NÃO usar)
+{"jsonrpc": "2.0", "method": "call", "params": {...}}
+```
+
 ## Decision
 
 **Todos os módulos desenvolvidos ou modificados neste projeto DEVEM ter cobertura de testes automatizados.**

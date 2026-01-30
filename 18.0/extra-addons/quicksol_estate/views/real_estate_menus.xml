@@ -6,6 +6,7 @@
     <menuitem id="menu_real_estate_company" name="Real Estate Companies" parent="menu_real_estate_root" sequence="5" action="action_company"/>
     <menuitem id="menu_real_estate_property" name="Properties" parent="menu_real_estate_root" sequence="10" action="action_property"/>
     <menuitem id="menu_real_estate_agent" name="Agents" parent="menu_real_estate_root" sequence="20" action="action_agent"/>
+    <menuitem id="menu_real_estate_lead" name="Leads" parent="menu_real_estate_root" sequence="21" action="action_lead" groups="quicksol_estate.group_real_estate_agent,quicksol_estate.group_real_estate_manager"/>
     <menuitem id="menu_real_estate_assignment" name="Property Assignments" parent="menu_real_estate_root" sequence="25" action="action_assignment"/>
     <menuitem id="menu_real_estate_commission_rule" name="Commission Rules" parent="menu_real_estate_root" sequence="26" action="action_commission_rule"/>
     <menuitem id="menu_real_estate_tenant" name="Tenants" parent="menu_real_estate_root" sequence="30" action="action_tenant"/>

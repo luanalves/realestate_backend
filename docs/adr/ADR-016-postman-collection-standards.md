@@ -72,6 +72,7 @@ Todas as collections **DEVEM** usar as seguintes variáveis de ambiente:
   "client_id": "client_xxx",
   "client_secret": "secret_yyy",
   "access_token": "auto_populated_by_test_script",
+  "refresh_token": "auto_populated_by_test_script",
   "session_id": "auto_populated_by_test_script",
   "user_agent": "PostmanRuntime/7.26.8",
   "user_email": "admin@example.com",
@@ -139,7 +140,15 @@ Session ID vai no **body JSON** (formato direto, sem wrapper JSONRPC):
 
 **Endpoint**: `POST {{base_url}}/api/v1/auth/token`
 
-**Importante**: Endpoints OAuth **NÃO** usam formato JSONRPC. Enviar JSON direto no body.
+**⚠️ IMPORTANTE**: Endpoints OAuth **NÃO** usam formato JSON-RPC. Enviar JSON direto no body:
+
+```json
+// ✅ CORRETO - JSON direto
+{"client_id": "xxx", "client_secret": "yyy", "grant_type": "client_credentials"}
+
+// ❌ ERRADO - wrapper JSON-RPC (NÃO usar)
+{"jsonrpc": "2.0", "method": "call", "params": {...}}
+```
 
 **Body**:
 ```json
@@ -150,12 +159,28 @@ Session ID vai no **body JSON** (formato direto, sem wrapper JSONRPC):
 }
 ```
 
-**Test Script Obrigatório** (auto-popula access_token):
+**Resposta esperada** (OAuth Token Response):
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "Bearer",
+  "expires_in": 3600,
+  "refresh_token": "dGhpc19pc19hX3JlZnJlc2hfdG9rZW4..."
+}
+```
+
+**Test Script Obrigatório** (auto-popula access_token **E** refresh_token):
 ```javascript
 const jsonData = pm.response.json();
 if (jsonData && jsonData.access_token) {
     pm.environment.set('access_token', jsonData.access_token);
     console.log('✅ Access token saved to environment');
+    
+    // Salvar refresh_token para uso em endpoints de refresh
+    if (jsonData.refresh_token) {
+        pm.environment.set('refresh_token', jsonData.refresh_token);
+        console.log('✅ Refresh token saved to environment');
+    }
 } else {
     console.error('❌ Failed to extract access_token from response');
 }
@@ -234,14 +259,15 @@ Cada endpoint **DEVE** ter descrição documentando:
 
 ### 8. Regras de Ouro
 
-1. **NUNCA** usar wrapper JSONRPC (`{"jsonrpc": "2.0", "method": "call", "params": {...}}`) - enviar JSON direto
+1. **🚫 NUNCA** usar wrapper JSON-RPC (`{"jsonrpc": "2.0", "method": "call", "params": {...}}`) - enviar JSON direto no body
 2. **NUNCA** enviar `session_id` no body de requisições GET - será ignorado
 3. **SEMPRE** usar variáveis `{{...}}` ao invés de valores hardcoded
 4. **SEMPRE** incluir User-Agent para evitar falha de fingerprint
 5. **SEMPRE** manter User-Agent consistente durante toda a sessão
 6. **SEMPRE** versionar collections ao fazer mudanças estruturais
-7. **SEMPRE** adicionar test scripts para auto-popular tokens/sessions
+7. **SEMPRE** adicionar test scripts para auto-popular tokens/sessions (incluindo `refresh_token`)
 8. **SEMPRE** documentar tipo de autenticação necessária na descrição
+9. **SEMPRE** salvar `refresh_token` em variável de ambiente (usado por endpoints de refresh)
 
 ## Consequências
 

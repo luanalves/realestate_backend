@@ -91,9 +91,11 @@ Isso torna o HttpCase **inadequado para testes E2E de APIs REST** que envolvem a
 - ✅ **Fácil debugging** - vê exatamente a requisição e resposta
 - ✅ **Reutilizável** - comandos curl podem ser usados em documentação
 - ✅ **Execução ocorre diretamente pelo terminal** (copiando comandos documentados), sem wrappers `.sh`
+- ✅ **JSON direto no body** - NÃO usar formato JSON-RPC (ver abaixo)
 
 **Importante:** 
 - ❌ **NÃO use `odoo.tests.common.HttpCase` para testes de API REST**
+- ❌ **NÃO use formato JSON-RPC** (`{"jsonrpc": "2.0", "method": "call", "params": {...}}`) - enviar JSON direto no body
 - ✅ **NÃO criar arquivos `.sh` para orquestrar os testes de integração**; comandos devem ser executados diretamente no terminal (local ou CI)
 - ✅ **HttpCase pode ser usado apenas para testes unitários** de componentes que não precisam persistir dados
 

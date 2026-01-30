@@ -1,0 +1,280 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ============================================================ -->
+    <!-- TREE VIEW: Lead List -->
+    <!-- ============================================================ -->
+    <record id="view_lead_tree" model="ir.ui.view">
+        <field name="name">real.estate.lead.tree</field>
+        <field name="model">real.estate.lead</field>
+        <field name="arch" type="xml">
+            <list string="Real Estate Leads" decoration-muted="not active" 
+                  decoration-info="state=='new'" 
+                  decoration-warning="state=='contacted'"
+                  decoration-success="state=='qualified'"
+                  decoration-primary="state=='won'"
+                  decoration-danger="state=='lost'">
+                <field name="name"/>
+                <field name="state" widget="badge" decoration-info="state=='new'" decoration-warning="state=='contacted'" decoration-success="state=='qualified'" decoration-primary="state=='won'" decoration-danger="state=='lost'"/>
+                <field name="agent_id"/>
+                <field name="phone"/>
+                <field name="email"/>
+                <field name="budget_min" widget="monetary" optional="show"/>
+                <field name="budget_max" widget="monetary" optional="show"/>
+                <field name="property_type_interest" optional="hide"/>
+                <field name="first_contact_date" optional="show"/>
+                <field name="expected_closing_date" optional="hide"/>
+                <field name="days_in_state" optional="show"/>
+                <field name="create_date" optional="hide"/>
+                <field name="active" invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ============================================================ -->
+    <!-- FORM VIEW: Lead Details -->
+    <!-- ============================================================ -->
+    <record id="view_lead_form" model="ir.ui.view">
+        <field name="name">real.estate.lead.form</field>
+        <field name="model">real.estate.lead</field>
+        <field name="arch" type="xml">
+            <form string="Real Estate Lead">
+                <header>
+                    <field name="state" widget="statusbar" statusbar_visible="new,contacted,qualified,won,lost"/>
+                    <button name="action_reopen" string="Reopen Lead" type="object" class="btn-primary" invisible="state != 'lost'" groups="quicksol_estate.group_real_estate_agent,quicksol_estate.group_real_estate_manager"/>
+                </header>
+                <sheet>
+                    <!-- Smart Buttons -->
+                    <div class="oe_button_box" name="button_box">
+                        <!-- Activity button will be added later -->
+                    </div>
+
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1>
+                            <field name="name" placeholder="Lead Title (e.g., João Silva - Apartamento Centro)" required="1"/>
+                        </h1>
+                    </div>
+
+                    <group>
+                        <group name="ownership" string="Assignment">
+                            <field name="agent_id" readonly="context.get('readonly_agent', False)"/>
+                            <field name="company_ids" widget="many2many_tags"/>
+                        </group>
+                        <group name="lifecycle" string="Lifecycle">
+                            <field name="first_contact_date"/>
+                            <field name="expected_closing_date"/>
+                            <field name="days_in_state" readonly="1"/>
+                        </group>
+                    </group>
+
+                    <group>
+                        <group name="contact_info" string="Contact Information">
+                            <field name="partner_id"/>
+                            <field name="phone"/>
+                            <field name="email" widget="email"/>
+                        </group>
+                        <group name="lost_info" string="Lost Details" invisible="state != 'lost'">
+                            <field name="lost_date" readonly="1"/>
+                            <field name="lost_reason"/>
+                        </group>
+                    </group>
+
+                    <!-- Notebook with tabs -->
+                    <notebook>
+                        <!-- Tab 1: Preferences -->
+                        <page string="Preferences" name="preferences">
+                            <group>
+                                <group string="Budget">
+                                    <field name="budget_min" widget="monetary"/>
+                                    <field name="budget_max" widget="monetary"/>
+                                </group>
+                                <group string="Property Type">
+                                    <field name="property_type_interest"/>
+                                    <field name="property_interest"/>
+                                </group>
+                            </group>
+                            <group>
+                                <group string="Location &amp; Size">
+                                    <field name="location_preference"/>
+                                    <field name="bedrooms_needed"/>
+                                </group>
+                                <group string="Area Requirements">
+                                    <field name="min_area"/>
+                                    <field name="max_area"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <!-- Tab 2: Conversion -->
+                        <page string="Conversion" name="conversion" invisible="state != 'won'">
+                            <group>
+                                <group string="Converted Records">
+                                    <field name="converted_property_id" readonly="1"/>
+                                    <field name="converted_sale_id" readonly="1"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <!-- Tab 3: Activities -->
+                        <page string="Activities" name="activities">
+                            <field name="activity_ids" widget="mail_activity"/>
+                        </page>
+                    </notebook>
+                </sheet>
+
+                <!-- Chatter -->
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- ============================================================ -->
+    <!-- KANBAN VIEW: Pipeline View -->
+    <!-- ============================================================ -->
+    <record id="view_lead_kanban" model="ir.ui.view">
+        <field name="name">real.estate.lead.kanban</field>
+        <field name="model">real.estate.lead</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="state" class="o_kanban_small_column o_opportunity_kanban" 
+                    on_create="quick_create" quick_create_view="quicksol_estate.view_lead_form" 
+                    sample="1" decoration-muted="not active">
+                <field name="name"/>
+                <field name="state"/>
+                <field name="agent_id"/>
+                <field name="phone"/>
+                <field name="email"/>
+                <field name="budget_min"/>
+                <field name="budget_max"/>
+                <field name="days_in_state"/>
+                <field name="active"/>
+                <field name="activity_ids"/>
+                <field name="activity_state"/>
+                <progressbar field="activity_state" colors='{"planned": "success", "today": "warning", "overdue": "danger"}'/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div class="oe_kanban_global_click">
+                            <div class="o_kanban_record_top mb-0">
+                                <div class="o_kanban_record_headings">
+                                    <strong class="o_kanban_record_title">
+                                        <field name="name"/>
+                                    </strong>
+                                </div>
+                                <div class="o_kanban_record_top_right">
+                                    <field name="activity_ids" widget="kanban_activity"/>
+                                </div>
+                            </div>
+                            <div class="o_kanban_record_body">
+                                <div class="o_kanban_record_subtitle">
+                                    <i class="fa fa-user"/> <field name="agent_id"/>
+                                </div>
+                                <div t-if="record.phone.raw_value">
+                                    <i class="fa fa-phone"/> <field name="phone"/>
+                                </div>
+                                <div t-if="record.email.raw_value">
+                                    <i class="fa fa-envelope"/> <field name="email"/>
+                                </div>
+                                <div t-if="record.budget_min.raw_value or record.budget_max.raw_value">
+                                    <i class="fa fa-money"/>
+                                    <t t-if="record.budget_min.raw_value">
+                                        R$ <field name="budget_min" widget="monetary"/>
+                                    </t>
+                                    <t t-if="record.budget_max.raw_value">
+                                        - R$ <field name="budget_max" widget="monetary"/>
+                                    </t>
+                                </div>
+                            </div>
+                            <div class="o_kanban_record_bottom">
+                                <div class="oe_kanban_bottom_left">
+                                    <span class="badge rounded-pill" t-attf-class="bg-#{record.days_in_state.raw_value > 30 ? 'danger' : 'info'}">
+                                        <field name="days_in_state"/> days
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- ============================================================ -->
+    <!-- CALENDAR VIEW: Timeline -->
+    <!-- ============================================================ -->
+    <record id="view_lead_calendar" model="ir.ui.view">
+        <field name="name">real.estate.lead.calendar</field>
+        <field name="model">real.estate.lead</field>
+        <field name="arch" type="xml">
+            <calendar string="Lead Calendar" date_start="expected_closing_date" 
+                      color="agent_id" mode="month" quick_create="0">
+                <field name="name"/>
+                <field name="agent_id"/>
+                <field name="state"/>
+                <field name="budget_max"/>
+            </calendar>
+        </field>
+    </record>
+
+    <!-- ============================================================ -->
+    <!-- SEARCH VIEW: Filters and Group By -->
+    <!-- ============================================================ -->
+    <record id="view_lead_search" model="ir.ui.view">
+        <field name="name">real.estate.lead.search</field>
+        <field name="model">real.estate.lead</field>
+        <field name="arch" type="xml">
+            <search string="Search Leads">
+                <field name="name" string="Lead" filter_domain="['|', '|', ('name', 'ilike', self), ('phone', 'ilike', self), ('email', 'ilike', self)]"/>
+                <field name="agent_id"/>
+                <field name="state"/>
+                <field name="property_type_interest"/>
+                
+                <!-- Filters -->
+                <separator/>
+                <filter string="My Leads" name="my_leads" domain="[('agent_id.user_id', '=', uid)]"/>
+                <filter string="Active" name="active" domain="[('active', '=', True)]"/>
+                <filter string="Archived" name="inactive" domain="[('active', '=', False)]"/>
+                
+                <separator/>
+                <filter string="New" name="state_new" domain="[('state', '=', 'new')]"/>
+                <filter string="Contacted" name="state_contacted" domain="[('state', '=', 'contacted')]"/>
+                <filter string="Qualified" name="state_qualified" domain="[('state', '=', 'qualified')]"/>
+                <filter string="Won" name="state_won" domain="[('state', '=', 'won')]"/>
+                <filter string="Lost" name="state_lost" domain="[('state', '=', 'lost')]"/>
+                
+                <separator/>
+                <filter string="With Budget" name="has_budget" domain="[('budget_max', '>', 0)]"/>
+                <filter string="Overdue" name="overdue" domain="[('expected_closing_date', '&lt;', context_today().strftime('%Y-%m-%d')), ('state', 'not in', ['won', 'lost'])]"/>
+                
+                <!-- Group By -->
+                <group expand="0" string="Group By">
+                    <filter string="Agent" name="group_agent" context="{'group_by': 'agent_id'}"/>
+                    <filter string="State" name="group_state" context="{'group_by': 'state'}"/>
+                    <filter string="Property Type" name="group_property_type" context="{'group_by': 'property_type_interest'}"/>
+                    <filter string="Expected Closing Month" name="group_closing_month" context="{'group_by': 'expected_closing_date:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- ============================================================ -->
+    <!-- ACTION: Lead Action -->
+    <!-- ============================================================ -->
+    <record id="action_lead" model="ir.actions.act_window">
+        <field name="name">Leads</field>
+        <field name="res_model">real.estate.lead</field>
+        <field name="view_mode">kanban,list,form,calendar</field>
+        <field name="context">{'search_default_active': 1, 'search_default_my_leads': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first lead
+            </p>
+            <p>
+                Track potential clients through the sales pipeline from first contact to conversion.
+            </p>
+        </field>
+    </record>
+
+</odoo>

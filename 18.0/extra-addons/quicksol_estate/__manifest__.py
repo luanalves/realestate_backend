@@ -80,6 +80,7 @@ Property Form Sections:
         'views/property_views.xml',
         'views/property_auxiliary_views.xml',
         'views/agent_views.xml',
+        'views/lead_views.xml',  # FR-001: Lead views for managers
         'views/commission_rule_views.xml',
         'views/assignment_views.xml',
         'views/lease_views.xml',

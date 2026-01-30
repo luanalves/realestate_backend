@@ -4,9 +4,20 @@
 
 Complete Postman collection for Quicksol Real Estate Management System API.
 
-**Version:** 1.2.0  
-**Last Updated:** 2026-01-27  
-**Spec Coverage:** 005-rbac-user-profiles (95.2% E2E tested)
+**Version:** 1.3.0  
+**Last Updated:** 2026-01-29  
+**Spec Coverage:** 006-lead-management (added)
+
+## Available Collections
+
+### 1. Main API Collection
+**File:** `quicksol_api_v1.1_postman_collection.json`  
+**Coverage:** Properties, Agents, Assignments, Commissions, RBAC profiles
+
+### 2. Lead Management Collection ⭐ NEW
+**File:** `lead-management-collection.json`  
+**Coverage:** Lead CRUD, conversions, statistics, multi-tenancy tests  
+**Feature:** 006-lead-management
 
 ## Collection Structure
 
@@ -63,7 +74,14 @@ Reference data endpoints:
 - Location Types
 - States/Regions
 
-### 9. Test Journeys (E2E) ⭐ NEW
+### 9. Leads (NEW - Feature 006) ⭐
+Lead management endpoints:
+- **CRUD**: List, Create, Get, Update, Archive (soft delete)
+- **Actions**: Convert to Sale, Reopen Lost Lead
+- **Analytics**: Statistics by state, agent, date range
+- **Test Scenarios**: Duplicate prevention, multi-tenancy, state transitions
+
+### 10. Test Journeys (E2E) ⭐
 
 Complete end-to-end test journeys validating RBAC implementation:
 

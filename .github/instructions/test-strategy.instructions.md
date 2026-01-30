@@ -50,6 +50,19 @@ Este projeto usa **APENAS 2 tipos de testes**:
 ❌ Usar fixtures complexas em testes unitários
 ❌ Mockar bancos de dados em E2E (use o real)
 ❌ Hardcoded credentials (use `18.0/.env`)
+❌ **NUNCA usar formato JSON-RPC** em testes de API (wrapper `{"jsonrpc": "2.0", "method": "call", "params": {...}}`)
+
+### ⚠️ IMPORTANTE: JSON-RPC NÃO é suportado
+
+Endpoints REST deste projeto usam **JSON direto** no body:
+
+```json
+// ✅ CORRETO
+{"email": "user@example.com", "password": "secret"}
+
+// ❌ ERRADO - NÃO usar wrapper JSON-RPC
+{"jsonrpc": "2.0", "method": "call", "params": {"email": "...", "password": "..."}}
+```
 
 ## ✅ Regras ao Criar/Modificar Testes
 
