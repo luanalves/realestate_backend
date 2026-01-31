@@ -1,0 +1,1298 @@
+{
+  "info": {
+    "_postman_id": "quicksol-lead-mgmt-v1.2",
+    "name": "Quicksol Real Estate API",
+    "description": "API REST para sistema imobiliário multi-tenant com OAuth 2.0 e autenticação dual.\n\n## Feature: Lead Management (006)\n- Track potential clients through sales pipeline\n- Agent-level and manager-level access\n- Multi-tenancy with company isolation\n- Lead conversion to property sales\n- Activity tracking and scheduling\n- Advanced search and saved filters\n\n## Authentication Flow\n1. **Get OAuth Token**: POST /api/v1/auth/token (client_credentials)\n2. **User Login**: POST /api/v1/users/login (returns session_id)\n3. **Use Both**: Authorization header + X-Openerp-Session-Id header\n\n## Headers Requirements\n- `Authorization: Bearer {{access_token}}` - OAuth 2.0 token\n- `X-Openerp-Session-Id: {{session_id}}` - Session ID (REQUIRED for GET)\n- `User-Agent: {{user_agent}}` - For fingerprint validation\n- `Content-Type: application/json`\n\n## ADR Compliance\n- ADR-016: Postman Collection Standards\n- ADR-011: Security (Triple Decorator Pattern)\n- ADR-008: Multi-tenancy\n\n## Changelog v1.2\n- Added all 15 Lead Management endpoints\n- Fixed headers per ADR-016 (X-Openerp-Session-Id)\n- Added test scripts for auto-populating tokens\n- Added refresh_token support\n- Reorganized folders by domain",
+    "version": "1.2.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Authentication",
+      "description": "OAuth 2.0 authentication endpoints. Run these first to populate access_token and session_id.",
+      "item": [
+        {
+          "name": "Get OAuth Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.access_token) {",
+                  "    pm.environment.set('access_token', jsonData.access_token);",
+                  "    console.log('✅ Access token saved to environment');",
+                  "    if (jsonData.refresh_token) {",
+                  "        pm.environment.set('refresh_token', jsonData.refresh_token);",
+                  "        console.log('✅ Refresh token saved to environment');",
+                  "    }",
+                  "} else {",
+                  "    console.log('❌ Failed to get access token');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_id\": \"{{client_id}}\",\n  \"client_secret\": \"{{client_secret}}\",\n  \"grant_type\": \"client_credentials\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/token",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "token"]
+            },
+            "description": "Get OAuth 2.0 access token using client credentials.\n\n**⚠️ IMPORTANT**: This endpoint does NOT use JSON-RPC wrapper. Send JSON directly.\n\n**Response**:\n- access_token: JWT token for API authentication\n- refresh_token: Token for refreshing access (save to variable)\n- expires_in: Token expiration time in seconds"
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh OAuth Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.access_token) {",
+                  "    pm.environment.set('access_token', jsonData.access_token);",
+                  "    console.log('✅ Access token refreshed');",
+                  "    if (jsonData.refresh_token) {",
+                  "        pm.environment.set('refresh_token', jsonData.refresh_token);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_id\": \"{{client_id}}\",\n  \"client_secret\": \"{{client_secret}}\",\n  \"grant_type\": \"refresh_token\",\n  \"refresh_token\": \"{{refresh_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/token",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "token"]
+            },
+            "description": "Refresh access token using refresh_token.\n\nUse this when access_token expires (401 response)."
+          },
+          "response": []
+        },
+        {
+          "name": "User Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.session_id) {",
+                  "    pm.environment.set('session_id', jsonData.session_id);",
+                  "    console.log('✅ Session ID saved: ' + jsonData.session_id.substring(0, 20) + '...');",
+                  "} else if (jsonData && jsonData.data && jsonData.data.session_id) {",
+                  "    pm.environment.set('session_id', jsonData.data.session_id);",
+                  "    console.log('✅ Session ID saved (from data): ' + jsonData.data.session_id.substring(0, 20) + '...');",
+                  "} else {",
+                  "    console.log('❌ Failed to get session_id');",
+                  "    console.log('Response:', JSON.stringify(jsonData));",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{user_email}}\",\n  \"password\": \"{{user_password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users", "login"]
+            },
+            "description": "**Authentication:** Bearer Token required\n**Fingerprint validation:** Active (IP + User-Agent)\n\nLogin user and get session_id for subsequent API calls.\n\n**⚠️ IMPORTANT**: User-Agent header MUST be consistent throughout the session."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Current User",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "Session ID (REQUIRED for GET endpoints)"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/me",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "me"]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active\n**Fingerprint validation:** Active\n\n**IMPORTANT:** For GET requests, session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in request body.\n\nReturns information about the currently authenticated user."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2. Leads - CRUD",
+      "description": "Lead management CRUD operations. Requires authentication.",
+      "item": [
+        {
+          "name": "List Leads",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "Session ID (REQUIRED for GET endpoints)"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/leads?limit=20&offset=0",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "leads"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Items per page (max 100)"
+                },
+                {
+                  "key": "offset",
+                  "value": "0",
+                  "description": "Number of records to skip"
+                },
+                {
+                  "key": "state",
+                  "value": "qualified",
+                  "disabled": true,
+                  "description": "Filter by state: new, contacted, qualified, won, lost"
+                },
+                {
+                  "key": "agent_id",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Filter by agent (managers only)"
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Search query (name, phone, email)"
+                },
+                {
+                  "key": "active",
+                  "value": "true",
+                  "disabled": true,
+                  "description": "Filter by active status: true, false, all"
+                },
+                {
+                  "key": "sort_by",
+                  "value": "create_date",
+                  "disabled": true,
+                  "description": "Field to sort by"
+                },
+                {
+                  "key": "sort_order",
+                  "value": "desc",
+                  "disabled": true,
+                  "description": "Sort order: asc or desc"
+                }
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For GET requests, session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in request body.\n\nList all leads with pagination and filtering. Agents see only their own leads, managers see all company leads."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Lead",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.id) {",
+                  "    pm.environment.set('lead_id', jsonData.id);",
+                  "    console.log('✅ Lead ID saved: ' + jsonData.id);",
+                  "} else if (jsonData && jsonData.data && jsonData.data.id) {",
+                  "    pm.environment.set('lead_id', jsonData.data.id);",
+                  "    console.log('✅ Lead ID saved (from data): ' + jsonData.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"João Silva - Apartamento Centro\",\n  \"phone\": \"+55 11 98765-4321\",\n  \"email\": \"joao.silva@example.com\",\n  \"budget_min\": 200000.00,\n  \"budget_max\": 350000.00,\n  \"bedrooms_needed\": 2,\n  \"location_preference\": \"Centro, Jardins, Paulista\",\n  \"first_contact_date\": \"2026-01-29\",\n  \"expected_closing_date\": \"2026-02-15\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/leads",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "leads"]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\nCreate a new lead. Lead is automatically assigned to the current agent.\n\n**Required fields:**\n- name: Client name\n- phone: Phone number (unique per agent)\n- email: Email address (unique per agent)\n\n**Optional fields:**\n- budget_min, budget_max: Budget range\n- bedrooms_needed: Number of bedrooms\n- location_preference: Preferred locations\n- first_contact_date, expected_closing_date: Dates"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Lead Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "Session ID (REQUIRED for GET endpoints)"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/leads/{{lead_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "leads", "{{lead_id}}"]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active\n**Fingerprint validation:** Active\n\n**IMPORTANT:** For GET requests, session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in request body.\n\nGet details of a specific lead including recent activities."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Lead",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"state\": \"contacted\",\n  \"budget_max\": 400000.00,\n  \"bedrooms_needed\": 3\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/leads/{{lead_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "leads", "{{lead_id}}"]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active\n**Fingerprint validation:** Active\n\nUpdate lead fields. State changes are logged in chatter.\n\n**State transitions:**\n- new → contacted → qualified → won/lost\n- lost state requires lost_reason field"
+          },
+          "response": []
+        },
+        {
+          "name": "Archive Lead (Soft Delete)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/leads/{{lead_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "leads", "{{lead_id}}"]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active\n**Fingerprint validation:** Active\n\nSoft delete a lead (sets active=False). Data is preserved, lead is hidden from list views."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3. Lead Actions",
+      "description": "Lead workflow actions: conversion, reopen, etc.",
+      "item": [
+        {
+          "name": "Convert Lead to Sale",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"property_id\": {{property_id}}\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/leads/{{lead_id}}/convert",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "leads", "{{lead_id}}", "convert"]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active\n**Fingerprint validation:** Active\n\nConvert a qualified lead to a sale. Creates a sale record and links property.\n\n**Requirements:**\n- Lead must be in 'qualified' state\n- property_id must be provided\n- Property must belong to same company\n\n**Side effects:**\n- Lead state changes to 'won'\n- Sale record created with buyer info from lead\n- converted_property_id and converted_sale_id set on lead"
+          },
+          "response": []
+        },
+        {
+          "name": "Reopen Lost Lead",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Client re-engaged after 2 months, budget increased\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/leads/{{lead_id}}/reopen",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "leads", "{{lead_id}}", "reopen"]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active\n**Fingerprint validation:** Active\n\nReopen a lost lead for re-engagement.\n\n**Requirements:**\n- Lead must be in 'lost' state\n- reason field is required\n\n**Side effects:**\n- Lead state changes to 'contacted'\n- Reopen reason logged in chatter\n- lost_date is cleared"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "4. Lead Analytics",
+      "description": "Statistics and reporting endpoints.",
+      "item": [
+        {
+          "name": "Get Lead Statistics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "Session ID (REQUIRED for GET endpoints)"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/leads/statistics",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "leads", "statistics"],
+              "query": [
+                {
+                  "key": "agent_id",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Filter by agent (managers only)"
+                },
+                {
+                  "key": "date_from",
+                  "value": "2026-01-01",
+                  "disabled": true,
+                  "description": "Start date (YYYY-MM-DD)"
+                },
+                {
+                  "key": "date_to",
+                  "value": "2026-01-31",
+                  "disabled": true,
+                  "description": "End date (YYYY-MM-DD)"
+                }
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active\n**Fingerprint validation:** Active\n\n**IMPORTANT:** For GET requests, session_id MUST be sent via header 'X-Openerp-Session-Id'.\n\nGet lead statistics including:\n- Total leads, leads by state\n- Conversion rate (won / total)\n- Average days in each state\n- By agent breakdown (managers only)"
+          },
+          "response": []
+        },
+        {
+          "name": "Export Leads to CSV",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "Session ID (REQUIRED for GET endpoints)"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/leads/export?state=qualified",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "leads", "export"],
+              "query": [
+                {
+                  "key": "state",
+                  "value": "qualified",
+                  "description": "Filter by state"
+                },
+                {
+                  "key": "budget_min",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Optional budget min"
+                },
+                {
+                  "key": "budget_max",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Optional budget max"
+                },
+                {
+                  "key": "agent_id",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Filter by agent (managers only)"
+                }
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active\n**Fingerprint validation:** Active\n\n**IMPORTANT:** For GET requests, session_id MUST be sent via header 'X-Openerp-Session-Id'.\n\nExport leads to CSV format. Same filters as list endpoint apply.\n\n**Response:** CSV file download"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "5. Lead Activities",
+      "description": "Activity tracking and scheduling for leads.",
+      "item": [
+        {
+          "name": "Log Activity on Lead",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Called client - interested in 3-bedroom condos in downtown area. Budget confirmed at R$400k.\",\n  \"activity_type\": \"call\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/leads/{{lead_id}}/activities",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "leads", "{{lead_id}}", "activities"]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active\n**Fingerprint validation:** Active\n\nLog an activity on a lead (call, email, meeting, note).\n\n**Fields:**\n- body: Activity description (required)\n- activity_type: call, email, meeting, note (default: note)"
+          },
+          "response": []
+        },
+        {
+          "name": "List Lead Activities",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "Session ID (REQUIRED for GET endpoints)"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/leads/{{lead_id}}/activities?limit=50&offset=0",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "leads", "{{lead_id}}", "activities"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50",
+                  "description": "Number of activities to return"
+                },
+                {
+                  "key": "offset",
+                  "value": "0",
+                  "description": "Number of activities to skip"
+                }
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active\n**Fingerprint validation:** Active\n\n**IMPORTANT:** For GET requests, session_id MUST be sent via header 'X-Openerp-Session-Id'.\n\nList all activities on a lead, sorted by date (newest first)."
+          },
+          "response": []
+        },
+        {
+          "name": "Schedule Activity on Lead",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"summary\": \"Follow-up call regarding budget increase\",\n  \"activity_type_id\": 1,\n  \"date_deadline\": \"2026-02-05\",\n  \"note\": \"Client requested callback after 2pm\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/leads/{{lead_id}}/schedule-activity",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "leads", "{{lead_id}}", "schedule-activity"]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active\n**Fingerprint validation:** Active\n\nSchedule a future activity on a lead.\n\n**Fields:**\n- summary: Activity title (required)\n- activity_type_id: Activity type ID (required)\n- date_deadline: Due date YYYY-MM-DD (required)\n- note: Additional notes (optional)\n- user_id: Assign to specific user (optional, defaults to current user)"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "6. Saved Filters",
+      "description": "Create and manage saved search filters.",
+      "item": [
+        {
+          "name": "List Saved Filters",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "Session ID (REQUIRED for GET endpoints)"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/leads/filters",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "leads", "filters"]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active\n**Fingerprint validation:** Active\n\n**IMPORTANT:** For GET requests, session_id MUST be sent via header 'X-Openerp-Session-Id'.\n\nList user's saved search filters and shared filters."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Saved Filter",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.id) {",
+                  "    pm.environment.set('filter_id', jsonData.id);",
+                  "    console.log('✅ Filter ID saved: ' + jsonData.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"High-value Centro leads\",\n  \"filter_domain\": {\n    \"budget_min\": 300000,\n    \"budget_max\": 500000,\n    \"bedrooms\": 3,\n    \"location\": \"Centro\",\n    \"state\": \"qualified\"\n  },\n  \"is_shared\": false\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/leads/filters",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "leads", "filters"]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active\n**Fingerprint validation:** Active\n\nCreate a saved search filter.\n\n**Fields:**\n- name: Filter name (required, unique per user)\n- filter_domain: JSON object with filter criteria (required)\n- is_shared: Share with team (optional, default false)\n\n**Available filter_domain keys:**\n- state, budget_min, budget_max, bedrooms, location, property_type_id"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Saved Filter",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/leads/filters/{{filter_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "leads", "filters", "{{filter_id}}"]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active\n**Fingerprint validation:** Active\n\nDelete a saved filter. Users can only delete their own filters."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "7. Advanced Search",
+      "description": "Advanced search examples with multiple filters.",
+      "item": [
+        {
+          "name": "Search: Budget Range + Bedrooms",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/leads?budget_min=300000&budget_max=500000&bedrooms=3&state=qualified",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "leads"],
+              "query": [
+                {
+                  "key": "budget_min",
+                  "value": "300000",
+                  "description": "Minimum budget (leads with budget_max >= this value)"
+                },
+                {
+                  "key": "budget_max",
+                  "value": "500000",
+                  "description": "Maximum budget (leads with budget_min <= this value)"
+                },
+                {
+                  "key": "bedrooms",
+                  "value": "3",
+                  "description": "Number of bedrooms needed"
+                },
+                {
+                  "key": "state",
+                  "value": "qualified",
+                  "description": "Lead state filter"
+                }
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active\n**Fingerprint validation:** Active\n\n**IMPORTANT:** For GET requests, session_id MUST be sent via header 'X-Openerp-Session-Id'.\n\nSearch leads with budget range R$300k-R$500k, looking for 3 bedrooms, in qualified state."
+          },
+          "response": []
+        },
+        {
+          "name": "Search: Location + Property Type",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/leads?location=Centro&property_type_id=1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "leads"],
+              "query": [
+                {
+                  "key": "location",
+                  "value": "Centro",
+                  "description": "Location preference (partial match)"
+                },
+                {
+                  "key": "property_type_id",
+                  "value": "1",
+                  "description": "Property type ID"
+                }
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active\n**Fingerprint validation:** Active\n\nSearch leads interested in properties in 'Centro' area with specific property type."
+          },
+          "response": []
+        },
+        {
+          "name": "Search: Inactive Leads (No Activity)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/leads?last_activity_before=2026-01-15&state=contacted",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "leads"],
+              "query": [
+                {
+                  "key": "last_activity_before",
+                  "value": "2026-01-15",
+                  "description": "Find leads with no activity since this date (YYYY-MM-DD)"
+                },
+                {
+                  "key": "state",
+                  "value": "contacted",
+                  "description": "Lead state filter"
+                }
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active\n**Fingerprint validation:** Active\n\nFind leads that have had no activity since a specific date - useful for follow-up campaigns."
+          },
+          "response": []
+        },
+        {
+          "name": "Search: Sorted by Budget (Descending)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/leads?sort_by=budget_max&sort_order=desc&state=qualified",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "leads"],
+              "query": [
+                {
+                  "key": "sort_by",
+                  "value": "budget_max",
+                  "description": "Field to sort by"
+                },
+                {
+                  "key": "sort_order",
+                  "value": "desc",
+                  "description": "Sort direction: asc or desc"
+                },
+                {
+                  "key": "state",
+                  "value": "qualified",
+                  "description": "Lead state filter"
+                }
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active\n**Fingerprint validation:** Active\n\nList qualified leads sorted by highest budget first."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "8. Test Scenarios",
+      "description": "Test scenarios for validation and edge cases.",
+      "item": [
+        {
+          "name": "Test: Create Duplicate Lead (Should Fail)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Duplicate Test\",\n  \"phone\": \"+55 11 98765-4321\",\n  \"email\": \"joao.silva@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/leads",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "leads"]
+            },
+            "description": "**Expected:** 400 Bad Request - Duplicate phone/email per agent\n\nTest duplicate validation. Should fail if lead with same phone/email already exists for this agent."
+          },
+          "response": []
+        },
+        {
+          "name": "Test: Invalid Budget Range (Should Fail)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Budget Test\",\n  \"phone\": \"+55 11 99999-0001\",\n  \"email\": \"budget.test@example.com\",\n  \"budget_min\": 500000,\n  \"budget_max\": 300000\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/leads",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "leads"]
+            },
+            "description": "**Expected:** 400 Bad Request - budget_min > budget_max\n\nTest budget validation. Should fail because budget_min is greater than budget_max."
+          },
+          "response": []
+        },
+        {
+          "name": "Test: Lost State Without Reason (Should Fail)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"state\": \"lost\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/leads/{{lead_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "leads", "{{lead_id}}"]
+            },
+            "description": "**Expected:** 400 Bad Request - lost_reason required\n\nTest lost state validation. Should fail because lost_reason is not provided."
+          },
+          "response": []
+        },
+        {
+          "name": "Test: Mark Lead as Lost (With Reason)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"state\": \"lost\",\n  \"lost_reason\": \"Budget constraints - client needs to save more\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/leads/{{lead_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "leads", "{{lead_id}}"]
+            },
+            "description": "**Expected:** 200 OK - Lead marked as lost\n\nProperly mark lead as lost with required lost_reason."
+          },
+          "response": []
+        },
+        {
+          "name": "Test: State Transition (new → contacted → qualified)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"state\": \"qualified\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/leads/{{lead_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "leads", "{{lead_id}}"]
+            },
+            "description": "**Expected:** 200 OK - State changed to qualified\n\nTest state transition. State change should be logged in chatter."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8069",
+      "type": "string",
+      "description": "Base URL for the API"
+    },
+    {
+      "key": "client_id",
+      "value": "app",
+      "type": "string",
+      "description": "OAuth client ID"
+    },
+    {
+      "key": "client_secret",
+      "value": "secret",
+      "type": "string",
+      "description": "OAuth client secret"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string",
+      "description": "Auto-populated by OAuth token request"
+    },
+    {
+      "key": "refresh_token",
+      "value": "",
+      "type": "string",
+      "description": "Auto-populated by OAuth token request"
+    },
+    {
+      "key": "session_id",
+      "value": "",
+      "type": "string",
+      "description": "Auto-populated by login request"
+    },
+    {
+      "key": "user_agent",
+      "value": "PostmanRuntime/7.26.8",
+      "type": "string",
+      "description": "Required for session fingerprint validation"
+    },
+    {
+      "key": "user_email",
+      "value": "admin@example.com",
+      "type": "string",
+      "description": "User email for login"
+    },
+    {
+      "key": "user_password",
+      "value": "admin",
+      "type": "string",
+      "description": "User password for login"
+    },
+    {
+      "key": "lead_id",
+      "value": "",
+      "type": "string",
+      "description": "Lead ID for detail operations"
+    },
+    {
+      "key": "property_id",
+      "value": "1",
+      "type": "string",
+      "description": "Property ID for conversions"
+    },
+    {
+      "key": "filter_id",
+      "value": "",
+      "type": "string",
+      "description": "Saved filter ID"
+    }
+  ]
+}

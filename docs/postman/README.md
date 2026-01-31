@@ -4,20 +4,35 @@
 
 Complete Postman collection for Quicksol Real Estate Management System API.
 
-**Version:** 1.3.0  
+**Version:** 1.4.0  
 **Last Updated:** 2026-01-29  
-**Spec Coverage:** 006-lead-management (added)
+**Spec Coverage:** 006-lead-management (complete)
 
 ## Available Collections
 
-### 1. Main API Collection
+### 1. Main API Collection (v1.2) ⭐ RECOMMENDED
+**File:** `quicksol_api_v1.2_postman_collection.json`  
+**Coverage:** All endpoints with Lead Management integration  
+**ADR Compliance:** ADR-016 (complete)
+
+### 2. Legacy API Collection (v1.1)
 **File:** `quicksol_api_v1.1_postman_collection.json`  
 **Coverage:** Properties, Agents, Assignments, Commissions, RBAC profiles
 
-### 2. Lead Management Collection ⭐ NEW
+### 3. Lead Management Collection (Standalone)
 **File:** `lead-management-collection.json`  
 **Coverage:** Lead CRUD, conversions, statistics, multi-tenancy tests  
 **Feature:** 006-lead-management
+
+## Changelog v1.2
+
+✅ Added all 15 Lead Management endpoints (Feature 006)  
+✅ Fixed headers per ADR-016 (`X-Openerp-Session-Id` for GET)  
+✅ Added test scripts for auto-populating tokens  
+✅ Added `refresh_token` variable support  
+✅ Reorganized folders by domain  
+✅ Added advanced search examples  
+✅ Added test scenarios for validation
 
 ## Collection Structure
 
