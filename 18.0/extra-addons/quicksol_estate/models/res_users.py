@@ -98,7 +98,7 @@ class ResUsers(models.Model):
                             'added_groups': added_groups,
                             'removed_groups': removed_groups,
                             'changed_by': self.env.user,
-                        }, env=self.env)
+                        })
             except (ImportError, AttributeError, KeyError):
                 # EventBus not available during module installation
                 pass

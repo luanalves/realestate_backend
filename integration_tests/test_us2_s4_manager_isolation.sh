@@ -7,22 +7,34 @@
 # Scenario: 4 - Manager cannot see/modify other companies' data
 ################################################################################
 
+set -e
+
 # Load configuration
-if [ -f .env ]; then
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "$SCRIPT_DIR/../18.0/.env" ]; then
+    source "$SCRIPT_DIR/../18.0/.env"
+elif [ -f .env ]; then
     export $(cat .env | grep -v '^#' | xargs)
 fi
 
 BASE_URL="${ODOO_BASE_URL:-http://localhost:8069}"
-DB_NAME="${ODOO_DB:-realestate}"
+DB_NAME="${ODOO_DB:-${POSTGRES_DB:-realestate}}"
 ADMIN_LOGIN="${ODOO_ADMIN_LOGIN:-admin}"
 ADMIN_PASSWORD="${ODOO_ADMIN_PASSWORD:-admin}"
+
+# Use unique temp file paths to avoid conflicts
+COOKIE_FILE="/tmp/odoo_us2s4_cookies_$$.txt"
+ADMIN_COOKIE_FILE="/tmp/odoo_us2s4_admin_$$.txt"
+
+# Cleanup on exit
+cleanup() {
+    rm -f "$COOKIE_FILE" "$ADMIN_COOKIE_FILE" response.json
+}
+trap cleanup EXIT
 
 echo "====================================="
 echo "US2-S4: Manager Company Isolation"
 echo "====================================="
-
-# Cleanup temporary files
-rm -f cookies.txt response.json
 
 # Generate unique identifiers
 TIMESTAMP=$(date +%Y%m%d%H%M%S)
@@ -84,7 +96,7 @@ echo "Step 1: Admin login and setup..."
 
 LOGIN_RESPONSE=$(curl -s -X POST "$BASE_URL/web/session/authenticate" \
     -H "Content-Type: application/json" \
-    -c cookies.txt \
+    -c "$ADMIN_COOKIE_FILE" \
     -d "{
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
@@ -98,8 +110,9 @@ LOGIN_RESPONSE=$(curl -s -X POST "$BASE_URL/web/session/authenticate" \
 
 ADMIN_UID=$(echo "$LOGIN_RESPONSE" | jq -r '.result.uid // empty')
 
-if [ -z "$ADMIN_UID" ] || [ "$ADMIN_UID" == "null" ]; then
+if [ -z "$ADMIN_UID" ] || [ "$ADMIN_UID" == "null" ] || [ "$ADMIN_UID" == "false" ]; then
     echo "❌ Admin login failed"
+    echo "Response: $LOGIN_RESPONSE"
     exit 1
 fi
 
@@ -113,7 +126,7 @@ echo "Step 2: Creating companies..."
 
 COMPANY_A_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
     -H "Content-Type: application/json" \
-    -b cookies.txt \
+    -b "$ADMIN_COOKIE_FILE" \
     -d "{
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
@@ -130,11 +143,18 @@ COMPANY_A_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
     }")
 
 COMPANY_A_ID=$(echo "$COMPANY_A_RESPONSE" | jq -r '.result // empty')
+
+if [ -z "$COMPANY_A_ID" ] || [ "$COMPANY_A_ID" == "null" ]; then
+    echo "❌ Company A creation failed"
+    echo "Response: $COMPANY_A_RESPONSE"
+    exit 1
+fi
+
 echo "✅ Company A created: ID=$COMPANY_A_ID"
 
 COMPANY_B_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
     -H "Content-Type: application/json" \
-    -b cookies.txt \
+    -b "$ADMIN_COOKIE_FILE" \
     -d "{
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
@@ -151,6 +171,13 @@ COMPANY_B_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
     }")
 
 COMPANY_B_ID=$(echo "$COMPANY_B_RESPONSE" | jq -r '.result // empty')
+
+if [ -z "$COMPANY_B_ID" ] || [ "$COMPANY_B_ID" == "null" ]; then
+    echo "❌ Company B creation failed"
+    echo "Response: $COMPANY_B_RESPONSE"
+    exit 1
+fi
+
 echo "✅ Company B created: ID=$COMPANY_B_ID"
 
 ################################################################################
@@ -161,7 +188,7 @@ echo "Step 3: Creating manager users..."
 
 MANAGER_A_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
     -H "Content-Type: application/json" \
-    -b cookies.txt \
+    -b "$ADMIN_COOKIE_FILE" \
     -d "{
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
@@ -181,11 +208,18 @@ MANAGER_A_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
     }")
 
 MANAGER_A_UID=$(echo "$MANAGER_A_RESPONSE" | jq -r '.result // empty')
+
+if [ -z "$MANAGER_A_UID" ] || [ "$MANAGER_A_UID" == "null" ]; then
+    echo "❌ Manager A creation failed"
+    echo "Response: $MANAGER_A_RESPONSE"
+    exit 1
+fi
+
 echo "✅ Manager A created: UID=$MANAGER_A_UID (assigned to Company A)"
 
 MANAGER_B_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
     -H "Content-Type: application/json" \
-    -b cookies.txt \
+    -b "$ADMIN_COOKIE_FILE" \
     -d "{
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
@@ -205,6 +239,13 @@ MANAGER_B_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
     }")
 
 MANAGER_B_UID=$(echo "$MANAGER_B_RESPONSE" | jq -r '.result // empty')
+
+if [ -z "$MANAGER_B_UID" ] || [ "$MANAGER_B_UID" == "null" ]; then
+    echo "❌ Manager B creation failed"
+    echo "Response: $MANAGER_B_RESPONSE"
+    exit 1
+fi
+
 echo "✅ Manager B created: UID=$MANAGER_B_UID (assigned to Company B)"
 
 # Create agent records with CPF for both managers
@@ -224,7 +265,7 @@ PYTHON_EOF
 
 MANAGER_A_AGENT_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
     -H "Content-Type: application/json" \
-    -b cookies.txt \
+    -b "$ADMIN_COOKIE_FILE" \
     -d "{
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
@@ -243,7 +284,13 @@ MANAGER_A_AGENT_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
     }")
 
 MANAGER_A_AGENT_ID=$(echo "$MANAGER_A_AGENT_RESPONSE" | jq -r '.result // empty')
-echo "✅ Manager A agent record created: ID=$MANAGER_A_AGENT_ID"
+
+if [ -z "$MANAGER_A_AGENT_ID" ] || [ "$MANAGER_A_AGENT_ID" == "null" ]; then
+    echo "⚠️  Manager A agent record creation failed (optional)"
+    MANAGER_A_AGENT_ID=""
+else
+    echo "✅ Manager A agent record created: ID=$MANAGER_A_AGENT_ID"
+fi
 
 CPF_MANAGER_B=$(python3 << 'PYTHON_EOF'
 def calc_cpf_digit(cpf, weights):
@@ -261,7 +308,7 @@ PYTHON_EOF
 
 MANAGER_B_AGENT_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
     -H "Content-Type: application/json" \
-    -b cookies.txt \
+    -b "$ADMIN_COOKIE_FILE" \
     -d "{
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
@@ -280,7 +327,13 @@ MANAGER_B_AGENT_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
     }")
 
 MANAGER_B_AGENT_ID=$(echo "$MANAGER_B_AGENT_RESPONSE" | jq -r '.result // empty')
-echo "✅ Manager B agent record created: ID=$MANAGER_B_AGENT_ID"
+
+if [ -z "$MANAGER_B_AGENT_ID" ] || [ "$MANAGER_B_AGENT_ID" == "null" ]; then
+    echo "⚠️  Manager B agent record creation failed (optional)"
+    MANAGER_B_AGENT_ID=""
+else
+    echo "✅ Manager B agent record created: ID=$MANAGER_B_AGENT_ID"
+fi
 
 ################################################################################
 # Step 3.5: Retrieve Reference Data for Properties
@@ -293,7 +346,7 @@ echo "=========================================="
 # Get first property type
 PROPERTY_TYPE_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
     -H "Content-Type: application/json" \
-    -b cookies.txt \
+    -b "$ADMIN_COOKIE_FILE" \
     -d "{
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
@@ -310,12 +363,17 @@ PROPERTY_TYPE_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
     }")
 
 PROPERTY_TYPE_ID=$(echo "$PROPERTY_TYPE_RESPONSE" | jq -r '.result[0].id // empty')
+
+if [ -z "$PROPERTY_TYPE_ID" ] || [ "$PROPERTY_TYPE_ID" == "null" ]; then
+    echo "❌ Property type not found - need to seed reference data"
+    exit 1
+fi
 echo "✅ Property Type ID: $PROPERTY_TYPE_ID"
 
 # Get location type
 LOCATION_TYPE_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
     -H "Content-Type: application/json" \
-    -b cookies.txt \
+    -b "$ADMIN_COOKIE_FILE" \
     -d "{
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
@@ -332,12 +390,17 @@ LOCATION_TYPE_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
     }")
 
 LOCATION_TYPE_ID=$(echo "$LOCATION_TYPE_RESPONSE" | jq -r '.result[0].id // empty')
+
+if [ -z "$LOCATION_TYPE_ID" ] || [ "$LOCATION_TYPE_ID" == "null" ]; then
+    echo "❌ Location type not found - need to seed reference data"
+    exit 1
+fi
 echo "✅ Location Type ID: $LOCATION_TYPE_ID"
 
 # Get state (São Paulo)
 STATE_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
     -H "Content-Type: application/json" \
-    -b cookies.txt \
+    -b "$ADMIN_COOKIE_FILE" \
     -d "{
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
@@ -354,6 +417,11 @@ STATE_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
     }")
 
 STATE_ID=$(echo "$STATE_RESPONSE" | jq -r '.result[0].id // empty')
+
+if [ -z "$STATE_ID" ] || [ "$STATE_ID" == "null" ]; then
+    echo "❌ State not found - need to seed reference data"
+    exit 1
+fi
 echo "✅ State ID: $STATE_ID"
 
 ################################################################################
@@ -364,7 +432,7 @@ echo "Step 4: Creating properties for both companies..."
 
 PROPERTY_A_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
     -H "Content-Type: application/json" \
-    -b cookies.txt \
+    -b "$ADMIN_COOKIE_FILE" \
     -d "{
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
@@ -390,15 +458,22 @@ PROPERTY_A_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
             }],
             \"kwargs\": {}
         },
-        \"id\": 6
+        \"id\": 8
     }")
 
 PROPERTY_A_ID=$(echo "$PROPERTY_A_RESPONSE" | jq -r '.result // empty')
+
+if [ -z "$PROPERTY_A_ID" ] || [ "$PROPERTY_A_ID" == "null" ]; then
+    echo "❌ Property A creation failed"
+    echo "Response: $PROPERTY_A_RESPONSE"
+    exit 1
+fi
+
 echo "✅ Property A created: ID=$PROPERTY_A_ID (belongs to Company A)"
 
 PROPERTY_B_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
     -H "Content-Type: application/json" \
-    -b cookies.txt \
+    -b "$ADMIN_COOKIE_FILE" \
     -d "{
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
@@ -424,10 +499,17 @@ PROPERTY_B_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
             }],
             \"kwargs\": {}
         },
-        \"id\": 7
+        \"id\": 9
     }")
 
 PROPERTY_B_ID=$(echo "$PROPERTY_B_RESPONSE" | jq -r '.result // empty')
+
+if [ -z "$PROPERTY_B_ID" ] || [ "$PROPERTY_B_ID" == "null" ]; then
+    echo "❌ Property B creation failed"
+    echo "Response: $PROPERTY_B_RESPONSE"
+    exit 1
+fi
+
 echo "✅ Property B created: ID=$PROPERTY_B_ID (belongs to Company B)"
 
 ################################################################################
@@ -436,11 +518,9 @@ echo "✅ Property B created: ID=$PROPERTY_B_ID (belongs to Company B)"
 echo ""
 echo "Step 5: Manager A login..."
 
-rm -f cookies.txt
-
 MANAGER_A_LOGIN_RESPONSE=$(curl -s -X POST "$BASE_URL/web/session/authenticate" \
     -H "Content-Type: application/json" \
-    -c cookies.txt \
+    -c "$COOKIE_FILE" \
     -d "{
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
@@ -449,13 +529,14 @@ MANAGER_A_LOGIN_RESPONSE=$(curl -s -X POST "$BASE_URL/web/session/authenticate" 
             \"login\": \"$MANAGER_A_LOGIN\",
             \"password\": \"manager123\"
         },
-        \"id\": 8
+        \"id\": 10
     }")
 
 MANAGER_A_SESSION_UID=$(echo "$MANAGER_A_LOGIN_RESPONSE" | jq -r '.result.uid // empty')
 
-if [ -z "$MANAGER_A_SESSION_UID" ] || [ "$MANAGER_A_SESSION_UID" == "null" ]; then
+if [ -z "$MANAGER_A_SESSION_UID" ] || [ "$MANAGER_A_SESSION_UID" == "null" ] || [ "$MANAGER_A_SESSION_UID" == "false" ]; then
     echo "❌ Manager A login failed"
+    echo "Response: $MANAGER_A_LOGIN_RESPONSE"
     exit 1
 fi
 
@@ -469,7 +550,7 @@ echo "Step 6: Manager A accessing Company A data..."
 
 COMPANY_A_CHECK=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
     -H "Content-Type: application/json" \
-    -b cookies.txt \
+    -b "$COOKIE_FILE" \
     -d "{
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
@@ -483,7 +564,7 @@ COMPANY_A_CHECK=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"fields\": [\"name\", \"cnpj\"]
             }
         },
-        \"id\": 9
+        \"id\": 11
     }")
 
 COMPANY_A_DATA=$(echo "$COMPANY_A_CHECK" | jq -r '.result | length')
@@ -492,6 +573,7 @@ if [ "$COMPANY_A_DATA" -eq "1" ]; then
     echo "✅ Manager A can see Company A (expected)"
 else
     echo "❌ Manager A cannot see Company A"
+    echo "Response: $COMPANY_A_CHECK"
     exit 1
 fi
 
@@ -503,7 +585,7 @@ echo "Step 7: Manager A trying to access Company B data..."
 
 COMPANY_B_CHECK=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
     -H "Content-Type: application/json" \
-    -b cookies.txt \
+    -b "$COOKIE_FILE" \
     -d "{
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
@@ -517,7 +599,7 @@ COMPANY_B_CHECK=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"fields\": [\"name\", \"cnpj\"]
             }
         },
-        \"id\": 10
+        \"id\": 12
     }")
 
 COMPANY_B_DATA=$(echo "$COMPANY_B_CHECK" | jq -r '.result | length')
@@ -537,7 +619,7 @@ echo "Step 8: Manager A checking all visible companies..."
 
 ALL_COMPANIES_CHECK=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
     -H "Content-Type: application/json" \
-    -b cookies.txt \
+    -b "$COOKIE_FILE" \
     -d "{
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
@@ -549,7 +631,7 @@ ALL_COMPANIES_CHECK=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"fields\": [\"id\", \"name\"]
             }
         },
-        \"id\": 11
+        \"id\": 13
     }")
 
 VISIBLE_COMPANIES=$(echo "$ALL_COMPANIES_CHECK" | jq -r '.result | length')
@@ -562,6 +644,7 @@ if [ ! -z "$CONTAINS_A" ] && [ -z "$CONTAINS_B" ]; then
     echo "✅ Manager A sees only Company A"
 else
     echo "❌ Manager A visibility check failed"
+    echo "Contains A: '$CONTAINS_A', Contains B: '$CONTAINS_B'"
     exit 1
 fi
 
@@ -573,7 +656,7 @@ echo "Step 9: Manager A checking properties..."
 
 PROPERTIES_CHECK=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
     -H "Content-Type: application/json" \
-    -b cookies.txt \
+    -b "$COOKIE_FILE" \
     -d "{
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
@@ -587,7 +670,7 @@ PROPERTIES_CHECK=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"fields\": [\"id\", \"name\", \"company_ids\"]
             }
         },
-        \"id\": 12
+        \"id\": 14
     }")
 
 PROPS_FOUND=$(echo "$PROPERTIES_CHECK" | jq -r '.result | length')
@@ -597,7 +680,10 @@ PROP_B_FOUND=$(echo "$PROPERTIES_CHECK" | jq -r ".result[] | select(.id == $PROP
 if [ ! -z "$PROP_A_FOUND" ] && [ -z "$PROP_B_FOUND" ]; then
     echo "✅ Manager A sees only Property A (isolation verified)"
 else
-    echo "❌ Manager A property isolation failed (found $PROPS_FOUND properties)"
+    echo "❌ Manager A property isolation failed"
+    echo "  Found $PROPS_FOUND properties"
+    echo "  Prop A found: '$PROP_A_FOUND'"
+    echo "  Prop B found: '$PROP_B_FOUND'"
     exit 1
 fi
 
@@ -607,11 +693,9 @@ fi
 echo ""
 echo "Step 10: Manager B login and verification..."
 
-rm -f cookies.txt
-
 MANAGER_B_LOGIN_RESPONSE=$(curl -s -X POST "$BASE_URL/web/session/authenticate" \
     -H "Content-Type: application/json" \
-    -c cookies.txt \
+    -c "$COOKIE_FILE" \
     -d "{
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
@@ -620,16 +704,22 @@ MANAGER_B_LOGIN_RESPONSE=$(curl -s -X POST "$BASE_URL/web/session/authenticate" 
             \"login\": \"$MANAGER_B_LOGIN\",
             \"password\": \"manager123\"
         },
-        \"id\": 13
+        \"id\": 15
     }")
 
 MANAGER_B_SESSION_UID=$(echo "$MANAGER_B_LOGIN_RESPONSE" | jq -r '.result.uid // empty')
+
+if [ -z "$MANAGER_B_SESSION_UID" ] || [ "$MANAGER_B_SESSION_UID" == "null" ] || [ "$MANAGER_B_SESSION_UID" == "false" ]; then
+    echo "❌ Manager B login failed"
+    exit 1
+fi
+
 echo "✅ Manager B login successful (UID: $MANAGER_B_SESSION_UID)"
 
 # Manager B checks companies
 MANAGER_B_COMPANIES=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
     -H "Content-Type: application/json" \
-    -b cookies.txt \
+    -b "$COOKIE_FILE" \
     -d "{
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
@@ -641,7 +731,7 @@ MANAGER_B_COMPANIES=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"fields\": [\"id\", \"name\"]
             }
         },
-        \"id\": 14
+        \"id\": 16
     }")
 
 MB_CONTAINS_A=$(echo "$MANAGER_B_COMPANIES" | jq -r ".result[] | select(.id == $COMPANY_A_ID) | .id")
@@ -651,6 +741,8 @@ if [ -z "$MB_CONTAINS_A" ] && [ ! -z "$MB_CONTAINS_B" ]; then
     echo "✅ Manager B sees only Company B (isolation verified)"
 else
     echo "❌ Manager B company isolation failed"
+    echo "  MB Contains A: '$MB_CONTAINS_A'"
+    echo "  MB Contains B: '$MB_CONTAINS_B'"
     exit 1
 fi
 
@@ -669,8 +761,5 @@ echo "  - Manager B sees only Company B data"
 echo "  - Manager B cannot see Company A data"
 echo "  - Multi-tenancy isolation working correctly for Managers"
 echo ""
-
-# Cleanup
-rm -f cookies.txt response.json
 
 exit 0

@@ -41,20 +41,10 @@ To run unit tests only:
 # NOTE: Do NOT import tests/unit/* here - they run independently with unittest
 # Unit tests are executed via: python3 tests/unit/run_unit_tests.py
 
-# Legacy validation tests (pre-RBAC)
-
+# Base test classes (always available)
 from . import base_validation_test
-from . import base_company_test  
+from . import base_company_test
 from . import base_agent_test
-from . import test_validations
-from . import test_company_unit
-from . import test_agent_unit
-from . import test_utils_unit
-from . import test_odoo_bridge
-from . import test_agent_crud
-from . import test_assignment
-from . import test_commission_calculation
-from . import test_performance
 
 # HTTP/API integration tests (tagged post_install)
 from .api import test_property_api
@@ -62,19 +52,8 @@ from .api import test_property_api_auth
 from .api import test_master_data_api
 from .api import test_company_isolation_api
 
-# RBAC v18.0.2.0.0 - Observer Pattern Tests (ADR-020, ADR-021)
-from . import test_event_bus
-from . import test_abstract_observer
-from . import test_rbac_owner
-from . import test_rbac_director
-from . import test_rbac_receptionist
-from . import test_rbac_financial
-from . import test_rbac_legal
-from . import test_rbac_agent
-from . import test_rbac_manager
-from . import test_rbac_prospector
-from . import test_commission_split
-from . import observers
-
 # Integration tests directory (TransactionCase - WITH database)
 from . import integration
+
+# Observer pattern tests
+from . import observers

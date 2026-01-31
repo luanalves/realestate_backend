@@ -7,22 +7,35 @@
 # Scenario: 1 - Agent sees only properties assigned to them
 ################################################################################
 
+set -e
+
 # Load configuration
-if [ -f .env ]; then
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "$SCRIPT_DIR/../18.0/.env" ]; then
+    source "$SCRIPT_DIR/../18.0/.env"
+elif [ -f .env ]; then
     export $(cat .env | grep -v '^#' | xargs)
 fi
 
 BASE_URL="${ODOO_BASE_URL:-http://localhost:8069}"
-DB_NAME="${ODOO_DB:-realestate}"
+DB_NAME="${ODOO_DB:-${POSTGRES_DB:-realestate}}"
 ADMIN_LOGIN="${ODOO_ADMIN_LOGIN:-admin}"
 ADMIN_PASSWORD="${ODOO_ADMIN_PASSWORD:-admin}"
+
+# Use unique temp file paths to avoid conflicts
+ADMIN_COOKIE_FILE="/tmp/odoo_us3s1_admin_$$.txt"
+AGENT1_COOKIE_FILE="/tmp/odoo_us3s1_agent1_$$.txt"
+AGENT2_COOKIE_FILE="/tmp/odoo_us3s1_agent2_$$.txt"
+
+# Cleanup on exit
+cleanup() {
+    rm -f "$ADMIN_COOKIE_FILE" "$AGENT1_COOKIE_FILE" "$AGENT2_COOKIE_FILE" response.json
+}
+trap cleanup EXIT
 
 echo "====================================="
 echo "US3-S1: Agent Assigned Properties"
 echo "====================================="
-
-# Cleanup temporary files
-rm -f cookies.txt response.json
 
 # Generate unique identifiers
 TIMESTAMP=$(date +%Y%m%d%H%M%S)
@@ -64,7 +77,7 @@ echo "Step 1: Admin login and setup..."
 
 LOGIN_RESPONSE=$(curl -s -X POST "$BASE_URL/web/session/authenticate" \
     -H "Content-Type: application/json" \
-    -c cookies.txt \
+    -c "$ADMIN_COOKIE_FILE" \
     -d "{
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
@@ -78,8 +91,9 @@ LOGIN_RESPONSE=$(curl -s -X POST "$BASE_URL/web/session/authenticate" \
 
 ADMIN_UID=$(echo "$LOGIN_RESPONSE" | jq -r '.result.uid // empty')
 
-if [ -z "$ADMIN_UID" ] || [ "$ADMIN_UID" == "null" ]; then
+if [ -z "$ADMIN_UID" ] || [ "$ADMIN_UID" == "null" ] || [ "$ADMIN_UID" == "false" ]; then
     echo "❌ Admin login failed"
+    echo "Response: $LOGIN_RESPONSE"
     exit 1
 fi
 
@@ -93,7 +107,7 @@ echo "Step 2: Creating company..."
 
 COMPANY_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
     -H "Content-Type: application/json" \
-    -b cookies.txt \
+    -b "$ADMIN_COOKIE_FILE" \
     -d "{
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
@@ -113,6 +127,7 @@ COMPANY_ID=$(echo "$COMPANY_RESPONSE" | jq -r '.result // empty')
 
 if [ -z "$COMPANY_ID" ] || [ "$COMPANY_ID" == "null" ]; then
     echo "❌ Company creation failed"
+    echo "Response: $COMPANY_RESPONSE"
     exit 1
 fi
 
@@ -126,7 +141,7 @@ echo "Step 3: Creating agent users..."
 
 AGENT1_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
     -H "Content-Type: application/json" \
-    -b cookies.txt \
+    -b "$ADMIN_COOKIE_FILE" \
     -d "{
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
@@ -146,11 +161,18 @@ AGENT1_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
     }")
 
 AGENT1_UID=$(echo "$AGENT1_RESPONSE" | jq -r '.result // empty')
+
+if [ -z "$AGENT1_UID" ] || [ "$AGENT1_UID" == "null" ]; then
+    echo "❌ Agent 1 user creation failed"
+    echo "Response: $AGENT1_RESPONSE"
+    exit 1
+fi
+
 echo "✅ Agent 1 created: UID=$AGENT1_UID"
 
 AGENT2_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
     -H "Content-Type: application/json" \
-    -b cookies.txt \
+    -b "$ADMIN_COOKIE_FILE" \
     -d "{
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
@@ -170,6 +192,13 @@ AGENT2_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
     }")
 
 AGENT2_UID=$(echo "$AGENT2_RESPONSE" | jq -r '.result // empty')
+
+if [ -z "$AGENT2_UID" ] || [ "$AGENT2_UID" == "null" ]; then
+    echo "❌ Agent 2 user creation failed"
+    echo "Response: $AGENT2_RESPONSE"
+    exit 1
+fi
+
 echo "✅ Agent 2 created: UID=$AGENT2_UID"
 
 # Create agent records with CPF for Agent1 and Agent2
@@ -189,7 +218,7 @@ PYTHON_EOF
 
 AGENT1_AGENT_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
     -H "Content-Type: application/json" \
-    -b cookies.txt \
+    -b "$ADMIN_COOKIE_FILE" \
     -d "{
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
@@ -208,6 +237,13 @@ AGENT1_AGENT_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
     }")
 
 AGENT1_AGENT_ID=$(echo "$AGENT1_AGENT_RESPONSE" | jq -r '.result // empty')
+
+if [ -z "$AGENT1_AGENT_ID" ] || [ "$AGENT1_AGENT_ID" == "null" ]; then
+    echo "❌ Agent 1 agent record creation failed"
+    echo "Response: $AGENT1_AGENT_RESPONSE"
+    exit 1
+fi
+
 echo "✅ Agent 1 agent record created: ID=$AGENT1_AGENT_ID"
 
 CPF_AGENT2=$(python3 << 'PYTHON_EOF'
@@ -226,7 +262,7 @@ PYTHON_EOF
 
 AGENT2_AGENT_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
     -H "Content-Type: application/json" \
-    -b cookies.txt \
+    -b "$ADMIN_COOKIE_FILE" \
     -d "{
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
@@ -245,6 +281,13 @@ AGENT2_AGENT_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
     }")
 
 AGENT2_AGENT_ID=$(echo "$AGENT2_AGENT_RESPONSE" | jq -r '.result // empty')
+
+if [ -z "$AGENT2_AGENT_ID" ] || [ "$AGENT2_AGENT_ID" == "null" ]; then
+    echo "❌ Agent 2 agent record creation failed"
+    echo "Response: $AGENT2_AGENT_RESPONSE"
+    exit 1
+fi
+
 echo "✅ Agent 2 agent record created: ID=$AGENT2_AGENT_ID"
 
 ################################################################################
@@ -258,7 +301,7 @@ echo "=========================================="
 # Get first property type
 PROPERTY_TYPE_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
     -H "Content-Type: application/json" \
-    -b cookies.txt \
+    -b "$ADMIN_COOKIE_FILE" \
     -d "{
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
@@ -275,12 +318,18 @@ PROPERTY_TYPE_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
     }")
 
 PROPERTY_TYPE_ID=$(echo "$PROPERTY_TYPE_RESPONSE" | jq -r '.result[0].id // empty')
+
+if [ -z "$PROPERTY_TYPE_ID" ] || [ "$PROPERTY_TYPE_ID" == "null" ]; then
+    echo "❌ Property type not found"
+    exit 1
+fi
+
 echo "✅ Property Type ID: $PROPERTY_TYPE_ID"
 
 # Get location type
 LOCATION_TYPE_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
     -H "Content-Type: application/json" \
-    -b cookies.txt \
+    -b "$ADMIN_COOKIE_FILE" \
     -d "{
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
@@ -297,12 +346,18 @@ LOCATION_TYPE_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
     }")
 
 LOCATION_TYPE_ID=$(echo "$LOCATION_TYPE_RESPONSE" | jq -r '.result[0].id // empty')
+
+if [ -z "$LOCATION_TYPE_ID" ] || [ "$LOCATION_TYPE_ID" == "null" ]; then
+    echo "❌ Location type not found"
+    exit 1
+fi
+
 echo "✅ Location Type ID: $LOCATION_TYPE_ID"
 
-# Get state (São Paulo)
+# Get state
 STATE_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
     -H "Content-Type: application/json" \
-    -b cookies.txt \
+    -b "$ADMIN_COOKIE_FILE" \
     -d "{
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
@@ -319,6 +374,12 @@ STATE_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
     }")
 
 STATE_ID=$(echo "$STATE_RESPONSE" | jq -r '.result[0].id // empty')
+
+if [ -z "$STATE_ID" ] || [ "$STATE_ID" == "null" ]; then
+    echo "❌ State not found"
+    exit 1
+fi
+
 echo "✅ State ID: $STATE_ID"
 
 ################################################################################
@@ -332,7 +393,7 @@ AGENT1_PROPERTIES=()
 for i in 1 2 3 4 5; do
     PROP_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
         -H "Content-Type: application/json" \
-        -b cookies.txt \
+        -b "$ADMIN_COOKIE_FILE" \
         -d "{
             \"jsonrpc\": \"2.0\",
             \"method\": \"call\",
@@ -347,7 +408,7 @@ for i in 1 2 3 4 5; do
                     \"zip_code\": \"12345-678\",
                     \"city\": \"São Paulo\",
                     \"street\": \"Rua Teste\",
-                    \"street_number\": \"$((100 + $i))\",
+                    \"street_number\": \"$((100 + i))\",
                     \"num_rooms\": 2,
                     \"num_bathrooms\": 1,
                     \"num_parking\": 1,
@@ -359,10 +420,17 @@ for i in 1 2 3 4 5; do
                 }],
                 \"kwargs\": {}
             },
-            \"id\": $((4 + $i))
+            \"id\": $((10 + i))
         }")
     
     PROP_ID=$(echo "$PROP_RESPONSE" | jq -r '.result // empty')
+    
+    if [ -z "$PROP_ID" ] || [ "$PROP_ID" == "null" ]; then
+        echo "❌ Property Agent1-$i creation failed"
+        echo "Response: $PROP_RESPONSE"
+        exit 1
+    fi
+    
     AGENT1_PROPERTIES+=($PROP_ID)
     echo "✅ Property Agent1-$i created: ID=$PROP_ID"
 done
@@ -372,7 +440,7 @@ AGENT2_PROPERTIES=()
 for i in 1 2 3; do
     PROP_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
         -H "Content-Type: application/json" \
-        -b cookies.txt \
+        -b "$ADMIN_COOKIE_FILE" \
         -d "{
             \"jsonrpc\": \"2.0\",
             \"method\": \"call\",
@@ -387,7 +455,7 @@ for i in 1 2 3; do
                     \"zip_code\": \"12345-678\",
                     \"city\": \"São Paulo\",
                     \"street\": \"Rua Teste\",
-                    \"street_number\": \"$((200 + $i))\",
+                    \"street_number\": \"$((200 + i))\",
                     \"num_rooms\": 3,
                     \"num_bathrooms\": 2,
                     \"num_parking\": 2,
@@ -399,10 +467,17 @@ for i in 1 2 3; do
                 }],
                 \"kwargs\": {}
             },
-            \"id\": $((9 + $i))
+            \"id\": $((20 + i))
         }")
     
     PROP_ID=$(echo "$PROP_RESPONSE" | jq -r '.result // empty')
+    
+    if [ -z "$PROP_ID" ] || [ "$PROP_ID" == "null" ]; then
+        echo "❌ Property Agent2-$i creation failed"
+        echo "Response: $PROP_RESPONSE"
+        exit 1
+    fi
+    
     AGENT2_PROPERTIES+=($PROP_ID)
     echo "✅ Property Agent2-$i created: ID=$PROP_ID"
 done
@@ -413,11 +488,9 @@ done
 echo ""
 echo "Step 5: Agent 1 login..."
 
-rm -f cookies.txt
-
 AGENT1_LOGIN_RESPONSE=$(curl -s -X POST "$BASE_URL/web/session/authenticate" \
     -H "Content-Type: application/json" \
-    -c cookies.txt \
+    -c "$AGENT1_COOKIE_FILE" \
     -d "{
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
@@ -426,13 +499,14 @@ AGENT1_LOGIN_RESPONSE=$(curl -s -X POST "$BASE_URL/web/session/authenticate" \
             \"login\": \"$AGENT1_LOGIN\",
             \"password\": \"agent123\"
         },
-        \"id\": 13
+        \"id\": 30
     }")
 
 AGENT1_SESSION_UID=$(echo "$AGENT1_LOGIN_RESPONSE" | jq -r '.result.uid // empty')
 
-if [ -z "$AGENT1_SESSION_UID" ] || [ "$AGENT1_SESSION_UID" == "null" ]; then
+if [ -z "$AGENT1_SESSION_UID" ] || [ "$AGENT1_SESSION_UID" == "null" ] || [ "$AGENT1_SESSION_UID" == "false" ]; then
     echo "❌ Agent 1 login failed"
+    echo "Response: $AGENT1_LOGIN_RESPONSE"
     exit 1
 fi
 
@@ -446,7 +520,7 @@ echo "Step 6: Agent 1 viewing properties..."
 
 AGENT1_PROPS_CHECK=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
     -H "Content-Type: application/json" \
-    -b cookies.txt \
+    -b "$AGENT1_COOKIE_FILE" \
     -d "{
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
@@ -458,7 +532,7 @@ AGENT1_PROPS_CHECK=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"fields\": [\"id\", \"name\", \"agent_id\"]
             }
         },
-        \"id\": 14
+        \"id\": 31
     }")
 
 AGENT1_VISIBLE_COUNT=$(echo "$AGENT1_PROPS_CHECK" | jq -r '.result | length')
@@ -478,7 +552,7 @@ for prop_id in $AGENT1_PROPS_IDS; do
     AGENT_OF_PROP=$(echo "$AGENT1_PROPS_CHECK" | jq -r ".result[] | select(.id == $prop_id) | .agent_id[0] // empty")
     if [ "$AGENT_OF_PROP" != "$AGENT1_AGENT_ID" ]; then
         ALL_BELONG_TO_AGENT1=false
-        echo "⚠️  Property $prop_id not assigned to Agent 1"
+        echo "⚠️  Property $prop_id not assigned to Agent 1 (has agent_id: $AGENT_OF_PROP)"
     fi
 done
 
@@ -495,11 +569,9 @@ fi
 echo ""
 echo "Step 7: Agent 2 login and verification..."
 
-rm -f cookies.txt
-
 AGENT2_LOGIN_RESPONSE=$(curl -s -X POST "$BASE_URL/web/session/authenticate" \
     -H "Content-Type: application/json" \
-    -c cookies.txt \
+    -c "$AGENT2_COOKIE_FILE" \
     -d "{
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
@@ -508,15 +580,21 @@ AGENT2_LOGIN_RESPONSE=$(curl -s -X POST "$BASE_URL/web/session/authenticate" \
             \"login\": \"$AGENT2_LOGIN\",
             \"password\": \"agent123\"
         },
-        \"id\": 15
+        \"id\": 32
     }")
 
 AGENT2_SESSION_UID=$(echo "$AGENT2_LOGIN_RESPONSE" | jq -r '.result.uid // empty')
+
+if [ -z "$AGENT2_SESSION_UID" ] || [ "$AGENT2_SESSION_UID" == "null" ] || [ "$AGENT2_SESSION_UID" == "false" ]; then
+    echo "❌ Agent 2 login failed"
+    exit 1
+fi
+
 echo "✅ Agent 2 login successful (UID: $AGENT2_SESSION_UID)"
 
 AGENT2_PROPS_CHECK=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
     -H "Content-Type: application/json" \
-    -b cookies.txt \
+    -b "$AGENT2_COOKIE_FILE" \
     -d "{
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
@@ -528,7 +606,7 @@ AGENT2_PROPS_CHECK=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"fields\": [\"id\", \"name\", \"agent_id\"]
             }
         },
-        \"id\": 16
+        \"id\": 33
     }")
 
 AGENT2_VISIBLE_COUNT=$(echo "$AGENT2_PROPS_CHECK" | jq -r '.result | length')
@@ -554,8 +632,5 @@ echo "  - Agent 1 sees only their 5 assigned properties"
 echo "  - Agent 2 sees only their 3 assigned properties"
 echo "  - Agents cannot see each other's properties"
 echo ""
-
-# Cleanup
-rm -f cookies.txt response.json
 
 exit 0

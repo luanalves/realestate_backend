@@ -22,6 +22,47 @@ class RealEstateLead(models.Model):
     _description = 'Real Estate Lead'
     _order = 'create_date desc'
     
+    # Database indexes for search performance (FR-045, FR-046)
+    _sql_constraints = []
+    
+    def init(self):
+        """Create database indexes for common search queries"""
+        super(RealEstateLead, self).init()
+        
+        # Index for state filter (very common in queries)
+        self._cr.execute("""
+            CREATE INDEX IF NOT EXISTS real_estate_lead_state_idx 
+            ON real_estate_lead (state)
+        """)
+        
+        # Index for agent_id (agent isolation queries)
+        # Note: This is already created by Odoo due to index=True on field
+        
+        # Index for create_date (sorting and date range queries)
+        self._cr.execute("""
+            CREATE INDEX IF NOT EXISTS real_estate_lead_create_date_idx 
+            ON real_estate_lead (create_date)
+        """)
+        
+        # Composite index for common filter combinations (state + agent)
+        self._cr.execute("""
+            CREATE INDEX IF NOT EXISTS real_estate_lead_state_agent_idx 
+            ON real_estate_lead (state, agent_id)
+        """)
+        
+        # Index for budget range queries
+        self._cr.execute("""
+            CREATE INDEX IF NOT EXISTS real_estate_lead_budget_idx 
+            ON real_estate_lead (budget_min, budget_max)
+        """)
+        
+        # Index for location searches
+        self._cr.execute("""
+            CREATE INDEX IF NOT EXISTS real_estate_lead_location_idx 
+            ON real_estate_lead (location_preference)
+        """)
+
+    
     # ==================== CORE IDENTITY ====================
     
     name = fields.Char(

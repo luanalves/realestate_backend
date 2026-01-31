@@ -406,6 +406,332 @@
       ]
     },
     {
+      "name": "Lead Activities (Phase 5)",
+      "item": [
+        {
+          "name": "Log Activity on Lead",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              },
+              {
+                "key": "Cookie",
+                "value": "session_id={{session_id}}"
+              },
+              {
+                "key": "X-Company-ID",
+                "value": "{{company_id}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Called client - interested in 3-bedroom condos in downtown area. Budget confirmed at R$400k.\",\n  \"activity_type\": \"call\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/leads/{{lead_id}}/activities",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "leads", "{{lead_id}}", "activities"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Lead Activities",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              },
+              {
+                "key": "Cookie",
+                "value": "session_id={{session_id}}"
+              },
+              {
+                "key": "X-Company-ID",
+                "value": "{{company_id}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/leads/{{lead_id}}/activities?limit=50&offset=0",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "leads", "{{lead_id}}", "activities"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Schedule Activity on Lead",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              },
+              {
+                "key": "Cookie",
+                "value": "session_id={{session_id}}"
+              },
+              {
+                "key": "X-Company-ID",
+                "value": "{{company_id}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"summary\": \"Follow-up call regarding budget increase\",\n  \"activity_type_id\": 1,\n  \"date_deadline\": \"2026-02-05\",\n  \"note\": \"Client requested callback after 2pm\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/leads/{{lead_id}}/schedule-activity",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "leads", "{{lead_id}}", "schedule-activity"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Advanced Search & Filters (Phase 6)",
+      "item": [
+        {
+          "name": "Advanced Search - Budget & Bedrooms",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              },
+              {
+                "key": "Cookie",
+                "value": "session_id={{session_id}}"
+              },
+              {
+                "key": "X-Company-ID",
+                "value": "{{company_id}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/leads?budget_min=300000&budget_max=500000&bedrooms=3&state=qualified",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "leads"],
+              "query": [
+                {
+                  "key": "budget_min",
+                  "value": "300000",
+                  "description": "Minimum budget filter"
+                },
+                {
+                  "key": "budget_max",
+                  "value": "500000",
+                  "description": "Maximum budget filter"
+                },
+                {
+                  "key": "bedrooms",
+                  "value": "3",
+                  "description": "Number of bedrooms"
+                },
+                {
+                  "key": "state",
+                  "value": "qualified",
+                  "description": "Lead state"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Search by Location",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              },
+              {
+                "key": "Cookie",
+                "value": "session_id={{session_id}}"
+              },
+              {
+                "key": "X-Company-ID",
+                "value": "{{company_id}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/leads?location=Centro",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "leads"],
+              "query": [
+                {
+                  "key": "location",
+                  "value": "Centro",
+                  "description": "Location preference (partial match)"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Export Leads to CSV",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              },
+              {
+                "key": "Cookie",
+                "value": "session_id={{session_id}}"
+              },
+              {
+                "key": "X-Company-ID",
+                "value": "{{company_id}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/leads/export?state=qualified",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "leads", "export"],
+              "query": [
+                {
+                  "key": "state",
+                  "value": "qualified",
+                  "description": "Filter by state"
+                },
+                {
+                  "key": "budget_min",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Optional budget min"
+                },
+                {
+                  "key": "budget_max",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Optional budget max"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Saved Filter",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              },
+              {
+                "key": "Cookie",
+                "value": "session_id={{session_id}}"
+              },
+              {
+                "key": "X-Company-ID",
+                "value": "{{company_id}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"High-value Centro leads\",\n  \"filter_domain\": {\n    \"budget_min\": 300000,\n    \"budget_max\": 500000,\n    \"bedrooms\": 3,\n    \"location\": \"Centro\",\n    \"state\": \"qualified\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/leads/filters",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "leads", "filters"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Saved Filters",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              },
+              {
+                "key": "Cookie",
+                "value": "session_id={{session_id}}"
+              },
+              {
+                "key": "X-Company-ID",
+                "value": "{{company_id}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/leads/filters",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "leads", "filters"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Saved Filter",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              },
+              {
+                "key": "Cookie",
+                "value": "session_id={{session_id}}"
+              },
+              {
+                "key": "X-Company-ID",
+                "value": "{{company_id}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/leads/filters/{{filter_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "leads", "filters", "{{filter_id}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "Test Scenarios",
       "item": [
         {
@@ -624,6 +950,11 @@
     {
       "key": "client_secret",
       "value": "secret",
+      "type": "string"
+    },
+    {
+      "key": "filter_id",
+      "value": "",
       "type": "string"
     }
   ]

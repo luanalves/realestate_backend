@@ -81,6 +81,7 @@ Property Form Sections:
         'views/property_auxiliary_views.xml',
         'views/agent_views.xml',
         'views/lead_views.xml',  # FR-001: Lead views for managers
+        'views/lead_filter_views.xml',  # FR-048: Saved search filters
         'views/commission_rule_views.xml',
         'views/assignment_views.xml',
         'views/lease_views.xml',

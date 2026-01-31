@@ -219,6 +219,30 @@
     </record>
 
     <!-- ============================================================ -->
+    <!-- ACTIVITY VIEW: Activity Timeline (T121, FR-037) -->
+    <!-- ============================================================ -->
+    <record id="view_lead_activity" model="ir.ui.view">
+        <field name="name">real.estate.lead.activity</field>
+        <field name="model">real.estate.lead</field>
+        <field name="arch" type="xml">
+            <activity string="Lead Activities">
+                <field name="name"/>
+                <field name="agent_id"/>
+                <templates>
+                    <div t-name="activity-box">
+                        <div>
+                            <field name="name"/>
+                        </div>
+                        <div class="text-muted">
+                            <i class="fa fa-user"/> <field name="agent_id"/>
+                        </div>
+                    </div>
+                </templates>
+            </activity>
+        </field>
+    </record>
+
+    <!-- ============================================================ -->
     <!-- SEARCH VIEW: Filters and Group By -->
     <!-- ============================================================ -->
     <record id="view_lead_search" model="ir.ui.view">
@@ -265,7 +289,7 @@
     <record id="action_lead" model="ir.actions.act_window">
         <field name="name">Leads</field>
         <field name="res_model">real.estate.lead</field>
-        <field name="view_mode">kanban,list,form,calendar</field>
+        <field name="view_mode">kanban,list,form,calendar,activity,pivot,graph</field>
         <field name="context">{'search_default_active': 1, 'search_default_my_leads': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
@@ -274,6 +298,34 @@
             <p>
                 Track potential clients through the sales pipeline from first contact to conversion.
             </p>
+        </field>
+    </record>
+    
+    <!-- ============================================================ -->
+    <!-- PIVOT VIEW: Lead Analysis Dashboard (T093) -->
+    <!-- ============================================================ -->
+    <record id="view_lead_pivot" model="ir.ui.view">
+        <field name="name">real.estate.lead.pivot</field>
+        <field name="model">real.estate.lead</field>
+        <field name="arch" type="xml">
+            <pivot string="Lead Analysis" sample="1">
+                <field name="agent_id" type="row"/>
+                <field name="state" type="col"/>
+                <field name="budget_max" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+    
+    <!-- ============================================================ -->
+    <!-- GRAPH VIEW: Lead Counts by Status (T094, FR-038) -->
+    <!-- ============================================================ -->
+    <record id="view_lead_graph" model="ir.ui.view">
+        <field name="name">real.estate.lead.graph</field>
+        <field name="model">real.estate.lead</field>
+        <field name="arch" type="xml">
+            <graph string="Lead Statistics" type="pie" sample="1">
+                <field name="state"/>
+            </graph>
         </field>
     </record>
 

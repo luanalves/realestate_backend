@@ -26,6 +26,10 @@ tags:
     description: Lead CRUD operations
   - name: Lead Actions
     description: State transitions and special actions
+  - name: Lead Activities
+    description: Activity tracking and timeline (Phase 5)
+  - name: Lead Filters
+    description: Saved filter presets (Phase 6)
 
 security:
   - BearerAuth: []
@@ -42,6 +46,8 @@ paths:
         - **Managers**: All company leads
         
         Record rules automatically enforce multi-tenancy and agent isolation.
+        
+        **Phase 6 Enhancement**: Added advanced filters (budget, bedrooms, property_type, location, last_activity)
       operationId: listLeads
       tags:
         - Leads
@@ -51,6 +57,58 @@ paths:
         - $ref: '#/components/parameters/StateFilter'
         - $ref: '#/components/parameters/AgentFilter'
         - $ref: '#/components/parameters/SearchQuery'
+        - name: budget_min
+          in: query
+          required: false
+          schema:
+            type: number
+          description: Minimum budget filter (Phase 6)
+        - name: budget_max
+          in: query
+          required: false
+          schema:
+            type: number
+          description: Maximum budget filter (Phase 6)
+        - name: bedrooms
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Number of bedrooms filter (Phase 6)
+        - name: property_type_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Property type interest ID filter (Phase 6)
+        - name: location
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Location preference filter, partial match (Phase 6)
+        - name: last_activity_before
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Filter leads with no activity since this date (Phase 6)
+        - name: sort_by
+          in: query
+          required: false
+          schema:
+            type: string
+            default: create_date
+          description: Field name to sort by (Phase 6)
+        - name: sort_order
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+          description: Sort order (Phase 6)
       responses:
         '200':
           description: Successful response
@@ -267,6 +325,66 @@ paths:
         '500':
           $ref: '#/components/responses/ServerError'
 
+  /leads/export:
+    get:
+      summary: Export leads to CSV
+      description: |
+        Exports filtered leads to CSV format with same filters as GET /leads.
+        Returns CSV file with headers respecting security (multi-tenancy and agent isolation).
+        
+        **Phase 6 Feature** (FR-028 acceptance scenario 5)
+      operationId: exportLeadsCsv
+      tags:
+        - Leads
+      parameters:
+        - $ref: '#/components/parameters/StateFilter'
+        - $ref: '#/components/parameters/AgentFilter'
+        - $ref: '#/components/parameters/SearchQuery'
+        - name: budget_min
+          in: query
+          required: false
+          schema:
+            type: number
+          description: Minimum budget filter
+        - name: budget_max
+          in: query
+          required: false
+          schema:
+            type: number
+          description: Maximum budget filter
+        - name: bedrooms
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Number of bedrooms filter
+        - name: property_type_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Property type interest ID filter
+        - name: location
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Location preference filter (partial match)
+      responses:
+        '200':
+          description: CSV file generated successfully
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
   /leads/statistics:
     get:
       summary: Get lead statistics
@@ -312,6 +430,205 @@ paths:
           $ref: '#/components/responses/UnauthorizedError'
         '403':
           $ref: '#/components/responses/ForbiddenError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  
+  /leads/{lead_id}/activities:
+    get:
+      summary: List lead activities
+      description: |
+        Returns all activities (messages and scheduled activities) for a lead.
+        Provides timeline view of all interactions with the lead.
+        
+        **Phase 5 Feature** (FR-003, Activity Tracking)
+      operationId: listLeadActivities
+      tags:
+        - Lead Activities
+      parameters:
+        - $ref: '#/components/parameters/LeadIdParam'
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+          description: Max number of activities to return
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+          description: Number of activities to skip
+      responses:
+        '200':
+          description: Activities retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeadActivitiesResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+    
+    post:
+      summary: Log activity on lead
+      description: |
+        Logs a new activity (call, email, note) on the lead using mail.thread.
+        Creates a message in the chatter timeline.
+        
+        **Phase 5 Feature** (FR-003, Activity Tracking)
+      operationId: logLeadActivity
+      tags:
+        - Lead Activities
+      parameters:
+        - $ref: '#/components/parameters/LeadIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogActivityRequest'
+      responses:
+        '201':
+          description: Activity logged successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivityResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /leads/{lead_id}/schedule-activity:
+    post:
+      summary: Schedule activity on lead
+      description: |
+        Schedules a future activity (meeting, call, task) with a deadline.
+        Creates an activity that will trigger reminders.
+        
+        **Phase 5 Feature** (FR-003, Activity Reminders)
+      operationId: scheduleLeadActivity
+      tags:
+        - Lead Activities
+      parameters:
+        - $ref: '#/components/parameters/LeadIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScheduleActivityRequest'
+      responses:
+        '201':
+          description: Activity scheduled successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivityResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /leads/filters:
+    get:
+      summary: List saved filters
+      description: |
+        Returns all saved filter presets for the current user.
+        Users can save frequently used filter combinations.
+        
+        **Phase 6 Feature** (Saved Filters)
+      operationId: listSavedFilters
+      tags:
+        - Lead Filters
+      responses:
+        '200':
+          description: Saved filters retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SavedFiltersResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+    
+    post:
+      summary: Create saved filter
+      description: |
+        Saves a new filter preset with name and criteria.
+        Allows reusing complex filter combinations.
+        
+        **Phase 6 Feature** (Saved Filters)
+      operationId: createSavedFilter
+      tags:
+        - Lead Filters
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFilterRequest'
+      responses:
+        '201':
+          description: Filter saved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SavedFilterResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /leads/filters/{filter_id}:
+    delete:
+      summary: Delete saved filter
+      description: |
+        Removes a saved filter preset.
+        Users can only delete their own filters.
+        
+        **Phase 6 Feature** (Saved Filters)
+      operationId: deleteSavedFilter
+      tags:
+        - Lead Filters
+      parameters:
+        - name: filter_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Filter ID
+      responses:
+        '204':
+          description: Filter deleted successfully
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
         '500':
           $ref: '#/components/responses/ServerError'
 
@@ -831,6 +1148,195 @@ components:
         pages:
           type: integer
           example: 5
+
+    # Phase 5: Activity Tracking Schemas
+    LogActivityRequest:
+      type: object
+      required:
+        - body
+        - activity_type
+      properties:
+        body:
+          type: string
+          description: Activity description/notes
+          example: "Called client - interested in 3-bedroom condos in downtown area"
+        activity_type:
+          type: string
+          enum: [call, email, meeting, note]
+          description: Type of activity
+          example: "call"
+
+    ScheduleActivityRequest:
+      type: object
+      required:
+        - summary
+        - activity_type_id
+        - date_deadline
+      properties:
+        summary:
+          type: string
+          description: Activity summary
+          example: "Follow-up call regarding budget increase"
+        activity_type_id:
+          type: integer
+          description: Activity type ID (from mail.activity.type)
+          example: 1
+        date_deadline:
+          type: string
+          format: date
+          description: Activity deadline date
+          example: "2026-02-05"
+        note:
+          type: string
+          description: Additional notes
+          example: "Client requested callback after 2pm"
+
+    ActivityResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            id:
+              type: integer
+              example: 456
+            body:
+              type: string
+              example: "Called client - interested in 3-bedroom condos"
+            date:
+              type: string
+              format: date-time
+              example: "2026-01-31T14:30:00Z"
+            author:
+              type: object
+              properties:
+                id:
+                  type: integer
+                  example: 5
+                name:
+                  type: string
+                  example: "John Doe"
+
+    LeadActivitiesResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            activities:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  type:
+                    type: string
+                    enum: [message, scheduled_activity]
+                  body:
+                    type: string
+                  date:
+                    type: string
+                    format: date-time
+                  author:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      name:
+                        type: string
+                  activity_type:
+                    type: string
+                    nullable: true
+                  date_deadline:
+                    type: string
+                    format: date
+                    nullable: true
+            pagination:
+              $ref: '#/components/schemas/Pagination'
+
+    # Phase 6: Saved Filters Schemas
+    CreateFilterRequest:
+      type: object
+      required:
+        - name
+        - filter_domain
+      properties:
+        name:
+          type: string
+          maxLength: 100
+          description: Filter name
+          example: "High-value Centro leads"
+        filter_domain:
+          type: object
+          description: JSON object with filter criteria
+          example:
+            budget_min: 300000
+            budget_max: 500000
+            bedrooms: 3
+            location: "Centro"
+            state: "qualified"
+
+    SavedFilterResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            id:
+              type: integer
+              example: 42
+            name:
+              type: string
+              example: "High-value Centro leads"
+            filter_domain:
+              type: object
+              example:
+                budget_min: 300000
+                budget_max: 500000
+                bedrooms: 3
+                location: "Centro"
+                state: "qualified"
+            user_id:
+              type: integer
+              example: 5
+            create_date:
+              type: string
+              format: date-time
+              example: "2026-01-31T10:00:00Z"
+
+    SavedFiltersResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            filters:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  name:
+                    type: string
+                  filter_domain:
+                    type: object
+                  create_date:
+                    type: string
+                    format: date-time
 
     Error:
       type: object

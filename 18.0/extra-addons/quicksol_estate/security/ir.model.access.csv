@@ -150,3 +150,6 @@ access_system_admin_commission_transaction,System Admin: Commission Transactions
 access_company_manager_commission_transaction,Company Manager: Commission Transactions,model_real_estate_commission_transaction,group_real_estate_manager,1,1,1,1
 access_company_user_commission_transaction,Company User: Commission Transactions,model_real_estate_commission_transaction,group_real_estate_user,1,1,1,0
 access_agent_commission_transaction,Agent: Commission Transactions,model_real_estate_commission_transaction,group_real_estate_agent,1,0,0,0
+access_agent_lead_filter,Agent: Lead Filters,model_real_estate_lead_filter,group_real_estate_agent,1,1,1,1
+access_manager_lead_filter,Manager: Lead Filters,model_real_estate_lead_filter,group_real_estate_manager,1,1,1,1
+access_owner_lead_filter,Owner: Lead Filters,model_real_estate_lead_filter,group_real_estate_owner,1,1,1,1
