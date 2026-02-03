@@ -1,8 +1,11 @@
+---
+name: postman-collection-manager
+description: Create, update, and validate Postman collections following ADR-016 standards. Handles naming conventions, versioning, required variables (base_url, tokens, session_id), headers by endpoint type (GET vs POST), OAuth token endpoints with auto-save scripts, and JSON-RPC structure. Use when creating new collections, adding endpoints, updating versions, or validating ADR-016 compliance.
+---
+
 # Postman Collection Manager
 
-## Description
-
-Skill para criar, atualizar e validar coleções Postman seguindo rigorosamente as regras da ADR-016 (Padrões para Postman Collections). Esta skill garante conformidade total com os padrões do projeto para documentação e testes de API.
+Skill to create, update, and validate Postman collections following strict ADR-016 rules (Postman Collection Standards). This skill ensures total compliance with project standards for API documentation and testing.
 
 ## When to Use
 
