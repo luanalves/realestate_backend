@@ -4,25 +4,45 @@
 
 Complete Postman collection for Quicksol Real Estate Management System API.
 
-**Version:** 1.4.0  
-**Last Updated:** 2026-01-29  
-**Spec Coverage:** 006-lead-management (complete)
+**Version:** 1.5.0  
+**Last Updated:** 2026-02-03  
+**Spec Coverage:** Complete API (50+ endpoints)
 
 ## Available Collections
 
-### 1. Main API Collection (v1.2) ⭐ RECOMMENDED
+### 1. Complete API Collection (v1.3) ⭐ RECOMMENDED
+**File:** `quicksol_api_v1.3_postman_collection.json`  
+**Coverage:** All 50+ endpoints - Complete API coverage  
+**ADR Compliance:** ADR-016 (complete)  
+**Includes:** Authentication, Users, Properties, Agents, Assignments, Commissions, Performance, Leads, Activities, Filters, Master Data
+
+### 2. Lead-Focused Collection (v1.2)
 **File:** `quicksol_api_v1.2_postman_collection.json`  
-**Coverage:** All endpoints with Lead Management integration  
+**Coverage:** Lead Management focused (Feature 006)  
 **ADR Compliance:** ADR-016 (complete)
 
-### 2. Legacy API Collection (v1.1)
+### 3. Legacy API Collection (v1.1)
 **File:** `quicksol_api_v1.1_postman_collection.json`  
 **Coverage:** Properties, Agents, Assignments, Commissions, RBAC profiles
 
-### 3. Lead Management Collection (Standalone)
+### 4. Lead Management Collection (Standalone)
 **File:** `lead-management-collection.json`  
 **Coverage:** Lead CRUD, conversions, statistics, multi-tenancy tests  
 **Feature:** 006-lead-management
+
+## Changelog v1.3 (Latest)
+
+✅ Complete API coverage (50+ endpoints)  
+✅ 13 organized folders by domain  
+✅ Properties CRUD with filters  
+✅ Agents management (create, deactivate, reactivate)  
+✅ Assignments (property-to-agent)  
+✅ Commission rules and transactions  
+✅ Performance metrics and rankings  
+✅ Lead management with activities and filters  
+✅ Master Data (property types, locations, amenities, etc.)  
+✅ Test scripts for auto-populating IDs  
+✅ ADR-016 compliant headers
 
 ## Changelog v1.2
 
@@ -34,7 +54,7 @@ Complete Postman collection for Quicksol Real Estate Management System API.
 ✅ Added advanced search examples  
 ✅ Added test scenarios for validation
 
-## Collection Structure
+## Collection Structure (v1.3)
 
 ### 1. Authentication
 OAuth 2.0 token management endpoints:
@@ -42,11 +62,67 @@ OAuth 2.0 token management endpoints:
 - Refresh Token
 - Revoke Token
 
-### 2. User Management
+### 2. Users
 User login, logout, and session management:
 - User Login (creates session)
 - User Logout
-- Get User Context
+- Get Current User (/me)
+- Update Profile
+- Change Password
+
+### 3. Properties
+Property CRUD operations:
+- List Properties (with filters)
+- Create Property
+- Get Property Details
+- Update Property
+- Delete Property (archive)
+
+### 4. Agents
+Agent management operations:
+- List Agents
+- Create Agent
+- Get Agent Details
+- Update Agent
+- Deactivate Agent
+- Reactivate Agent
+- Get Agent's Properties
+
+### 5. Assignments
+Property-to-agent assignments:
+- List Assignments
+- Create Assignment
+- Delete Assignment
+
+### 6. Commissions
+Commission rules and transactions:
+- Get Commission Rules
+- Create Commission Rule
+- Update Commission Rule
+- Create Commission Transaction
+
+### 7. Performance
+Agent metrics and rankings:
+- Get Agent Performance
+- Get Agents Ranking
+
+### 8-12. Leads (CRUD, Actions, Analytics, Activities, Filters)
+Complete lead management:
+- Lead CRUD operations
+- Convert to Sale, Reopen Lost Lead
+- Statistics and CSV export
+- Activity logging and scheduling
+- Saved search filters
+
+### 13. Master Data
+Reference data (some public):
+- Property Types
+- Location Types
+- States/Regions
+- Tags
+- Amenities
+- Owners
+- Companies
 
 ### 3. Agents
 Agent CRUD operations with RBAC:
