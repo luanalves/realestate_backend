@@ -161,9 +161,9 @@
 
 ### Implementation for User Story 5
 
-- [ ] T050 [US5] Verify registration endpoint assigns group_real_estate_owner (existing auth module)
-- [ ] T051 [US5] Add graceful handling for Owner without company on GET /owners (empty list for their companies)
-- [ ] T052 [US5] Document self-registration flow in quickstart.md
+- [ ] T050 [US5] Verify registration endpoint assigns group_real_estate_owner (existing auth module) - **BLOCKED**: No registration endpoint in thedevkitchen_apigateway
+- [X] T051 [US5] Add graceful handling for Owner without company on GET /owners (empty list for their companies)
+- [X] T052 [US5] Document self-registration flow in quickstart.md
 
 **Checkpoint**: User Story 5 complete - Self-service onboarding works
 

@@ -22,6 +22,72 @@ git checkout 007-company-owner-management
 
 ---
 
+## Self-Service Owner Registration (User Story 5)
+
+**NOTE**: Registration endpoint is not yet implemented in `thedevkitchen_apigateway`.  
+For now, Owners must be created via:
+1. **Odoo Web UI**: Settings → Users → Create User → Assign group `Real Estate / Owner`
+2. **Admin API**: Use existing admin token to POST `/api/v1/owners` (creates res.users with Owner group)
+3. **Future**: POST `/api/v1/auth/register` will auto-assign `group_real_estate_owner`
+
+### Current Workaround: Create Owner via Admin
+
+```bash
+# 1. Get Admin token
+ADMIN_TOKEN=$(curl -s -X POST http://localhost:8069/api/v1/oauth/token \
+  -H "Content-Type: application/json" \
+  -d '{
+    "grant_type": "client_credentials",
+    "client_id": "admin@admin.com",
+    "client_secret": "admin"
+  }' | jq -r '.access_token')
+
+# 2. Create new Owner (no company initially)
+OWNER_RESPONSE=$(curl -s -X POST http://localhost:8069/api/v1/owners \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "John Owner",
+    "email": "john@owner.com",
+    "password": "secure123",
+    "phone": "11999887766"
+  }')
+
+echo $OWNER_RESPONSE | jq .
+
+# 3. New Owner logs in
+OWNER_TOKEN=$(curl -s -X POST http://localhost:8069/api/v1/oauth/token \
+  -H "Content-Type: application/json" \
+  -d '{
+    "grant_type": "client_credentials",
+    "client_id": "john@owner.com",
+    "client_secret": "secure123"
+  }' | jq -r '.access_token')
+
+# 4. Owner creates first company (auto-linked)
+curl -X POST http://localhost:8069/api/v1/companies \
+  -H "Authorization: Bearer $OWNER_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "John's Real Estate",
+    "cnpj": "11222333000181",
+    "email": "contact@johnsre.com",
+    "phone": "11888999777"
+  }'
+
+# 5. Verify Owner is linked to company
+curl -X GET http://localhost:8069/api/v1/owners \
+  -H "Authorization: Bearer $OWNER_TOKEN" | jq .
+```
+
+### Owner Without Company Behavior
+
+- **GET /api/v1/owners**: Returns empty list `{"data": [], "total": 0}` (T051 ✓)
+- **POST /api/v1/companies**: Creates company and auto-links Owner
+- **Graceful handling**: No errors, just empty results until first company created
+
+---
+
 ## Quick Environment Setup
 
 ### 1. Get Authentication Token
