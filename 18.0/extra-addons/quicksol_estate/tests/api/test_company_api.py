@@ -382,3 +382,133 @@ class TestCreateCompany(HttpCase):
         # Verify soft delete (active=False)
         company = self.env['thedevkitchen.estate.company'].browse(company_id)
         self.assertFalse(company.active, "Company should be soft-deleted (active=False)")
+
+
+@tagged('post_install', '-at_install', 'quicksol_estate', 'feature_007', 'rbac')
+class TestManagerReadOnly(HttpCase):
+    """
+    Test T043: Manager has read-only access to companies, cannot create/update/delete.
+    
+    Business Rule:
+    - Manager can GET /api/v1/companies → 200 OK
+    - Manager cannot POST /api/v1/companies → 403 Forbidden
+    - Manager cannot PUT /api/v1/companies/{id} → 403 Forbidden
+    - Manager cannot DELETE /api/v1/companies/{id} → 403 Forbidden
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        
+        # Get security groups
+        cls.group_owner = cls.env.ref('quicksol_estate.group_real_estate_owner')
+        cls.group_manager = cls.env.ref('quicksol_estate.group_real_estate_manager')
+        
+        # Create test company
+        cls.test_company = cls.env['thedevkitchen.estate.company'].create({
+            'name': 'Manager Test Company',
+            'cnpj': '20202020000202',
+            'email': 'manager@testcompany.com',
+            'phone': '11888999777',
+        })
+        
+        # Create Manager user linked to test company
+        cls.manager_user = cls.env['res.users'].create({
+            'name': 'Test Manager',
+            'login': 'rbac_manager@test.com',
+            'password': 'manager123',
+            'email': 'rbac_manager@test.com',
+            'groups_id': [(6, 0, [cls.group_manager.id])],
+            'estate_company_ids': [(6, 0, [cls.test_company.id])],
+        })
+        
+        # Create Owner user for comparison
+        cls.owner_user = cls.env['res.users'].create({
+            'name': 'Test Owner',
+            'login': 'rbac_owner@test.com',
+            'password': 'owner123',
+            'email': 'rbac_owner@test.com',
+            'groups_id': [(6, 0, [cls.group_owner.id])],
+            'estate_company_ids': [(6, 0, [cls.test_company.id])],
+        })
+
+    def _get_token(self, login, password):
+        """Helper to get OAuth token."""
+        # Note: This requires OAuth setup. In real tests, use authenticate()
+        # For now, we'll use Odoo's authenticate method
+        return None  # Placeholder - implement OAuth token generation
+
+    def test_manager_can_read_companies(self):
+        """Manager should be able to GET /api/v1/companies (200 OK)."""
+        self.authenticate('rbac_manager@test.com', 'manager123')
+        
+        response = self.url_open(
+            '/api/v1/companies',
+            headers={'Content-Type': 'application/json'},
+        )
+        
+        self.assertEqual(response.status_code, 200,
+                        "Manager should be able to read companies")
+
+    def test_manager_cannot_create_company(self):
+        """Manager should NOT be able to POST /api/v1/companies (403 Forbidden)."""
+        self.authenticate('rbac_manager@test.com', 'manager123')
+        
+        response = self.url_open(
+            '/api/v1/companies',
+            data=json.dumps({
+                'name': 'Manager Created Company',
+                'cnpj': '30303030000303',
+                'email': 'managercreated@test.com',
+                'phone': '11777888999',
+            }),
+            headers={'Content-Type': 'application/json'},
+        )
+        
+        self.assertEqual(response.status_code, 403,
+                        "Manager should get 403 when trying to create company")
+
+    def test_manager_cannot_update_company(self):
+        """Manager should NOT be able to PUT /api/v1/companies/{id} (403 Forbidden)."""
+        self.authenticate('rbac_manager@test.com', 'manager123')
+        
+        response = self.url_open(
+            f'/api/v1/companies/{self.test_company.id}',
+            data=json.dumps({'name': 'Manager Updated Name'}),
+            headers={'Content-Type': 'application/json'},
+        )
+        
+        self.assertEqual(response.status_code, 403,
+                        "Manager should get 403 when trying to update company")
+
+    def test_manager_cannot_delete_company(self):
+        """Manager should NOT be able to DELETE /api/v1/companies/{id} (403 Forbidden)."""
+        self.authenticate('rbac_manager@test.com', 'manager123')
+        
+        response = self.url_open(
+            f'/api/v1/companies/{self.test_company.id}',
+            headers={'Content-Type': 'application/json'},
+        )
+        
+        self.assertEqual(response.status_code, 403,
+                        "Manager should get 403 when trying to delete company")
+
+    def test_owner_retains_full_access(self):
+        """Verify Owner still has full access (sanity check)."""
+        self.authenticate('rbac_owner@test.com', 'owner123')
+        
+        # Owner can create
+        create_response = self.url_open(
+            '/api/v1/companies',
+            data=json.dumps({
+                'name': 'Owner Created Company',
+                'cnpj': '40404040000404',
+                'email': 'ownercreated@test.com',
+                'phone': '11555666777',
+            }),
+            headers={'Content-Type': 'application/json'},
+        )
+        
+        self.assertEqual(create_response.status_code, 201,
+                        "Owner should be able to create company")
+

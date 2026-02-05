@@ -135,8 +135,8 @@
 
 ### Tests for User Story 4
 
-- [ ] T043 [P] [US4] Create integration test `tests/api/test_company_api.py::TestManagerReadOnly`
-- [ ] T044 [P] [US4] Create integration test `tests/api/test_owner_api.py::TestManagerNoAccess`
+- [X] T043 [P] [US4] Create integration test `tests/api/test_company_api.py::TestManagerReadOnly`
+- [X] T044 [P] [US4] Create integration test `tests/api/test_owner_api.py::TestManagerNoAccess`
 - [X] T045 [P] [US4] Create shell test `integration_tests/test_us7_s4_rbac.sh`
 
 ### Implementation for User Story 4
@@ -157,7 +157,7 @@
 
 ### Tests for User Story 5
 
-- [ ] T049 [P] [US5] Create integration test `tests/api/test_owner_api.py::TestNewOwnerWithoutCompany`
+- [X] T049 [P] [US5] Create integration test `tests/api/test_owner_api.py::TestNewOwnerWithoutCompany`
 
 ### Implementation for User Story 5
 

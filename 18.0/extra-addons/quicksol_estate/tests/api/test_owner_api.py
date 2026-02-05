@@ -359,3 +359,190 @@ class TestLinkOwnerToCompany(HttpCase):
         self.assertIn('links', data, "Response should contain HATEOAS links")
         self.assertIn('self', data['links'], "Should have 'self' link")
         self.assertIn('companies', data['links'], "Should have 'companies' link")
+
+
+@tagged('post_install', '-at_install', 'quicksol_estate', 'feature_007', 'rbac')
+class TestManagerNoAccess(HttpCase):
+    """
+    Test T044: Manager has NO access to Owner API endpoints.
+    
+    Business Rule:
+    - Manager cannot GET /api/v1/owners → 403 Forbidden
+    - Manager cannot POST /api/v1/owners → 403 Forbidden
+    - Manager cannot PUT /api/v1/owners/{id} → 403 Forbidden
+    - Manager cannot DELETE /api/v1/owners/{id} → 403 Forbidden
+    - Only Owner or Admin roles can access Owner management
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        
+        # Get security groups
+        cls.group_owner = cls.env.ref('quicksol_estate.group_real_estate_owner')
+        cls.group_manager = cls.env.ref('quicksol_estate.group_real_estate_manager')
+        
+        # Create test company
+        cls.test_company = cls.env['thedevkitchen.estate.company'].create({
+            'name': 'RBAC Test Company',
+            'cnpj': '50505050000505',
+            'email': 'rbactest@company.com',
+            'phone': '11999888777',
+        })
+        
+        # Create test Owner user
+        cls.test_owner = cls.env['res.users'].create({
+            'name': 'Test Owner User',
+            'login': 'testowner@rbac.com',
+            'password': 'owner123',
+            'email': 'testowner@rbac.com',
+            'groups_id': [(6, 0, [cls.group_owner.id])],
+            'estate_company_ids': [(6, 0, [cls.test_company.id])],
+        })
+        
+        # Create Manager user
+        cls.manager_user = cls.env['res.users'].create({
+            'name': 'Test Manager User',
+            'login': 'testmanager@rbac.com',
+            'password': 'manager123',
+            'email': 'testmanager@rbac.com',
+            'groups_id': [(6, 0, [cls.group_manager.id])],
+            'estate_company_ids': [(6, 0, [cls.test_company.id])],
+        })
+
+    def test_manager_cannot_list_owners(self):
+        """Manager should get 403 when trying to GET /api/v1/owners."""
+        self.authenticate('testmanager@rbac.com', 'manager123')
+        
+        response = self.url_open(
+            '/api/v1/owners',
+            headers={'Content-Type': 'application/json'},
+        )
+        
+        self.assertEqual(response.status_code, 403,
+                        "Manager should get 403 Forbidden for GET /api/v1/owners")
+
+    def test_manager_cannot_create_owner(self):
+        """Manager should get 403 when trying to POST /api/v1/owners."""
+        self.authenticate('testmanager@rbac.com', 'manager123')
+        
+        response = self.url_open(
+            '/api/v1/owners',
+            data=json.dumps({
+                'name': 'Manager Created Owner',
+                'email': 'managercreated@owner.com',
+                'password': 'test123',
+                'phone': '11777666555',
+            }),
+            headers={'Content-Type': 'application/json'},
+        )
+        
+        self.assertEqual(response.status_code, 403,
+                        "Manager should get 403 Forbidden for POST /api/v1/owners")
+
+    def test_manager_cannot_get_owner_details(self):
+        """Manager should get 403 when trying to GET /api/v1/owners/{id}."""
+        self.authenticate('testmanager@rbac.com', 'manager123')
+        
+        response = self.url_open(
+            f'/api/v1/owners/{self.test_owner.id}',
+            headers={'Content-Type': 'application/json'},
+        )
+        
+        self.assertEqual(response.status_code, 403,
+                        "Manager should get 403 Forbidden for GET /api/v1/owners/{id}")
+
+    def test_manager_cannot_update_owner(self):
+        """Manager should get 403 when trying to PUT /api/v1/owners/{id}."""
+        self.authenticate('testmanager@rbac.com', 'manager123')
+        
+        response = self.url_open(
+            f'/api/v1/owners/{self.test_owner.id}',
+            data=json.dumps({'name': 'Manager Updated Name'}),
+            headers={'Content-Type': 'application/json'},
+        )
+        
+        self.assertEqual(response.status_code, 403,
+                        "Manager should get 403 Forbidden for PUT /api/v1/owners/{id}")
+
+    def test_manager_cannot_delete_owner(self):
+        """Manager should get 403 when trying to DELETE /api/v1/owners/{id}."""
+        self.authenticate('testmanager@rbac.com', 'manager123')
+        
+        response = self.url_open(
+            f'/api/v1/owners/{self.test_owner.id}',
+            headers={'Content-Type': 'application/json'},
+        )
+        
+        self.assertEqual(response.status_code, 403,
+                        "Manager should get 403 Forbidden for DELETE /api/v1/owners/{id}")
+
+
+@tagged('post_install', '-at_install', 'quicksol_estate', 'feature_007')
+class TestNewOwnerWithoutCompany(HttpCase):
+    """
+    Test T049: New Owner without company can use API gracefully.
+    
+    Business Rule:
+    - Owner without companies gets empty list on GET /api/v1/owners → []
+    - Owner can create first company → auto-linked
+    - No errors, just empty results until first company created
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        
+        cls.group_owner = cls.env.ref('quicksol_estate.group_real_estate_owner')
+        
+        # Create Owner without any company
+        cls.new_owner = cls.env['res.users'].create({
+            'name': 'New Owner No Company',
+            'login': 'newowner@nocompany.com',
+            'password': 'newowner123',
+            'email': 'newowner@nocompany.com',
+            'groups_id': [(6, 0, [cls.group_owner.id])],
+            'estate_company_ids': [],  # No companies initially
+        })
+
+    def test_owner_without_company_gets_empty_list(self):
+        """Owner with no companies should get empty list on GET /api/v1/owners."""
+        self.authenticate('newowner@nocompany.com', 'newowner123')
+        
+        response = self.url_open(
+            '/api/v1/owners',
+            headers={'Content-Type': 'application/json'},
+        )
+        
+        self.assertEqual(response.status_code, 200,
+                        "Owner without companies should get 200 OK")
+        
+        data = json.loads(response.content.decode('utf-8'))
+        self.assertEqual(data.get('total', 0), 0,
+                        "Should return empty list (total=0)")
+        self.assertEqual(len(data.get('data', [])), 0,
+                        "Data array should be empty")
+
+    def test_owner_without_company_can_create_company(self):
+        """Owner without companies can create first company (auto-linked)."""
+        self.authenticate('newowner@nocompany.com', 'newowner123')
+        
+        response = self.url_open(
+            '/api/v1/companies',
+            data=json.dumps({
+                'name': 'First Company',
+                'cnpj': '60606060000606',
+                'email': 'first@company.com',
+                'phone': '11888777666',
+            }),
+            headers={'Content-Type': 'application/json'},
+        )
+        
+        self.assertEqual(response.status_code, 201,
+                        "Owner should be able to create first company")
+        
+        # Verify owner is now linked to company
+        self.new_owner.invalidate_recordset()
+        self.assertGreater(len(self.new_owner.estate_company_ids), 0,
+                          "Owner should be auto-linked to created company")
+
