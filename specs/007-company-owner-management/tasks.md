@@ -88,7 +88,7 @@
 
 - [X] T026 [P] [US2] Create unit test `tests/unit/test_company_validations.py::TestCNPJValidation` (format + check digits)
 - [X] T027 [P] [US2] Create unit test `tests/unit/test_company_validations.py::TestEmailValidation`
-- [ ] T028 [P] [US2] Create integration test `tests/api/test_company_api.py::TestCreateCompany`
+- [X] T028 [P] [US2] Create integration test `tests/api/test_company_api.py::TestCreateCompany`
 
 ### Implementation for User Story 2
 
@@ -99,7 +99,7 @@
 - [X] T033 [US2] Add GET /api/v1/companies/{id} endpoint with HATEOAS links
 - [X] T034 [US2] Add PUT /api/v1/companies/{id} endpoint with Owner authorization check
 - [X] T035 [US2] Add DELETE /api/v1/companies/{id} endpoint (soft delete, active=False)
-- [ ] T036 [US2] Create shell test `integration_tests/test_us7_s3_company_crud.sh`
+- [X] T036 [US2] Create shell test `integration_tests/test_us7_s3_company_crud.sh`
 
 **Checkpoint**: User Story 2 complete - Owner can create and manage companies via API
 
