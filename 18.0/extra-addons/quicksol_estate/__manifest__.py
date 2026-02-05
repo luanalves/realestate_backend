@@ -66,7 +66,6 @@ Property Form Sections:
         'data/states.xml',
         'data/property_data.xml',
         'data/amenity_data.xml',
-        'data/company_data.xml',
         'data/demo_users.xml',
         'data/property_demo_data.xml',
         'data/agent_seed.xml',
@@ -76,7 +75,6 @@ Property Form Sections:
         # 'data/default_groups.xml',  # Demo data temporarily disabled - complex dependencies
         
         # Views (actions must be loaded before menus that reference them)
-        'views/company_views.xml',
         'views/property_views.xml',
         'views/property_auxiliary_views.xml',
         'views/agent_views.xml',
