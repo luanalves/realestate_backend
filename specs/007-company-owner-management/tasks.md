@@ -186,11 +186,11 @@
 
 **Purpose**: Documentation, cleanup, final validation
 
-- [ ] T057 [P] Update `docs/postman/` with Owner & Company collection (Owner endpoints first)
-- [ ] T058 [P] Add OpenAPI schema to `docs/openapi/007-company-owner.yaml` (copy from contracts/)
-- [ ] T059 Run `./lint.sh` and fix any linting issues
-- [ ] T060 Validate all tests pass with `./run_all_tests.sh`
-- [ ] T061 Run quickstart.md validation (follow steps, verify all commands work)
+- [ ] T057 [P] Update `docs/postman/` with Owner & Company collection (Owner endpoints first) - **DEFERRED**
+- [ ] T058 [P] Add OpenAPI schema to `docs/openapi/007-company-owner.yaml` (copy from contracts/) - **DEFERRED**
+- [ ] T059 Run `./lint.sh` and fix any linting issues - **SKIPPED** (flake8 not in container)
+- [ ] T060 Validate all tests pass with `./run_all_tests.sh` - **TODO**
+- [ ] T061 Run quickstart.md validation (follow steps, verify all commands work) - **TODO**
 - [X] T062 Update README.md with new endpoints documentation
 
 ---
