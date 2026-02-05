@@ -176,6 +176,12 @@ A new user signs up for the platform via API and becomes an Owner. They must the
 
 - **Owner**: Not a separate model - Owner is a role assigned to res.users via group_real_estate_owner group. Identified by user having both the Owner group membership AND estate_company_ids containing the target company. One User can be Owner of multiple companies.
 
+## Clarifications
+
+### Session 2026-02-05
+
+- Q: Rate limiting specification - should these endpoints have specific rate limits? → A: Rate limiting is responsibility of the global API Gateway - not included in this feature scope
+
 ## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes

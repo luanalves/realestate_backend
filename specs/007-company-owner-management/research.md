@@ -194,7 +194,7 @@ Already existing in `record_rules.xml`:
 | **Path** | `/api/v1/companies` |
 | **Authentication** | `@require_jwt` + `@require_session` + `@require_company` (ADR-011) |
 | **Authorization** | `group_real_estate_owner` OR `base.group_system` (ADR-019) |
-| **Rate Limit** | 10 requests/minute |
+| **Rate Limit** | Handled by API Gateway (global) |
 
 **Request Body** (per ADR-018):
 ```json
