@@ -191,7 +191,7 @@
 - [ ] T059 Run `./lint.sh` and fix any linting issues
 - [ ] T060 Validate all tests pass with `./run_all_tests.sh`
 - [ ] T061 Run quickstart.md validation (follow steps, verify all commands work)
-- [ ] T062 Update README.md with new endpoints documentation
+- [X] T062 Update README.md with new endpoints documentation
 
 ---
 

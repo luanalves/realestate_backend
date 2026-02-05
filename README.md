@@ -93,3 +93,84 @@ Os módulos customizados devem ser adicionados no diretório `18.0/extra-addons/
 - **Notification Worker:** Gerencia notificações email/SMS
 - **Audit Worker:** Registra alterações de segurança e dados
 - **Status:** `docker compose ps` ou Flower UI
+
+---
+
+## 📡 API Endpoints
+
+### Feature 007: Company & Owner Management
+
+#### Owner API (Independent)
+
+| Method | Endpoint | Description | Auth | RBAC |
+|--------|----------|-------------|------|------|
+| `POST` | `/api/v1/owners` | Create Owner (no company) | Bearer | Owner, Admin |
+| `GET` | `/api/v1/owners` | List Owners (multi-tenancy) | Bearer | Owner, Admin |
+| `GET` | `/api/v1/owners/{id}` | Get Owner details | Bearer | Owner, Admin |
+| `PUT` | `/api/v1/owners/{id}` | Update Owner | Bearer | Owner, Admin |
+| `DELETE` | `/api/v1/owners/{id}` | Deactivate Owner | Bearer | Owner, Admin |
+| `POST` | `/api/v1/owners/{owner_id}/companies/{company_id}/link` | Link Owner to Company | Bearer | Owner, Admin |
+| `DELETE` | `/api/v1/owners/{owner_id}/companies/{company_id}/unlink` | Unlink Owner from Company | Bearer | Owner, Admin |
+
+#### Company API
+
+| Method | Endpoint | Description | Auth | RBAC |
+|--------|----------|-------------|------|------|
+| `POST` | `/api/v1/companies` | Create Company (auto-link creator) | Bearer | Owner, Admin |
+| `GET` | `/api/v1/companies` | List Companies (multi-tenancy) | Bearer | All authenticated |
+| `GET` | `/api/v1/companies/{id}` | Get Company details | Bearer | All authenticated |
+| `PUT` | `/api/v1/companies/{id}` | Update Company | Bearer | Owner, Admin |
+| `DELETE` | `/api/v1/companies/{id}` | Archive Company (soft delete) | Bearer | Owner, Admin |
+
+#### Validation Features
+
+- **CNPJ**: Brazilian business tax ID with check digit validation
+- **CRECI**: Real estate license (optional) - format validation for SP, RJ, MG states
+- **Email**: RFC 5322 compliant email validation using `email-validator`
+- **Phone**: Brazilian phone format (10-11 digits)
+- **Multi-tenancy**: 404 (not 403) for inaccessible resources
+- **Last Owner Protection**: Cannot delete/unlink last active Owner from Company
+- **Auto-linkage**: Company creator is automatically linked as Owner
+
+#### Example Requests
+
+```bash
+# Get OAuth token
+TOKEN=$(curl -s -X POST http://localhost:8069/api/v1/oauth/token \
+  -H "Content-Type: application/json" \
+  -d '{
+    "grant_type": "client_credentials",
+    "client_id": "owner@test.com",
+    "client_secret": "password"
+  }' | jq -r '.access_token')
+
+# Create Company
+curl -X POST http://localhost:8069/api/v1/companies \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Example Realty",
+    "cnpj": "11222333000181",
+    "email": "contact@example.com",
+    "phone": "11999887766"
+  }'
+
+# Create Owner (independent)
+curl -X POST http://localhost:8069/api/v1/owners \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "John Doe",
+    "email": "john@owner.com",
+    "password": "secure123",
+    "phone": "11888777666"
+  }'
+
+# Link Owner to Company
+curl -X POST http://localhost:8069/api/v1/owners/10/companies/5/link \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+See [specs/007-company-owner-management/quickstart.md](specs/007-company-owner-management/quickstart.md) for complete API documentation.
+
+---
