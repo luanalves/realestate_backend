@@ -15,3 +15,4 @@ Validar sincronização entre documentação e implementação via testes automa
 - incluir a consulta do session_id e do JWT no redis, para ganho de performance. Aproveitar e validar as melhorias das tabelas que gerenciam estas ações
 - arquivos que tem o skip como tracking_disable, podem ser problema de segurança, validar se é necessário manter desta forma?
 - melhorar a documentação técnica do sistema de RBAC e dos perfis de usuários
+- unificar as tabelas de usuário da aplicação, utilizar o documento /opt/homebrew/var/www/realestate/odoo-docker/docs/architecture/DATABASE_ARCHITECTURE_USERS.md. para compreender os usuários. O ponto importante é que vamos ter que criar o sistema de EAV para armazenar os dados adicionais dos usuários, como por exemplo o telefone, endereço, etc.
