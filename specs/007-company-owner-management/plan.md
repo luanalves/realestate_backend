@@ -7,7 +7,7 @@
 
 ## Summary
 
-Implement complete CRUD management system for Real Estate Companies (Imobiliárias) and Owners via REST API and Odoo Web interface. Owners can create companies and manage other Owners within their companies. SaaS Admin has full control via Odoo Web. Enforces multi-tenancy isolation (ADR-008) and RBAC rules (ADR-019) using triple decorator pattern (`@require_jwt`, `@require_session`, `@require_company`).
+Implement complete CRUD management system for Real Estate Companies (Imobiliárias) and Owners via REST API and Odoo Web interface. **Architecture Change (2025-06-XX)**: Owner API is **independent** (not nested under Company). Owners can be created without a company and linked later via `/api/v1/owners/{id}/companies`. This enables Owner-first development priority. Enforces multi-tenancy isolation (ADR-008) and RBAC rules (ADR-019) using triple decorator pattern (`@require_jwt`, `@require_session`, `@require_company`).
 
 ## Technical Context
 
@@ -57,8 +57,8 @@ specs/007-company-owner-management/
 18.0/extra-addons/quicksol_estate/
 ├── controllers/
 │   ├── __init__.py           # MODIFY - import new controllers
-│   ├── company_api.py        # CREATE - Company CRUD endpoints
-│   └── owner_api.py          # CREATE - Owner CRUD endpoints (nested)
+│   ├── owner_api.py          # CREATE - Owner CRUD endpoints (PRIORITY 1 - independent API)
+│   └── company_api.py        # CREATE - Company CRUD endpoints (PRIORITY 2)
 ├── models/
 │   ├── company.py            # EXISTS - extend if needed
 │   └── res_users.py          # MODIFY - add owner_company_ids computed field
@@ -69,25 +69,26 @@ specs/007-company-owner-management/
 │   └── record_rules.xml      # MODIFY - add Owner management rule
 ├── tests/
 │   ├── api/
-│   │   ├── test_company_api.py  # CREATE - Company integration tests
-│   │   └── test_owner_api.py    # CREATE - Owner integration tests
+│   │   ├── test_owner_api.py    # CREATE - Owner integration tests (PRIORITY 1)
+│   │   └── test_company_api.py  # CREATE - Company integration tests
 │   └── unit/
-│       ├── test_company_validations.py  # CREATE - CNPJ, email validation
-│       └── test_owner_validations.py    # CREATE - last-owner protection
+│       ├── test_owner_validations.py    # CREATE - last-owner protection
+│       └── test_company_validations.py  # CREATE - CNPJ, email validation
 └── __manifest__.py           # MODIFY - add new views to data list
 
 integration_tests/
-├── test_us7_s1_owner_creates_company.sh   # CREATE
-├── test_us7_s2_owner_creates_owner.sh     # CREATE
-├── test_us7_s3_company_rbac.sh            # CREATE
-└── test_us7_s4_company_multitenancy.sh    # CREATE
+├── test_us7_s1_owner_crud.sh              # CREATE - Owner CRUD operations
+├── test_us7_s2_owner_company_link.sh      # CREATE - Link Owner to Company
+├── test_us7_s3_company_crud.sh            # CREATE - Company CRUD operations
+├── test_us7_s4_rbac.sh                    # CREATE - RBAC validation
+└── test_us7_s5_multitenancy.sh            # CREATE - Multi-tenancy isolation
 
 cypress/e2e/
-├── admin-company-management.cy.js  # CREATE
-└── admin-owner-management.cy.js    # CREATE
+├── admin-owner-management.cy.js    # CREATE (PRIORITY 1)
+└── admin-company-management.cy.js  # CREATE
 ```
 
-**Structure Decision**: Extends existing `quicksol_estate` module following Odoo conventions (ADR-001, ADR-004). New controllers follow existing pattern in `controllers/` directory. Tests follow existing structure in `tests/api/` and `tests/unit/`.
+**Structure Decision**: Extends existing `quicksol_estate` module following Odoo conventions (ADR-001, ADR-004). **Owner API is implemented first** as independent endpoints (`/api/v1/owners`) following user priority request. New controllers follow existing pattern in `controllers/` directory. Tests follow existing structure in `tests/api/` and `tests/unit/`.
 
 ## Complexity Tracking
 

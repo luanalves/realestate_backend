@@ -8,6 +8,8 @@
 
 **Organization**: Tasks grouped by user story to enable independent implementation and testing.
 
+**⚠️ Architecture Change**: Owner API is **independent** (not nested under Company). Owner is created WITHOUT a company and linked later via `/api/v1/owners/{id}/companies`. This enables Owner-first development priority.
+
 ## Format: `[ID] [P?] [Story?] Description`
 
 - **[P]**: Can run in parallel (different files, no dependencies)
@@ -20,9 +22,10 @@
 
 **Purpose**: Project structure and configuration updates
 
-- [ ] T001 Update `__manifest__.py` to include new view files in data list
-- [ ] T002 [P] Update `controllers/__init__.py` to import company_api and owner_api modules
-- [ ] T003 [P] Create helper module `utils/validators.py` for reusable CNPJ/email validation functions
+- [X] T001 Update `__manifest__.py` to include new view files in data list
+- [X] T002 [P] Update `controllers/__init__.py` to import owner_api and company_api modules
+- [X] T003 [P] Create helper module `utils/validators.py` for reusable CNPJ/email/CRECI validation functions
+- [X] T003a [P] Implement CRECI format validation per Brazilian state (SP, RJ, MG, etc.) in `utils/validators.py`
 
 ---
 
@@ -32,69 +35,73 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T004 Add computed field `owner_company_ids` to `models/res_users.py` for Owner identification
-- [ ] T005 [P] Add email validation constraint to `models/company.py` if not already present
-- [ ] T006 [P] Create `security/record_rules.xml` entry for Owner management rule (`rule_owner_manage_owners`)
-- [ ] T007 [P] Create base response helpers in `utils/responses.py` for HATEOAS links (success_response, error_response)
-- [ ] T008 Create `views/company_views.xml` with form, list, search views and `action_company`
-- [ ] T009 Update `views/real_estate_menus.xml` to fix `action_company` reference
+- [X] T004 Add computed field `owner_company_ids` to `models/res_users.py` for Owner identification
+- [X] T005 [P] Add email validation constraint to `models/company.py` if not already present
+- [X] T006 [P] Create `security/record_rules.xml` entry for Owner management rule (`rule_owner_manage_owners`)
+- [X] T007 [P] Create base response helpers in `utils/responses.py` for HATEOAS links (success_response, error_response)
+- [X] T008 Create `views/company_views.xml` with form, list, search views and `action_company`
+- [X] T009 Update `views/real_estate_menus.xml` to fix `action_company` reference
 
 **Checkpoint**: Foundation ready - user story implementation can now begin
 
 ---
 
-## Phase 3: User Story 1 - Owner Creates New Real Estate Company (Priority: P1) 🎯 MVP
+## Phase 3: User Story 1 - Owner CRUD via Independent API (Priority: P1) 🎯 MVP PRIORITY
+
+**Goal**: Create, read, update, delete Owners via independent API (not nested under Company)
+
+**Independent Test**: POST /api/v1/owners → Owner created without company; POST /owners/{id}/companies → linked
+
+### Tests for User Story 1
+
+- [X] T010 [P] [US1] Create unit test `tests/unit/test_owner_validations.py::TestCreatorValidation` (Owner or Admin only)
+- [X] T011 [P] [US1] Create unit test `tests/unit/test_owner_validations.py::TestLastOwnerProtection`
+- [X] T012 [P] [US1] Create integration test `tests/api/test_owner_api.py::TestCreateOwnerIndependent`
+- [X] T013 [P] [US1] Create integration test `tests/api/test_owner_api.py::TestLinkOwnerToCompany`
+
+### Implementation for User Story 1
+
+- [X] T014 [US1] Create `controllers/owner_api.py` with POST /api/v1/owners endpoint (no company required)
+- [X] T015 [US1] Implement Owner creation: assign group_real_estate_owner, estate_company_ids=[]
+- [X] T016 [US1] Add RBAC check: only Owner (for their companies) or Admin can create Owners
+- [X] T017 [US1] Add GET /api/v1/owners endpoint with multi-tenancy filtering (all Owners from user's companies)
+- [X] T018 [US1] Add GET /api/v1/owners/{id} endpoint with HATEOAS links
+- [X] T019 [US1] Add PUT /api/v1/owners/{id} endpoint with authorization check
+- [X] T020 [US1] Add DELETE /api/v1/owners/{id} endpoint (soft delete) with last-owner protection
+- [X] T021 [US1] Implement last-owner check: prevent delete if Owner is only Owner of any company
+- [X] T022 [US1] Add POST /api/v1/owners/{id}/companies endpoint to link Owner to Company
+- [X] T023 [US1] Add DELETE /api/v1/owners/{id}/companies/{company_id} endpoint to unlink Owner
+- [X] T024 [US1] Create shell test `integration_tests/test_us7_s1_owner_crud.sh`
+- [X] T025 [US1] Create shell test `integration_tests/test_us7_s2_owner_company_link.sh`
+
+**Checkpoint**: User Story 1 complete - Owner can be created/managed independently
+
+---
+
+## Phase 4: User Story 2 - Owner Creates New Real Estate Company (Priority: P1) 🎯 MVP
 
 **Goal**: Owner can create companies via API with CNPJ validation and auto-linkage
 
 **Independent Test**: POST /api/v1/companies as Owner → company created + Owner linked via estate_company_ids
 
-### Tests for User Story 1
-
-- [ ] T010 [P] [US1] Create unit test `tests/unit/test_company_validations.py` for CNPJ format/check digits
-- [ ] T011 [P] [US1] Create unit test `tests/unit/test_company_validations.py::TestEmailValidation` for email format
-- [ ] T012 [P] [US1] Create integration test `tests/api/test_company_api.py::TestCreateCompany` with success/error scenarios
-
-### Implementation for User Story 1
-
-- [ ] T013 [US1] Create `controllers/company_api.py` with POST /api/v1/companies endpoint
-- [ ] T014 [US1] Add CNPJ uniqueness check (including soft-deleted) to company creation logic
-- [ ] T015 [US1] Implement auto-linkage: add created company to creator's estate_company_ids
-- [ ] T016 [US1] Add GET /api/v1/companies endpoint with multi-tenancy filtering
-- [ ] T017 [US1] Add GET /api/v1/companies/{id} endpoint with HATEOAS links
-- [ ] T018 [US1] Add PUT /api/v1/companies/{id} endpoint with Owner authorization check
-- [ ] T019 [US1] Add DELETE /api/v1/companies/{id} endpoint (soft delete, active=False)
-- [ ] T020 [US1] Create shell test `integration_tests/test_us7_s1_owner_creates_company.sh`
-
-**Checkpoint**: User Story 1 complete - Owner can create and manage companies via API
-
----
-
-## Phase 4: User Story 2 - Owner Manages Other Owners (Priority: P1) 🎯 MVP
-
-**Goal**: Owner can create/edit/remove other Owners within their companies
-
-**Independent Test**: POST /api/v1/companies/{id}/owners as Owner → new Owner created with correct group
-
 ### Tests for User Story 2
 
-- [ ] T021 [P] [US2] Create unit test `tests/unit/test_owner_validations.py::TestLastOwnerProtection`
-- [ ] T022 [P] [US2] Create unit test `tests/unit/test_owner_validations.py::TestPasswordValidation`
-- [ ] T023 [P] [US2] Create integration test `tests/api/test_owner_api.py::TestCreateOwner`
-- [ ] T024 [P] [US2] Create integration test `tests/api/test_owner_api.py::TestOwnerRBAC`
+- [X] T026 [P] [US2] Create unit test `tests/unit/test_company_validations.py::TestCNPJValidation` (format + check digits)
+- [X] T027 [P] [US2] Create unit test `tests/unit/test_company_validations.py::TestEmailValidation`
+- [ ] T028 [P] [US2] Create integration test `tests/api/test_company_api.py::TestCreateCompany`
 
 ### Implementation for User Story 2
 
-- [ ] T025 [US2] Create `controllers/owner_api.py` with POST /api/v1/companies/{company_id}/owners
-- [ ] T026 [US2] Implement Owner creation: assign group_real_estate_owner + estate_company_ids
-- [ ] T027 [US2] Add GET /api/v1/companies/{company_id}/owners endpoint
-- [ ] T028 [US2] Add GET /api/v1/companies/{company_id}/owners/{owner_id} endpoint
-- [ ] T029 [US2] Add PUT /api/v1/companies/{company_id}/owners/{owner_id} endpoint
-- [ ] T030 [US2] Add DELETE /api/v1/companies/{company_id}/owners/{owner_id} with last-owner protection
-- [ ] T031 [US2] Implement last-owner check: query active Owners before allowing delete
-- [ ] T032 [US2] Create shell test `integration_tests/test_us7_s2_owner_creates_owner.sh`
+- [X] T029 [US2] Create `controllers/company_api.py` with POST /api/v1/companies endpoint
+- [X] T030 [US2] Add CNPJ uniqueness check (including soft-deleted) to company creation logic
+- [X] T031 [US2] Implement auto-linkage: add created company to creator's estate_company_ids
+- [X] T032 [US2] Add GET /api/v1/companies endpoint with multi-tenancy filtering
+- [X] T033 [US2] Add GET /api/v1/companies/{id} endpoint with HATEOAS links
+- [X] T034 [US2] Add PUT /api/v1/companies/{id} endpoint with Owner authorization check
+- [X] T035 [US2] Add DELETE /api/v1/companies/{id} endpoint (soft delete, active=False)
+- [ ] T036 [US2] Create shell test `integration_tests/test_us7_s3_company_crud.sh`
 
-**Checkpoint**: User Story 2 complete - Owner can manage other Owners via API
+**Checkpoint**: User Story 2 complete - Owner can create and manage companies via API
 
 ---
 
@@ -106,15 +113,15 @@
 
 ### Tests for User Story 3
 
-- [ ] T033 [P] [US3] Create Cypress test `cypress/e2e/admin-company-management.cy.js` for company CRUD
-- [ ] T034 [P] [US3] Create Cypress test `cypress/e2e/admin-owner-management.cy.js` for owner CRUD
+- [ ] T037 [P] [US3] Create Cypress test `cypress/e2e/admin-owner-management.cy.js` for owner CRUD
+- [ ] T038 [P] [US3] Create Cypress test `cypress/e2e/admin-company-management.cy.js` for company CRUD
 
 ### Implementation for User Story 3
 
-- [ ] T035 [US3] Add "Create Owner" smart button to company form view in `views/company_views.xml`
-- [ ] T036 [US3] Create Owner list action accessible from company form
-- [ ] T037 [US3] Add filter "Estate Owners" to Users list view (extend res.users views)
-- [ ] T038 [US3] Verify Admin group bypasses multi-tenancy filters (base.group_system check)
+- [ ] T039 [US3] Add "Owners" smart button to company form view in `views/company_views.xml`
+- [ ] T040 [US3] Create Owner list action accessible from company form
+- [ ] T041 [US3] Add filter "Estate Owners" to Users list view (extend res.users views)
+- [ ] T042 [US3] Verify Admin group bypasses multi-tenancy filters (base.group_system check)
 
 **Checkpoint**: User Story 3 complete - SaaS Admin has full control via Odoo Web
 
@@ -128,14 +135,15 @@
 
 ### Tests for User Story 4
 
-- [ ] T039 [P] [US4] Create integration test `tests/api/test_company_api.py::TestManagerReadOnly`
-- [ ] T040 [P] [US4] Create shell test `integration_tests/test_us7_s3_company_rbac.sh`
+- [ ] T043 [P] [US4] Create integration test `tests/api/test_company_api.py::TestManagerReadOnly`
+- [ ] T044 [P] [US4] Create integration test `tests/api/test_owner_api.py::TestManagerNoAccess`
+- [ ] T045 [P] [US4] Create shell test `integration_tests/test_us7_s4_rbac.sh`
 
 ### Implementation for User Story 4
 
-- [ ] T041 [US4] Add RBAC check in company_api.py: Manager/Director → read-only
-- [ ] T042 [US4] Add RBAC check in owner_api.py: Manager/Director → 403 Forbidden
-- [ ] T043 [US4] Verify record rules in Odoo Web enforce read-only for Manager/Director
+- [ ] T046 [US4] Add RBAC check in company_api.py: Manager/Director → read-only
+- [ ] T047 [US4] Add RBAC check in owner_api.py: Manager/Director → 403 Forbidden
+- [ ] T048 [US4] Verify record rules in Odoo Web enforce read-only for Manager/Director
 
 **Checkpoint**: User Story 4 complete - RBAC correctly enforced
 
@@ -143,19 +151,19 @@
 
 ## Phase 7: User Story 5 - Self-Registration as Owner (Priority: P2)
 
-**Goal**: New user can self-register as Owner and create first company
+**Goal**: New user can self-register as Owner (without company), then create/link companies
 
-**Independent Test**: POST /api/v1/auth/register → login → create company
+**Independent Test**: POST /api/v1/auth/register → login → POST /api/v1/companies
 
 ### Tests for User Story 5
 
-- [ ] T044 [P] [US5] Create integration test `tests/api/test_company_api.py::TestNewOwnerFlow`
+- [ ] T049 [P] [US5] Create integration test `tests/api/test_owner_api.py::TestNewOwnerWithoutCompany`
 
 ### Implementation for User Story 5
 
-- [ ] T045 [US5] Verify registration endpoint assigns group_real_estate_owner (existing auth module)
-- [ ] T046 [US5] Add check for Owner without company: return guidance message on other API calls
-- [ ] T047 [US5] Document self-registration flow in quickstart.md
+- [ ] T050 [US5] Verify registration endpoint assigns group_real_estate_owner (existing auth module)
+- [ ] T051 [US5] Add graceful handling for Owner without company on GET /owners (empty list for their companies)
+- [ ] T052 [US5] Document self-registration flow in quickstart.md
 
 **Checkpoint**: User Story 5 complete - Self-service onboarding works
 
@@ -165,10 +173,10 @@
 
 **Purpose**: Comprehensive testing of isolation and cross-story integration
 
-- [ ] T048 [P] Create shell test `integration_tests/test_us7_s4_company_multitenancy.sh`
-- [ ] T049 Verify 404 (not 403) returned for inaccessible companies
-- [ ] T050 Test Owner from Company A cannot access Company B data
-- [ ] T051 Test Owner from Company A cannot create Owner for Company B
+- [ ] T053 [P] Create shell test `integration_tests/test_us7_s5_multitenancy.sh`
+- [ ] T054 Verify 404 (not 403) returned for inaccessible companies/owners
+- [ ] T055 Test Owner from Company A cannot access Company B data
+- [ ] T056 Test Owner linked to multiple companies sees all their Owners
 
 **Checkpoint**: Multi-tenancy isolation verified
 
@@ -178,12 +186,12 @@
 
 **Purpose**: Documentation, cleanup, final validation
 
-- [ ] T052 [P] Update `docs/postman/` with Company & Owner collection
-- [ ] T053 [P] Add OpenAPI schema to `docs/openapi/007-company-owner.yaml` (copy from contracts/)
-- [ ] T054 Run `./lint.sh` and fix any linting issues
-- [ ] T055 Validate all tests pass with `./run_all_tests.sh`
-- [ ] T056 Run quickstart.md validation (follow steps, verify all commands work)
-- [ ] T057 Update README.md with new endpoints documentation
+- [ ] T057 [P] Update `docs/postman/` with Owner & Company collection (Owner endpoints first)
+- [ ] T058 [P] Add OpenAPI schema to `docs/openapi/007-company-owner.yaml` (copy from contracts/)
+- [ ] T059 Run `./lint.sh` and fix any linting issues
+- [ ] T060 Validate all tests pass with `./run_all_tests.sh`
+- [ ] T061 Run quickstart.md validation (follow steps, verify all commands work)
+- [ ] T062 Update README.md with new endpoints documentation
 
 ---
 
@@ -196,13 +204,13 @@ Phase 1 (Setup) ─────────────────────�
                                           ↓
 Phase 2 (Foundational) ──────────────────┤ BLOCKS ALL USER STORIES
                                           ↓
+                              Phase 3 (US1: Owner API) ← PRIORITY 1
+                                          ↓
          ┌────────────────────────────────┼────────────────────────────────┐
          ↓                                ↓                                ↓
-Phase 3 (US1: Company API)    Phase 4 (US2: Owner API)    Phase 5 (US3: Odoo Web)
+Phase 4 (US2: Company API)    Phase 5 (US3: Odoo Web)    Phase 6 (US4: RBAC)
          │                                │                                │
          └────────────────────────────────┼────────────────────────────────┘
-                                          ↓
-                              Phase 6 (US4: RBAC)
                                           ↓
                               Phase 7 (US5: Self-Reg)
                                           ↓
@@ -215,39 +223,39 @@ Phase 3 (US1: Company API)    Phase 4 (US2: Owner API)    Phase 5 (US3: Odoo Web
 
 | Story | Depends On | Can Parallel With |
 |-------|------------|-------------------|
-| US1 (Company API) | Phase 2 | US2, US3 (after Phase 2) |
-| US2 (Owner API) | Phase 2 | US1, US3 (after Phase 2) |
-| US3 (Odoo Web) | Phase 2 | US1, US2 (after Phase 2) |
-| US4 (RBAC) | US1 (RBAC check in company_api) | - |
-| US5 (Self-Reg) | US1 (create company flow) | - |
+| US1 (Owner API) | Phase 2 | - (PRIORITY - do first) |
+| US2 (Company API) | Phase 2, US1 recommended | US3 (after US1) |
+| US3 (Odoo Web) | Phase 2, US1 | US2 (after US1) |
+| US4 (RBAC) | US1 (Owner API) **AND** US2 (Company API) | - (must wait for both) |
+| US5 (Self-Reg) | US1 (Owner without company flow) | - |
 
 ### Parallel Opportunities
 
-**After Phase 2 completes**, the following can run in parallel:
+**After Phase 2 + Phase 3 (US1) complete**, the following can run in parallel:
 
 ```bash
 # Team can split: 
-# Developer A: US1 (T010-T020)
-# Developer B: US2 (T021-T032)
-# Developer C: US3 (T033-T038)
+# Developer A: US2 (T026-T036)
+# Developer B: US3 (T037-T042)
+# Developer C: US4 (T043-T048)
 ```
 
 **Within each story**, tests can run in parallel:
 
 ```bash
-# US1 tests (T010, T011, T012) can all run simultaneously
-# US2 tests (T021, T022, T023, T024) can all run simultaneously
+# US1 tests (T010, T011, T012, T013) can all run simultaneously
+# US2 tests (T026, T027, T028) can all run simultaneously
 ```
 
 ---
 
 ## Implementation Strategy
 
-### MVP First (US1 + US2 + US3 = P1 Stories)
+### MVP First (US1 Priority + US2 + US3 = P1 Stories)
 
 1. Complete Phase 1 + Phase 2 (Setup + Foundational)
-2. Complete Phase 3 (US1: Company API)
-3. Complete Phase 4 (US2: Owner API)
+2. **PRIORITY**: Complete Phase 3 (US1: Owner API - independent)
+3. Complete Phase 4 (US2: Company API)
 4. Complete Phase 5 (US3: Odoo Web)
 5. **STOP and VALIDATE**: Test all P1 stories
 6. Deploy MVP
@@ -266,14 +274,14 @@ Phase 3 (US1: Company API)    Phase 4 (US2: Owner API)    Phase 5 (US3: Odoo Web
 |-------|-------|----------------|
 | Phase 1: Setup | 3 | 2 |
 | Phase 2: Foundational | 6 | 4 |
-| Phase 3: US1 | 11 | 3 |
-| Phase 4: US2 | 12 | 4 |
-| Phase 5: US3 | 6 | 2 |
-| Phase 6: US4 | 5 | 2 |
-| Phase 7: US5 | 4 | 1 |
+| Phase 3: US1 (Owner API) | 16 | 4 |
+| Phase 4: US2 (Company API) | 11 | 3 |
+| Phase 5: US3 (Odoo Web) | 6 | 2 |
+| Phase 6: US4 (RBAC) | 6 | 3 |
+| Phase 7: US5 (Self-Reg) | 4 | 1 |
 | Phase 8: Multi-Tenancy | 4 | 1 |
 | Phase 9: Polish | 6 | 2 |
-| **TOTAL** | **57** | **21** |
+| **TOTAL** | **62** | **22** |
 
 ---
 
@@ -285,3 +293,5 @@ Phase 3 (US1: Company API)    Phase 4 (US2: Owner API)    Phase 5 (US3: Odoo Web
 - Soft delete pattern: set `active=False`, never hard delete
 - Return 404 (not 403) for inaccessible resources (security through obscurity)
 - HATEOAS links in all responses per ADR-007
+- **Owner API is independent**: `/api/v1/owners` (not nested under company)
+- **Owner can exist without company**: link via POST `/api/v1/owners/{id}/companies`

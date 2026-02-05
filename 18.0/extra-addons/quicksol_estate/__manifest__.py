@@ -85,6 +85,7 @@ Property Form Sections:
         'views/lease_views.xml',
         'views/sale_views.xml',
         'views/tenant_views.xml',
+        'views/company_views.xml',  # Feature 007: Company form, list, search views
         'views/real_estate_menus.xml',
         'views/res_users_views.xml',
     ],

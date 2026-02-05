@@ -20,6 +20,27 @@ class ResUsers(models.Model):
         help='Imobiliária principal do usuário para filtros padrão'
     )
     
+    # Feature 007: Computed field for Owner's companies (T004)
+    owner_company_ids = fields.Many2many(
+        'thedevkitchen.estate.company',
+        compute='_compute_owner_companies',
+        string='Owned Companies',
+        help='Companies where this user is an Owner (has group_real_estate_owner)'
+    )
+    
+    @api.depends('groups_id', 'estate_company_ids')
+    def _compute_owner_companies(self):
+        """
+        Compute companies owned by this user.
+        Only users with group_real_estate_owner see their estate_company_ids as owner_company_ids.
+        """
+        owner_group = self.env.ref('quicksol_estate.group_real_estate_owner', raise_if_not_found=False)
+        for user in self:
+            if owner_group and owner_group in user.groups_id:
+                user.owner_company_ids = user.estate_company_ids
+            else:
+                user.owner_company_ids = False
+    
     @api.model
     def get_user_companies(self):
         """Retorna as imobiliárias do usuário atual"""

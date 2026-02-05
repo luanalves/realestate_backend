@@ -41,7 +41,20 @@ Generate comprehensive, implementable feature specifications for the Real Estate
 
 Before generating any specification, you MUST:
 
-1. **Read Architecture Decision Records (ADRs)** from `docs/adr/`:
+1. **Read Project Constitution** from `.specify/memory/constitution.md`:
+   - Core principles (Security First, Test Coverage, API-First, Multi-Tenancy, ADR Governance, Headless Architecture)
+   - Security requirements (dual-interface model, authentication standards, forbidden patterns)
+   - Quality & testing standards (test pyramid, required tests per feature)
+   - Development workflow and naming conventions
+   - **This is the authoritative source for strategic direction**
+
+2. **Review Existing Specifications** from `specs/`:
+   - Read the list of existing specs to understand what has been built
+   - Check for related features that may share patterns or dependencies
+   - Identify the next sequential spec number (e.g., if `006-*` exists, next is `007-*`)
+   - Use existing specs as reference for structure and level of detail
+
+3. **Read Architecture Decision Records (ADRs)** from `docs/adr/`:
    - ADR-001: Development Guidelines for Odoo Screens
    - ADR-003: Mandatory Test Coverage
    - ADR-004: Nomenclatura de Módulos e Tabelas (`thedevkitchen_` prefix)
@@ -57,7 +70,7 @@ Before generating any specification, you MUST:
    - ADR-019: RBAC Perfis Acesso Multi-Tenancy
    - ADR-022: Code Quality Linting Static Analysis
 
-2. **Consult Knowledge Base** from `knowledge_base/`:
+4. **Consult Knowledge Base** from `knowledge_base/`:
    - `01-module-structure.md`: Directory organization
    - `02-file-naming-conventions.md`: File naming patterns
    - `03-python-coding-guidelines.md`: Python standards
@@ -66,10 +79,11 @@ Before generating any specification, you MUST:
    - `08-symbols-conventions.md`: Naming conventions
    - `09-database-best-practices.md`: Database design (3NF, constraints, indexes)
 
-3. **Review Project Constitution** from `.github/copilot-instructions.md`:
+5. **Review Copilot Instructions** from `.github/copilot-instructions.md`:
    - Authentication decorators (`@require_jwt`, `@require_session`)
    - Multi-tenancy patterns
    - Security requirements
+   - **This provides tactical rules (constitution provides strategic direction)**
 
 ## Execution Flow
 
@@ -346,6 +360,42 @@ def _check_field_name(self):
 - [ ] Postman collection updated (ADR-016)
 - [ ] Code quality: Pylint ≥ 8.0, all linters passing (ADR-022)
 - [ ] Security requirements validated (ADR-008, ADR-011, ADR-017)
+- [ ] Constitution feedback analyzed and documented
+
+---
+
+## Constitution Feedback
+
+**This section MUST be completed to identify patterns for constitution update.**
+
+### New Patterns Introduced
+
+| Pattern | Description | Constitution Section | Priority |
+|---------|-------------|---------------------|----------|
+| [Pattern name] | [What it does] | [Where to add in constitution] | [High/Medium/Low] |
+
+### New Entities/Relationships
+
+| Entity | Related To | Relationship Type | Notes |
+|--------|-----------|-------------------|-------|
+| [Entity name] | [Related entities] | [1:N, N:N, etc.] | [Business context] |
+
+### Architectural Decisions
+
+| Decision | Rationale | ADR Required? |
+|----------|-----------|---------------|
+| [Decision description] | [Why this approach] | [Yes/No - if Yes, suggest ADR title] |
+
+### Constitution Update Recommendation
+
+- **Update Required**: [Yes/No]
+- **Suggested Version Bump**: [MAJOR/MINOR/PATCH]
+- **Sections to Update**:
+  - [ ] Core Principles
+  - [ ] Security Requirements
+  - [ ] Quality & Testing Standards
+  - [ ] Development Workflow
+  - [ ] New Section: [name]
 
 ---
 
@@ -397,10 +447,17 @@ After specification approval, generate:
    - Location: `docs/postman/[feature].postman_collection.json`
    - Include request examples and test scripts
 
-3. **Constitution Update**
+3. **Constitution Update** (MANDATORY for new patterns)
+   - Location: `.specify/memory/constitution.md`
+   - Add new patterns discovered during specification
+   - Document new entities, relationships, or workflows
+   - Update version following semantic versioning (MAJOR.MINOR.PATCH)
+   - Use handoff to `thedevkitchen.constitution` for updates
+
+4. **Copilot Instructions Update** (if tactical rules change)
    - Location: `.github/copilot-instructions.md`
-   - Add new patterns discovered
-   - Update examples if needed
+   - Add new controller patterns or examples
+   - Update security decorator examples if needed
 
 ---
 
@@ -477,9 +534,20 @@ Report completion with:
 ## Operating Principles
 
 ### Context Awareness
+- **ALWAYS** read `.specify/memory/constitution.md` before starting
+- **ALWAYS** check existing specs in `specs/` for patterns and next number
 - Always read relevant ADRs before generating specifications
 - Apply knowledge base patterns consistently
 - Reference specific ADR numbers in specifications
+
+### Constitution Feedback Loop
+- After each specification, analyze if new patterns were introduced
+- Document new entities, relationships, workflows for constitution update
+- Recommend constitution amendment if specification introduces:
+  - New entity types not previously documented
+  - New API patterns or security requirements
+  - New integration patterns between modules
+  - Architectural decisions that should be standardized
 
 ### Quality Standards
 - Every requirement must be testable
@@ -587,12 +655,25 @@ Report to user:
 **File:** `specs/[###]-[feature-name].md`
 **Status:** Ready for implementation
 
+### Constitution Feedback Analysis
+
+Based on this specification, the following patterns may need to be added to the constitution:
+
+| Pattern | Type | Constitution Section | Action |
+|---------|------|---------------------|--------|
+| [New pattern discovered] | [Entity/API/Security/Workflow] | [Section name] | [Add/Update] |
+
+**Constitution Update Required?** [Yes/No]
+- If Yes: New patterns, entities, or architectural decisions were introduced
+- If No: Specification follows existing patterns without additions
+
 ### Next Steps (choose one or more):
 
-1. **Generate API docs** → Use handoff: `thedevkitchen.swagger`
-2. **Generate Postman collection** → Use handoff: `thedevkitchen.postman`
-3. **Define test strategy** → Use handoff: `speckit.test-strategy`
-4. **Create implementation plan** → Use handoff: `speckit.plan`
+1. **Update Constitution** → Use handoff: `thedevkitchen.constitution` ⭐ (if new patterns)
+2. **Generate API docs** → Use handoff: `thedevkitchen.swagger`
+3. **Generate Postman collection** → Use handoff: `thedevkitchen.postman`
+4. **Define test strategy** → Use handoff: `speckit.test-strategy`
+5. **Create implementation plan** → Use handoff: `speckit.plan`
 
 Would you like me to proceed with any of these?
 ```

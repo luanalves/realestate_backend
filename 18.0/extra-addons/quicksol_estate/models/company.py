@@ -1,5 +1,6 @@
 from odoo import models, fields, api
 from odoo.exceptions import ValidationError
+from ..utils import validators  # Feature 007: Import validators (T005)
 import re
 
 
@@ -76,6 +77,13 @@ class RealEstateCompany(models.Model):
         for record in self:
             if record.cnpj and not self._validate_cnpj(record.cnpj):
                 raise ValidationError('Invalid CNPJ format. Please use: XX.XXX.XXX/XXXX-XX')
+    
+    @api.constrains('email')
+    def _check_email(self):
+        """Feature 007: Email format validation (T005)"""
+        for record in self:
+            if record.email and not validators.validate_email_format(record.email):
+                raise ValidationError(f'Invalid email format: {record.email}')
 
     def _validate_cnpj(self, cnpj):
         """Full CNPJ format and check digit validation"""
