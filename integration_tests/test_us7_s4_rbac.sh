@@ -2,6 +2,9 @@
 # Feature 007 - US7-S4: RBAC - Manager/Director Access (T045)
 # Tests that Manager/Director have read-only access to companies, no access to owners
 #
+# NOTE: Requires authentication API at /api/auth/login or /api/v1/oauth/token
+#       Currently BLOCKED - auth endpoint not available (returns 404)
+#
 # Success Criteria:
 # - Manager can GET /api/v1/companies → 200
 # - Manager cannot POST /api/v1/companies → 403

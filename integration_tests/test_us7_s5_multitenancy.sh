@@ -2,6 +2,9 @@
 # Feature 007 - US7-S5: Multi-Tenancy Isolation (T053-T056)
 # Tests cross-company access control and 404 vs 403 responses
 #
+# NOTE: Requires authentication API at /api/auth/login or /api/v1/oauth/token
+#       Currently BLOCKED - auth endpoint not available (returns 404)
+#
 # Success Criteria:
 # - Owner from Company A gets 404 when accessing Company B resources
 # - Owner linked to multiple companies sees all their data
