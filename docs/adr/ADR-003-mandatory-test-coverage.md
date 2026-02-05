@@ -61,9 +61,56 @@ Endpoints REST deste projeto **NÃO usam formato JSON-RPC**. Envie JSON direto n
 
 ### Dados de Teste
 
-**Credenciais e configurações de teste devem estar no arquivo `18.0/.env`** (não versionado no Git).
+**REGRA CRÍTICA: Dados sensíveis SEMPRE no arquivo `18.0/.env`** (não versionado no Git).
 
-Testes E2E devem ler variáveis de ambiente do `.env` - **nunca hardcode credenciais no código de teste**.
+#### ✅ O que DEVE estar no .env
+
+- Credenciais de usuários (admin, manager, agent, owner)
+- Senhas e tokens
+- Company IDs de teste
+- URLs de serviços
+- Chaves de API
+
+#### ❌ O que NÃO deve estar hardcoded no código
+
+- Qualquer senha ou token
+- Dados reais de usuários
+- Informações sensíveis da empresa
+
+#### 📋 Regras de Dados de Teste
+
+1. **Credenciais de usuários**: Ler do `.env` - **nunca hardcode**
+2. **CNPJ**: Sempre usar formato válido brasileiro (14 dígitos, com validação de dígitos verificadores)
+   - ✅ Correto: `12.345.678/0001-95` (formato válido)
+   - ❌ Errado: `12345678000195`, `11111111111111`, `00000000000000`
+3. **Login de Admin**: **NÃO usar em testes de API** - criar usuários específicos para cada perfil (manager, agent, owner)
+   - ✅ Correto: Login como `TEST_USER_MANAGER` do `.env`
+   - ❌ Errado: Login como `admin` em teste de permissões de agent
+
+#### Exemplo de .env para testes
+
+```bash
+# 18.0/.env
+TEST_DATABASE=realestate
+TEST_BASE_URL=http://localhost:8069
+
+# Credenciais por perfil
+TEST_USER_ADMIN=admin
+TEST_PASSWORD_ADMIN=admin
+
+TEST_USER_OWNER=owner_test
+TEST_PASSWORD_OWNER=owner123
+
+TEST_USER_MANAGER=manager_test  
+TEST_PASSWORD_MANAGER=manager123
+
+TEST_USER_AGENT=agent_test
+TEST_PASSWORD_AGENT=agent123
+
+# Dados de teste
+TEST_COMPANY_ID=1
+TEST_CNPJ=12.345.678/0001-95
+```
 
 ### Ordem de Execução Obrigatória
 
@@ -237,7 +284,103 @@ cypress/
 | Testes mal escritos | Code review rigoroso |
 
 ---
+## Boas Práticas de Dados de Teste
 
+### 1. Formato de CNPJ
+
+**SEMPRE use CNPJs válidos** nos testes (com dígitos verificadores corretos):
+
+```python
+# ✅ CORRETO - CNPJ válido
+cnpj = "12.345.678/0001-95"
+
+# ❌ ERRADO - CNPJs inválidos
+cnpj = "11111111111111"  # Repetição de dígitos
+cnpj = "00000000000000"  # Zeros
+cnpj = "12345678000195"  # Sem formatação
+```
+
+**Por quê?** Validações de CNPJ (ADR-012) devem funcionar corretamente em testes.
+
+### 2. Não Usar Login de Admin em Testes de API
+
+**NUNCA teste permissões de usuários usando login de admin**:
+
+```bash
+# ❌ ERRADO - Testar permissões de agent usando admin
+curl -X POST "$BASE_URL/api/v1/auth/token" \
+  -d '{"username":"admin","password":"admin"}'
+
+# ✅ CORRETO - Usar usuário específico do perfil
+curl -X POST "$BASE_URL/api/v1/auth/token" \
+  -d '{"username":"${TEST_USER_AGENT}","password":"${TEST_PASSWORD_AGENT}"}'
+```
+
+**Por quê?** 
+- Admin tem permissões irrestritas (bypassa RBAC)
+- Testes de permissões devem validar o perfil correto
+- Esconde bugs de controle de acesso
+
+**Quando usar admin?**
+- Apenas em testes de configuração/setup inicial
+- Criação de dados de teste (companies, configurações)
+- Testes específicos de funcionalidades administrativas
+
+### 3. Dados Sensíveis no .env
+
+**Estrutura do .env para testes**:
+
+```bash
+# 18.0/.env
+
+# Database
+TEST_DATABASE=realestate
+TEST_BASE_URL=http://localhost:8069
+
+# === Credenciais por Perfil ===
+
+# Admin (apenas para setup)
+TEST_USER_ADMIN=admin
+TEST_PASSWORD_ADMIN=admin
+
+# Owner (usuário dono da imobiliária)
+TEST_USER_OWNER=owner_test
+TEST_PASSWORD_OWNER=owner_secure_123
+TEST_OWNER_EMAIL=owner@test.com
+
+# Manager (gerente)
+TEST_USER_MANAGER=manager_test
+TEST_PASSWORD_MANAGER=manager_secure_123
+TEST_MANAGER_EMAIL=manager@test.com
+
+# Agent (corretor)
+TEST_USER_AGENT=agent_test
+TEST_PASSWORD_AGENT=agent_secure_123
+TEST_AGENT_EMAIL=agent@test.com
+
+# Prospector (prospector)
+TEST_USER_PROSPECTOR=prospector_test
+TEST_PASSWORD_PROSPECTOR=prospector_secure_123
+
+# === Dados de Teste ===
+
+# Company
+TEST_COMPANY_ID=1
+TEST_COMPANY_NAME=Imobiliária Teste Ltda
+TEST_CNPJ=12.345.678/0001-95
+
+# Outros
+TEST_TIMEOUT=30
+TEST_API_VERSION=v1
+```
+
+**Regras**:
+1. **Nunca versione o .env** - está no `.gitignore`
+2. **Use senhas diferentes para cada perfil** - simula ambiente real
+3. **Documente variáveis necessárias** - em README ou .env.example
+4. **Mantenha consistência** - mesmos nomes em todos os testes
+
+---
 ## Alternativas Consideradas e Rejeitadas
 
 | Alternativa | Motivo da Rejeição |
@@ -268,3 +411,4 @@ cypress/
 | 2025-11-30 | 1.1 | Detalhamento de tipos de teste | Equipe Dev |
 | 2026-01-08 | 2.0 | 100% cobertura em validações obrigatória | Equipe Dev |
 | 2026-01-22 | 3.0 | Simplificado: 2 tipos de teste (unitário + E2E) | Equipe Dev |
+| 2026-02-05 | 3.1 | Adicionadas boas práticas: CNPJ válido, não usar admin em testes de API, dados sensíveis no .env | Equipe Dev |

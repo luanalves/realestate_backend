@@ -80,6 +80,23 @@ A ADR-003 define apenas **2 tipos de testes**:
   → SIM = E2E
 ```
 
+### Diretrizes Críticas (ADR-003 v3.1)
+
+**Dados de Teste:**
+1. ✅ **CNPJ válido** - Sempre usar formato brasileiro com dígitos verificadores corretos
+   - Exemplo: `12.345.678/0001-95`
+   - ❌ Nunca: `11111111111111`, `00000000000000`
+
+2. ✅ **Não usar admin em testes de API** - Usar usuário específico do perfil sendo testado
+   - Testes de agent → login como `TEST_USER_AGENT`
+   - Testes de manager → login como `TEST_USER_MANAGER`
+   - ❌ Nunca: login como `admin` em testes de permissões
+
+3. ✅ **Dados sensíveis no .env** - Nunca hardcode no código
+   - Credenciais, senhas, tokens → `18.0/.env`
+   - Testes leem variáveis: `${TEST_USER_AGENT}`
+   - ❌ Nunca: `username = "admin"` no código
+
 ## O que você NÃO faz
 
 ❌ Criar código de teste
@@ -125,13 +142,17 @@ A ADR-003 define apenas **2 tipos de testes**:
 - **Motivo:** Testar jornada do usuário: login como agent → criar property → verificar que foi atribuída
 - **Arquivo:** `cypress/e2e/agent-property-creation.cy.js`
 - **O que testar:**
-  - Login como agent
+  - Login como agent (usar `cy.loginAsAgent()` - credenciais do .env)
   - Criar property via UI
   - Verificar que property aparece na lista do agent
 
 ### ⚡ Próximos Passos
 1. Criar teste unitário para validações
 2. Criar teste E2E para jornada completa
-3. Executar: `docker compose exec odoo python3 /mnt/extra-addons/quicksol_estate/tests/unit/run_unit_tests.py`
-4. Executar: `npx cypress run --spec "cypress/e2e/agent-property-creation.cy.js"`
+3. Verificar que credenciais estão no .env (não hardcoded)
+4. Garantir CNPJ válido se property tiver company_id
+5. Executar: `docker compose exec odoo python3 /mnt/extra-addons/quicksol_estate/tests/unit/run_unit_tests.py`
+6. Executar: `npx cypress run --spec "cypress/e2e/agent-property-creation.cy.js"`
+
+**Dados de teste:** Credenciais estão em `18.0/.env` (nunca hardcode no código)
 ```

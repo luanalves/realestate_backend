@@ -51,6 +51,9 @@ Este projeto usa **APENAS 2 tipos de testes**:
 ❌ Mockar bancos de dados em E2E (use o real)
 ❌ Hardcoded credentials (use `18.0/.env`)
 ❌ **NUNCA usar formato JSON-RPC** em testes de API (wrapper `{"jsonrpc": "2.0", "method": "call", "params": {...}}`)
+❌ **CNPJs inválidos** - sempre use formato válido brasileiro (14 dígitos com validação)
+❌ **Login de admin em testes de API** - use usuários específicos por perfil (manager, agent, owner)
+❌ **Dados sensíveis hardcoded** - sempre no .env
 
 ### ⚠️ IMPORTANTE: JSON-RPC NÃO é suportado
 
@@ -144,12 +147,41 @@ source "$(dirname "$0")/../18.0/.env"
 2. **Estrutura de teste:**
 ```bash
 echo "🧪 Test: [Cenário]"
+
+# ✅ CORRETO - Usar variáveis do .env
 RESPONSE=$(curl -s -X POST "$BASE_URL/api/endpoint" \
   -H "Authorization: Bearer $JWT_TOKEN" \
   -d '{"data": "value"}')
+
+# ❌ ERRADO - Hardcode de credenciais
+RESPONSE=$(curl -s -X POST "http://localhost:8069/api/endpoint" \
+  -H "Authorization: Bearer hardcoded_token" \
+  -d '{"username": "admin"}')
 ```
 
-3. **Asserções:**
+3. **Dados de teste válidos:**
+```bash
+# ✅ CORRETO - CNPJ válido do .env
+CNPJ="${TEST_CNPJ}"  # 12.345.678/0001-95
+
+# ❌ ERRADO - CNPJ inválido hardcoded
+CNPJ="11111111111111"
+```
+
+4. **Login por perfil:**
+```bash
+# ✅ CORRETO - Usar usuário específico do perfil
+TOKEN=$(curl -s -X POST "$BASE_URL/api/v1/auth/token" \
+  -d "{\"username\":\"${TEST_USER_AGENT}\",\"password\":\"${TEST_PASSWORD_AGENT}\"}" \
+  | jq -r '.access_token')
+
+# ❌ ERRADO - Usar admin em teste de permissões
+TOKEN=$(curl -s -X POST "$BASE_URL/api/v1/auth/token" \
+  -d '{"username":"admin","password":"admin"}' \
+  | jq -r '.access_token')
+```
+
+5. **Asserções:**
 ```bash
 if [[ "$RESPONSE" == *"expected"* ]]; then
   echo "✅ PASS"
@@ -172,8 +204,11 @@ Quando criar um teste, sempre verifique se:
 1. ✅ O teste está no diretório correto
 2. ✅ Segue o template do projeto
 3. ✅ Usa credenciais do `.env` (não hardcoded)
-4. ✅ Tem comando de execução documentado
-5. ✅ Está alinhado com a ADR-003
+4. ✅ **CNPJ está em formato válido** (14 dígitos com validação)
+5. ✅ **Não usa login de admin** em testes de permissões de API
+6. ✅ **Dados sensíveis estão no .env** (nunca no código)
+7. ✅ Tem comando de execução documentado
+8. ✅ Está alinhado com a ADR-003
 
 ## 📚 Recursos Úteis
 

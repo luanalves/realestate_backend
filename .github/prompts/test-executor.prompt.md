@@ -35,14 +35,28 @@ cat 18.0/.env | grep TEST_
 ```
 
 **Variáveis disponíveis:**
-- `TEST_USER_ADMIN` - Usuário admin
+- `TEST_USER_ADMIN` - Usuário admin (apenas para setup, não para testes de API)
 - `TEST_PASSWORD_ADMIN` - Senha admin
+- `TEST_USER_OWNER` - Usuário owner
+- `TEST_PASSWORD_OWNER` - Senha owner
+- `TEST_USER_MANAGER` - Usuário manager
+- `TEST_PASSWORD_MANAGER` - Senha manager
 - `TEST_USER_AGENT` - Usuário agent
 - `TEST_PASSWORD_AGENT` - Senha agent
 - `TEST_COMPANY_ID` - Company de teste
+- `TEST_CNPJ` - CNPJ válido para testes (12.345.678/0001-95)
 - `TEST_DATABASE` - Nome do banco
 
-**NUNCA hardcode credenciais** - sempre use variáveis do `.env`.
+**REGRAS CRÍTICAS:**
+
+1. ✅ **NUNCA hardcode credenciais** - sempre use variáveis do `.env`
+2. ✅ **CNPJ válido** - Sempre usar formato brasileiro com dígitos verificadores
+   - Use `${TEST_CNPJ}` do .env ou gere CNPJ válido
+   - ❌ NUNCA: `11111111111111`, `00000000000000`
+3. ✅ **Não usar admin em testes de API** - Use perfil específico do teste
+   - Teste de agent → `${TEST_USER_AGENT}`
+   - Teste de manager → `${TEST_USER_MANAGER}`
+   - ❌ NUNCA: `admin` em testes de permissões
 
 ---
 
@@ -81,16 +95,16 @@ set -e
 # Carregar variáveis de ambiente
 source 18.0/.env
 
-BASE_URL="http://localhost:8069"
+BASE_URL="${TEST_BASE_URL:-http://localhost:8069}"
 DB="${TEST_DATABASE}"
 
 echo "🧪 Teste: [Nome do Teste]"
 
-# 1. Fazer login e obter token
-echo "1️⃣ Fazendo login..."
+# 1. Fazer login e obter token (usar perfil específico, NÃO admin)
+echo "1️⃣ Fazendo login como ${TEST_USER_AGENT}..."
 TOKEN=$(curl -s -X POST "$BASE_URL/api/v1/auth/token" \
   -H "Content-Type: application/json" \
-  -d "{\"username\":\"${TEST_USER_ADMIN}\",\"password\":\"${TEST_PASSWORD_ADMIN}\"}" \
+  -d "{\"username\":\"${TEST_USER_AGENT}\",\"password\":\"${TEST_PASSWORD_AGENT}\"}" \
   | jq -r '.access_token')
 
 if [ "$TOKEN" = "null" ] || [ -z "$TOKEN" ]; then
@@ -100,19 +114,30 @@ fi
 
 echo "✅ Login realizado"
 
-# 2. Testar endpoint
-echo "2️⃣ Testando endpoint..."
-RESPONSE=$(curl -s -X GET "$BASE_URL/api/v1/endpoint" \
-  -H "Authorization: Bearer $TOKEN")
+# 2. Criar dados de teste com CNPJ válido
+echo "2️⃣ Criando company com CNPJ válido..."
+COMPANY_DATA=$(cat <<EOF
+{
+  "name": "Imobiliária Teste",
+  "cnpj": "${TEST_CNPJ}"
+}
+EOF
+)
+
+RESPONSE=$(curl -s -X POST "$BASE_URL/api/v1/companies" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "$COMPANY_DATA")
 
 # 3. Validar resposta
 echo "3️⃣ Validando resposta..."
-COUNT=$(echo $RESPONSE | jq -r '.data | length')
+COMPANY_ID=$(echo $RESPONSE | jq -r '.data.id')
 
-if [ "$COUNT" -gt 0 ]; then
-  echo "✅ Teste passou: $COUNT registros retornados"
+if [ "$COMPANY_ID" != "null" ] && [ -n "$COMPANY_ID" ]; then
+  echo "✅ Teste passou: Company criada com ID $COMPANY_ID"
 else
-  echo "❌ Teste falhou: Nenhum registro retornado"
+  echo "❌ Teste falhou: Company não foi criada"
+  echo "Resposta: $RESPONSE"
   exit 1
 fi
 
@@ -201,10 +226,13 @@ Antes de finalizar, verifique:
 
 - [ ] Arquivo criado no caminho correto
 - [ ] Credenciais lidas do `.env` (não hardcoded)
+- [ ] **CNPJ em formato válido** (se aplicável)
+- [ ] **Perfil de usuário correto** (não usar admin em testes de API)
 - [ ] Template seguido (curl/Cypress/unittest)
 - [ ] Comentários explicativos no código
 - [ ] Assertions/validações presentes
 - [ ] Código completo e executável
+- [ ] Dados sensíveis no .env (nunca no código)
 
 ---
 
@@ -225,9 +253,10 @@ Arquivo: integration_tests/test_rbac_owner_access.sh
 1. Lê `18.0/.env` para obter credenciais
 2. Cria `integration_tests/test_rbac_owner_access.sh`
 3. Usa template de curl
-4. Substitui `TEST_USER_ADMIN` e `TEST_PASSWORD_ADMIN` do `.env`
-5. Adiciona lógica específica do cenário (criar company, criar user, verificar acesso)
-6. Torna o arquivo executável (`chmod +x`)
+4. Substitui `${TEST_USER_OWNER}` e `${TEST_PASSWORD_OWNER}` do `.env` (NÃO admin)
+5. Garante CNPJ válido se criar company: `${TEST_CNPJ}`
+6. Adiciona lógica específica do cenário (criar company, criar user, verificar acesso)
+7. Torna o arquivo executável (`chmod +x`)
 
 **Você responde:**
 ```markdown
@@ -242,8 +271,8 @@ bash integration_tests/test_rbac_owner_access.sh
 ```
 
 **O que este teste faz:**
-1. Faz login como admin
-2. Cria uma company
+1. Faz login como owner (${TEST_USER_OWNER}, não admin)
+2. Cria uma company com CNPJ válido
 3. Cria um owner user
 4. Verifica que owner vê dados da company
 5. Verifica que owner NÃO vê dados de outras companies

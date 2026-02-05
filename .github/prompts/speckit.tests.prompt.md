@@ -23,9 +23,12 @@ Generate all tests for a feature specification based on acceptance scenarios.
 ## What it does
 
 1. Reads spec.md and extracts ALL acceptance scenarios
-2. Applies "Regra de Ouro" (ADR-003) to determine test type for each
+2. Applies "Regra de Ouro" (ADR-003 v3.1) to determine test type for each
 3. Generates test code (curl/bash, Cypress, or unittest)
-4. Creates test files in correct locations
+4. Creates test files in correct locations with:
+   - ✅ CNPJ válido (formato brasileiro com validação)
+   - ✅ Credenciais do .env (nunca hardcoded)
+   - ✅ Perfil de usuário correto (não usar admin em testes de API)
 5. Marks test generation tasks as complete in tasks.md
 6. Hands off to speckit.implement for code implementation
 
