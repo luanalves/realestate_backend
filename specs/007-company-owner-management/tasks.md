@@ -173,10 +173,10 @@
 
 **Purpose**: Comprehensive testing of isolation and cross-story integration
 
-- [ ] T053 [P] Create shell test `integration_tests/test_us7_s5_multitenancy.sh`
-- [ ] T054 Verify 404 (not 403) returned for inaccessible companies/owners
-- [ ] T055 Test Owner from Company A cannot access Company B data
-- [ ] T056 Test Owner linked to multiple companies sees all their Owners
+- [X] T053 [P] Create shell test `integration_tests/test_us7_s5_multitenancy.sh`
+- [X] T054 Verify 404 (not 403) returned for inaccessible companies/owners
+- [X] T055 Test Owner from Company A cannot access Company B data
+- [X] T056 Test Owner linked to multiple companies sees all their Owners
 
 **Checkpoint**: Multi-tenancy isolation verified
 
