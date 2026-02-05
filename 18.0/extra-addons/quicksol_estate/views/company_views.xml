@@ -16,6 +16,10 @@
                     </header>
                     <sheet>
                         <div class="oe_button_box" name="button_box">
+                            <!-- T039: Owners smart button -->
+                            <button name="action_view_owners" type="object" class="oe_stat_button" icon="fa-user-circle">
+                                <field name="owner_count" widget="statinfo" string="Owners"/>
+                            </button>
                             <button name="action_view_properties" type="object" class="oe_stat_button" icon="fa-building">
                                 <field name="property_count" widget="statinfo" string="Properties"/>
                             </button>

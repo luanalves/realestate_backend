@@ -118,10 +118,10 @@
 
 ### Implementation for User Story 3
 
-- [ ] T039 [US3] Add "Owners" smart button to company form view in `views/company_views.xml`
-- [ ] T040 [US3] Create Owner list action accessible from company form
-- [ ] T041 [US3] Add filter "Estate Owners" to Users list view (extend res.users views)
-- [ ] T042 [US3] Verify Admin group bypasses multi-tenancy filters (base.group_system check)
+- [X] T039 [US3] Add "Owners" smart button to company form view in `views/company_views.xml`
+- [X] T040 [US3] Create Owner list action accessible from company form
+- [X] T041 [US3] Add filter "Estate Owners" to Users list view (extend res.users views)
+- [X] T042 [US3] Verify Admin group bypasses multi-tenancy filters (base.group_system check)
 
 **Checkpoint**: User Story 3 complete - SaaS Admin has full control via Odoo Web
 

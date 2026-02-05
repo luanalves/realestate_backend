@@ -50,6 +50,7 @@ class RealEstateCompany(models.Model):
     tenant_count = fields.Integer(string='Tenants Count', compute='_compute_counts')
     lease_count = fields.Integer(string='Active Leases', compute='_compute_counts')
     sale_count = fields.Integer(string='Sales Count', compute='_compute_counts')
+    owner_count = fields.Integer(string='Owners Count', compute='_compute_owner_count')  # T039
     
     # Relationships (Many2many com tabelas intermediárias)
     property_ids = fields.Many2many('real.estate.property', 'thedevkitchen_company_property_rel', 'company_id', 'property_id', string='Properties')
@@ -71,6 +72,21 @@ class RealEstateCompany(models.Model):
             record.tenant_count = len(record.tenant_ids)
             record.lease_count = len(record.lease_ids)
             record.sale_count = len(record.sale_ids)
+
+    def _compute_owner_count(self):
+        """T039: Compute count of Owners linked to this company"""
+        for record in self:
+            # T042: Admin bypasses filters - count all owners
+            # For regular users, count only active owners
+            owner_group = self.env.ref('quicksol_estate.group_real_estate_owner')
+            domain = [
+                ('estate_company_ids', 'in', record.id),
+                ('groups_id', 'in', owner_group.id),
+            ]
+            # T042: Admin sees all owners, others see only active
+            if not self.env.user.has_group('base.group_system'):
+                domain.append(('active', '=', True))
+            record.owner_count = self.env['res.users'].search_count(domain)
 
     @api.constrains('cnpj')
     def _check_cnpj(self):
@@ -140,6 +156,34 @@ class RealEstateCompany(models.Model):
             'view_mode': 'list,form',
             'domain': [('company_ids', 'in', self.id)],
             'context': {'default_company_ids': [(6, 0, [self.id])]}
+        }
+
+    def action_view_owners(self):
+        """T040: Action to view company owners"""
+        self.ensure_one()
+        owner_group = self.env.ref('quicksol_estate.group_real_estate_owner')
+        domain = [
+            ('estate_company_ids', 'in', self.id),
+            ('groups_id', 'in', owner_group.id),
+        ]
+        # T042: Admin can see inactive owners, others see only active
+        if not self.env.user.has_group('base.group_system'):
+            domain.append(('active', '=', True))
+        
+        return {
+            'name': f'Owners - {self.name}',
+            'type': 'ir.actions.act_window',
+            'res_model': 'res.users',
+            'view_mode': 'tree,form',
+            'views': [
+                (self.env.ref('quicksol_estate.view_owner_tree').id, 'tree'),
+                (self.env.ref('quicksol_estate.view_owner_form').id, 'form'),
+            ],
+            'domain': domain,
+            'context': {
+                'default_groups_id': [(4, owner_group.id)],
+                'search_default_active_owners': 1,
+            }
         }
 
     def action_view_tenants(self):
