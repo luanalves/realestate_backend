@@ -137,12 +137,12 @@
 
 - [ ] T043 [P] [US4] Create integration test `tests/api/test_company_api.py::TestManagerReadOnly`
 - [ ] T044 [P] [US4] Create integration test `tests/api/test_owner_api.py::TestManagerNoAccess`
-- [ ] T045 [P] [US4] Create shell test `integration_tests/test_us7_s4_rbac.sh`
+- [X] T045 [P] [US4] Create shell test `integration_tests/test_us7_s4_rbac.sh`
 
 ### Implementation for User Story 4
 
-- [ ] T046 [US4] Add RBAC check in company_api.py: Manager/Director → read-only
-- [ ] T047 [US4] Add RBAC check in owner_api.py: Manager/Director → 403 Forbidden
+- [X] T046 [US4] Add RBAC check in company_api.py: Manager/Director → read-only
+- [X] T047 [US4] Add RBAC check in owner_api.py: Manager/Director → 403 Forbidden
 - [ ] T048 [US4] Verify record rules in Odoo Web enforce read-only for Manager/Director
 
 **Checkpoint**: User Story 4 complete - RBAC correctly enforced
