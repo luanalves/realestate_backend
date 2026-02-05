@@ -10,7 +10,7 @@ access_owner_commission_rule,Owner: Commission Rules,model_real_estate_commissio
 access_owner_commission_transaction,Owner: Commission Transactions,model_real_estate_commission_transaction,group_real_estate_owner,1,1,1,1
 access_owner_assignment,Owner: Property Assignments,model_real_estate_agent_property_assignment,group_real_estate_owner,1,1,1,1
 access_owner_res_users,Owner: Users,base.model_res_users,group_real_estate_owner,1,1,1,0
-access_director_estate_company,Director: Estate Companies,model_thedevkitchen_estate_company,group_real_estate_director,1,1,0,0
+access_director_estate_company,Director: Estate Companies,model_thedevkitchen_estate_company,group_real_estate_director,1,0,0,0
 access_director_property,Director: Properties,model_real_estate_property,group_real_estate_director,1,1,1,1
 access_director_commission_rule,Director: Commission Rules,model_real_estate_commission_rule,group_real_estate_director,1,1,1,0
 access_director_commission_transaction,Director: Commission Transactions,model_real_estate_commission_transaction,group_real_estate_director,1,1,0,0
@@ -64,7 +64,7 @@ access_system_admin_property_document,System Admin: Property Documents,model_rea
 access_system_admin_property_key,System Admin: Property Keys,model_real_estate_property_key,base.group_system,1,1,1,1
 access_system_admin_property_commission,System Admin: Property Commissions,model_real_estate_property_commission,base.group_system,1,1,1,1
 access_system_admin_property_tag,System Admin: Property Tags,model_real_estate_property_tag,base.group_system,1,1,1,1
-access_company_manager_estate_company,Company Manager: Estate Companies,model_thedevkitchen_estate_company,group_real_estate_manager,1,1,1,1
+access_company_manager_estate_company,Company Manager: Estate Companies,model_thedevkitchen_estate_company,group_real_estate_manager,1,0,0,0
 access_company_manager_property,Company Manager: Properties,model_real_estate_property,group_real_estate_manager,1,1,1,1
 access_company_manager_agent,Company Manager: Agents,model_real_estate_agent,group_real_estate_manager,1,1,1,1
 access_company_manager_lease,Company Manager: Leases,model_real_estate_lease,group_real_estate_manager,1,1,1,1

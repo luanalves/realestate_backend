@@ -143,7 +143,7 @@
 
 - [X] T046 [US4] Add RBAC check in company_api.py: Manager/Director → read-only
 - [X] T047 [US4] Add RBAC check in owner_api.py: Manager/Director → 403 Forbidden
-- [ ] T048 [US4] Verify record rules in Odoo Web enforce read-only for Manager/Director
+- [X] T048 [US4] Verify record rules in Odoo Web enforce read-only for Manager/Director
 
 **Checkpoint**: User Story 4 complete - RBAC correctly enforced
 
