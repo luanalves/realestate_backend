@@ -310,6 +310,7 @@ def require_company(func):
 
         if user.has_group('base.group_system'):
             request.company_domain = []
+            request.user_company_ids = []  # Admin has access to all companies
             return func(*args, **kwargs)
 
         if not user.estate_company_ids:

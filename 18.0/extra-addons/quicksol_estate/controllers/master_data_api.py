@@ -199,7 +199,13 @@ class MasterDataApiController(http.Controller):
         """
         try:
             Company = request.env['thedevkitchen.estate.company'].sudo()
-            domain = [('id', 'in', request.user_company_ids)]
+            
+            # Se user_company_ids está vazio, o usuário é admin e vê todas as companies
+            if request.user_company_ids:
+                domain = [('id', 'in', request.user_company_ids)]
+            else:
+                domain = []  # Admin vê todas
+            
             companies = Company.search(domain, order='name')
             
             companies_list = []
