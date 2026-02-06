@@ -7,6 +7,7 @@ import re
 class RealEstateCompany(models.Model):
     _name = 'thedevkitchen.estate.company'
     _description = 'Real Estate Company'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _table = 'thedevkitchen_estate_company'
     _order = 'name'
 
