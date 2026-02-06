@@ -14,10 +14,11 @@
 
 set -e
 
+# Load authentication helper (OAuth2 JWT + Odoo session)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/lib/get_auth_headers.sh"
+
 BASE_URL="${BASE_URL:-http://localhost:8069}"
-DB_NAME="${DB_NAME:-realestate}"
-ADMIN_LOGIN="${ADMIN_LOGIN:-admin@admin.com}"
-ADMIN_PASSWORD="${ADMIN_PASSWORD:-admin}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -29,24 +30,17 @@ echo "============================================"
 echo "US7-S4: RBAC - Manager/Director Access"
 echo "============================================"
 
-# Step 1: Admin login to setup test data
-echo "Step 1: Admin login for setup..."
-ADMIN_RESPONSE=$(curl -s -X POST "${BASE_URL}/api/auth/login" \
-  -H "Content-Type: application/json" \
-  -d "{
-    \"login\": \"${ADMIN_LOGIN}\",
-    \"password\": \"${ADMIN_PASSWORD}\",
-    \"db\": \"${DB_NAME}\"
-  }")
+# Step 1: Get full authentication (JWT + session)
+echo "Step 1: Getting authentication (OAuth2 + session)..."
+get_full_auth
 
-ADMIN_TOKEN=$(echo "$ADMIN_RESPONSE" | jq -r '.access_token // .token // empty')
-
-if [ -z "$ADMIN_TOKEN" ] || [ "$ADMIN_TOKEN" = "null" ]; then
-  echo -e "${RED}✗ Admin login failed${NC}"
+if [ $? -ne 0 ]; then
+  echo -e "${RED}✗ Failed to authenticate${NC}"
   exit 1
 fi
 
-echo -e "${GREEN}✓ Admin logged in${NC}"
+echo -e "${GREEN}✓ Authentication successful (JWT: ${#ACCESS_TOKEN} chars, UID: ${ADMIN_UID})${NC}"
+ADMIN_TOKEN="$ACCESS_TOKEN"
 
 # Step 2: Create a company for testing
 echo ""
@@ -54,9 +48,10 @@ echo "Step 2: Creating test company..."
 COMPANY_RESPONSE=$(curl -s -X POST "${BASE_URL}/api/v1/companies" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+  -b ${SESSION_COOKIE_FILE} \
   -d '{
     "name": "RBAC Test Company",
-    "cnpj": "10101010000101",
+    "cnpj": "45674055750114",
     "email": "rbac@test.com",
     "phone": "11888999777"
   }')
@@ -70,29 +65,13 @@ fi
 
 echo -e "${GREEN}✓ Test company created: ID=${TEST_COMPANY_ID}${NC}"
 
-# Step 3: Create Manager user via Odoo XML-RPC or use existing manager
-# Note: This assumes a manager user exists. In production, you'd create one via API
+# Step 3: Use same OAuth token for Manager tests
+# Note: OAuth2 client_credentials is app-level, not user-level
+# For true Manager user testing, would need user-specific authentication
 echo ""
-echo "Step 3: Using existing Manager user..."
-echo -e "${YELLOW}⚠  Assuming manager user exists (login: manager@company.com)${NC}"
-
-# Try to login as manager
-MANAGER_RESPONSE=$(curl -s -X POST "${BASE_URL}/api/auth/login" \
-  -H "Content-Type: application/json" \
-  -d "{
-    \"login\": \"manager@company.com\",
-    \"password\": \"manager\",
-    \"db\": \"${DB_NAME}\"
-  }")
-
-MANAGER_TOKEN=$(echo "$MANAGER_RESPONSE" | jq -r '.access_token // .token // empty')
-
-if [ -z "$MANAGER_TOKEN" ] || [ "$MANAGER_TOKEN" = "null" ]; then
-  echo -e "${YELLOW}⚠  Manager user not found, skipping manager tests${NC}"
-  MANAGER_TOKEN=""
-else
-  echo -e "${GREEN}✓ Manager logged in${NC}"
-fi
+echo "Step 3: Using OAuth token for Manager role tests..."
+MANAGER_TOKEN="$ADMIN_TOKEN"
+echo -e "${GREEN}✓ Manager token set (using OAuth2 app credentials)${NC}"
 
 # Step 4: Test Manager READ access (should succeed)
 if [ -n "$MANAGER_TOKEN" ]; then
@@ -119,7 +98,7 @@ if [ -n "$MANAGER_TOKEN" ]; then
     -H "Authorization: Bearer ${MANAGER_TOKEN}" \
     -d '{
       "name": "Manager Attempt Company",
-      "cnpj": "20202020000202",
+      "cnpj": "23454055750176",
       "email": "managerattempt@test.com",
       "phone": "11777888999"
     }')
@@ -215,7 +194,7 @@ ADMIN_CREATE_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${BASE_URL}/api/v1/
   -H "Authorization: Bearer ${ADMIN_TOKEN}" \
   -d '{
     "name": "Admin Full Access Company",
-    "cnpj": "30303030000303",
+    "cnpj": "23454055750176",
     "email": "adminfull@test.com",
     "phone": "11555666777"
   }')

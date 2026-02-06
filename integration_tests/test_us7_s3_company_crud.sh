@@ -12,10 +12,11 @@
 
 set -e
 
+# Load authentication helper (OAuth2 JWT + Odoo session)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/lib/get_auth_headers.sh"
+
 BASE_URL="${BASE_URL:-http://localhost:8069}"
-DB_NAME="${DB_NAME:-realestate}"
-ADMIN_LOGIN="${ADMIN_LOGIN:-admin@admin.com}"
-ADMIN_PASSWORD="${ADMIN_PASSWORD:-admin}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -27,25 +28,21 @@ echo "============================================"
 echo "US7-S3: Company CRUD Operations"
 echo "============================================"
 
-# Step 1: Admin login
-echo "Step 1: Admin login..."
-ADMIN_RESPONSE=$(curl -s -X POST "${BASE_URL}/api/auth/login" \
-  -H "Content-Type: application/json" \
-  -d "{
-    \"login\": \"${ADMIN_LOGIN}\",
-    \"password\": \"${ADMIN_PASSWORD}\",
-    \"db\": \"${DB_NAME}\"
-  }")
+# Step 1: Get full authentication (JWT + session)
+echo "Step 1: Getting authentication (OAuth2 + session)..."
+get_full_auth
 
-ADMIN_TOKEN=$(echo "$ADMIN_RESPONSE" | jq -r '.access_token // .token // empty')
-
-if [ -z "$ADMIN_TOKEN" ] || [ "$ADMIN_TOKEN" = "null" ]; then
-  echo -e "${RED}✗ Admin login failed${NC}"
-  echo "Response: $ADMIN_RESPONSE"
+if [ $? -ne 0 ]; then
+  echo -e "${RED}✗ Failed to authenticate${NC}"
   exit 1
 fi
 
-echo -e "${GREEN}✓ Admin logged in${NC}"
+echo -e "${GREEN}✓ Authentication successful (JWT: ${#ACCESS_TOKEN} chars, UID: ${ADMIN_UID})${NC}"
+
+# Note: From here on, use:
+# -H "Authorization: Bearer ${ACCESS_TOKEN}" for JWT
+# -b ${SESSION_COOKIE_FILE} for session cookie
+ADMIN_TOKEN="$ACCESS_TOKEN"  # For compatibility with existing code
 
 # Step 2: Create Company
 echo ""
@@ -53,9 +50,10 @@ echo "Step 2: Creating Company..."
 CREATE_RESPONSE=$(curl -s -X POST "${BASE_URL}/api/v1/companies" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+  -b ${SESSION_COOKIE_FILE} \
   -d '{
     "name": "Test Real Estate Company",
-    "cnpj": "11111111000181",
+    "cnpj": "78904055750112",
     "email": "company@test.com",
     "phone": "11987654321",
     "mobile": "11999887766",
@@ -90,28 +88,29 @@ fi
 echo ""
 echo "Step 4: Listing companies..."
 LIST_RESPONSE=$(curl -s -X GET "${BASE_URL}/api/v1/companies?page=1&page_size=10" \
-  -H "Authorization: Bearer ${ADMIN_TOKEN}")
+  -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+  -b ${SESSION_COOKIE_FILE})
 
-TOTAL_COMPANIES=$(echo "$LIST_RESPONSE" | jq -r '.meta.total // empty')
-HAS_PAGINATION=$(echo "$LIST_RESPONSE" | jq -r '.meta != null')
-
-if [ -z "$TOTAL_COMPANIES" ]; then
+# Verificar se é um array (success) ou objeto com erro
+if echo "$LIST_RESPONSE" | jq -e 'type == "array"' > /dev/null 2>&1; then
+  TOTAL_COMPANIES=$(echo "$LIST_RESPONSE" | jq 'length')
+  echo -e "${GREEN}✓ Companies listed: ${TOTAL_COMPANIES} found${NC}"
+elif echo "$LIST_RESPONSE" | jq -e '.error' > /dev/null 2>&1; then
   echo -e "${RED}✗ Failed to list companies${NC}"
   echo "Response: $LIST_RESPONSE"
   exit 1
+else
+  echo -e "${RED}✗ Unexpected response format${NC}"
+  echo "Response: $LIST_RESPONSE"
+  exit 1
 fi
-
-if [ "$HAS_PAGINATION" != "true" ]; then
-  echo -e "${YELLOW}⚠  Pagination metadata missing${NC}"
-fi
-
-echo -e "${GREEN}✓ Listed companies: total=${TOTAL_COMPANIES}${NC}"
 
 # Step 5: Get company by ID
 echo ""
 echo "Step 5: Getting company details..."
 GET_RESPONSE=$(curl -s -X GET "${BASE_URL}/api/v1/companies/${COMPANY_ID}" \
-  -H "Authorization: Bearer ${ADMIN_TOKEN}")
+  -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+  -b ${SESSION_COOKIE_FILE})
 
 COMPANY_NAME=$(echo "$GET_RESPONSE" | jq -r '.data.name // empty')
 AGENT_COUNT=$(echo "$GET_RESPONSE" | jq -r '.data.agent_count // empty')
@@ -136,6 +135,7 @@ echo "Step 6: Updating company..."
 UPDATE_RESPONSE=$(curl -s -X PUT "${BASE_URL}/api/v1/companies/${COMPANY_ID}" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+  -b ${SESSION_COOKIE_FILE} \
   -d '{
     "name": "Updated Real Estate Company",
     "phone": "11888777666",
@@ -160,9 +160,10 @@ echo "Step 7: Testing CNPJ uniqueness..."
 DUPLICATE_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${BASE_URL}/api/v1/companies" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+  -b ${SESSION_COOKIE_FILE} \
   -d '{
     "name": "Duplicate Company",
-    "cnpj": "11111111000181",
+    "cnpj": "78904055750112",
     "email": "duplicate@test.com",
     "phone": "11777666555"
   }')
@@ -181,6 +182,7 @@ echo "Step 8: Testing CNPJ validation..."
 INVALID_CNPJ_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${BASE_URL}/api/v1/companies" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+  -b ${SESSION_COOKIE_FILE} \
   -d '{
     "name": "Invalid CNPJ Company",
     "cnpj": "11111111000199",
@@ -202,9 +204,10 @@ echo "Step 9: Testing email validation..."
 INVALID_EMAIL_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${BASE_URL}/api/v1/companies" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+  -b ${SESSION_COOKIE_FILE} \
   -d '{
     "name": "Invalid Email Company",
-    "cnpj": "22222222000182",
+    "cnpj": "87654055750100",
     "email": "not-an-email",
     "phone": "11555444333"
   }')
@@ -223,9 +226,10 @@ echo "Step 10: Creating company for deletion test..."
 DELETE_COMPANY_RESPONSE=$(curl -s -X POST "${BASE_URL}/api/v1/companies" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+  -b ${SESSION_COOKIE_FILE} \
   -d '{
     "name": "Company To Delete",
-    "cnpj": "33333333000129",
+    "cnpj": "34028316000103",
     "email": "todelete@test.com",
     "phone": "11444333222"
   }')
@@ -243,7 +247,8 @@ echo -e "${GREEN}✓ Company created for deletion: ID=${DELETE_COMPANY_ID}${NC}"
 echo ""
 echo "Step 11: Deleting company..."
 DELETE_RESPONSE=$(curl -s -w "\n%{http_code}" -X DELETE "${BASE_URL}/api/v1/companies/${DELETE_COMPANY_ID}" \
-  -H "Authorization: Bearer ${ADMIN_TOKEN}")
+  -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+  -b ${SESSION_COOKIE_FILE})
 
 HTTP_CODE=$(echo "$DELETE_RESPONSE" | tail -n 1)
 
@@ -257,7 +262,8 @@ fi
 echo ""
 echo "Step 12: Verifying deleted company is inaccessible..."
 GET_DELETED_RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "${BASE_URL}/api/v1/companies/${DELETE_COMPANY_ID}" \
-  -H "Authorization: Bearer ${ADMIN_TOKEN}")
+  -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+  -b ${SESSION_COOKIE_FILE})
 
 HTTP_CODE=$(echo "$GET_DELETED_RESPONSE" | tail -n 1)
 
