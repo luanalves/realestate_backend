@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        
+        <!-- OAuth2 Test Client (Feature 007) -->
+        <!-- Used for integration tests and API development -->
+        
+        <record id="oauth2_test_client" model="thedevkitchen.oauth.application">
+            <field name="name">Test API Client</field>
+            <field name="client_id">test-client-id</field>
+            <field name="client_secret">$2b$12$7B0r70EhuV7dHgK9DPicyu4jALrx4jihD0eAWbF5oitqcM./PTTJ.</field>  <!-- bcrypt hash of "test-client-secret-12345" -->
+            <field name="description">OAuth2 client for integration tests and API development. Secret: test-client-secret-12345</field>
+            <field name="active">True</field>
+        </record>
+
+    </data>
+</odoo>

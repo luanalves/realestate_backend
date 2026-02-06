@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        
+        <!-- Demo Real Estate Companies (Feature 007) -->
+        
+        <record id="company_quicksol_real_estate" model="thedevkitchen.estate.company">
+            <field name="name">QuickSol Real Estate</field>
+            <field name="legal_name">QuickSol Imóveis LTDA</field>
+            <field name="cnpj">12.345.678/0001-95</field>
+            <field name="creci">CRECI/SP 123456</field>
+            <field name="email">contato@quicksol.com.br</field>
+            <field name="phone">(11) 3456-7890</field>
+            <field name="mobile">(11) 98765-4321</field>
+            <field name="website">https://quicksol.com.br</field>
+            <field name="street">Av. Paulista, 1000</field>
+            <field name="street2">15º andar</field>
+            <field name="city">São Paulo</field>
+            <field name="zip_code">01310-100</field>
+            <field name="description">Empresa imobiliária especializada em imóveis comerciais e residenciais de alto padrão.</field>
+            <field name="active">True</field>
+        </record>
+
+        <record id="company_urban_properties" model="thedevkitchen.estate.company">
+            <field name="name">Urban Properties</field>
+            <field name="legal_name">Urban Properties Negócios Imobiliários SA</field>
+            <field name="cnpj">98.765.432/0001-98</field>
+            <field name="creci">CRECI/RJ 654321</field>
+            <field name="email">contato@urbanproperties.com.br</field>
+            <field name="phone">(21) 2345-6789</field>
+            <field name="mobile">(21) 98888-7777</field>
+            <field name="website">https://urbanproperties.com.br</field>
+            <field name="street">Av. Atlântica, 500</field>
+            <field name="city">Rio de Janeiro</field>
+            <field name="zip_code">22010-000</field>
+            <field name="description">Focada em imóveis urbanos e desenvolvimento de empreendimentos.</field>
+            <field name="active">True</field>
+        </record>
+
+        <record id="company_luxury_group" model="thedevkitchen.estate.company">
+            <field name="name">Luxury Group</field>
+            <field name="legal_name">Luxury Group Empreendimentos LTDA</field>
+            <field name="cnpj">11.222.333/0001-81</field>
+            <field name="creci">CRECI/SP 789012</field>
+            <field name="email">contato@luxurygroup.com.br</field>
+            <field name="phone">(11) 3333-4444</field>
+            <field name="mobile">(11) 99999-8888</field>
+            <field name="website">https://luxurygroup.com.br</field>
+            <field name="street">Rua Oscar Freire, 2000</field>
+            <field name="city">São Paulo</field>
+            <field name="zip_code">01426-001</field>
+            <field name="description">Especializada em imóveis de luxo e alto padrão.</field>
+            <field name="active">True</field>
+        </record>
+
+    </data>
+</odoo>

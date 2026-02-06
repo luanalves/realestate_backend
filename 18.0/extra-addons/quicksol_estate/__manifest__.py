@@ -66,9 +66,11 @@ Property Form Sections:
         'data/states.xml',
         'data/property_data.xml',
         'data/amenity_data.xml',
-        'data/demo_users.xml',
+        'data/company_seed.xml',  # Feature 007: Real Estate Companies seed data (REATIVADO)
+        'data/demo_users.xml',  # Feature 007: Demo users (REATIVADO)
         'data/property_demo_data.xml',
-        'data/agent_seed.xml',
+        'data/agent_seed.xml',  # Feature 007: Agent seed data (REATIVADO)
+        'data/oauth2_seed.xml',  # Feature 007: OAuth2 test client (REATIVADO)
         'data/api_endpoints.xml',
         'data/user_auth_endpoints_data.xml',
         'data/system_parameters.xml',
@@ -79,15 +81,15 @@ Property Form Sections:
         'views/property_auxiliary_views.xml',
         'views/agent_views.xml',
         'views/lead_views.xml',  # FR-001: Lead views for managers
-        'views/lead_filter_views.xml',  # FR-048: Saved search filters
         'views/commission_rule_views.xml',
         'views/assignment_views.xml',
         'views/lease_views.xml',
         'views/sale_views.xml',
         'views/tenant_views.xml',
         'views/company_views.xml',  # Feature 007: Company form, list, search views
-        'views/owner_views.xml',  # Feature 007: Owner list, form views (T040-T041)
+        'views/owner_views.xml',  # Feature 007: Owner list, form views (REATIVADO - xpath corrigido)
         'views/real_estate_menus.xml',
+        'views/lead_filter_views.xml',  # FR-048: Saved search filters (REATIVADO)
         'views/res_users_views.xml',
     ],
     'assets': {
