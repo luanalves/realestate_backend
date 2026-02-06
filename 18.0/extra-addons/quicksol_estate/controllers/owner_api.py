@@ -2,16 +2,13 @@
 """
 Owner API Controller - Feature 007: Company & Owner Management
 
-Independent Owner CRUD endpoints (not nested under Company).
-Owners can be created without a company and linked later.
+Owner lifecycle management (creation, deletion, company linking).
+For owner profile updates, use /api/v1/users/profile endpoint.
 
 Endpoints:
-    POST   /api/v1/owners                        → Create owner (no company)
-    GET    /api/v1/owners                        → List all owners from user's companies
-    GET    /api/v1/owners/{id}                   → Get owner details
-    PUT    /api/v1/owners/{id}                   → Update owner
-    DELETE /api/v1/owners/{id}                   → Soft delete
-    POST   /api/v1/owners/{id}/companies         → Link owner to company
+    POST   /api/v1/owners                        → Create owner (no company required)
+    DELETE /api/v1/owners/{id}                   → Delete owner (validates not last in company)
+    POST   /api/v1/owners/{id}/companies/{cid}   → Link owner to company
     DELETE /api/v1/owners/{id}/companies/{cid}   → Unlink owner from company
 """
 import json
@@ -40,13 +37,14 @@ class OwnerApiController(http.Controller):
     
     @http.route('/api/v1/owners', type='http', auth='none', methods=['POST'], csrf=False, cors='*')
     @require_jwt
-    @require_session
+    # No @require_session - Self-registration, no user context needed yet
     # No @require_company - Owner can exist without company (FR-010 exception)
     def create_owner(self, **kwargs):
         """
-        Create a new Owner without company association.
+        Create a new Owner without company association (self-registration).
         
-        RBAC: Only Owner (for their companies) or Admin can create Owners (FR-018, T016)
+        Authentication: OAuth2 JWT only (no user session required)
+        RBAC: None - any authenticated app can create owners (FR-018, T016)
         
         Request Body:
             {
@@ -60,18 +58,12 @@ class OwnerApiController(http.Controller):
         Returns:
             201: Owner created successfully
             400: Validation error
-            403: Forbidden (not Owner or Admin)
+            401: Invalid JWT token
             409: Email already exists
         """
         try:
-            user = request.env.user
-            
-            # RBAC Check (T016): Only Owner or Admin can create Owners
-            is_owner = user.has_group('quicksol_estate.group_real_estate_owner')
-            is_admin = user.has_group('base.group_system')
-            
-            if not (is_owner or is_admin):
-                return error_response(403, 'Only Owners or Admins can create new Owners')
+            # OAuth2 JWT validation already done by @require_jwt
+            # No user session needed - self-registration flow
             
             # Parse request body
             try:
@@ -156,278 +148,6 @@ class OwnerApiController(http.Controller):
             _logger.error(f"Error creating owner: {str(e)}", exc_info=True)
             return error_response(500, 'Internal server error')
     
-    # ========== LIST OWNERS (T017) ==========
-    
-    @http.route('/api/v1/owners', type='http', auth='none', methods=['GET'], csrf=False, cors='*')
-    @require_jwt
-    @require_session
-    # No @require_company - returns Owners from all user's companies (FR-040)
-    def list_owners(self, page=1, page_size=20, **kwargs):
-        """
-        List all Owners from companies the user has access to.
-        
-        Multi-tenancy: Returns Owners from all companies in user.estate_company_ids (FR-040)
-        
-        Query Parameters:
-            page: Page number (default: 1)
-            page_size: Items per page (default: 20, max: 100)
-        
-        Returns:
-            200: List of owners with pagination
-            403: Forbidden
-        """
-        try:
-            user = request.env.user
-            
-            # Convert pagination parameters
-            try:
-                page = int(page)
-                page_size = min(int(page_size), 100)  # Max 100 items per page
-            except (ValueError, TypeError):
-                return error_response(400, 'Invalid pagination parameters')
-            
-            if page < 1 or page_size < 1:
-                return error_response(400, 'Page and page_size must be positive integers')
-            
-            # Get Owner group
-            owner_group = request.env.ref('quicksol_estate.group_real_estate_owner')
-            
-            # Multi-tenancy filter (FR-037, FR-040)
-            if user.has_group('base.group_system'):
-                # Admin sees all Owners
-                domain = [('groups_id', 'in', [owner_group.id])]
-            else:
-                # User sees Owners from their companies
-                if not user.estate_company_ids:
-                    # User has no companies - return empty list
-                    response, status = paginated_response(
-                        items=[],
-                        total=0,
-                        page=page,
-                        page_size=page_size
-                    )
-                    return request.make_json_response(response, status=status)
-                
-                # Find all users who have any of the user's companies
-                domain = [
-                    ('groups_id', 'in', [owner_group.id]),
-                    ('estate_company_ids', 'in', user.estate_company_ids.ids)
-                ]
-            
-            # Count total
-            total = request.env['res.users'].sudo().search_count(domain)
-            
-            # Get paginated results
-            offset = (page - 1) * page_size
-            owners = request.env['res.users'].sudo().search(
-                domain,
-                limit=page_size,
-                offset=offset,
-                order='name'
-            )
-            
-            # Serialize owners
-            owner_list = []
-            for owner in owners:
-                owner_list.append({
-                    'id': owner.id,
-                    'name': owner.name,
-                    'email': owner.email,
-                    'phone': owner.phone,
-                    'mobile': owner.mobile,
-                    'company_count': len(owner.estate_company_ids),
-                    'companies': [{'id': c.id, 'name': c.name} for c in owner.estate_company_ids]
-                })
-            
-            # Build pagination links
-            from ..utils.responses import build_pagination_links
-            links = build_pagination_links(
-                base_url='/api/v1/owners',
-                page=page,
-                total_pages=(total + page_size - 1) // page_size
-            )
-            
-            response, status = paginated_response(
-                items=owner_list,
-                total=total,
-                page=page,
-                page_size=page_size,
-                links=links
-            )
-            
-            return request.make_json_response(response, status=status)
-            
-        except Exception as e:
-            _logger.error(f"Error listing owners: {str(e)}", exc_info=True)
-            return error_response(500, 'Internal server error')
-    
-    # ========== GET OWNER (T018) ==========
-    
-    @http.route('/api/v1/owners/<int:owner_id>', type='http', auth='none', methods=['GET'], csrf=False, cors='*')
-    @require_jwt
-    @require_session
-    def get_owner(self, owner_id, **kwargs):
-        """
-        Get Owner details by ID.
-        
-        Multi-tenancy: Returns 404 if Owner not accessible (FR-039)
-        
-        Returns:
-            200: Owner details
-            404: Owner not found or not accessible
-        """
-        try:
-            user = request.env.user
-            
-            # Get owner
-            owner = request.env['res.users'].sudo().browse(owner_id)
-            
-            if not owner.exists():
-                return error_response(404, 'Owner not found')
-            
-            # Verify owner has Owner group
-            owner_group = request.env.ref('quicksol_estate.group_real_estate_owner')
-            if owner_group not in owner.groups_id:
-                return error_response(404, 'Owner not found')
-            
-            # Multi-tenancy check (FR-039: return 404 for inaccessible)
-            if not user.has_group('base.group_system'):
-                # Non-admin: verify owner belongs to one of user's companies
-                common_companies = set(owner.estate_company_ids.ids) & set(user.estate_company_ids.ids)
-                if not common_companies:
-                    return error_response(404, 'Owner not found')
-            
-            # Serialize owner
-            owner_data = {
-                'id': owner.id,
-                'name': owner.name,
-                'email': owner.email,
-                'phone': owner.phone,
-                'mobile': owner.mobile,
-                'active': owner.active,
-                'company_count': len(owner.estate_company_ids),
-                'companies': [
-                    {
-                        'id': c.id,
-                        'name': c.name,
-                        'cnpj': c.cnpj
-                    } for c in owner.estate_company_ids
-                ]
-            }
-            
-            # Build HATEOAS links
-            links = build_hateoas_links(
-                base_url='/api/v1/owners',
-                resource_id=owner_id,
-                relations={
-                    'companies': '/companies',
-                    'link_company': '/companies'
-                }
-            )
-            
-            response, status = util_success(
-                data=owner_data,
-                links=links
-            )
-            
-            return request.make_json_response(response, status=status)
-            
-        except Exception as e:
-            _logger.error(f"Error getting owner {owner_id}: {str(e)}", exc_info=True)
-            return error_response(500, 'Internal server error')
-    
-    # ========== UPDATE OWNER (T019) ==========
-    
-    @http.route('/api/v1/owners/<int:owner_id>', type='http', auth='none', methods=['PUT'], csrf=False, cors='*')
-    @require_jwt
-    @require_session
-    def update_owner(self, owner_id, **kwargs):
-        """
-        Update Owner information.
-        
-        RBAC: Only Owners of same companies or Admin can update (FR-020)
-        
-        Request Body:
-            {
-                "name": "Updated Name",  // optional
-                "phone": "...",          // optional
-                "mobile": "..."          // optional
-            }
-        
-        Returns:
-            200: Owner updated successfully
-            400: Validation error
-            403: Forbidden
-            404: Owner not found
-        """
-        try:
-            user = request.env.user
-            
-            # Get owner
-            owner = request.env['res.users'].sudo().browse(owner_id)
-            
-            if not owner.exists():
-                return error_response(404, 'Owner not found')
-            
-            # Verify owner has Owner group
-            owner_group = request.env.ref('quicksol_estate.group_real_estate_owner')
-            if owner_group not in owner.groups_id:
-                return error_response(404, 'Owner not found')
-            
-            # RBAC Check (FR-020)
-            if not user.has_group('base.group_system'):
-                # Non-admin: verify owner belongs to one of user's companies
-                common_companies = set(owner.estate_company_ids.ids) & set(user.estate_company_ids.ids)
-                if not common_companies:
-                    return error_response(404, 'Owner not found')
-            
-            # Parse request body
-            try:
-                data = json.loads(request.httprequest.data.decode('utf-8'))
-            except (ValueError, UnicodeDecodeError):
-                return error_response(400, 'Invalid JSON in request body')
-            
-            # Prepare update values
-            update_vals = {}
-            
-            allowed_fields = ['name', 'phone', 'mobile']
-            for field in allowed_fields:
-                if field in data:
-                    update_vals[field] = data[field]
-            
-            if not update_vals:
-                return error_response(400, 'No valid fields to update')
-            
-            # Update owner
-            owner.write(update_vals)
-            
-            # Serialize response
-            owner_data = {
-                'id': owner.id,
-                'name': owner.name,
-                'email': owner.email,
-                'phone': owner.phone,
-                'mobile': owner.mobile,
-                'company_count': len(owner.estate_company_ids)
-            }
-            
-            links = build_hateoas_links('/api/v1/owners', owner_id)
-            
-            response, status = util_success(
-                data=owner_data,
-                message='Owner updated successfully',
-                links=links
-            )
-            
-            return request.make_json_response(response, status=status)
-            
-        except ValidationError as e:
-            _logger.warning(f"Validation error updating owner {owner_id}: {str(e)}")
-            return error_response(400, str(e))
-        except Exception as e:
-            _logger.error(f"Error updating owner {owner_id}: {str(e)}", exc_info=True)
-            return error_response(500, 'Internal server error')
-    
     # ========== DELETE OWNER (T020, T021) ==========
     
     @http.route('/api/v1/owners/<int:owner_id>', type='http', auth='none', methods=['DELETE'], csrf=False, cors='*')
@@ -435,10 +155,10 @@ class OwnerApiController(http.Controller):
     @require_session
     def delete_owner(self, owner_id, **kwargs):
         """
-        Soft delete Owner (set active=False).
+        Delete Owner (soft delete: active=False).
         
-        Protection: Prevents deletion of last active Owner of any company (FR-031, T021)
-        RBAC: Only Owners of same companies or Admin can delete
+        Protection: Cannot delete if owner is the ONLY owner in any company (FR-031, T021)
+        RBAC: Only owners from same companies or Admin can delete
         
         Returns:
             200: Owner deleted successfully
