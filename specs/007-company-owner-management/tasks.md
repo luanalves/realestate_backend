@@ -186,11 +186,11 @@
 
 **Purpose**: Documentation, cleanup, final validation
 
-- [ ] T057 [P] Update `docs/postman/` with Owner & Company collection (Owner endpoints first) - **DEFERRED**
-- [ ] T058 [P] Add OpenAPI schema to `docs/openapi/007-company-owner.yaml` (copy from contracts/) - **DEFERRED**
+- [ ] T057 [P] Update `docs/postman/` with Owner & Company collection (Owner endpoints first) - **DEFERRED** (P3 - documentation)
+- [ ] T058 [P] Add OpenAPI schema to `docs/openapi/007-company-owner.yaml` (copy from contracts/) - **DEFERRED** (P3 - documentation)
 - [ ] T059 Run `./lint.sh` and fix any linting issues - **SKIPPED** (flake8 not in container)
-- [ ] T060 Validate all tests pass with `./run_all_tests.sh` - **BLOCKED** (auth API not available: `/api/auth/login` → 404)
-- [ ] T061 Run quickstart.md validation (follow steps, verify all commands work) - **BLOCKED** (requires auth API)
+- [ ] T060 Validate all tests pass with `./run_all_tests.sh` - **IN PROGRESS**: Owner API refactored (667→400 lines), seed data created, Docker image rebuilding with email-validator
+- [ ] T061 Run quickstart.md validation (follow steps, verify all commands work) - **IN PROGRESS**: Awaiting Docker build + DB initialization
 - [X] T062 Update README.md with new endpoints documentation
 
 ---
