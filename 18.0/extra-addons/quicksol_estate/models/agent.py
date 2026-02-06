@@ -585,7 +585,7 @@ class RealEstateAgent(models.Model):
             'name': f'Properties - {self.name}',
             'type': 'ir.actions.act_window',
             'res_model': 'real.estate.agent.property.assignment',
-            'view_mode': 'tree,form',
+            'view_mode': 'list,form',
             'domain': [('agent_id', '=', self.id)],
             'context': {'default_agent_id': self.id},
         }
@@ -602,7 +602,7 @@ class RealEstateAgent(models.Model):
             'name': f'Commission Transactions - {self.name}',
             'type': 'ir.actions.act_window',
             'res_model': 'real.estate.commission.transaction',
-            'view_mode': 'tree,form',
+            'view_mode': 'list,form',
             'domain': [('agent_id', '=', self.id)],
             'context': {'default_agent_id': self.id},
         }

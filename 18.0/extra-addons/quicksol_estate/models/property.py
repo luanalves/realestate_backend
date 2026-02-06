@@ -382,7 +382,7 @@ class Property(models.Model):
             'name': 'Photos',
             'type': 'ir.actions.act_window',
             'res_model': 'real.estate.property.photo',
-            'view_mode': 'kanban,tree,form',
+            'view_mode': 'kanban,list,form',
             'domain': [('property_id', '=', self.id)],
             'context': {'default_property_id': self.id},
         }
@@ -392,7 +392,7 @@ class Property(models.Model):
             'name': 'Documents',
             'type': 'ir.actions.act_window',
             'res_model': 'real.estate.property.document',
-            'view_mode': 'tree,form',
+            'view_mode': 'list,form',
             'domain': [('property_id', '=', self.id)],
             'context': {'default_property_id': self.id},
         }

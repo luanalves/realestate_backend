@@ -175,9 +175,9 @@ class RealEstateCompany(models.Model):
             'name': f'Owners - {self.name}',
             'type': 'ir.actions.act_window',
             'res_model': 'res.users',
-            'view_mode': 'tree,form',
+            'view_mode': 'list,form',
             'views': [
-                (self.env.ref('quicksol_estate.view_owner_tree').id, 'tree'),
+                (self.env.ref('quicksol_estate.view_owner_tree').id, 'list'),
                 (self.env.ref('quicksol_estate.view_owner_form').id, 'form'),
             ],
             'domain': domain,
