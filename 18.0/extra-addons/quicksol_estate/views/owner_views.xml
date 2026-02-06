@@ -7,14 +7,14 @@
             <field name="name">res.users.owner.tree</field>
             <field name="model">res.users</field>
             <field name="arch" type="xml">
-                <tree string="Estate Owners">
+                <list string="Estate Owners">
                     <field name="name"/>
                     <field name="email"/>
                     <field name="phone"/>
                     <field name="mobile"/>
                     <field name="estate_company_ids" widget="many2many_tags"/>
                     <field name="active" invisible="1"/>
-                </tree>
+                </list>
             </field>
         </record>
         
@@ -115,12 +115,10 @@
             <field name="model">res.users</field>
             <field name="inherit_id" ref="base.view_users_search"/>
             <field name="arch" type="xml">
-                <xpath expr="//filter[@name='inactive_users']" position="after">
-                    <separator/>
-                    <!-- T041: Add Estate Owners filter to main Users list -->
+                <search>
                     <filter name="filter_estate_owners" string="Estate Owners" 
                             domain="[('groups_id', 'in', [ref('quicksol_estate.group_real_estate_owner')])]"/>
-                </xpath>
+                </search>
             </field>
         </record>
         

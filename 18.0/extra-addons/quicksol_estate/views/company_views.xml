@@ -93,7 +93,7 @@
             <field name="name">thedevkitchen.estate.company.tree</field>
             <field name="model">thedevkitchen.estate.company</field>
             <field name="arch" type="xml">
-                <tree string="Real Estate Companies">
+                <list string="Real Estate Companies">
                     <field name="name"/>
                     <field name="cnpj"/>
                     <field name="email"/>
@@ -103,7 +103,7 @@
                     <field name="agent_count"/>
                     <field name="property_count"/>
                     <field name="active" invisible="1"/>
-                </tree>
+                </list>
             </field>
         </record>
         
@@ -122,9 +122,9 @@
                     <filter name="active" string="Active" domain="[('active', '=', True)]"/>
                     <filter name="inactive" string="Inactive" domain="[('active', '=', False)]"/>
                     
-                    <separator/>
-                    <filter name="has_properties" string="With Properties" domain="[('property_count', '>', 0)]"/>
-                    <filter name="has_agents" string="With Agents" domain="[('agent_count', '>', 0)]"/>
+                    <!-- TEMPORARILY DISABLED: computed fields need store=True to be searchable -->
+                    <!-- <filter name="has_properties" string="With Properties" domain="[('property_count', '>', 0)]"/> -->
+                    <!-- <filter name="has_agents" string="With Agents" domain="[('agent_count', '>', 0)]"/> -->
                     
                     <group expand="0" string="Group By">
                         <filter name="group_by_state" string="State" context="{'group_by': 'state_id'}"/>
