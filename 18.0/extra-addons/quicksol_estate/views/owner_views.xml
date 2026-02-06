@@ -92,7 +92,7 @@
         <record id="action_owner_list" model="ir.actions.act_window">
             <field name="name">Estate Owners</field>
             <field name="res_model">res.users</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
             <field name="domain">[('groups_id', 'in', [ref('quicksol_estate.group_real_estate_owner')])]</field>
             <field name="context">{
                 'search_default_active_owners': 1,
