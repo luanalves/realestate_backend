@@ -608,3 +608,396 @@ Already existing in `record_rules.xml`:
    - Unit: `tests/unit/test_company_*.py`, `tests/unit/test_owner_*.py`
    - E2E API: `integration_tests/test_company_*.sh`
    - E2E UI: `cypress/e2e/company-*.cy.js`
+
+---
+
+## Architectural Decisions Log
+
+**Decision Date**: 2026-02-06  
+**Stakeholder Review**: Pre-release checklist review (release-readiness.md)
+
+### DEC-001: Inactive Owner API Access Behavior (CHK082)
+
+**Question**: O que acontece quando um Owner com `active=False` tenta acessar a API?
+
+**Decision**: **Autenticação OK, Autorização Negada (403)**
+- Token JWT é validado normalmente (usuário existe)
+- Todas as operações de API retornam HTTP 403 Forbidden
+- Mensagem de erro: `"User account is deactivated"`
+
+**Rationale**: Permite auditoria do acesso (quem tentou) enquanto bloqueia operações. Melhor UX que falha de autenticação pois informa claramente o motivo.
+
+**Implementation**: Validar `user.active` no decorator `@require_session` antes de autorizar qualquer operação.
+
+---
+
+### DEC-002: Soft-Delete Company Restoration (CHK083)
+
+**Question**: Quem pode reativar uma Company soft-deleted?
+
+**Decision**: **Apenas SaaS Admin**
+- Owners não têm permissão para restaurar companies deletadas via API
+- Restauração disponível apenas via interface Odoo Web (menu Admin)
+- Endpoint API para restore: **Não implementado na v1** (CHK046)
+
+**Rationale**: Soft-delete é operação crítica com implicações legais/fiscais. Requer supervisão administrativa.
+
+**Implementation**: Sem endpoint `/companies/{id}/restore`. Admin usa Odoo Web: Companies → Filters → Archived → Unarchive.
+
+---
+
+### DEC-003: Last Owner Protection (CHK084)
+
+**Question**: Owner pode se remover da única company que possui?
+
+**Decision**: **Bloquear com erro HTTP 400**
+- Company DEVE ter pelo menos 1 Owner ativo
+- API retorna: `{"error": "validation_error", "message": "Cannot remove last owner from company"}`
+- Exceção: SaaS Admin pode forçar remoção via Odoo Web (bypass de regra)
+
+**Rationale**: Previne orphan companies sem gestão. Owner deve transferir propriedade antes de sair.
+
+**Implementation**: Validação em `DELETE /companies/{id}/owners/{owner_id}` e `PUT /companies/{id}/owners/{owner_id}` (se desativar).
+
+---
+
+### DEC-004: Email Uniqueness Scope (CHK085) - REVISADO
+
+**Question**: Email de Owner deve ser único globalmente ou por company?
+
+**Decision**: **Globalmente Único** (obrigatório por constraint do Odoo)
+- Email/login DEVE ser único em toda a base de dados
+- Constraint: `res_users_login_key UNIQUE CONSTRAINT, btree (login)` em `res.users`
+- NÃO é possível ter mesmo email em companies diferentes
+
+**Technical Verification** (2025-01-25):
+```sql
+-- Verificação da constraint em res.users
+\d res_users | grep -i login
+-- Resultado:
+-- login | character varying | not null |
+-- "res_users_login_key" UNIQUE CONSTRAINT, btree (login)
+```
+
+**Rationale**: Constraint nativa do Odoo impõe unicidade global. Não há como contornar sem modificar o core. Para casos de consultores multi-company, usar emails distintos (ex: `user+company1@domain.com`).
+
+**Implementation**: Validar email único via Odoo nativo. Mensagem de erro customizada: `{"error": "validation_error", "message": "Email already registered in another company"}`.
+
+---
+
+### DEC-005: Soft-Delete Company Cascade Behavior (CHK060)
+
+**Question**: O que acontece com Owners quando Company é soft-deleted?
+
+**Decision**: **Owners permanecem ativos**
+- Soft-delete de Company NÃO afeta status de Owners
+- Owners mantêm `active=True` e credenciais de login
+- Owners perdem acesso à Company deletada (não aparece em `estate_company_ids` ativas)
+- Se Owner tinha apenas esta Company, API retorna lista vazia (graceful empty state)
+
+**Rationale**: Owners são entidades independentes que podem estar em múltiplas companies. Deletar company não deve afetar perfis de usuário.
+
+**Implementation**: Nenhuma cascata automática. Record rules filtram companies ativas.
+
+---
+
+### DEC-006: Password Requirements (CHK067) - REVISADO
+
+**Question**: Requisitos de senha para criação de Owner?
+
+**Decision**: **Padrão do Framework Odoo**
+- Usar política de senha nativa do Odoo
+- Configurável via Settings → General Settings → Password Policy
+- Parâmetros controlados por `ir.config_parameter`:
+  - `auth_password_policy.minlength` (default: 8)
+  - `auth_password_policy.complexity` (opcional)
+- NÃO implementar validação customizada
+
+**Rationale**: Framework já possui mecanismo robusto e auditado. Customização adiciona complexidade sem benefício. Administrador pode ajustar políticas conforme necessidade do cliente.
+
+**Implementation**: Nenhuma. Odoo valida automaticamente via `res.users._check_credentials()`.
+
+---
+
+### DEC-007: JWT Token Expiration (CHK068)
+
+**Question**: Tempo de expiração do access token JWT?
+
+**Decision**: **Configurável via Odoo** (parâmetro de sistema)
+- Default do Odoo OAuth: verificar `ir.config_parameter` key `oauth.access_token_expiration`
+- Não há valor hardcoded na Feature 007
+- Documentar onde configurar: Settings → Technical → Parameters → System Parameters
+
+**Rationale**: Flexibilidade para diferentes políticas de segurança por deployment.
+
+**Implementation**: Usar configuração existente do módulo OAuth do Odoo. Não criar nova configuração.
+
+---
+
+### DEC-008: API Response Time SLA (CHK073)
+
+**Question**: Qual o SLA de tempo de resposta da API?
+
+**Decision**: **Sem SLA definido (best effort)**
+- Feature 007 não define requisitos de performance específicos
+- Performance depende de infraestrutura do deployment
+- Monitoramento é responsabilidade do time de operações
+
+**Rationale**: SLAs de performance requerem baseline e infraestrutura de monitoramento não disponíveis nesta fase.
+
+**Implementation**: Nenhuma otimização específica. Seguir boas práticas de query (pagination, lazy loading).
+
+---
+
+### DEC-009: Webhooks for Company/Owner Events (CHK088)
+
+**Question**: Feature 007 deve emitir webhooks quando Company/Owner são criados/deletados?
+
+**Decision**: **Sem webhooks na v1**
+- Nenhum webhook implementado nesta versão
+- Eventos podem ser adicionados em versão futura se necessário
+- Integrações externas devem usar polling ou consulta direta à API
+
+**Rationale**: Simplificar escopo da v1. Webhooks adicionam complexidade de delivery, retry, e gestão de endpoints.
+
+**Implementation**: Nenhuma. Documentar como "não suportado" nas limitações da API.
+
+---
+
+### DEC-010: Data Migration Requirements (CHK089)
+
+**Question**: Existem companies/owners existentes que precisam migração?
+
+**Decision**: **Sem migração necessária**
+- Feature 007 trabalha com dados novos
+- Companies/Owners existentes foram criados via seed data ou manualmente
+- Não há sistema legado a migrar
+
+**Rationale**: Deployment greenfield. Seeds já configuram dados iniciais necessários.
+
+**Implementation**: Nenhuma. Seeds em `data/company_seed.xml` e `data/demo_users.xml`.
+
+---
+
+### DEC-011: Company Owner vs Property Owner Terminology (CHK086)
+
+**Question**: Como distinguir "Company Owner" (dono da imobiliária) de "Property Owner" (dono do imóvel)?
+
+**Decision**: **Entidades distintas - documentar claramente**
+
+| Termo | Entidade | Descrição |
+|-------|----------|-----------|
+| **Owner** (ou Company Owner) | `res.users` + `group_real_estate_owner` | Proprietário/sócio da imobiliária. Gerencia a empresa. |
+| **Property Owner** | `real.estate.property.owner` | Pessoa física/jurídica proprietária de um imóvel específico. Cliente da imobiliária. |
+
+**Rationale**: São conceitos completamente diferentes com modelos e permissões distintas.
+
+**Implementation**: 
+- Documentação sempre usa "Company Owner" ou apenas "Owner" para o papel RBAC
+- "Property Owner" usado explicitamente quando referindo ao dono do imóvel
+- Variáveis de código: `owner` = Company Owner, `property_owner` = Property Owner
+
+---
+
+### DEC-012: Owner Reactivation Method (CHK047)
+
+**Question**: Como reativar um Owner que foi soft-deleted?
+
+**Decision**: **Via PUT com active=true**
+- Endpoint: `PUT /api/v1/companies/{id}/owners/{owner_id}` com body `{"active": true}`
+- NÃO criar endpoint separado de restore (simplicidade)
+- Permissão: Requer Owner role (mesmo Owner pode se reativar? Não, precisa de outro Owner)
+
+**Rationale**: Consistente com padrão Odoo de usar `active` field. PUT já existe para edição.
+
+**Implementation**: Validar que usuário ativo na company pode reativar inativo. Log de auditoria obrigatório.
+
+---
+
+### DEC-013: Record Rules for Multi-tenancy Isolation (CHK066)
+
+**Question**: Record rules (ir.rule) devem isolar dados entre companies?
+
+**Decision**: **Sim, implementar ir.rule com domain**
+- Domain: `[('id', 'in', user.estate_company_ids.ids)]`
+- Aplicável a todos modelos com campo `company_id` ou `estate_company_id`
+- Grupos afetados: `group_real_estate_owner`, `group_real_estate_manager`, etc.
+
+**Rationale**: Padrão Odoo para multi-tenancy. Garante isolamento em nível de ORM.
+
+**Implementation**: Criar `security/company_record_rules.xml` com regras por modelo.
+
+---
+
+### DEC-014: Password Hashing Algorithm (CHK069)
+
+**Question**: Que algoritmo de hash usar para senhas?
+
+**Decision**: **Default Odoo - PBKDF2-SHA512**
+- Não customizar hashing
+- Odoo 18 usa PBKDF2-SHA512 com salt automático
+- Iterações configuráveis via `ir.config_parameter`
+
+**Rationale**: Algoritmo robusto e auditado. Não reinventar segurança.
+
+**Implementation**: Usar `res.users.password` field nativo. Nunca armazenar plaintext.
+
+---
+
+### DEC-015: Critical Database Indexes Documentation (CHK072)
+
+**Question**: Índices de banco devem ser documentados?
+
+**Decision**: **Sim, documentar índices críticos**
+
+Índices obrigatórios:
+- `ix_estate_company_cnpj` - Busca por CNPJ (unicidade)
+- `ix_estate_company_active` - Filtro padrão por ativo
+- `ix_res_users_login` - Busca por email (já existe: `res_users_login_key`)
+- `ix_company_user_rel` - Relacionamento many2many company↔user
+
+**Rationale**: Performance crítica para listagens e lookups frequentes.
+
+**Implementation**: Criar índices via `_sql_constraints` ou migration script. Documentar em `docs/architecture/database-indexes.md`.
+
+---
+
+### DEC-016: Owner Accessing Removed Company (CHK048)
+
+**Question**: Owner tenta acessar company da qual foi removido (estate_company_ids). Qual comportamento?
+
+**Decision**: **HTTP 403 Forbidden**
+- Autenticação OK (token válido)
+- Autorização falha (sem acesso à company específica)
+- Response: `{"error": "forbidden", "message": "You no longer have access to this company"}`
+
+**Rationale**: Distingue entre "não autenticado" (401) e "sem permissão" (403). Transparência para o usuário.
+
+**Implementation**: Verificar `company_id in user.estate_company_ids.ids` em cada endpoint protegido.
+
+---
+
+### DEC-017: Malformed Request Payloads (CHK058)
+
+**Question**: Como tratar payloads mal formatados (JSON inválido)?
+
+**Decision**: **Padrão Odoo**
+- Usar tratamento nativo do Odoo para erros de parsing
+- Response: JSON padrão do Odoo com estrutura `{"error": {...}}`
+- HTTP Status: 400 Bad Request
+
+**Rationale**: Consistência com demais endpoints Odoo. Evita customização desnecessária.
+
+**Implementation**: Nenhuma customização necessária. Odoo/Werkzeug tratam automaticamente.
+
+---
+
+### DEC-018: Transaction Rollback on Failure (CHK059)
+
+**Question**: Como documentar rollback em falha de criação de company?
+
+**Decision**: **Transação atômica Odoo (cr.savepoint)**
+- Odoo usa transações atômicas por padrão via `cr.savepoint()`
+- Qualquer exceção causa rollback automático
+- Documentar que operações são ALL-OR-NOTHING
+
+**Rationale**: Comportamento padrão robusto. Não reinventar transaction management.
+
+**Implementation**: Documentar em spec.md que "operações são transacionais - falha em qualquer etapa reverte todas alterações".
+
+---
+
+### DEC-019: Company Lifecycle States (CHK062)
+
+**Question**: Company deve ter estados explícitos (draft, active, archived)?
+
+**Decision**: **Campo state selection** com 4 estados
+
+| Estado | Descrição | Transições Permitidas |
+|--------|-----------|----------------------|
+| `draft` | Recém-criada, pendente ativação | → active |
+| `active` | Operando normalmente | → suspended, archived |
+| `suspended` | Temporariamente desativada | → active, archived |
+| `archived` | Soft-deleted (active=False) | → active (restore) |
+
+**Rationale**: Mais controle que boolean simples. Permite fluxos como "suspensão temporária por inadimplência".
+
+**Implementation**: Adicionar campo `state = fields.Selection([...])` em `estate.company`. Manter `active` para compatibilidade ORM.
+
+---
+
+### DEC-020: API Consumer Documentation (CHK087)
+
+**Question**: Quais sistemas consumirão esta API?
+
+**Decision**: **Interno + externos**
+
+Consumidores documentados:
+1. **Frontend SPA** - App web principal (React/Vue)
+2. **Mobile App** - iOS/Android nativo ou React Native
+3. **Portais de terceiros** - Sites de parceiros imobiliários
+4. **Integrações CRM** - Pipedrive, HubSpot, etc. (futuro)
+
+**Rationale**: Planejamento de versionamento e breaking changes. API deve ser estável para externos.
+
+**Implementation**: Documentar consumidores em `docs/architecture/api-consumers.md`. Definir política de deprecation (mínimo 6 meses).
+
+---
+
+### DEC-021: External Auth Provider Integration (CHK090)
+
+**Question**: Sync com providers de autenticação externos (Google, Azure AD)?
+
+**Decision**: **Sem auth provider externo (v1)**
+- Autenticação exclusivamente via Odoo nativo
+- JWT emitido pelo próprio sistema
+- SSO/OAuth social login NÃO suportado nesta versão
+
+**Rationale**: Simplifica v1. Integração SSO pode ser adicionada futuramente sem breaking changes.
+
+**Implementation**: Nenhuma. Documentar como "out of scope" em spec.md.
+
+---
+
+### DEC-022: Requirements ID Scheme for Traceability (CHK091)
+
+**Question**: Esquema de IDs para rastreabilidade de requisitos?
+
+**Decision**: **ID scheme: FR/NFR/AC**
+
+| Prefixo | Tipo | Exemplo |
+|---------|------|---------|
+| `FR-XXX` | Functional Requirement | FR-001: Company CRUD |
+| `NFR-XXX` | Non-Functional Requirement | NFR-001: Response time < 200ms |
+| `AC-XXX` | Acceptance Criteria | AC-001: CNPJ válido aceito |
+| `BR-XXX` | Business Rule | BR-001: Company deve ter 1+ Owner |
+
+**Rationale**: Padrão amplamente usado. Facilita mapeamento req↔test.
+
+**Implementation**: Adicionar IDs em spec.md. Referenciar IDs em testes (`test_FR001_company_creation`).
+
+---
+
+### DEC-023: Requirements to Test Mapping (CHK095)
+
+**Question**: Criar matriz de mapeamento requisitos ↔ testes?
+
+**Decision**: **Criar matriz req→test**
+- Arquivo: `research.md` seção "Traceability Matrix" ou arquivo dedicado
+- Formato: tabela FR/AC → Test File → Test Method
+- Manter atualizado durante desenvolvimento
+
+**Rationale**: Garante cobertura de requisitos. Identifica gaps de teste.
+
+**Implementation**: Criar seção em research.md após implementação. Template:
+```markdown
+| Req ID | Descrição | Test File | Status |
+|--------|-----------|-----------|--------|
+| FR-001 | ... | test_company.py::test_create | ✅ |
+```
+
+---
+
+## Open Questions (To Be Resolved)
+
+*(Todas as questões originais foram resolvidas nas decisões acima)*
