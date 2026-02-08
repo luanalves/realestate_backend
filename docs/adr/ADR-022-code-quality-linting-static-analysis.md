@@ -30,6 +30,8 @@ Adotamos um conjunto de ferramentas automatizadas para garantir qualidade de có
 
 ### 1. Ferramentas Obrigatórias
 
+#### Python
+
 | Ferramenta | Propósito | Configuração |
 |------------|-----------|--------------|
 | **black** | Formatação automática de código | `line-length = 100` |
@@ -37,6 +39,22 @@ Adotamos um conjunto de ferramentas automatizadas para garantir qualidade de có
 | **flake8** | Linting (PEP 8, erros, code smells) | Integrado com black |
 | **pylint** | Análise estática profunda | Específico para Odoo |
 | **mypy** | Type checking estático | Modo gradual (não-strict) |
+
+#### XML/Views (Novo - 2026-02-08)
+
+| Ferramenta | Propósito | Localização |
+|------------|-----------|-------------|
+| **lint_xml.py** | Detecta erros de views Odoo 18.0 | `18.0/lint_xml.py` |
+| **lint_xml.sh** | Wrapper shell para XML linter | `18.0/lint_xml.sh` |
+
+**Erros detectados pelo XML linter:**
+- ❌ `<tree>` deprecated (usar `<list>`)
+- ❌ `attrs` deprecated (usar atributos diretos)
+- ❌ `column_invisible` com expressões Python (causa OwlError)
+- ❌ `ref()` em action context
+- ⚠️ Views sem nome/modelo definido
+
+**Documentação:** Ver `18.0/LINT_XML_README.md`
 
 ### 2. Configuração Padrão
 
@@ -204,12 +222,27 @@ jobs:
       
       - name: Run mypy
         run: mypy 18.0/extra-addons/ --config-file=pyproject.toml
+      
+      - name: Lint XML Views
+        run: |
+          cd 18.0
+          docker compose up -d odoo
+          docker compose exec -T odoo python3 /mnt/extra-addons/../lint_xml.py /mnt/extra-addons/
 ```
 
-### 5. Regras de Qualidade Obrigatórias
+**Python:**
+- ✅ **Black passou**: Código formatado automaticamente
+- ✅ **Isort passou**: Imports organizados
+- ✅ **Flake8 passou**: Sem erros de linting (score 10/10)
+- ✅ **Pylint score ≥ 8.0/10**: Qualidade mínima aceitável
 
-#### **Code Review Checklist**
+**XML/Views:**
+- ✅ **XML Linter passou**: Sem erros de views Odoo 18.0
+- ✅ **Sem `<tree>` tags**: Usar `<list>` instead
+- ✅ **Sem `attrs`**: Usar atributos diretos
+- ✅ **Sem `column_invisible` com expressões**: Usar `optional`
 
+**Geral:**
 Antes de aprovar um PR, verificar:
 
 - ✅ **Black passou**: Código formatado automaticamente
@@ -295,33 +328,38 @@ Recomendado adicionar ao `.vscode/settings.json`:
   "[python]": {
     "editor.defaultFormatter": "ms-python.black-formatter",
     "editor.formatOnSave": true
-  }
-}
-```
-
-### 8. Comando Make para Qualidade
-
-Adicionar ao `Makefile` na raiz do projeto:
-
-```makefile
-.PHONY: lint format check-quality
+  } lint-xml
 
 # Formatar código automaticamente
 format:
 	black 18.0/extra-addons/
 	isort 18.0/extra-addons/
 
-# Verificar qualidade (sem modificar)
+# Verificar qualidade Python (sem modificar)
 lint:
 	black --check --diff 18.0/extra-addons/
 	isort --check-only --diff 18.0/extra-addons/
 	flake8 18.0/extra-addons/
 	pylint 18.0/extra-addons/ --exit-zero
 
+# Verificar XML views
+lint-xml:
+	cd 18.0 && ./lint_xml.sh extra-addons/
+
 # Verificar tudo antes de commit
-check-quality: lint
+check-quality: lint lint-xml
 	@echo "Running tests..."
 	cd 18.0 && ./run_all_tests.sh
+	@echo "✅ All quality checks passed!"
+```
+
+**Uso:**
+```bash
+# Antes de commitar
+make format        # Formata código automaticamente
+make lint          # Verifica problemas Python
+make lint-xml      # Verifica problemas XML/Views
+make check-quality # Roda tudo (lint + lint-xml
 	@echo "✅ All quality checks passed!"
 ```
 
@@ -340,13 +378,17 @@ make check-quality # Roda tudo (lint + testes)
 ✅ **Qualidade consistente**: Todo código segue o mesmo padrão, independente do desenvolvedor
 
 ✅ **Code review mais rápido**: Issues triviais são detectadas automaticamente
-
-✅ **Menos bugs**: Análise estática detecta problemas antes de produção
-
-✅ **Onboarding facilitado**: Novos desenvolvedores seguem padrões claros
+etecção precoce de erros Odoo 18.0**: XML linter previne erros de runtime no browser
 
 ✅ **Documentação melhor**: Docstrings obrigatórios melhoram compreensão do código
 
+✅ **Refatoração segura**: Ferramentas detectam quebras não intencionais
+
+✅ **Métricas objetivas**: Pylint score fornece KPI de qualidade
+
+✅ **CI/CD confiável**: Builds não passam com código de baixa qualidade
+
+✅ **Compliance Odoo 18.0**: Garante compatibilidade com versão atual
 ✅ **Refatoração segura**: Ferramentas detectam quebras não intencionais
 
 ✅ **Métricas objetivas**: Pylint score fornece KPI de qualidade
@@ -377,12 +419,13 @@ make check-quality # Roda tudo (lint + testes)
 
 Para código existente (`quicksol_estate` antigo):
 
-1. **Não bloquear**: Continuar trabalhando normalmente
+1.**XML Linter falha** | ❌ CI falha - PR bloqueado |
+|  **Não bloquear**: Continuar trabalhando normalmente
 2. **Gradual cleanup**: Aplicar formatação ao modificar arquivos
 3. **Boy Scout Rule**: "Deixe o código melhor do que encontrou"
 4. **Sprint de limpeza**: Dedicar tempo para refatoração periódica
 
-### Impacto em PRs
+### Impacto em PRs, **XML linter**
 
 **NOVO comportamento de PRs:**
 
@@ -416,10 +459,20 @@ Esta ADR complementa:
 ## Referências
 
 - [PEP 8 - Style Guide for Python Code](https://pep8.org/)
-- [Black - The Uncompromising Code Formatter](https://black.readthedocs.io/)
-- [Pylint - Code Analysis for Python](https://pylint.org/)
-- [Flake8 - Your Tool For Style Guide Enforcement](https://flake8.pycqa.org/)
-- [Odoo Development Guidelines](https://www.odoo.com/documentation/18.0/developer/reference/guidelines.html)
+- [✅ **Criar XML linter para views Odoo 18.0** (2026-02-08)
+5. ⏳ Rodar formatação em código existente (uma vez)
+6. ⏳ Treinar equipe nas ferramentas
+7. ⏳ Monitorar métricas de qualidade (Pylint score trend)
+8. ⏳ Ajustar regras baseado em feedback da equipe
+
+---
+
+## Changelog
+
+| Versão | Data | Mudanças |
+|--------|------|----------|
+| 1.1 | 2026-02-08 | Adicionado XML linter para views Odoo 18.0 |
+| 1.0 | 2026-02-05 | Versão inicial com Python linters |com/documentation/18.0/developer/reference/guidelines.html)
 
 ## Próximos Passos
 
