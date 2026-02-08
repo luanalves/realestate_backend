@@ -1,0 +1,431 @@
+{
+  "info": {
+    "name": "Company & Owner Management API",
+    "description": "Complete API collection for Real Estate Company & Owner Management System (Feature 007)\n\n## Overview\n- Manage Real Estate Companies (Imobiliárias)\n- Manage Company Owners\n- Multi-tenancy with company isolation\n- Self-registration for new owners\n\n## Authentication\nAll requests require:\n- `Authorization: Bearer {{jwt_token}}` (OAuth 2.0 JWT)\n- Some endpoints also require `Cookie: session_id={{session_id}}` (marked in request)\n\n## Architecture\n- Owner API is **independent** (not nested under Company)\n- Owner can be created WITHOUT a company\n- Owner is linked to companies via separate endpoint\n\n## Variables\nConfigure these in your Postman environment:\n- `base_url`: http://localhost:8069\n- `jwt_token`: OAuth token from authentication\n- `session_id`: Session ID (required for some endpoints)\n- `company_id`: Company ID for operations\n- `owner_id`: Owner ID for detail operations",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "company-owner-007",
+    "version": "1.0.0"
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Get OAuth2 Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set('jwt_token', jsonData.access_token);",
+                  "    console.log('✓ JWT Token saved to environment');",
+                  "    console.log('Token expires in: ' + jsonData.expires_in + ' seconds');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "client_credentials",
+                  "type": "text"
+                },
+                {
+                  "key": "client_id",
+                  "value": "test-client-id",
+                  "type": "text"
+                },
+                {
+                  "key": "client_secret",
+                  "value": "test-client-secret-12345",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/token",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "token"]
+            },
+            "description": "Get OAuth2 token using client credentials grant type.\n\nDecorators: None (public endpoint)\nRBAC: None (authentication endpoint)"
+          },
+          "response": []
+        }
+      ],
+      "description": "OAuth2 authentication endpoints"
+    },
+    {
+      "name": "Owners - CRUD",
+      "item": [
+        {
+          "name": "Create Owner (Self-Registration)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set('owner_id', jsonData.data.id);",
+                  "    console.log('✓ Owner created with ID: ' + jsonData.data.id);",
+                  "    console.log('Email: ' + jsonData.data.email);",
+                  "    console.log('Companies: ' + jsonData.data.company_count);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"João Silva\",\n  \"email\": \"joao.silva@example.com\",\n  \"password\": \"senha_segura_123\",\n  \"phone\": \"11987654321\",\n  \"mobile\": \"11987654321\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/owners",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "owners"]
+            },
+            "description": "Create a new Owner without company association (self-registration).\n\nDecorators: @require_jwt\nRBAC: Any authenticated app can create owners\n\nRequired fields:\n- name: Owner's full name\n- email: Valid email (unique)\n- password: Secure password (min 8 chars)\n\nOptional fields:\n- phone: Contact phone\n- mobile: Mobile phone\n\nResponse: 201 with owner details and HATEOAS links"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Owner by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/owners/{{owner_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "owners", "{{owner_id}}"]
+            },
+            "description": "Retrieve specific owner details by ID.\n\nDecorators: @require_jwt, @require_session\nRBAC: Owner can see their own data, Admin can see all\n\nResponse includes:\n- Owner details\n- Linked companies\n- Company count\n- HATEOAS links"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Owner",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"João Silva Updated\",\n  \"phone\": \"11999888777\",\n  \"mobile\": \"11999888777\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/owners/{{owner_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "owners", "{{owner_id}}"]
+            },
+            "description": "Update owner profile information.\n\nDecorators: @require_jwt, @require_session\nRBAC: Owner can update their own data, Admin can update all\n\nUpdatable fields:\n- name\n- phone\n- mobile\n\nNOTE: Email and password changes use separate endpoints"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Owner (Soft Delete)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/owners/{{owner_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "owners", "{{owner_id}}"]
+            },
+            "description": "Soft delete an owner (deactivate).\n\nDecorators: @require_jwt, @require_session\nRBAC: Admin only\n\nValidation:\n- Cannot delete if owner is the last owner of any company\n\nResponse: 200 with success message"
+          },
+          "response": []
+        }
+      ],
+      "description": "Owner management endpoints (independent API, not nested)"
+    },
+    {
+      "name": "Owner-Company Linking",
+      "item": [
+        {
+          "name": "Link Owner to Company",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/owners/{{owner_id}}/companies/{{company_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "owners", "{{owner_id}}", "companies", "{{company_id}}"]
+            },
+            "description": "Link an existing owner to a company.\n\nDecorators: @require_jwt, @require_session, @require_company\nRBAC: Admin or existing Owner of the company\n\nUse case: Add co-owner to existing company\n\nResponse: 200 with success message"
+          },
+          "response": []
+        },
+        {
+          "name": "Unlink Owner from Company",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/owners/{{owner_id}}/companies/{{company_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "owners", "{{owner_id}}", "companies", "{{company_id}}"]
+            },
+            "description": "Unlink owner from a company.\n\nDecorators: @require_jwt, @require_session, @require_company\nRBAC: Admin only\n\nValidation:\n- Cannot unlink if owner is the last owner of the company\n\nResponse: 200 with success message"
+          },
+          "response": []
+        }
+      ],
+      "description": "Endpoints for linking/unlinking owners to/from companies"
+    },
+    {
+      "name": "Companies - CRUD",
+      "item": [
+        {
+          "name": "List Companies",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/companies?limit=20&offset=0&active=true",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "companies"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Maximum results (default: 20, max: 100)"
+                },
+                {
+                  "key": "offset",
+                  "value": "0",
+                  "description": "Number of results to skip (pagination)"
+                },
+                {
+                  "key": "active",
+                  "value": "true",
+                  "description": "Filter by active status"
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "Search by name or CNPJ",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "List all companies the user has access to.\n\nDecorators: @require_jwt, @require_session, @require_company\nRBAC: Returns only companies in user's estate_company_ids\n\nQuery parameters:\n- limit: Page size (default 20, max 100)\n- offset: Page offset (default 0)\n- active: Filter by status (default true)\n- search: Search by name or CNPJ\n\nResponse includes pagination metadata and HATEOAS links"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Company",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set('company_id', jsonData.data.id);",
+                  "    console.log('✓ Company created with ID: ' + jsonData.data.id);",
+                  "    console.log('CNPJ: ' + jsonData.data.cnpj);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"QuickSol Imóveis\",\n  \"legal_name\": \"QuickSol Negócios Imobiliários LTDA\",\n  \"cnpj\": \"12.345.678/0001-95\",\n  \"creci\": \"CRECI/SP 123456\",\n  \"email\": \"contato@quicksol.com.br\",\n  \"phone\": \"11912345678\",\n  \"mobile\": \"11987654321\",\n  \"website\": \"https://quicksol.com.br\",\n  \"street\": \"Av. Paulista, 1000\",\n  \"street2\": \"15º andar\",\n  \"city\": \"São Paulo\",\n  \"state_id\": 1,\n  \"zip_code\": \"01310-100\",\n  \"description\": \"Empresa imobiliária especializada em imóveis de alto padrão\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/companies",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "companies"]
+            },
+            "description": "Create a new Real Estate Company.\n\nDecorators: @require_jwt, @require_session, @require_company\nRBAC: Owner or Admin\n\nRequired fields:\n- name: Company trade name\n- legal_name: Legal company name\n- cnpj: Valid Brazilian CNPJ (format: XX.XXX.XXX/XXXX-XX)\n- email: Valid email\n\nOptional fields:\n- creci: Real estate license\n- phone, mobile: Contact numbers\n- website: Company website\n- Address fields (street, city, state_id, zip_code)\n- description: Company description\n\nValidation:\n- CNPJ format and check digits validated\n- CNPJ uniqueness enforced\n- Email format validated\n- Creator automatically linked as owner\n\nResponse: 201 with company details and HATEOAS links"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Company by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/companies/{{company_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "companies", "{{company_id}}"]
+            },
+            "description": "Retrieve specific company details by ID.\n\nDecorators: @require_jwt, @require_session, @require_company\nRBAC: User must have access to this company\n\nResponse includes:\n- Company details\n- Address information\n- Contact information\n- HATEOAS links"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Company",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"11999888777\",\n  \"website\": \"https://quicksol.com.br\",\n  \"description\": \"Empresa imobiliária especializada em imóveis comerciais e residenciais\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/companies/{{company_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "companies", "{{company_id}}"]
+            },
+            "description": "Update company information.\n\nDecorators: @require_jwt, @require_session, @require_company\nRBAC: Owner of the company or Admin\n\nUpdatable fields:\n- Contact info (phone, mobile, email, website)\n- Address fields\n- Description\n\nNOTE: CNPJ and legal_name cannot be changed after creation"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Company (Soft Delete)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/companies/{{company_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "companies", "{{company_id}}"]
+            },
+            "description": "Soft delete a company (deactivate).\n\nDecorators: @require_jwt, @require_session, @require_company\nRBAC: Admin only\n\nEffect:\n- Company active = False\n- Company no longer appears in listings\n- Related data preserved (soft delete)\n\nResponse: 200 with success message"
+          },
+          "response": []
+        }
+      ],
+      "description": "Company management endpoints"
+    },
+    {
+      "name": "Health Check",
+      "item": [
+        {
+          "name": "API Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/health",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "health"]
+            },
+            "description": "Check API health status (public endpoint)"
+          },
+          "response": []
+        }
+      ],
+      "description": "Health check endpoints"
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8069",
+      "type": "string"
+    },
+    {
+      "key": "jwt_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "session_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "company_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "owner_id",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

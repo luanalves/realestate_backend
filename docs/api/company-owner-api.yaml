@@ -1,0 +1,813 @@
+openapi: 3.0.3
+info:
+  title: Company & Owner Management API
+  description: |
+    REST API for managing Real Estate Companies (Imobiliárias) and Owners.
+    
+    **Authentication**: All endpoints require OAuth 2.0 JWT token.
+    
+    **Authorization**: 
+    - Company CRUD: Owner (own companies) or SaaS Admin (all companies)
+    - Owner CRUD: Owner (own company's owners) or SaaS Admin (all)
+    
+    **Multi-tenancy**: Users only see companies in their `estate_company_ids`.
+  version: 1.0.0
+  contact:
+    name: TheDevKitchen
+    email: api@thedevkitchen.com.br
+
+servers:
+  - url: http://localhost:8069/api/v1
+    description: Development server
+  - url: https://api.realestate.com/api/v1
+    description: Production server
+
+tags:
+  - name: Companies
+    description: Real Estate Company management
+  - name: Owners
+    description: Company Owner management (nested under companies)
+
+paths:
+  /companies:
+    get:
+      tags:
+        - Companies
+      summary: List companies
+      description: Returns companies the authenticated user has access to
+      operationId: listCompanies
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: search
+          in: query
+          description: Search by name or CNPJ
+          schema:
+            type: string
+        - name: active
+          in: query
+          description: Filter by active status
+          schema:
+            type: boolean
+            default: true
+        - name: limit
+          in: query
+          description: Maximum results to return
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+        - name: offset
+          in: query
+          description: Number of results to skip
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: List of companies
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags:
+        - Companies
+      summary: Create company
+      description: Creates a new real estate company. Creator is automatically linked.
+      operationId: createCompany
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompanyCreate'
+      responses:
+        '201':
+          description: Company created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: CNPJ already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConflictError'
+
+  /companies/{company_id}:
+    parameters:
+      - $ref: '#/components/parameters/CompanyId'
+
+    get:
+      tags:
+        - Companies
+      summary: Get company details
+      operationId: getCompany
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Company details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyDetailResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Companies
+      summary: Update company
+      operationId: updateCompany
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompanyUpdate'
+      responses:
+        '200':
+          description: Company updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Companies
+      summary: Archive company (soft delete)
+      operationId: deleteCompany
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Company archived
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /companies/{company_id}/owners:
+    parameters:
+      - $ref: '#/components/parameters/CompanyId'
+
+    get:
+      tags:
+        - Owners
+      summary: List company owners
+      operationId: listOwners
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: active
+          in: query
+          schema:
+            type: boolean
+            default: true
+      responses:
+        '200':
+          description: List of owners
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnerListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    post:
+      tags:
+        - Owners
+      summary: Create owner for company
+      operationId: createOwner
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OwnerCreate'
+      responses:
+        '201':
+          description: Owner created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnerResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConflictError'
+
+  /companies/{company_id}/owners/{owner_id}:
+    parameters:
+      - $ref: '#/components/parameters/CompanyId'
+      - $ref: '#/components/parameters/OwnerId'
+
+    get:
+      tags:
+        - Owners
+      summary: Get owner details
+      operationId: getOwner
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Owner details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnerDetailResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Owners
+      summary: Update owner
+      operationId: updateOwner
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OwnerUpdate'
+      responses:
+        '200':
+          description: Owner updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnerResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Owners
+      summary: Deactivate owner (soft delete)
+      operationId: deleteOwner
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Owner deactivated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteResponse'
+        '400':
+          description: Cannot remove last owner
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    CompanyId:
+      name: company_id
+      in: path
+      required: true
+      description: Company ID
+      schema:
+        type: integer
+
+    OwnerId:
+      name: owner_id
+      in: path
+      required: true
+      description: Owner (user) ID
+      schema:
+        type: integer
+
+  schemas:
+    # Company Schemas
+    CompanyCreate:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          example: "Imobiliária Premium"
+        cnpj:
+          type: string
+          pattern: '^\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2}$'
+          example: "12.345.678/0001-90"
+        creci:
+          type: string
+          maxLength: 20
+          example: "CRECI-SP 12345"
+        legal_name:
+          type: string
+          maxLength: 255
+          example: "Premium Imóveis LTDA"
+        email:
+          type: string
+          format: email
+          example: "contato@premium.com.br"
+        phone:
+          type: string
+          maxLength: 20
+          example: "(11) 3456-7890"
+        mobile:
+          type: string
+          maxLength: 20
+          example: "(11) 99999-0000"
+        website:
+          type: string
+          format: uri
+          example: "https://premium.com.br"
+        street:
+          type: string
+          maxLength: 200
+          example: "Av. Paulista, 1000"
+        city:
+          type: string
+          maxLength: 100
+          example: "São Paulo"
+        state_id:
+          type: integer
+          example: 25
+        zip_code:
+          type: string
+          maxLength: 10
+          example: "01310-100"
+
+    CompanyUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 255
+        cnpj:
+          type: string
+          pattern: '^\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2}$'
+        creci:
+          type: string
+          maxLength: 20
+        legal_name:
+          type: string
+          maxLength: 255
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+          maxLength: 20
+        mobile:
+          type: string
+          maxLength: 20
+        website:
+          type: string
+          format: uri
+        street:
+          type: string
+          maxLength: 200
+        city:
+          type: string
+          maxLength: 100
+        state_id:
+          type: integer
+        zip_code:
+          type: string
+          maxLength: 10
+
+    Company:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "Imobiliária Premium"
+        cnpj:
+          type: string
+          example: "12.345.678/0001-90"
+        email:
+          type: string
+          example: "contato@premium.com.br"
+        phone:
+          type: string
+          example: "(11) 3456-7890"
+        active:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+
+    CompanyDetail:
+      allOf:
+        - $ref: '#/components/schemas/Company'
+        - type: object
+          properties:
+            creci:
+              type: string
+            legal_name:
+              type: string
+            mobile:
+              type: string
+            website:
+              type: string
+            address:
+              type: object
+              properties:
+                street:
+                  type: string
+                city:
+                  type: string
+                state:
+                  type: string
+                zip_code:
+                  type: string
+            statistics:
+              type: object
+              properties:
+                property_count:
+                  type: integer
+                agent_count:
+                  type: integer
+                lease_count:
+                  type: integer
+
+    # Owner Schemas
+    OwnerCreate:
+      type: object
+      required:
+        - name
+        - email
+        - password
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          example: "João Silva"
+        email:
+          type: string
+          format: email
+          example: "joao@premium.com.br"
+        password:
+          type: string
+          minLength: 8
+          example: "securePassword123"
+        phone:
+          type: string
+          maxLength: 20
+          example: "(11) 3456-7890"
+        mobile:
+          type: string
+          maxLength: 20
+          example: "(11) 99999-0000"
+
+    OwnerUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 255
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        phone:
+          type: string
+          maxLength: 20
+        mobile:
+          type: string
+          maxLength: 20
+        active:
+          type: boolean
+
+    Owner:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 5
+        name:
+          type: string
+          example: "João Silva"
+        email:
+          type: string
+          example: "joao@premium.com.br"
+        phone:
+          type: string
+        mobile:
+          type: string
+        active:
+          type: boolean
+          example: true
+        is_owner:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+
+    OwnerDetail:
+      allOf:
+        - $ref: '#/components/schemas/Owner'
+        - type: object
+          properties:
+            companies:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  name:
+                    type: string
+
+    # Response Wrappers
+    CompanyResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          allOf:
+            - $ref: '#/components/schemas/Company'
+            - type: object
+              properties:
+                links:
+                  $ref: '#/components/schemas/HATEOASLinks'
+
+    CompanyDetailResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          allOf:
+            - $ref: '#/components/schemas/CompanyDetail'
+            - type: object
+              properties:
+                links:
+                  $ref: '#/components/schemas/HATEOASLinks'
+
+    CompanyListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            count:
+              type: integer
+              example: 2
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/Company'
+            links:
+              $ref: '#/components/schemas/HATEOASLinks'
+
+    OwnerResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          allOf:
+            - $ref: '#/components/schemas/Owner'
+            - type: object
+              properties:
+                links:
+                  $ref: '#/components/schemas/HATEOASLinks'
+
+    OwnerDetailResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          allOf:
+            - $ref: '#/components/schemas/OwnerDetail'
+            - type: object
+              properties:
+                links:
+                  $ref: '#/components/schemas/HATEOASLinks'
+
+    OwnerListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            count:
+              type: integer
+              example: 2
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/Owner'
+            links:
+              $ref: '#/components/schemas/HATEOASLinks'
+
+    DeleteResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Resource archived successfully"
+        data:
+          type: object
+          properties:
+            id:
+              type: integer
+
+    # HATEOAS Links
+    HATEOASLinks:
+      type: array
+      items:
+        type: object
+        properties:
+          href:
+            type: string
+            example: "/api/v1/companies/1"
+          rel:
+            type: string
+            example: "self"
+          type:
+            type: string
+            enum: [GET, POST, PUT, DELETE]
+
+    # Error Schemas
+    ValidationErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+          example: "validation_error"
+        details:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+                example: "cnpj"
+              message:
+                type: string
+                example: "Invalid CNPJ format"
+
+    ConflictError:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+          example: "conflict"
+        field:
+          type: string
+          example: "cnpj"
+        message:
+          type: string
+          example: "CNPJ already registered"
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+        message:
+          type: string
+
+  responses:
+    Unauthorized:
+      description: Authentication required or invalid token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error: "unauthorized"
+            message: "Invalid or expired token"
+
+    Forbidden:
+      description: Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error: "forbidden"
+            message: "Only Owners can perform this action"
+
+    NotFound:
+      description: Resource not found or not accessible
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error: "not_found"
+            message: "Resource not found"
+
+    ValidationError:
+      description: Validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationErrorResponse'
