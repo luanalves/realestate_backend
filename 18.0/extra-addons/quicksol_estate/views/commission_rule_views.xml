@@ -11,8 +11,8 @@
                 <field name="agent_id"/>
                 <field name="transaction_type"/>
                 <field name="structure_type"/>
-                <field name="percentage" column_invisible="structure_type != 'percentage'"/>
-                <field name="fixed_amount" column_invisible="structure_type != 'fixed'"/>
+                <field name="percentage" optional="show"/>
+                <field name="fixed_amount" optional="show"/>
                 <field name="min_value"/>
                 <field name="max_value"/>
                 <field name="active"/>
