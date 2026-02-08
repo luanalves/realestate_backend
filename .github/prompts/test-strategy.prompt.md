@@ -86,8 +86,13 @@ Sempre responda neste formato:
 ### ⚡ Próximos Passos
 1. [comando ou ação específica]
 2. [próximo comando]
+3. **Executar linters após implementação (ADR-022):**
+   - Python: `cd 18.0 && ./lint.sh quicksol_estate`
+   - XML (se views): `cd 18.0 && ./lint_xml.sh extra-addons/quicksol_estate/views/`
 
 **Dados de teste:** Credenciais estão em `18.0/.env` (nunca hardcode no código)
+
+**Validação de qualidade:** Linters devem passar antes de considerar implementação completa
 ```
 
 ## Regras de Decisão (extrair da ADR-003)
@@ -181,8 +186,13 @@ A ADR-003 define apenas **2 tipos de testes**:
 2. Criar teste E2E para jornada completa
 3. Verificar que credenciais estão no .env (não hardcoded)
 4. Garantir CNPJ válido se property tiver company_id
-5. Executar: `docker compose exec odoo python3 /mnt/extra-addons/quicksol_estate/tests/unit/run_unit_tests.py`
-6. Executar: `npx cypress run --spec "cypress/e2e/agent-property-creation.cy.js"`
+5. **Executar linters após implementação (ADR-022):**
+   - Python: `cd 18.0 && ./lint.sh quicksol_estate`
+   - XML: `cd 18.0 && ./lint_xml.sh extra-addons/quicksol_estate/views/`
+6. Executar: `docker compose exec odoo python3 /mnt/extra-addons/quicksol_estate/tests/unit/run_unit_tests.py`
+7. Executar: `npx cypress run --spec "cypress/e2e/agent-property-creation.cy.js"`
 
 **Dados de teste:** Credenciais estão em `18.0/.env` (nunca hardcode no código)
+
+**Validação de qualidade:** Linters devem passar antes de considerar implementação completa
 ```

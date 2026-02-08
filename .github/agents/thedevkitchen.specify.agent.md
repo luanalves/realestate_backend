@@ -78,6 +78,7 @@ Before generating any specification, you MUST:
    - `07-programming-in-odoo.md`: Odoo best practices
    - `08-symbols-conventions.md`: Naming conventions
    - `09-database-best-practices.md`: Database design (3NF, constraints, indexes)
+   - `10-frontend-views-odoo18.md`: Frontend/Views for Odoo 18.0 (CRITICAL for UI)
 
 5. **Review Copilot Instructions** from `.github/copilot-instructions.md`:
    - Authentication decorators (`@require_jwt`, `@require_session`)
@@ -147,8 +148,8 @@ Ask **3-5 targeted clarification questions** before generating the specification
 
 8. **Critical Flows**: What user flows must be tested end-to-end?
 9. **Edge Cases**: What edge cases should be validated?
-10. **Multi-tenancy**: Should data be isolated by company? (default: YES per ADR-008)
-```
+10. **Multi-tenancy**: Should data be isolated by company? (default: YES per ADR-008)11. **UI Components**: Does this feature include new views/menus? (If YES, Cypress E2E required)
+12. **Frontend Validation**: Should conditional fields be tested in the UI?```
 
 **IMPORTANT**: 
 - Wait for user responses before proceeding to Phase 2
@@ -189,12 +190,14 @@ After gathering requirements, generate the specification using this structure:
 
 **Test Coverage** (per ADR-003):
 
-| Type | Test Name | Description |
-|------|-----------|-------------|
-| Unit | `test_[field]_required()` | Validates required field constraint |
-| Unit | `test_[field]_positive()` | Validates value constraint |
-| E2E | `test_[role]_creates_[entity]()` | Complete creation flow |
-| E2E | `test_multitenancy_isolation()` | Company data isolation |
+| Type | Test Name | Description | Status |
+|------|-----------|-------------|--------|
+| Unit | `test_[field]_required()` | Validates required field constraint | ⚠️ Required |
+| Unit | `test_[field]_positive()` | Validates value constraint | ⚠️ Required |
+| E2E (API) | `test_[role]_creates_[entity]()` | Complete creation flow | ⚠️ Required |
+| E2E (API) | `test_multitenancy_isolation()` | Company data isolation | ⚠️ Required |
+| E2E (UI) | `cypress: test_menu_loads_without_errors()` | View loads without "Oops!" | ⚠️ If has views |
+| E2E (UI) | `cypress: test_form_conditional_fields()` | Conditional visibility works | ⚠️ If has conditions |
 
 ### User Story 2: [Title] (Priority: P2)
 [Repeat structure...]
@@ -313,27 +316,37 @@ def _check_field_name(self):
 - API response time: < 200ms for single resource
 - List pagination: max 100 items per page
 - Database indexes on frequently queried fields
+- View rendering: < 500ms for list/form views
 
 **NFR3: Quality** (per ADR-022)
 - Code must pass: black, isort, flake8
 - Pylint score ≥ 8.0/10
 - 100% test coverage on validations (ADR-003)
+- Zero JavaScript console errors in browser
 
 **NFR4: Data Integrity** (per knowledge_base/09-database-best-practices.md)
 - Database normalized to 3NF minimum
 - Foreign keys with appropriate ON DELETE actions
 - Soft delete with `active` field (ADR-015)
 
+**NFR5: Frontend Compatibility** (per knowledge_base/10-frontend-views-odoo18.md)
+- All views follow Odoo 18.0 standards (no `attrs`, use `<list>` not `<tree>`)
+- Column visibility uses `optional` attribute only
+- No `column_invisible` with Python expressions
+- Conditional fields tested in browser
+
 ---
 
 ## Technical Constraints
 
-### Must Follow (from ADRs)
+### Must Follow (from ADRs & Knowledge Base)
 
-| ADR | Requirement | Applied To |
-|-----|-------------|------------|
+| Source | Requirement | Applied To |
+|--------|-------------|------------|
 | ADR-001 | Flat Odoo structure (no nested feature dirs) | Module structure |
+| ADR-001 | Odoo 18.0 view standards (no `attrs`, use `<list>`) | All views |
 | ADR-003 | 100% test coverage on validations | All constraints |
+| ADR-003 | E2E tests for all UI components | Views/Menus |
 | ADR-004 | `thedevkitchen_` prefix | Model names, tables |
 | ADR-007 | HATEOAS links in responses | All API endpoints |
 | ADR-008 | Company isolation | Record rules |
@@ -342,6 +355,8 @@ def _check_field_name(self):
 | ADR-018 | Schema validation | Input validation |
 | ADR-019 | RBAC enforcement | Authorization |
 | ADR-022 | Linting standards | All code |
+| KB-10 | `optional` for column visibility | List views |
+| KB-10 | Cypress E2E for all views | Frontend validation |
 
 ### Architecture Patterns
 
@@ -352,14 +367,26 @@ def _check_field_name(self):
 
 ## Success Criteria
 
+### Backend
 - [ ] All user stories implemented and tested
 - [ ] 100% unit test coverage on validations (ADR-003)
-- [ ] E2E tests for all critical flows
+- [ ] E2E API tests for all critical flows
 - [ ] Multi-company isolation verified
 - [ ] API documented in OpenAPI/Swagger (ADR-005)
 - [ ] Postman collection updated (ADR-016)
 - [ ] Code quality: Pylint ≥ 8.0, all linters passing (ADR-022)
 - [ ] Security requirements validated (ADR-008, ADR-011, ADR-017)
+
+### Frontend (if feature includes views)
+- [ ] All views follow Odoo 18.0 standards (KB-10)
+- [ ] Cypress E2E tests for all menus/views
+- [ ] Manual browser test passed (no "Oops!" errors)
+- [ ] Zero JavaScript console errors
+- [ ] Conditional fields tested and working
+- [ ] Column visibility uses `optional` attribute
+- [ ] Multi-browser compatibility verified (Chrome, Firefox)
+
+### Documentation
 - [ ] Constitution feedback analyzed and documented
 
 ---
@@ -463,15 +490,27 @@ After specification approval, generate:
 
 ## Validation Checklist
 
+### Backend Validation
 - [ ] All ADR requirements referenced and followed
 - [ ] Knowledge base patterns applied
 - [ ] Multi-tenancy correctly specified (ADR-008)
 - [ ] Security properly defined (ADR-011, ADR-017, ADR-019)
-- [ ] Test strategy complete - unit + E2E (ADR-003)
+- [ ] Test strategy complete - unit + E2E API (ADR-003)
 - [ ] API follows REST + HATEOAS standards (ADR-007)
 - [ ] Database design normalized - 3NF minimum
 - [ ] Error handling specified (ADR-018)
 - [ ] Code quality requirements defined (ADR-022)
+
+### Frontend Validation (if views included)
+- [ ] Views follow Odoo 18.0 standards (KB-10, ADR-001)
+- [ ] No `attrs` attribute used (replaced with direct attributes)
+- [ ] Used `<list>` instead of `<tree>`
+- [ ] Column visibility uses `optional="show|hide"` only
+- [ ] NO `column_invisible` with Python expressions
+- [ ] Cypress E2E tests specified for all views
+- [ ] Manual browser testing procedure defined
+- [ ] Console error checks included in acceptance criteria
+- [ ] Multi-browser compatibility considered
 ```
 
 ### Phase 3: Artifact Generation
@@ -523,13 +562,208 @@ User: Create tests for this feature
 
 **IMPORTANT**: Never skip the test strategy step. The strategy agent determines WHAT to test, the executor agent creates HOW to test.
 
+#### Phase 4.3: Code Quality Validation (MANDATORY per ADR-022)
+
+After code implementation (models, controllers, views), **ALWAYS** run linters:
+
+**Python Linting:**
+```bash
+cd 18.0
+./lint.sh quicksol_estate  # Check specific module
+# OR
+make lint  # Check all addons
+```
+
+**XML/Views Linting:**
+```bash
+cd 18.0
+./lint_xml.sh extra-addons/quicksol_estate/views/  # Check views
+# OR
+make lint-xml  # Check all views
+```
+
+**Linters detect:**
+- Python: PEP 8, code smells, complexity (via flake8, black, isort)
+- XML: Odoo 18.0 breaking changes (`<tree>`, `attrs`, `column_invisible`)
+
+**CRITICAL:** If linters fail, **MUST fix** before considering implementation complete.
+
 Report completion with:
 - Specification file path
 - ADRs applied
 - Validation checklist status
+- **Linter results (Python + XML)** ⭐ NEW
 - Test strategy summary
 - Test files created
 - Available next steps (handoffs)
+
+### Phase 4.5: Frontend Validation (If Specification Includes Views)
+
+**CRITICAL**: If the specification includes ANY user interface components (menus, list views, form views, kanban, etc.), **MANDATORY** frontend validation is required.
+
+#### Before Implementation Starts
+
+The specification MUST include:
+
+1. **View Development Standards** (per knowledge_base/10-frontend-views-odoo18.md):
+   ```markdown
+   ### View Implementation Requirements
+   
+   ✅ **MUST USE:**
+   - `<list>` instead of `<tree>`
+   - `invisible="expression"` instead of `attrs={'invisible': ...}`
+   - `optional="show|hide"` for column visibility in list views
+   
+   ❌ **MUST AVOID:**
+   - `attrs` attribute (deprecated in Odoo 18.0)
+   - `column_invisible` with Python expressions (causes frontend errors)
+   - `<tree>` tag (use `<list>` instead)
+   
+   **Rationale**: Python expressions in `column_invisible` are NOT evaluated in frontend,
+   causing "Oops! OwlError: Can not evaluate python expression" errors.
+   ```
+
+2. **Browser Testing Procedure**:
+   ```markdown
+   ### Manual Browser Testing (MANDATORY before commit)
+   
+   **Developer Checklist:**
+   - [ ] Menu loads without "Oops!" error dialog
+   - [ ] List view displays correctly with all expected columns
+   - [ ] Form view opens without errors
+   - [ ] Conditional fields show/hide correctly
+   - [ ] Browser DevTools console shows ZERO errors
+   - [ ] Tested on Chrome/Chromium
+   - [ ] Tested on Firefox
+   
+   **How to Test:**
+   1. Start Odoo: `docker compose up -d`
+   2. Open browser DevTools (F12)
+   3. Navigate to menu: `/web#action=[action_id]`
+   4. Check Console tab for JavaScript errors
+   5. Interact with view (create, edit, delete)
+   6. Verify no errors appear
+   ```
+
+3. **Cypress E2E Tests** (MANDATORY):
+   ```markdown
+   ### Cypress E2E Test Requirements
+   
+   **Test File**: `cypress/e2e/views/[feature_name].cy.js`
+   
+   **Required Test Cases:**
+   
+   ```javascript
+   describe('[Feature] Views', () => {
+     describe('List View', () => {
+       it('should load menu without errors', () => {
+         cy.visit('/web#action=[action_id]')
+         cy.contains('Oops!').should('not.exist')
+         cy.get('.o_list_view').should('be.visible')
+       })
+       
+       it('should display data correctly', () => {
+         cy.visit('/web#action=[action_id]')
+         cy.get('.o_list_view tbody tr').should('have.length.greaterThan', 0)
+       })
+     })
+     
+     describe('Form View', () => {
+       it('should open form without errors', () => {
+         cy.visit('/web#action=[action_id]')
+         cy.get('.o_list_view tbody tr').first().click()
+         cy.get('.o_form_view').should('be.visible')
+         cy.contains('Oops!').should('not.exist')
+       })
+       
+       it('should handle conditional fields correctly', () => {
+         // Test field visibility based on conditions
+         cy.get('[name="condition_field"]').select('option1')
+         cy.get('[name="dependent_field"]').should('be.visible')
+         
+         cy.get('[name="condition_field"]').select('option2')
+         cy.get('[name="dependent_field"]').should('not.be.visible')
+       })
+     })
+   })
+   ```
+   ```
+
+4. **Acceptance Criteria Update**:
+   
+   Every user story involving views MUST include:
+   ```markdown
+   **Frontend Acceptance Criteria:**
+   - [ ] View follows Odoo 18.0 standards (no `attrs`, uses `<list>`)
+   - [ ] No `column_invisible` with Python expressions
+   - [ ] Browser console shows zero JavaScript errors
+   - [ ] Cypress E2E test passes
+   - [ ] Manual browser test completed successfully
+   ```
+
+#### Frontend-Specific Test Strategy
+
+When calling `speckit.test-strategy`, ensure it includes:
+
+```markdown
+### Frontend Testing Strategy
+
+**Views to Test:**
+- [ ] Menu accessibility
+- [ ] List view rendering
+- [ ] Form view functionality
+- [ ] Search filters
+- [ ] Conditional field visibility
+
+**Test Types:**
+1. **Integration (Python)**: Verify view XML is valid
+2. **E2E (Cypress)**: Verify view renders without errors in browser
+3. **Manual**: Developer verifies in DevTools console
+
+**Critical Validations:**
+- No JavaScript console errors
+- No "Oops!" error dialogs
+- Conditional fields behave correctly
+- All CRUD operations work through UI
+```
+
+#### Common Frontend Errors to Prevent
+
+**ERROR 1: `column_invisible` with Python expression**
+```xml
+<!-- ❌ CAUSES ERROR -->
+<field name="percentage" column_invisible="structure_type != 'percentage'"/>
+
+<!-- ✅ CORRECT -->
+<field name="percentage" optional="show"/>
+```
+
+**ERROR 2: Using deprecated `attrs`**
+```xml
+<!-- ❌ CAUSES ERROR (Odoo 18.0) -->
+<field name="price" attrs="{'invisible': [('status', '=', 'sold')]}"/>
+
+<!-- ✅ CORRECT -->
+<field name="price" invisible="status == 'sold'"/>
+```
+
+**ERROR 3: Using `<tree>` instead of `<list>`**
+```xml
+<!-- ❌ DEPRECATED -->
+<tree>...</tree>
+
+<!-- ✅ CORRECT -->
+<list>...</list>
+```
+
+#### When to Skip Frontend Validation
+
+Frontend validation can be skipped ONLY if:
+- ✅ Feature is **API-only** (no views, no menus)
+- ✅ Feature modifies **only backend logic** (models, services)
+- ✅ Feature is **data migration** or **cron job**
+
+If feature adds/modifies ANY view, frontend validation is **MANDATORY**.
 
 ## Operating Principles
 
@@ -567,9 +801,18 @@ Report completion with:
 
 ### Testing (Non-Negotiable per ADR-003)
 - Unit tests for all validations (100% coverage)
-- E2E tests for all user stories
+- E2E API tests for all user stories
+- E2E UI tests (Cypress) for all views/menus
 - Multi-tenancy isolation tests
-- No manual testing accepted
+- Frontend validation (zero console errors)
+- No manual testing as sole validation method
+
+### Frontend Standards (Non-Negotiable per KB-10)
+- All views follow Odoo 18.0 patterns
+- Use `optional` for column visibility, never `column_invisible` with expressions
+- Cypress E2E test for every view
+- Browser DevTools validation before commit
+- Multi-browser compatibility (Chrome, Firefox minimum)
 
 ## Quick Guidelines
 
@@ -587,13 +830,22 @@ Report completion with:
 
 ### For Tests
 - Unit: Test isolated logic without database
-- E2E: Test complete flows with database
+- E2E (API): Test complete flows with database (Shell/Python)
+- E2E (UI): Test interface with Cypress (MANDATORY for views)
 - Always test multi-company isolation
+- Always test frontend without console errors (if has views)
 
 ### For Generation
 - Reasonable defaults for unspecified details
 - Maximum 3 [NEEDS CLARIFICATION] markers
 - Ask before assuming on critical decisions
+
+### For Views (Frontend)
+- Use `optional="show"` for all columns in list views (per KB-10)
+- Use `invisible="expression"` for form fields only
+- Include Cypress E2E test for every new menu/view
+- Specify browser testing procedure in acceptance criteria
+- Reference knowledge_base/10-frontend-views-odoo18.md
 
 ## Phase 5: Specification Output (Final Step)
 

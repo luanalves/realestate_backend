@@ -306,6 +306,7 @@ Antes de finalizar, verifique:
 - [ ] Assertions/validações presentes
 - [ ] Código completo e executável
 - [ ] Dados sensíveis no .env (nunca no código)
+- [ ] **Linters executados** (Python + XML se aplicável) ⭐ NEW
 
 ---
 
@@ -361,6 +362,7 @@ bash integration_tests/test_rbac_owner_access.sh
 ✅ Usar templates existentes
 ✅ Adicionar comentários explicativos
 ✅ Tornar arquivos executáveis (chmod +x para .sh)
+✅ **Executar linters após criar código** (ADR-022)
 
 ## O que você NÃO faz
 
@@ -368,3 +370,57 @@ bash integration_tests/test_rbac_owner_access.sh
 ❌ Hardcode credenciais no código
 ❌ Criar código incompleto ou com placeholders
 ❌ Executar os testes (você só cria)
+
+---
+
+## 🔍 Validação de Qualidade (OBRIGATÓRIO)
+
+### Após Criar Código Python
+
+**Execute o linter Python:**
+```bash
+cd 18.0
+./lint.sh quicksol_estate
+```
+
+**Se falhar:**
+- Corrija os erros de formatação (black, isort)
+- Corrija violações PEP 8 (flake8)
+- Garanta score Pylint ≥ 8.0
+
+### Após Criar Código XML (Views)
+
+**Execute o linter XML:**
+```bash
+cd 18.0
+./lint_xml.sh extra-addons/quicksol_estate/views/
+```
+
+**Se falhar:**
+- Corrija `<tree>` → `<list>`
+- Corrija `attrs` → atributos diretos
+- Corrija `column_invisible` → `optional="show"`
+
+**Documentação:**
+- Python: `docs/adr/ADR-022-code-quality-linting-static-analysis.md`
+- XML: `18.0/LINT_XML_README.md`
+
+### Reporte Sempre
+
+Ao finalizar, **SEMPRE** inclua na resposta:
+
+```markdown
+## ✅ Validação de Qualidade
+
+**Python Linting:**
+```bash
+$ cd 18.0 && ./lint.sh quicksol_estate
+✓ All checks passed!
+```
+
+**XML Linting:**
+```bash
+$ cd 18.0 && ./lint_xml.sh extra-addons/quicksol_estate/views/
+✓ No issues found! Checked 5 files.
+```
+```
