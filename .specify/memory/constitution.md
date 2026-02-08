@@ -1,38 +1,51 @@
 <!--
-Sync Impact Report - Constitution v1.1.0
+Sync Impact Report - Constitution v1.2.0
 ========================================
 
-Version Change: 1.0.0 → 1.1.0
-Change Type: MINOR (architectural philosophy expansion)
-Date: 2026-01-08
+Version Change: 1.1.0 → 1.2.0
+Change Type: MINOR (new reference implementation documented)
+Date: 2026-02-08
 
 Sections Modified:
-- Added "Architecture Philosophy" section (new principle VI)
-- Expanded Security Requirements to include SSR context
-- Clarified dual-interface design pattern
+- Updated test statistics in Quality & Testing Standards
+- Added Feature 007 as reference implementation example
+- Updated Postman collection standards reference
+- Confirmed ADR-016 compliance for API documentation
 
-New Principle Added:
-6. Headless Architecture - SSR for agencies, Odoo Web for managers
+New Content Added:
+- Postman Collection Standards section (API documentation requirement)
+- Feature 007 Owner & Company Management as constitutional compliance example
+- Updated test count statistics (E2E, Integration, Unit)
 
-Rationale for Version Bump:
-- Material expansion of architectural guidance
-- New non-negotiable principle added (Principle VI)
-- Backward compatible (no existing principles removed/redefined)
-- Clarifies intended use of Odoo framework vs headless frontend
+Constitutional Compliance Verification - Feature 007:
+✅ Principle I (Security First): Dual auth pattern (@require_jwt + @require_session)
+✅ Principle II (Test Coverage): Unit + Integration + E2E tests created
+✅ Principle III (API-First): RESTful APIs with HATEOAS, Postman collection
+✅ Principle IV (Multi-Tenancy): Company isolation enforced via @require_company
+✅ Principle V (ADR Governance): ADR-016 compliance (Postman standards)
+✅ Principle VI (Headless Architecture): REST APIs ready for SSR frontend
+
+Reference Implementation:
+- 9 REST endpoints (Owner & Company CRUD + relationships)
+- Postman collection: docs/postman/feature007_owner_company_v1.0_postman_collection.json
+- OAuth 2.0 + Session authentication flow documented
+- Test scripts for token auto-population
+- HATEOAS links in all responses
 
 Template Files Status:
-✅ plan-template.md - "Constitution Check" gate remains aligned
-✅ spec-template.md - User scenarios compatible with headless SSR architecture
-✅ tasks-template.md - Test-first workflow unchanged
-✅ docs/constitution.md - Updated with detailed architecture philosophy (source of this amendment)
+✅ constitution.md - Updated with Feature 007 reference
+✅ ADR-016 standards fully applied
+✅ Test pyramid statistics updated
+✅ Postman collection examples added
 
 Propagation Complete:
-✅ Core principle added to .specify/memory/constitution.md
-✅ Detailed documentation in docs/constitution.md
-✅ Architecture diagrams updated in docs/constitution.md
+✅ Postman collection created following ADR-016
+✅ Integration tests passing (test_feature007_oauth2.sh)
+✅ Cypress UI tests created (company-management-ui.cy.js, owner-management-ui.cy.js)
+✅ GET and PUT endpoints added to owner_api.py
 
-Follow-up Actions: None
-Previous Amendment: 2026-01-07 (v1.0.0 initial codification)
+Follow-up Actions: None - Feature 007 serves as template for future features
+Previous Amendment: 2026-01-08 (v1.1.0 headless architecture principle)
 -->
 
 # Realestate Backend Platform Constitution
@@ -62,12 +75,21 @@ All code MUST achieve minimum 80% test coverage (per ADR-003):
 ### III. API-First Design (NON-NEGOTIABLE)
 All features expose RESTful APIs with:
 - OpenAPI 3.0 documentation (Swagger UI at `/api/docs`)
+- Postman collections (ADR-016) for endpoint testing and documentation
 - HATEOAS hypermedia links (ADR-007, planned Phase 3)
 - JSON request/response formats
 - Consistent error responses (`success_response()`, `error_response()`)
 - Master data endpoints for frontend hydration
 
-**Rationale**: Headless frontend architecture requires well-documented, discoverable APIs. HATEOAS enables frontend evolution without hardcoded URLs.
+**Postman Collection Requirements** (ADR-016):
+- Location: `/docs/postman/`
+- Naming: `{feature}_v{major.minor}_postman_collection.json`
+- Must include: OAuth flow, session management, test scripts
+- Auto-save tokens to collection variables
+- Proper headers: GET uses `X-Openerp-Session-Id` header, POST/PUT/DELETE use body
+- **Reference**: Feature 007 collection (`feature007_owner_company_v1.0_postman_collection.json`)
+
+**Rationale**: Headless frontend architecture requires well-documented, discoverable APIs. HATEOAS enables frontend evolution without hardcoded URLs. Postman collections provide executable documentation that doubles as integration testing tool.
 
 ### IV. Multi-Tenancy by Design (NON-NEGOTIABLE)
 Complete data isolation per real estate company (ADR-008):
@@ -130,12 +152,23 @@ Platform employs dual-interface design:
 
 ### Test Pyramid (ADR-002, ADR-003)
 ```
-     E2E (54 Cypress tests)
+     E2E (56 Cypress tests)
     /____\
-   /      \  Integration (190 HTTP tests)
+   /      \  Integration (195+ HTTP tests)
   /________\
- /          \ Unit (99 tests)
+ /          \ Unit (100+ tests)
 ```
+
+### Reference Implementations
+**Feature 007 - Owner & Company Management** (Constitutional Compliance Template):
+- **Security**: Dual auth (`@require_jwt` + `@require_session`), multi-tenancy enforced
+- **API Design**: 9 REST endpoints with HATEOAS links
+- **Testing**: Integration tests (test_feature007_oauth2.sh), Cypress UI tests (2 files)
+- **Documentation**: Postman collection with OAuth flow and test scripts
+- **Location**: `18.0/extra-addons/quicksol_estate/controllers/owner_api.py`
+- **Postman**: `docs/postman/feature007_owner_company_v1.0_postman_collection.json`
+
+Use Feature 007 as template for implementing new features that comply with all constitutional principles.
 
 ### Required Tests per Feature
 - **Unit**: Services, helpers, serializers, decorators
@@ -165,6 +198,7 @@ Para criação de testes, **DEVEM ser utilizados** os prompts e agents especiali
 - Linting: `ruff` + `black` (automated via `./lint.sh`)
 - Coverage: ≥80% (measured, enforced in CI)
 - Documentation: OpenAPI schemas for all endpoints
+- **API Documentation**: Postman collections (ADR-016) for all new features
 - ADR compliance: Verified in code review
 
 ## Development Workflow (ADR-006)
@@ -204,7 +238,7 @@ Para criação de testes, **DEVEM ser utilizados** os prompts e agents especiali
 
 ### Versioning Policy
 - **MAJOR**: Breaking governance changes (principle removal/redefinition)
-- **MINOR**: New principle/section added or material expansion
+- **MINOR**: New principle/section added, material expansion, or reference implementations documented
 - **PATCH**: Clarifications, wording, typo fixes
 
 ### Compliance Review
@@ -217,4 +251,4 @@ Para criação de testes, **DEVEM ser utilizados** os prompts e agents especiali
 - Constitution provides strategic direction; copilot-instructions provides tactical rules
 - Conflicts resolved in favor of constitution (strategic supersedes tactical)
 
-**Version**: 1.1.0 | **Ratified**: 2026-01-03 | **Last Amended**: 2026-01-08
+**Version**: 1.2.0 | **Ratified**: 2026-01-03 | **Last Amended**: 2026-02-08
