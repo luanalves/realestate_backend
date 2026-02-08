@@ -96,7 +96,28 @@ Os módulos customizados devem ser adicionados no diretório `18.0/extra-addons/
 
 ---
 
-## 📡 API Endpoints
+## � Documentação da API (Swagger/OpenAPI)
+
+### Swagger UI (Interface Interativa)
+- **URL:** http://localhost:8069/api/docs
+- **Descrição:** Interface gráfica interativa para explorar e testar os endpoints da API
+- **Autenticação:** Não requer autenticação para visualizar (endpoints protegidos requerem token Bearer)
+
+### OpenAPI Specification (JSON)
+- **URL:** http://localhost:8069/api/v1/openapi.json
+- **Descrição:** Especificação OpenAPI 3.0 em formato JSON gerada dinamicamente
+- **Uso:** Importar em ferramentas como Postman, Insomnia ou geradores de código
+
+### Como usar a documentação Swagger
+
+1. **Visualizar endpoints:** Acesse http://localhost:8069/api/docs
+2. **Obter token de autenticação:** Use o endpoint `/api/v1/oauth/token` com suas credenciais
+3. **Autorizar:** Clique em "Authorize" no Swagger UI e insira o token no formato `Bearer {seu_token}`
+4. **Testar endpoints:** Clique em "Try it out" em qualquer endpoint para testar diretamente
+
+---
+
+## �📡 API Endpoints
 
 ### Feature 007: Company & Owner Management
 
