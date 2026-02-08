@@ -23,6 +23,13 @@ describe('Admin: Company Management CRUD', () => {
   let ownerId;
 
   before(() => {
+    // Login to Odoo to get a valid session
+    cy.visit(`${baseUrl}/web/login`);
+    cy.get('input[name="login"]').type('admin');
+    cy.get('input[name="password"]').type('admin');
+    cy.get('button[type="submit"]').click();
+    cy.get('.o_user_menu', { timeout: 10000 }).should('be.visible');
+
     // Get OAuth2 token
     cy.request({
       method: 'POST',

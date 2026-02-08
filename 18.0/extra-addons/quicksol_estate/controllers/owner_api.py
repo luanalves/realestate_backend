@@ -148,6 +148,142 @@ class OwnerApiController(http.Controller):
             _logger.error(f"Error creating owner: {str(e)}", exc_info=True)
             return error_response(500, 'Internal server error')
     
+    # ========== GET OWNER BY ID ==========
+    
+    @http.route('/api/v1/owners/<int:owner_id>', type='http', auth='none', methods=['GET'], csrf=False, cors='*')
+    @require_jwt
+    @require_session
+    def get_owner(self, owner_id, **kwargs):
+        """
+        Get Owner details by ID.
+        
+        Requires: JWT token + Session
+        Returns: Owner details with HATEOAS links
+        """
+        try:
+            Owner = request.env['res.users'].sudo()
+            owner = Owner.browse(owner_id)
+            
+            if not owner.exists() or not owner.active:
+                return error_response(404, 'Owner not found')
+            
+            # Check if user has access to this owner (multi-tenancy)
+            current_user = request.env.user
+            if not current_user.has_group('quicksol_estate.group_estate_admin'):
+                # Non-admin users can only access owners from their companies
+                accessible_companies = current_user.estate_company_ids.ids
+                owner_companies = owner.estate_company_ids.ids
+                if not any(company_id in accessible_companies for company_id in owner_companies):
+                    return error_response(404, 'Owner not found')
+            
+            # Build response with HATEOAS
+            response_data = {
+                'success': True,
+                'data': {
+                    'id': owner.id,
+                    'name': owner.name,
+                    'email': owner.login,
+                    'phone': owner.phone or '',
+                    'mobile': owner.mobile or '',
+                    'active': owner.active,
+                    'companies': [{'id': c.id, 'name': c.name} for c in owner.estate_company_ids],
+                },
+                'links': {
+                    'self': f'/api/v1/owners/{owner.id}',
+                    'update': f'/api/v1/owners/{owner.id}',
+                    'delete': f'/api/v1/owners/{owner.id}',
+                    'companies': f'/api/v1/owners/{owner.id}/companies',
+                }
+            }
+            
+            return successful_response(200, response_data)
+            
+        except Exception as e:
+            _logger.error(f"Error getting owner {owner_id}: {str(e)}", exc_info=True)
+            return error_response(500, 'Internal server error')
+    
+    # ========== UPDATE OWNER (PUT) ==========
+    
+    @http.route('/api/v1/owners/<int:owner_id>', type='http', auth='none', methods=['PUT'], csrf=False, cors='*')
+    @require_jwt
+    @require_session
+    def update_owner(self, owner_id, **kwargs):
+        """
+        Update Owner details (name, phone, mobile).
+        
+        Email cannot be changed after creation.
+        Requires: JWT token + Session
+        Returns: Updated owner data
+        """
+        try:
+            data = json.loads(request.httprequest.data.decode('utf-8'))
+            
+            Owner = request.env['res.users'].sudo()
+            owner = Owner.browse(owner_id)
+            
+            if not owner.exists() or not owner.active:
+                return error_response(404, 'Owner not found')
+            
+            # Check if user has access to this owner (multi-tenancy)
+            current_user = request.env.user
+            if not current_user.has_group('quicksol_estate.group_estate_admin'):
+                accessible_companies = current_user.estate_company_ids.ids
+                owner_companies = owner.estate_company_ids.ids
+                if not any(company_id in accessible_companies for company_id in owner_companies):
+                    return error_response(404, 'Owner not found')
+            
+            # Validate and update fields
+            update_values = {}
+            
+            if 'name' in data:
+                if not data['name'] or len(data['name'].strip()) < 3:
+                    return error_response(400, 'Name must be at least 3 characters')
+                update_values['name'] = data['name'].strip()
+            
+            if 'phone' in data:
+                update_values['phone'] = data['phone'].strip() if data['phone'] else False
+            
+            if 'mobile' in data:
+                update_values['mobile'] = data['mobile'].strip() if data['mobile'] else False
+            
+            # Email is immutable
+            if 'email' in data and data['email'] != owner.login:
+                return error_response(400, 'Email cannot be changed after creation')
+            
+            if not update_values:
+                return error_response(400, 'No valid fields provided for update')
+            
+            # Update owner
+            owner.write(update_values)
+            
+            # Build response
+            response_data = {
+                'success': True,
+                'message': 'Owner updated successfully',
+                'data': {
+                    'id': owner.id,
+                    'name': owner.name,
+                    'email': owner.login,
+                    'phone': owner.phone or '',
+                    'mobile': owner.mobile or '',
+                    'active': owner.active,
+                    'companies': [{'id': c.id, 'name': c.name} for c in owner.estate_company_ids],
+                },
+                'links': {
+                    'self': f'/api/v1/owners/{owner.id}',
+                    'delete': f'/api/v1/owners/{owner.id}',
+                    'companies': f'/api/v1/owners/{owner.id}/companies',
+                }
+            }
+            
+            return successful_response(200, response_data)
+            
+        except json.JSONDecodeError:
+            return error_response(400, 'Invalid JSON')
+        except Exception as e:
+            _logger.error(f"Error updating owner {owner_id}: {str(e)}", exc_info=True)
+            return error_response(500, 'Internal server error')
+    
     # ========== DELETE OWNER (T020, T021) ==========
     
     @http.route('/api/v1/owners/<int:owner_id>', type='http', auth='none', methods=['DELETE'], csrf=False, cors='*')

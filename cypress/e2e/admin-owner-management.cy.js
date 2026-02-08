@@ -18,10 +18,23 @@
 describe('Admin: Owner Management CRUD', () => {
   const baseUrl = Cypress.env('API_BASE_URL') || 'http://localhost:8069';
   let accessToken;
+  let sessionId;
   let ownerId;
   let companyId;
 
   before(() => {
+    // Login to Odoo to get a valid session
+    cy.visit(`${baseUrl}/web/login`);
+    cy.get('input[name="login"]').type('admin');
+    cy.get('input[name="password"]').type('admin');
+    cy.get('button[type="submit"]').click();
+    cy.get('.o_user_menu', { timeout: 10000 }).should('be.visible');
+
+    // Capture session_id cookie
+    cy.getCookie('session_id').then((cookie) => {
+      sessionId = cookie.value;
+    });
+
     // Get OAuth2 token
     cy.request({
       method: 'POST',
@@ -37,17 +50,20 @@ describe('Admin: Owner Management CRUD', () => {
     });
 
     // Get a company ID for linking tests
-    cy.request({
-      method: 'GET',
-      url: `${baseUrl}/api/v1/companies`,
-      headers: {
-        'Authorization': `Bearer ${accessToken}`
-      },
-      failOnStatusCode: false
-    }).then((response) => {
-      if (response.status === 200 && response.body.data && response.body.data.length > 0) {
-        companyId = response.body.data[0].id;
-      }
+    cy.then(() => {
+      cy.request({
+        method: 'GET',
+        url: `${baseUrl}/api/v1/companies`,
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Cookie': `session_id=${sessionId}`
+        },
+        failOnStatusCode: false
+      }).then((response) => {
+        if (response.status === 200 && response.body.data && response.body.data.length > 0) {
+          companyId = response.body.data[0].id;
+        }
+      });
     });
   });
 
@@ -142,7 +158,8 @@ describe('Admin: Owner Management CRUD', () => {
         method: 'GET',
         url: `${baseUrl}/api/v1/owners/${ownerId}`,
         headers: {
-          'Authorization': `Bearer ${accessToken}`
+          'Authorization': `Bearer ${accessToken}`,
+          'Cookie': `session_id=${sessionId}`
         }
       }).then((response) => {
         expect(response.status).to.equal(200);
@@ -158,7 +175,8 @@ describe('Admin: Owner Management CRUD', () => {
         method: 'GET',
         url: `${baseUrl}/api/v1/owners/999999`,
         headers: {
-          'Authorization': `Bearer ${accessToken}`
+          'Authorization': `Bearer ${accessToken}`,
+          'Cookie': `session_id=${sessionId}`
         },
         failOnStatusCode: false
       }).then((response) => {
