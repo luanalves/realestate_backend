@@ -180,41 +180,12 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
-  /companies/{company_id}/owners:
-    parameters:
-      - $ref: '#/components/parameters/CompanyId'
-
-    get:
-      tags:
-        - Owners
-      summary: List company owners
-      operationId: listOwners
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: active
-          in: query
-          schema:
-            type: boolean
-            default: true
-      responses:
-        '200':
-          description: List of owners
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OwnerListResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
+  /owners:
     post:
       tags:
         - Owners
-      summary: Create owner for company
+      summary: Create owner (Self Registration)
+      description: Create a new Owner account without company association.
       operationId: createOwner
       security:
         - bearerAuth: []
@@ -226,7 +197,7 @@ paths:
               $ref: '#/components/schemas/OwnerCreate'
       responses:
         '201':
-          description: Owner created
+          description: Owner created successfully
           content:
             application/json:
               schema:
@@ -235,10 +206,6 @@ paths:
           $ref: '#/components/responses/ValidationError'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
         '409':
           description: Email already exists
           content:
@@ -246,25 +213,23 @@ paths:
               schema:
                 $ref: '#/components/schemas/ConflictError'
 
-  /companies/{company_id}/owners/{owner_id}:
+  /owners/{owner_id}:
     parameters:
-      - $ref: '#/components/parameters/CompanyId'
       - $ref: '#/components/parameters/OwnerId'
-
-    get:
+    
+    delete:
       tags:
         - Owners
-      summary: Get owner details
-      operationId: getOwner
+      summary: Delete owner
+      description: Delete owner account. Validates if owner is the last one in any company.
+      operationId: deleteOwner
       security:
         - bearerAuth: []
       responses:
-        '200':
-          description: Owner details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OwnerDetailResponse'
+        '204':
+          description: Owner deleted successfully
+        '400':
+          $ref: '#/components/responses/ValidationError'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -272,26 +237,29 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
-    put:
+  /owners/{owner_id}/companies/{company_id}:
+    parameters:
+      - $ref: '#/components/parameters/OwnerId'
+      - $ref: '#/components/parameters/CompanyId'
+
+    post:
       tags:
         - Owners
-      summary: Update owner
-      operationId: updateOwner
+      summary: Link owner to company
+      operationId: linkOwnerToCompany
       security:
         - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/OwnerUpdate'
       responses:
         '200':
-          description: Owner updated
+          description: Owner linked to company successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/OwnerResponse'
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Owner linked to company successfully"
         '400':
           $ref: '#/components/responses/ValidationError'
         '401':
@@ -304,23 +272,23 @@ paths:
     delete:
       tags:
         - Owners
-      summary: Deactivate owner (soft delete)
-      operationId: deleteOwner
+      summary: Unlink owner from company
+      operationId: unlinkOwnerFromCompany
       security:
         - bearerAuth: []
       responses:
         '200':
-          description: Owner deactivated
+          description: Owner unlinked from company successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DeleteResponse'
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Owner unlinked from company successfully"
         '400':
-          description: Cannot remove last owner
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ValidationErrorResponse'
+          $ref: '#/components/responses/ValidationError'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':

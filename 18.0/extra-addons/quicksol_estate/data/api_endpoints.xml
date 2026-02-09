@@ -791,15 +791,51 @@ curl 'http://localhost:8069/api/v1/location-types' \
             <field name="active" eval="True"/>
         </record>
 
-        <record id="api_endpoint_list_owners" model="thedevkitchen.api.endpoint">
-            <field name="name">List Property Owners</field>
+        <record id="api_endpoint_create_owner" model="thedevkitchen.api.endpoint">
+            <field name="name">Create Property Owner</field>
             <field name="path">/api/v1/owners</field>
-            <field name="method">GET</field>
+            <field name="method">POST</field>
             <field name="module_name">quicksol_estate</field>
             <field name="protected" eval="True"/>
-            <field name="tags">Master Data</field>
-            <field name="summary">List all property owners</field>
-            <field name="description">Get list of all active property owners with contact information.</field>
+            <field name="tags">Owners</field>
+            <field name="summary">Create a new property owner</field>
+            <field name="description">Creates a new property owner account (Self-Registration).</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_delete_owner" model="thedevkitchen.api.endpoint">
+            <field name="name">Delete Property Owner</field>
+            <field name="path">/api/v1/owners/{id}</field>
+            <field name="method">DELETE</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Owners</field>
+            <field name="summary">Delete a property owner</field>
+            <field name="description">Deletes a property owner account.</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_link_owner_company" model="thedevkitchen.api.endpoint">
+            <field name="name">Link Owner to Company</field>
+            <field name="path">/api/v1/owners/{id}/companies/{cid}</field>
+            <field name="method">POST</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Owners</field>
+            <field name="summary">Link owner to company</field>
+            <field name="description">Associates an owner with a real estate company.</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_unlink_owner_company" model="thedevkitchen.api.endpoint">
+            <field name="name">Unlink Owner from Company</field>
+            <field name="path">/api/v1/owners/{id}/companies/{cid}</field>
+            <field name="method">DELETE</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Owners</field>
+            <field name="summary">Unlink owner from company</field>
+            <field name="description">Removes association between an owner and a company.</field>
             <field name="active" eval="True"/>
         </record>
 
