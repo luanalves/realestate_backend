@@ -33,12 +33,8 @@ class UserAuthController(http.Controller):
         email = (email or '').strip().lower()
 
         try:
-            _logger.info(f"Login attempt: {email} from {ip_address} by app: {application.name}")
 
-            # IMPORTANTE: auth='none' significa env.uid=None, então precisamos .sudo() para buscar usuários
-            _logger.info(f"Searching for user: {email}")
             users = request.env['res.users'].sudo().search([('login', '=', email)], limit=1)
-            _logger.info(f"Search result: {users}, count: {len(users) if users else 0}")
 
             if not users:
                 _logger.warning(f"User not found: {email}")
@@ -49,7 +45,6 @@ class UserAuthController(http.Controller):
                 )
 
             user = users[0]
-            _logger.info(f"User found: {user.login}, active: {user.active}")
 
             if not user.active:
                 _logger.warning(f"User inactive: {email}")
@@ -59,8 +54,6 @@ class UserAuthController(http.Controller):
                     status=403
                 )
 
-            _logger.info(f"Authenticating user: {email}")
-
             try:
                 credential = {
                     'type': 'password',
@@ -68,7 +61,6 @@ class UserAuthController(http.Controller):
                     'password': password
                 }
                 auth_info = request.session.authenticate(request.env.cr.dbname, credential)
-                _logger.info(f"Authentication result: uid={auth_info.get('uid')}")
 
                 uid = auth_info.get('uid')
                 if not uid or uid == -1:
@@ -81,7 +73,6 @@ class UserAuthController(http.Controller):
                     
                 # Captura session_id APÓS authenticate (que pode gerar novo sid)
                 session_id = request.session.sid
-                _logger.info(f"Session ID after auth: {session_id}")
                 
             except Exception as auth_error:
                 _logger.error(f"Auth exception for {email}: {type(auth_error).__name__}: {auth_error}")
@@ -91,7 +82,6 @@ class UserAuthController(http.Controller):
                     status=401
                 )
 
-            _logger.info(f"Creating API session for user {email}, session_id: {session_id}")
 
             # Usar .sudo() para operações de API session porque:
             # 1. É uma operação de sistema (registrar sessões), não do usuário
@@ -103,7 +93,6 @@ class UserAuthController(http.Controller):
                     ('is_active', '=', True),
                 ])
                 for old_session in old_sessions:
-                    _logger.info(f"Invalidating previous session {old_session.session_id} for user {email}")
                     old_session.write({
                         'is_active': False,
                         'logout_at': fields.Datetime.now()
@@ -127,8 +116,6 @@ class UserAuthController(http.Controller):
 
             AuditLogger.log_successful_login(ip_address, email, user.id)
 
-            _logger.info(f"Login successful for {email}")
-
             # Generate JWT token for session security (prevents session hijacking)
             try:
                 ir_http = request.env['ir.http']
@@ -137,7 +124,6 @@ class UserAuthController(http.Controller):
                     request.session['_security_token'] = security_token
                     # Também armazenar no registro de API session para persistência
                     api_session_record.security_token = security_token
-                    _logger.info(f"[SESSION TOKEN] Created for user {email} (UID {user.id})")
                 else:
                     _logger.warning(f"Failed to generate session token for {email}")
             except Exception as token_error:
@@ -145,7 +131,6 @@ class UserAuthController(http.Controller):
 
             try:
                 user_response = self._build_user_response(user)
-                _logger.info(f"User response built: {user_response}")
             except Exception as build_error:
                 _logger.error(f"Error building user response: {type(build_error).__name__}: {build_error}", exc_info=True)
                 raise
@@ -166,58 +151,19 @@ class UserAuthController(http.Controller):
     @require_jwt
     @require_session
     def logout(self, **kwargs):
+    
         try:
-            try:
-                data = json.loads(request.httprequest.get_data(as_text=True) or '{}')
-            except (json.JSONDecodeError, ValueError):
-                data = {}
-            session_id = data.get('session_id')
+            user = request.env.user
+            api_session = request.api_session
+            session_id = request.session_id
             ip_address = request.httprequest.remote_addr
-            
-            _logger.info(f"Logout attempt for session_id: {session_id} from {ip_address}")
-            
-            if not session_id:
-                _logger.warning(f"Logout failed: no session_id provided from {ip_address}")
-                return request.make_json_response(
-                    {'error': {'status': 400, 'message': 'session_id is required'}},
-                    status=400
-                )
 
-            # Find and validate API session
-            # Usar .sudo() pois logout é operação de sistema
-            try:
-                api_session = request.env['thedevkitchen.api.session'].sudo().search([
-                    ('session_id', '=', session_id),
-                    ('is_active', '=', True)
-                ], limit=1)
-            except Exception as search_error:
-                _logger.error(f"Error searching for session: {type(search_error).__name__}: {search_error}", exc_info=True)
-                raise
-
-            if not api_session:
-                _logger.warning(f"Logout failed: no active session found for {session_id}")
-                return request.make_json_response(
-                    {'error': {'status': 401, 'message': 'Session not found or already logged out'}},
-                    status=401
-                )
-
-            # Get user info before deactivating
-            user = api_session.user_id
-            _logger.info(f"Logging out user: {user.login}")
-
-            # Deactivate session
-            try:
-                api_session.write({
-                    'is_active': False,
-                    'logout_at': fields.Datetime.now()
-                })
-            except Exception as write_error:
-                _logger.error(f"Error deactivating session: {type(write_error).__name__}: {write_error}", exc_info=True)
-                raise
+            api_session.write({
+                'is_active': False,
+                'logout_at': fields.Datetime.now()
+            })
 
             AuditLogger.log_logout(ip_address, user.email or user.login, user.id)
-            _logger.info(f"Logout successful for {user.login}")
-
             return request.make_json_response({'message': 'Logged out successfully'})
 
         except Exception as e:
@@ -323,14 +269,12 @@ class UserAuthController(http.Controller):
             ], limit=1)
             
             if not api_session:
-                _logger.warning(f"Change password failed: Invalid or inactive session {session_id}")
                 return request.make_json_response(
                     {'error': {'status': 401, 'message': 'Invalid session'}},
                     status=401
                 )
             
             user = api_session.user_id
-            _logger.info(f"Change password request for user: {user.email or user.login}")
             
             # Validação de campos vazios
             current_password = data.get('current_password', '').strip() if data.get('current_password') else ''
@@ -375,7 +319,6 @@ class UserAuthController(http.Controller):
                     status=400
                 )
             
-            # Validação 4: Verificar senha atual
             # Usa o método padrão de autenticação do Odoo
             try:
                 # Tenta autenticar o usuário com a senha fornecida
@@ -402,7 +345,6 @@ class UserAuthController(http.Controller):
             # Atualizar password
             try:
                 user.write({'password': new_password})
-                _logger.info(f"Password changed successfully for {user.email or user.login}")
                 AuditLogger.log_successful_login(ip_address, user.email or user.login, user.id)
                 return request.make_json_response({'message': 'Password changed successfully'})
             except Exception as write_error:

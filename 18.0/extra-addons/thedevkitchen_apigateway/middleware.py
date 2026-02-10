@@ -290,7 +290,12 @@ def require_session(func):
                 }
             }, status=401)
 
+        # Inject user and api_session into request context
+        # This makes them available to all endpoints using @require_session
         request.env = request.env(user=user)
+        request.api_session = api_session  # ← ADR-011: Decorator provides validated session
+        request.session_id = session_id    # ← Validated session_id for convenience
+        
         return func(*args, **kwargs)
 
     return wrapper
