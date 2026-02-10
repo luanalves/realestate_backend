@@ -308,12 +308,7 @@ def require_company(func):
 
         if not user.estate_company_ids:
             _logger.warning(f'User {user.login} has no companies')
-            return {
-                'error': {
-                    'status': 403,
-                    'message': 'User has no company access'
-                }
-            }
+            return _error_response(403, 'no_company', 'User has no company access')
 
         request.company_domain = [('company_ids', 'in', user.estate_company_ids.ids)]
         request.user_company_ids = user.estate_company_ids.ids
