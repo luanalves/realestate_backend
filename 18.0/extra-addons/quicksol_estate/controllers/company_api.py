@@ -39,7 +39,6 @@ class CompanyApiController(http.Controller):
     @http.route('/api/v1/companies', type='http', auth='none', methods=['POST'], csrf=False, cors='*')
     @require_jwt
     @require_session
-    @require_company
     def create_company(self, **kwargs):
         """
         Create a new Real Estate Company.
@@ -113,15 +112,9 @@ class CompanyApiController(http.Controller):
                 if not validate_email_format(data['email']):
                     return error_response(400, f"Invalid email format: {data['email']}")
             
-            # Validate CRECI if provided (FR-027)
+            # Validate CRECI format if provided (FR-027)
             if 'creci' in data and data['creci']:
-                state_code = None
-                if 'state_id' in data:
-                    state = request.env['real.estate.state'].sudo().browse(data['state_id'])
-                    if state.exists():
-                        state_code = state.code
-                
-                if not validate_creci(data['creci'], state_code):
+                if not validate_creci(data['creci']):
                     return error_response(400, f"Invalid CRECI format: {data['creci']}")
             
             # Prepare company data
@@ -436,11 +429,7 @@ class CompanyApiController(http.Controller):
                 update_vals['email'] = data['email']
             
             if 'creci' in data and data['creci']:
-                state_code = None
-                if company.state_id:
-                    state_code = company.state_id.code
-                
-                if not validate_creci(data['creci'], state_code):
+                if not validate_creci(data['creci']):
                     return error_response(400, f"Invalid CRECI format: {data['creci']}")
                 update_vals['creci'] = data['creci']
             
