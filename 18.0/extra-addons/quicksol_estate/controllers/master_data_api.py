@@ -16,7 +16,6 @@ class MasterDataApiController(http.Controller):
                 type='http', auth='none', methods=['GET'], csrf=False, cors='*')
     @require_jwt
     @require_session
-    @require_company
     def list_property_types(self, **kwargs):
         """
         List all available property types.
@@ -26,8 +25,7 @@ class MasterDataApiController(http.Controller):
         """
         try:
             PropertyType = request.env['real.estate.property.type'].sudo()
-            domain = request.company_domain
-            property_types = PropertyType.search(domain)
+            property_types = PropertyType.search([])
             
             types_list = []
             for prop_type in property_types:
@@ -48,7 +46,6 @@ class MasterDataApiController(http.Controller):
                 type='http', auth='none', methods=['GET'], csrf=False, cors='*')
     @require_jwt
     @require_session
-    @require_company
     def list_location_types(self, **kwargs):
         """
         List all available location types.
@@ -58,8 +55,7 @@ class MasterDataApiController(http.Controller):
         """
         try:
             LocationType = request.env['real.estate.location.type'].sudo()
-            domain = request.company_domain
-            location_types = LocationType.search(domain, order='sequence, name')
+            location_types = LocationType.search([], order='sequence, name')
             
             types_list = []
             for loc_type in location_types:
@@ -79,7 +75,6 @@ class MasterDataApiController(http.Controller):
                 type='http', auth='none', methods=['GET'], csrf=False, cors='*')
     @require_jwt
     @require_session
-    @require_company
     def list_states(self, **kwargs):
         """
         List all states/provinces.
@@ -92,7 +87,7 @@ class MasterDataApiController(http.Controller):
         try:
             country_id = kwargs.get('country_id')
             
-            domain = request.company_domain[:]
+            domain = []
             if country_id:
                 domain.append(('country_id', '=', int(country_id)))
             
@@ -228,7 +223,6 @@ class MasterDataApiController(http.Controller):
                 type='http', auth='none', methods=['GET'], csrf=False, cors='*')
     @require_jwt
     @require_session
-    @require_company
     def list_tags(self, **kwargs):
         """
         List all property tags.
@@ -238,7 +232,7 @@ class MasterDataApiController(http.Controller):
         """
         try:
             Tag = request.env['real.estate.property.tag'].sudo()
-            domain = [('active', '=', True)] + request.company_domain
+            domain = [('active', '=', True)]
             tags = Tag.search(domain, order='name')
             
             tags_list = []
@@ -259,7 +253,6 @@ class MasterDataApiController(http.Controller):
                 type='http', auth='none', methods=['GET'], csrf=False, cors='*')
     @require_jwt
     @require_session
-    @require_company
     def list_amenities(self, **kwargs):
         """
         List all property amenities.
@@ -269,8 +262,7 @@ class MasterDataApiController(http.Controller):
         """
         try:
             Amenity = request.env['real.estate.amenity'].sudo()
-            domain = request.company_domain
-            amenities = Amenity.search(domain, order='name')
+            amenities = Amenity.search([], order='name')
             
             amenities_list = []
             for amenity in amenities:
