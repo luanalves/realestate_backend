@@ -92,20 +92,6 @@ class UserAuthController(http.Controller):
                     }
                 }
 
-            _logger.info(f"Checking companies for user {email}")
-            has_companies = bool(user.estate_company_ids)
-            is_system_admin = user.has_group('base.group_system')
-
-            if not has_companies and not is_system_admin:
-                _logger.warning(f"User has no companies: {email}")
-                AuditLogger.log_failed_login(ip_address, email, 'No companies')
-                return {
-                    'error': {
-                        'status': 403,
-                        'message': 'User has no companies assigned'
-                    }
-                }
-
             _logger.info(f"Creating API session for user {email}, session_id: {session_id}")
 
             # Usar .sudo() para operações de API session porque:
