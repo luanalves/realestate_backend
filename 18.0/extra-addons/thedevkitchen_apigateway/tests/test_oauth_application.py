@@ -85,7 +85,7 @@ class TestOAuthApplication(TransactionCase):
         
         self.assertIn('domain', action, "Action should have domain")
         self.assertIn('res_model', action, "Action should have res_model")
-        self.assertEqual(action['res_model'], 'oauth.token')
+        self.assertEqual(action['res_model'], 'thedevkitchen.oauth.token')
 
     def test_application_name_required(self):
         """Test that name has a default value"""
