@@ -1,16 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Owner API Controller - Feature 007: Company & Owner Management
-
-Owner lifecycle management (creation, deletion, company linking).
-For owner profile updates, use /api/v1/users/profile endpoint.
-
-Endpoints:
-    POST   /api/v1/owners                        → Create owner (no company required)
-    DELETE /api/v1/owners/{id}                   → Delete owner (validates not last in company)
-    POST   /api/v1/owners/{id}/companies/{cid}   → Link owner to company
-    DELETE /api/v1/owners/{id}/companies/{cid}   → Unlink owner from company
-"""
 import json
 import logging
 from odoo import http
@@ -31,40 +19,11 @@ _logger = logging.getLogger(__name__)
 
 
 class OwnerApiController(http.Controller):
-    """REST API Controller for Owner endpoints (Feature 007)"""
-    
-    # ========== CREATE OWNER (T014, T015, T016) ==========
-    
     @http.route('/api/v1/owners', type='http', auth='none', methods=['POST'], csrf=False, cors='*')
     @require_jwt
-    # No @require_session - Self-registration, no user context needed yet
-    # No @require_company - Owner can exist without company (FR-010 exception)
     def create_owner(self, **kwargs):
-        """
-        Create a new Owner without company association (self-registration).
-        
-        Authentication: OAuth2 JWT only (no user session required)
-        RBAC: None - any authenticated app can create owners (FR-018, T016)
-        
-        Request Body:
-            {
-                "name": "Owner Name",
-                "email": "owner@example.com",
-                "password": "secure_password",
-                "phone": "(11) 98765-4321",  // optional
-                "mobile": "(11) 98765-4321"  // optional
-            }
-        
-        Returns:
-            201: Owner created successfully
-            400: Validation error
-            401: Invalid JWT token
-            409: Email already exists
-        """
+
         try:
-            # OAuth2 JWT validation already done by @require_jwt
-            # No user session needed - self-registration flow
-            
             # Parse request body
             try:
                 data = json.loads(request.httprequest.data.decode('utf-8'))
@@ -196,7 +155,7 @@ class OwnerApiController(http.Controller):
                 }
             }
             
-            return successful_response(200, response_data)
+            return success_response(response_data)
             
         except Exception as e:
             _logger.error(f"Error getting owner {owner_id}: {str(e)}", exc_info=True)
@@ -276,7 +235,7 @@ class OwnerApiController(http.Controller):
                 }
             }
             
-            return successful_response(200, response_data)
+            return success_response(response_data)
             
         except json.JSONDecodeError:
             return error_response(400, 'Invalid JSON')
@@ -360,23 +319,7 @@ class OwnerApiController(http.Controller):
     @require_session
     @require_company
     def link_owner_to_company(self, owner_id, **kwargs):
-        """
-        Link an existing Owner to a Company.
-        
-        RBAC: Only Owner of target company or Admin can link (FR-020)
-        
-        Request Body:
-            {
-                "company_id": 123
-            }
-        
-        Returns:
-            200: Owner linked successfully
-            400: Validation error
-            403: Forbidden
-            404: Owner or Company not found
-            409: Owner already linked to company
-        """
+
         try:
             user = request.env.user
             
@@ -451,18 +394,7 @@ class OwnerApiController(http.Controller):
     @require_session
     @require_company
     def unlink_owner_from_company(self, owner_id, company_id, **kwargs):
-        """
-        Unlink Owner from a Company.
-        
-        Protection: Prevents unlinking last active Owner from company (FR-031)
-        RBAC: Only Owner of target company or Admin can unlink (FR-020)
-        
-        Returns:
-            200: Owner unlinked successfully
-            400: Cannot unlink last owner
-            403: Forbidden
-            404: Owner or Company not found
-        """
+
         try:
             user = request.env.user
             
