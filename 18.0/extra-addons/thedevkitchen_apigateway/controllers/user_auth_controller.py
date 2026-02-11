@@ -257,6 +257,10 @@ class UserAuthController(http.Controller):
     @require_session
     def change_password(self, **kwargs):
         try:
+            # Use validated objects from @require_session decorator (ADR-011)
+            user = request.env.user
+            ip_address = request.httprequest.remote_addr
+            
             # Extrai dados do JSON body
             try:
                 data = json.loads(request.httprequest.get_data(as_text=True) or '{}')
@@ -265,32 +269,9 @@ class UserAuthController(http.Controller):
                     {'error': {'status': 400, 'message': 'Invalid JSON body'}},
                     status=400
                 )
-            session_id = data.get('session_id')
-            ip_address = request.httprequest.remote_addr
             
-            if not session_id:
-                _logger.warning(f"Change password failed: no session_id provided")
-                return request.make_json_response(
-                    {'error': {'status': 400, 'message': 'session_id is required'}},
-                    status=400
-                )
-            
-            # Buscar a sessão da API
-            api_session = request.env['thedevkitchen.api.session'].sudo().search([
-                ('session_id', '=', session_id),
-                ('is_active', '=', True)
-            ], limit=1)
-            
-            if not api_session:
-                return request.make_json_response(
-                    {'error': {'status': 401, 'message': 'Invalid session'}},
-                    status=401
-                )
-            
-            user = api_session.user_id
-            
-            # Validação de campos vazios
-            current_password = data.get('current_password', '').strip() if data.get('current_password') else ''
+            # Validação de campos vazios (suporta old_password e current_password)
+            current_password = (data.get('current_password') or data.get('old_password') or '').strip()
             new_password = data.get('new_password', '').strip() if data.get('new_password') else ''
             confirm_password = data.get('confirm_password', '').strip() if data.get('confirm_password') else ''
             
@@ -309,15 +290,8 @@ class UserAuthController(http.Controller):
                     status=400
                 )
             
-            if not confirm_password:
-                _logger.warning(f"Change password failed: confirm_password is empty for {user.email or user.login}")
-                return request.make_json_response(
-                    {'error': {'status': 400, 'message': 'Password confirmation is required'}},
-                    status=400
-                )
-            
-            # Validação 2: Passwords coincidem
-            if new_password != confirm_password:
+            # Validação 2: Passwords coincidem (se confirm_password foi fornecido)
+            if confirm_password and new_password != confirm_password:
                 _logger.warning(f"Change password failed: Passwords do not match for {user.email or user.login}")
                 return request.make_json_response(
                     {'error': {'status': 400, 'message': 'New password and confirmation do not match'}},
@@ -326,38 +300,33 @@ class UserAuthController(http.Controller):
             
             # Validação 3: Comprimento mínimo
             if len(new_password) < 8:
-                _logger.warning(f"Change password failed: Password too short ({len(new_password)} chars) for {user.email or user.login}")
                 return request.make_json_response(
                     {'error': {'status': 400, 'message': 'Password must be at least 8 characters long'}},
                     status=400
                 )
             
-            # Usa o método padrão de autenticação do Odoo
+            # Verifica se a senha atual está correta
             try:
-                # Tenta autenticar o usuário com a senha fornecida
-                user_id = request.env['res.users'].authenticate(
-                    request.env.cr.dbname,  # database name
-                    user.login,
-                    current_password
-                )
-                
-                if not user_id or user_id != user.id:
-                    _logger.warning(f"Change password failed: Invalid current password for {user.email or user.login}")
-                    AuditLogger.log_failed_login(ip_address, user.email or user.login, 'Invalid current password during change')
+                # Cria environment com sudo e verifica credenciais
+                uid = request.env['res.users'].sudo().search([('id', '=', user.id)], limit=1)
+                if not uid:
                     return request.make_json_response(
-                        {'error': {'status': 401, 'message': 'Current password is incorrect'}},
+                        {'error': {'status': 401, 'message': 'User not found'}},
                         status=401
                     )
+                # _check_credentials espera um dict com type e password
+                uid._check_credentials({'type': 'password', 'password': current_password}, {'interactive': False})
             except Exception as cred_error:
-                _logger.error(f"Error checking credentials for {user.email or user.login}: {cred_error}", exc_info=True)
+                AuditLogger.log_failed_login(ip_address, user.email or user.login, 'Invalid current password during change')
                 return request.make_json_response(
-                    {'error': {'status': 401, 'message': 'Failed to verify current password'}},
+                    {'error': {'status': 401, 'message': 'Current password is incorrect'}},
                     status=401
                 )
             
             # Atualizar password
             try:
-                user.write({'password': new_password})
+                user.sudo().write({'password': new_password})
+                request.env.cr.commit()
                 AuditLogger.log_successful_login(ip_address, user.email or user.login, user.id)
                 return request.make_json_response({'message': 'Password changed successfully'})
             except Exception as write_error:
