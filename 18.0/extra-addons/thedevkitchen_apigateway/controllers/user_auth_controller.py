@@ -83,12 +83,9 @@ class UserAuthController(http.Controller):
                 )
 
 
-            # Usar .sudo() para operações de API session porque:
-            # 1. É uma operação de sistema (registrar sessões), não do usuário
-            # 2. O usuário não deve precisar de permissão explícita para o sistema registrar sua própria sessão
-            # 3. Evita problemas de cache de permissões após autenticação
+            # Invalidar sessões antigas do usuário
             try:
-                old_sessions = request.env['thedevkitchen.api.session'].sudo().search([
+                old_sessions = request.env['thedevkitchen.api.session'].search([
                     ('user_id', '=', user.id),
                     ('is_active', '=', True),
                 ])
@@ -103,7 +100,7 @@ class UserAuthController(http.Controller):
                 raise
 
             try:
-                api_session_record = request.env['thedevkitchen.api.session'].sudo().create({
+                api_session_record = request.env['thedevkitchen.api.session'].create({
                     'session_id': session_id,
                     'user_id': user.id,
                     'ip_address': ip_address,
@@ -325,7 +322,7 @@ class UserAuthController(http.Controller):
             
             # Atualizar password
             try:
-                user.sudo().write({'password': new_password})
+                user.write({'password': new_password})
                 request.env.cr.commit()
                 AuditLogger.log_successful_login(ip_address, user.email or user.login, user.id)
                 return request.make_json_response({'message': 'Password changed successfully'})
