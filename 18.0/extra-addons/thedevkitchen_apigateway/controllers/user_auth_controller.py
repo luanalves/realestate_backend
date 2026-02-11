@@ -190,6 +190,15 @@ class UserAuthController(http.Controller):
             
             updates = {}
             
+            if 'name' in data:
+                name = str(data['name']).strip()
+                if not name:
+                    return request.make_json_response(
+                        {'error': {'status': 400, 'message': 'Name cannot be empty'}},
+                        status=400
+                    )
+                updates['name'] = name
+            
             if 'email' in data:
                 email = str(data['email']).strip().lower()
                 if '@' not in email or '.' not in email.split('@')[1]:
@@ -224,7 +233,11 @@ class UserAuthController(http.Controller):
                     status=400
                 )
             
+            # Update user and reload from database
             user.write(updates)
+            request.env.cr.commit()  # Force commit to ensure DB update
+            user.invalidate_recordset()  # Clear cache to reload from database
+            
             AuditLogger.log_successful_login(ip_address, user.email or user.login, user.id)
             
             return request.make_json_response({
