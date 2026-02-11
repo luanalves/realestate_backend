@@ -33,27 +33,7 @@ class UserAuthController(http.Controller):
         email = (email or '').strip().lower()
 
         try:
-
-            users = request.env['res.users'].sudo().search([('login', '=', email)], limit=1)
-
-            if not users:
-                _logger.warning(f"User not found: {email}")
-                AuditLogger.log_failed_login(ip_address, email)
-                return request.make_json_response(
-                    {'error': {'status': 401, 'message': 'Invalid credentials'}},
-                    status=401
-                )
-
-            user = users[0]
-
-            if not user.active:
-                _logger.warning(f"User inactive: {email}")
-                AuditLogger.log_failed_login(ip_address, email, 'User inactive')
-                return request.make_json_response(
-                    {'error': {'status': 403, 'message': 'User inactive'}},
-                    status=403
-                )
-
+            # Autentica primeiro (valida credenciais e cria sessão)
             try:
                 credential = {
                     'type': 'password',
@@ -80,6 +60,18 @@ class UserAuthController(http.Controller):
                 return request.make_json_response(
                     {'error': {'status': 401, 'message': 'Invalid credentials'}},
                     status=401
+                )
+            
+            # Após autenticação bem-sucedida, busca o usuário com sudo
+            # (usuário já autenticado, sudo é seguro aqui para ler dados do próprio usuário)
+            user = request.env['res.users'].sudo().browse(uid)
+            
+            if not user.active:
+                _logger.warning(f"User inactive: {email}")
+                AuditLogger.log_failed_login(ip_address, email, 'User inactive')
+                return request.make_json_response(
+                    {'error': {'status': 403, 'message': 'User inactive'}},
+                    status=403
                 )
 
 
@@ -304,15 +296,8 @@ class UserAuthController(http.Controller):
             
             # Verifica se a senha atual está correta
             try:
-                # Cria environment com sudo e verifica credenciais
-                uid = request.env['res.users'].sudo().search([('id', '=', user.id)], limit=1)
-                if not uid:
-                    return request.make_json_response(
-                        {'error': {'status': 401, 'message': 'User not found'}},
-                        status=401
-                    )
                 # _check_credentials espera um dict com type e password
-                uid._check_credentials({'type': 'password', 'password': current_password}, {'interactive': False})
+                user._check_credentials({'type': 'password', 'password': current_password}, {'interactive': False})
             except Exception as cred_error:
                 AuditLogger.log_failed_login(ip_address, user.email or user.login, 'Invalid current password during change')
                 return request.make_json_response(
