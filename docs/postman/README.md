@@ -4,14 +4,14 @@
 
 Complete Postman collection for Quicksol Real Estate Management System API.
 
-**Version:** 1.6.0  
+**Version:** 1.7.0  
 **Last Updated:** 2026-02-12  
 **Spec Coverage:** Complete API (55+ endpoints)
 
 ## Available Collections
 
-### 1. Complete API Collection (v1.6) ⭐ RECOMMENDED
-**File:** `quicksol_api_v1.6_postman_collection.json`  
+### 1. Complete API Collection (v1.7) ⭐ RECOMMENDED
+**File:** `quicksol_api_v1.7_postman_collection.json`  
 **Coverage:** All 55+ endpoints - Complete API coverage  
 **ADR Compliance:** ADR-016 (complete)  
 **Includes:** Authentication, Users, Properties, Agents, Assignments (full CRUD), Commissions, Performance, Leads, Activities, Filters, Master Data
@@ -30,7 +30,14 @@ Complete Postman collection for Quicksol Real Estate Management System API.
 **Coverage:** Lead CRUD, conversions, statistics, multi-tenancy tests  
 **Feature:** 006-lead-management
 
-## Changelog v1.6 (Latest)
+## Changelog v1.7 (Latest)
+
+⚠️ **BREAKING CHANGE:** Create Owner (POST /api/v1/owners) now requires CPF field  
+✅ CPF validation using validate_docbr library  
+✅ CPF unique constraint: each user must have unique CPF  
+✅ CPF returned in Create Owner response
+
+## Changelog v1.6
 
 ✅ Added GET /api/v1/assignments (list with pagination + filters)  
 ✅ Added GET /api/v1/assignments/{id} (detail)  

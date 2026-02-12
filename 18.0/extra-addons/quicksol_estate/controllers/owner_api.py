@@ -31,7 +31,7 @@ class OwnerApiController(http.Controller):
                 return error_response(400, 'Invalid JSON in request body')
             
             # Validate required fields (FR-028, FR-029, FR-030)
-            required_fields = ['name', 'email', 'password']
+            required_fields = ['name', 'email', 'password', 'cpf']
             missing_fields = [f for f in required_fields if not data.get(f)]
             if missing_fields:
                 return error_response(400, f"Missing required fields: {', '.join(missing_fields)}")
@@ -39,6 +39,28 @@ class OwnerApiController(http.Controller):
             # Validate email format
             if not validate_email_format(data['email']):
                 return error_response(400, f"Invalid email format: {data['email']}")
+            
+            # Validate CPF format
+            try:
+                from validate_docbr import CPF
+                cpf_validator = CPF()
+                cpf_clean = ''.join(filter(str.isdigit, data['cpf']))
+                
+                if not cpf_validator.validate(cpf_clean):
+                    return error_response(400, f"Invalid CPF: {data['cpf']}. CPF must have 11 valid digits.")
+            except ImportError:
+                # validate_docbr not installed - basic validation
+                cpf_clean = ''.join(filter(str.isdigit, data['cpf']))
+                if len(cpf_clean) != 11:
+                    return error_response(400, f"Invalid CPF: {data['cpf']}. CPF must have 11 digits.")
+            
+            # Check if CPF already exists (unique constraint)
+            existing_cpf = request.env['res.users'].sudo().search([
+                ('cpf', '=', data['cpf'])
+            ], limit=1)
+            
+            if existing_cpf:
+                return error_response(409, f"CPF already exists: {data['cpf']}")
             
             # Validate password length (FR-030)
             if len(data['password']) < 8:
@@ -61,6 +83,7 @@ class OwnerApiController(http.Controller):
                 'login': data['email'],
                 'email': data['email'],
                 'password': data['password'],
+                'cpf': data['cpf'],
                 'groups_id': [(6, 0, [owner_group.id])],  # Assign group_real_estate_owner
                 'estate_company_ids': [(6, 0, [])],  # FR-009: Start with no companies
             }
@@ -79,6 +102,7 @@ class OwnerApiController(http.Controller):
                 'id': new_owner.id,
                 'name': new_owner.name,
                 'email': new_owner.email,
+                'cpf': new_owner.cpf,
                 'phone': new_owner.phone,
                 'mobile': new_owner.mobile,
                 'company_count': len(new_owner.estate_company_ids),

@@ -866,7 +866,19 @@ curl 'http://localhost:8069/api/v1/location-types' \
             <field name="protected" eval="True"/>
             <field name="tags">Owners</field>
             <field name="summary">Create a new property owner</field>
-            <field name="description">Creates a new property owner account (Self-Registration).</field>
+            <field name="description">Creates a new property owner account (Self-Registration).
+
+Required fields:
+- name (string): Full name of the owner
+- email (string): Email address (unique, used for login)
+- password (string): Password (minimum 8 characters)
+- cpf (string): Brazilian CPF document (unique, format: 123.456.789-01 or 12345678901)
+
+Optional fields:
+- phone (string): Phone number
+- mobile (string): Mobile number
+
+Returns: Owner object with id, name, email, cpf, phone, mobile, company_count, companies.</field>
             <field name="active" eval="True"/>
         </record>
 
