@@ -525,3 +525,275 @@ class CompanyApiController(http.Controller):
         except Exception as e:
             _logger.error(f"Error deleting company {company_id}: {str(e)}", exc_info=True)
             return error_response(500, 'Internal server error')
+    
+    # ========== LIST COMPANY PROPERTIES (T036) ==========
+    
+    @http.route('/api/v1/companies/<int:company_id>/properties', type='http', auth='none', methods=['GET'], csrf=False, cors='*')
+    @require_jwt
+    @require_session
+    @require_company
+    def list_company_properties(self, company_id, page=1, page_size=20, **kwargs):
+        """
+        List all properties of a specific company with filtering and pagination.
+        
+        Multi-tenancy: Validates user has access to company (ADR-008)
+        RBAC (ADR-019):
+            - Admin: All properties of company
+            - Manager: All properties of company
+            - Agent: Only properties assigned to them (agent_id.user_id = user.id)
+        
+        Query Parameters:
+            page: Page number (default: 1)
+            page_size: Items per page (default: 20, max: 100)
+            property_type_id: Filter by property type ID
+            property_status: Filter by status (available, sold, rented, unavailable)
+            city: Filter by city (case-insensitive)
+            state_id: Filter by state ID
+            agent_id: Filter by agent ID
+            min_price: Minimum price
+            max_price: Maximum price
+            for_sale: Filter properties for sale (true/false)
+            for_rent: Filter properties for rent (true/false)
+            order_by: Sort field (price, area, created_date, name) - default: name
+        
+        Returns:
+            200: List of properties with pagination and HATEOAS links
+            404: Company not found or not accessible
+            400: Invalid parameters
+        """
+        try:
+            user = request.env.user
+            
+            # Validate company exists and is active
+            company = request.env['thedevkitchen.estate.company'].sudo().browse(company_id)
+            
+            if not company.exists() or not company.active:
+                return error_response(404, 'Company not found')
+            
+            # Multi-tenancy validation (ADR-008): User must have access to company
+            if not user.has_group('base.group_system'):
+                if company_id not in user.estate_company_ids.ids:
+                    _logger.warning(
+                        f'User {user.login} (id={user.id}) attempted to access properties of '
+                        f'unauthorized company {company_id}. Allowed: {user.estate_company_ids.ids}'
+                    )
+                    return error_response(404, 'Company not found')
+            
+            # Convert pagination parameters
+            try:
+                page = int(page)
+                page_size = min(int(page_size), 100)
+            except (ValueError, TypeError):
+                return error_response(400, 'Invalid pagination parameters')
+            
+            if page < 1 or page_size < 1:
+                return error_response(400, 'Page and page_size must be positive integers')
+            
+            # Build base domain (company filter)
+            domain = [
+                ('company_ids', 'in', [company_id]),
+                ('active', '=', True)
+            ]
+            
+            # RBAC filter (ADR-019)
+            is_admin = user.has_group('base.group_system')
+            is_manager = user.has_group('quicksol_estate.group_real_estate_manager')
+            is_agent = user.has_group('quicksol_estate.group_real_estate_agent')
+            
+            if not is_admin and not is_manager:
+                if is_agent:
+                    # Agent sees only their assigned properties
+                    agent_record = request.env['real.estate.agent'].search([
+                        ('user_id', '=', user.id)
+                    ], limit=1)
+                    
+                    if agent_record:
+                        domain.append(('agent_id', '=', agent_record.id))
+                    else:
+                        # Agent without agent record sees nothing
+                        domain.append(('id', '=', False))
+            
+            # Apply optional filters
+            if 'property_type_id' in kwargs:
+                try:
+                    domain.append(('property_type_id', '=', int(kwargs['property_type_id'])))
+                except (ValueError, TypeError):
+                    return error_response(400, 'Invalid property_type_id')
+            
+            if 'property_status' in kwargs:
+                status = kwargs['property_status']
+                if status not in ['available', 'sold', 'rented', 'unavailable']:
+                    return error_response(400, 'Invalid property_status. Must be: available, sold, rented, unavailable')
+                domain.append(('property_status', '=', status))
+            
+            if 'city' in kwargs:
+                domain.append(('city', 'ilike', kwargs['city']))
+            
+            if 'state_id' in kwargs:
+                try:
+                    domain.append(('state_id', '=', int(kwargs['state_id'])))
+                except (ValueError, TypeError):
+                    return error_response(400, 'Invalid state_id')
+            
+            if 'agent_id' in kwargs:
+                try:
+                    domain.append(('agent_id', '=', int(kwargs['agent_id'])))
+                except (ValueError, TypeError):
+                    return error_response(400, 'Invalid agent_id')
+            
+            if 'min_price' in kwargs:
+                try:
+                    domain.append(('price', '>=', float(kwargs['min_price'])))
+                except (ValueError, TypeError):
+                    return error_response(400, 'Invalid min_price')
+            
+            if 'max_price' in kwargs:
+                try:
+                    domain.append(('price', '<=', float(kwargs['max_price'])))
+                except (ValueError, TypeError):
+                    return error_response(400, 'Invalid max_price')
+            
+            if 'for_sale' in kwargs:
+                for_sale = kwargs['for_sale'].lower() == 'true'
+                domain.append(('for_sale', '=', for_sale))
+            
+            if 'for_rent' in kwargs:
+                for_rent = kwargs['for_rent'].lower() == 'true'
+                domain.append(('for_rent', '=', for_rent))
+            
+            # Order by
+            order_by = kwargs.get('order_by', 'name')
+            order_mapping = {
+                'price': 'price',
+                'area': 'area',
+                'created_date': 'create_date',
+                'name': 'name'
+            }
+            
+            if order_by not in order_mapping:
+                return error_response(400, f'Invalid order_by. Must be: {", ".join(order_mapping.keys())}')
+            
+            order_field = order_mapping[order_by]
+            
+            # Use request.env (user context, no sudo) - ADR-011
+            Property = request.env['real.estate.property']
+            
+            # Count total
+            total = Property.search_count(domain)
+            
+            # Get paginated results
+            offset = (page - 1) * page_size
+            properties = Property.search(
+                domain,
+                limit=page_size,
+                offset=offset,
+                order=order_field
+            )
+            
+            # Serialize properties
+            property_list = []
+            for prop in properties:
+                property_data = {
+                    'id': prop.id,
+                    'name': prop.name,
+                    'property_type': prop.property_type_id.name if prop.property_type_id else None,
+                    'property_status': prop.property_status,
+                    'price': prop.price,
+                    'area': prop.area,
+                    'city': prop.city,
+                    'state': prop.state_id.name if prop.state_id else None,
+                    'agent': {
+                        'id': prop.agent_id.id,
+                        'name': prop.agent_id.name
+                    } if prop.agent_id else None,
+                    'for_sale': prop.for_sale,
+                    'for_rent': prop.for_rent,
+                    'num_rooms': prop.num_rooms,
+                    'num_bathrooms': prop.num_bathrooms,
+                    'created_date': prop.create_date.isoformat() if prop.create_date else None,
+                }
+                
+                # HATEOAS links (ADR-007)
+                property_data['links'] = [
+                    {
+                        'href': f'/api/v1/properties/{prop.id}',
+                        'rel': 'self',
+                        'type': 'GET',
+                        'title': 'Get property details'
+                    }
+                ]
+                
+                property_list.append(property_data)
+            
+            # Build pagination links
+            base_url = f'/api/v1/companies/{company_id}/properties'
+            
+            # Preserve query parameters in pagination links
+            query_params = []
+            for key in ['property_type_id', 'property_status', 'city', 'state_id', 
+                       'agent_id', 'min_price', 'max_price', 'for_sale', 'for_rent', 'order_by']:
+                if key in kwargs:
+                    query_params.append(f'{key}={kwargs[key]}')
+            
+            query_string = '&'.join(query_params)
+            if query_string:
+                base_url += f'?{query_string}'
+                separator = '&'
+            else:
+                separator = '?'
+            
+            links = []
+            
+            # Self link
+            links.append({
+                'href': f'{base_url}{separator}page={page}&page_size={page_size}',
+                'rel': 'self',
+                'type': 'GET'
+            })
+            
+            # Previous page
+            if page > 1:
+                links.append({
+                    'href': f'{base_url}{separator}page={page-1}&page_size={page_size}',
+                    'rel': 'prev',
+                    'type': 'GET'
+                })
+            
+            # Next page
+            total_pages = (total + page_size - 1) // page_size
+            if page < total_pages:
+                links.append({
+                    'href': f'{base_url}{separator}page={page+1}&page_size={page_size}',
+                    'rel': 'next',
+                    'type': 'GET'
+                })
+            
+            # Parent company link
+            links.append({
+                'href': f'/api/v1/companies/{company_id}',
+                'rel': 'parent',
+                'type': 'GET',
+                'title': 'Get company details'
+            })
+            
+            # Collection link
+            links.append({
+                'href': '/api/v1/companies',
+                'rel': 'collection',
+                'type': 'GET',
+                'title': 'List all companies'
+            })
+            
+            response, status = paginated_response(
+                items=property_list,
+                total=total,
+                page=page,
+                page_size=page_size,
+                links=links
+            )
+            
+            return request.make_json_response(response, status=status)
+            
+        except Exception as e:
+            _logger.error(f'Error listing properties for company {company_id}: {str(e)}', exc_info=True)
+            return error_response(500, 'Internal server error')

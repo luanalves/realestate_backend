@@ -839,5 +839,17 @@ curl 'http://localhost:8069/api/v1/location-types' \
             <field name="active" eval="True"/>
         </record>
 
+        <record id="api_endpoint_list_company_properties" model="thedevkitchen.api.endpoint">
+            <field name="name">List Company Properties</field>
+            <field name="path">/api/v1/companies/{id}/properties</field>
+            <field name="method">GET</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Companies</field>
+            <field name="summary">List all properties of a company</field>
+            <field name="description">Get paginated list of properties belonging to a specific company with filtering options. Multi-tenancy validated. RBAC: Admin/Manager see all, Agent sees only assigned properties.</field>
+            <field name="active" eval="True"/>
+        </record>
+
     </data>
 </odoo>

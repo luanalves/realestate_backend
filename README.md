@@ -143,6 +143,8 @@ Os módulos customizados devem ser adicionados no diretório `18.0/extra-addons/
 | `GET` | `/api/v1/companies/{id}` | Get Company details | Bearer | All authenticated |
 | `PUT` | `/api/v1/companies/{id}` | Update Company | Bearer | Owner, Admin |
 | `DELETE` | `/api/v1/companies/{id}` | Archive Company (soft delete) | Bearer | Owner, Admin |
+| `GET` | `/api/v1/companies/{id}/properties` | List Company Properties (paginated) | Bearer + Session | Admin, Manager see all; Agent sees assigned |
+
 
 #### Validation Features
 
@@ -197,6 +199,11 @@ curl -X POST http://localhost:8069/api/v1/owners/10/companies \
 
 # Unlink Owner from Company
 curl -X DELETE http://localhost:8069/api/v1/owners/10/companies/5 \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "X-Openerp-Session-Id: $SESSION_ID"
+
+# List Company Properties (with filters)
+curl -X GET "http://localhost:8069/api/v1/companies/63/properties?page=1&page_size=20&property_status=available&for_sale=true&order_by=price" \
   -H "Authorization: Bearer $TOKEN" \
   -H "X-Openerp-Session-Id: $SESSION_ID"
 ```
