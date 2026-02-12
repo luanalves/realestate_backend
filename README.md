@@ -121,17 +121,18 @@ Os módulos customizados devem ser adicionados no diretório `18.0/extra-addons/
 
 ### Feature 007: Company & Owner Management
 
-#### Owner API (Independent)
+#### Owner API
 
 | Method | Endpoint | Description | Auth | RBAC |
 |--------|----------|-------------|------|------|
-| `POST` | `/api/v1/owners` | Create Owner (no company) | Bearer | Owner, Admin |
-| `GET` | `/api/v1/owners` | List Owners (multi-tenancy) | Bearer | Owner, Admin |
-| `GET` | `/api/v1/owners/{id}` | Get Owner details | Bearer | Owner, Admin |
-| `PUT` | `/api/v1/owners/{id}` | Update Owner | Bearer | Owner, Admin |
-| `DELETE` | `/api/v1/owners/{id}` | Deactivate Owner | Bearer | Owner, Admin |
-| `POST` | `/api/v1/owners/{owner_id}/companies/{company_id}/link` | Link Owner to Company | Bearer | Owner, Admin |
-| `DELETE` | `/api/v1/owners/{owner_id}/companies/{company_id}/unlink` | Unlink Owner from Company | Bearer | Owner, Admin |
+| `POST` | `/api/v1/owners` | Create Owner (no company) | Bearer | Public (JWT only) |
+| `POST` | `/api/v1/owners/{owner_id}/companies` | Link Owner to Company | Bearer + Session | Owner, Admin |
+| `DELETE` | `/api/v1/owners/{owner_id}/companies/{company_id}` | Unlink Owner from Company | Bearer + Session | Owner, Admin |
+
+> **Nota:** Operações de consulta, atualização e exclusão de usuários (incluindo owners) são feitas pelos endpoints genéricos:
+> - `GET /api/v1/me` — Dados do usuário logado
+> - `PATCH /api/v1/users/profile` — Atualizar perfil (name, email, phone, mobile)
+> - `POST /api/v1/users/change-password` — Alterar senha
 
 #### Company API
 
@@ -188,8 +189,16 @@ curl -X POST http://localhost:8069/api/v1/owners \
   }'
 
 # Link Owner to Company
-curl -X POST http://localhost:8069/api/v1/owners/10/companies/5/link \
-  -H "Authorization: Bearer $TOKEN"
+curl -X POST http://localhost:8069/api/v1/owners/10/companies \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "X-Openerp-Session-Id: $SESSION_ID" \
+  -H "Content-Type: application/json" \
+  -d '{"company_id": 5}'
+
+# Unlink Owner from Company
+curl -X DELETE http://localhost:8069/api/v1/owners/10/companies/5 \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "X-Openerp-Session-Id: $SESSION_ID"
 ```
 
 See [specs/007-company-owner-management/quickstart.md](specs/007-company-owner-management/quickstart.md) for complete API documentation.

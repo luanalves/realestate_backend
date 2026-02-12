@@ -803,21 +803,9 @@ curl 'http://localhost:8069/api/v1/location-types' \
             <field name="active" eval="True"/>
         </record>
 
-        <record id="api_endpoint_delete_owner" model="thedevkitchen.api.endpoint">
-            <field name="name">Delete Property Owner</field>
-            <field name="path">/api/v1/owners/{id}</field>
-            <field name="method">DELETE</field>
-            <field name="module_name">quicksol_estate</field>
-            <field name="protected" eval="True"/>
-            <field name="tags">Owners</field>
-            <field name="summary">Delete a property owner</field>
-            <field name="description">Deletes a property owner account.</field>
-            <field name="active" eval="True"/>
-        </record>
-
         <record id="api_endpoint_link_owner_company" model="thedevkitchen.api.endpoint">
             <field name="name">Link Owner to Company</field>
-            <field name="path">/api/v1/owners/{id}/companies/{cid}</field>
+            <field name="path">/api/v1/owners/{id}/companies</field>
             <field name="method">POST</field>
             <field name="module_name">quicksol_estate</field>
             <field name="protected" eval="True"/>

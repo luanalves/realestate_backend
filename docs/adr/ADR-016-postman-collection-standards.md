@@ -257,7 +257,112 @@ Cada endpoint **DEVE** ter descrição documentando:
 [Descrição funcional do endpoint]
 ```
 
-### 8. Regras de Ouro
+### 8. Padrões de Request Body: company_ids
+
+#### 8.1 Contexto
+
+Endpoints que criam/atualizam recursos vinculados a empresas (properties, leads, etc.) precisam saber a qual(is) imobiliária(s) o recurso pertence. O sistema suporta **multi-tenancy** com usuários podendo estar associados a múltiplas companies.
+
+#### 8.2 Comportamento do Campo `company_ids`
+
+**Opção 1: Explícito (Recomendado)**
+
+Passar `company_ids` no body do request:
+
+```json
+{
+  "name": "Apartamento 101",
+  "property_type_id": 1,
+  "area": 85.5,
+  "company_ids": [63]
+}
+```
+
+Para múltiplas empresas:
+```json
+{
+  "name": "Apartamento 101",
+  "company_ids": [63, 64, 65]
+}
+```
+
+**Opção 2: Automático (Fallback)**
+
+Se `company_ids` **NÃO** for enviado, o sistema aplica o seguinte fallback:
+
+1. **Primeira tentativa**: Usa `estate_default_company_id` do usuário (empresa padrão configurada)
+2. **Segunda tentativa**: Usa a primeira empresa em `estate_company_ids` do usuário
+3. **Nenhuma empresa**: Retorna erro 400
+
+**Implementação**: `CompanyValidator.ensure_company_ids()` em `services/company_validator.py`
+
+#### 8.3 Validação de Acesso
+
+O sistema **SEMPRE** valida que o usuário tem permissão para associar recursos às companies especificadas:
+
+- **Admin** (`base.group_system`): Pode usar qualquer company (bypass)
+- **Owner/Manager/Agent**: Só as companies em `estate_company_ids`
+- **Violation**: Retorna 403 com `"Access denied to companies: [ids]"`
+
+**Implementação**: `CompanyValidator.validate_company_ids()` em `services/company_validator.py`
+
+#### 8.4 Recomendação para Collections
+
+Em **Postman Collections**, para cenários com **múltiplas imobiliárias**:
+
+✅ **SEMPRE** passar `company_ids` explicitamente no body para evitar ambiguidade
+
+❌ **EVITAR** depender do fallback automático em testes (comportamento imprevisível se usuário mudar empresa padrão)
+
+**Exemplo de request completo**:
+
+```json
+POST {{base_url}}/api/v1/properties
+Headers:
+  Authorization: Bearer {{access_token}}
+  X-Openerp-Session-Id: {{session_id}}
+  User-Agent: {{user_agent}}
+  Content-Type: application/json
+
+Body:
+{
+  "name": "Apartamento Jardins",
+  "property_type_id": 1,
+  "area": 120.5,
+  "company_ids": [63],
+  "zip_code": "01310-100",
+  "state_id": 1,
+  "city": "São Paulo",
+  "street": "Av. Paulista",
+  "street_number": "1000",
+  "location_type_id": 2
+}
+```
+
+**Pre-request Script** (opcional - para obter company_id automaticamente):
+
+```javascript
+// Se você quer usar a primeira company do usuário automaticamente
+const meEndpoint = pm.environment.get('base_url') + '/api/v1/me';
+pm.sendRequest({
+    url: meEndpoint,
+    method: 'GET',
+    header: {
+        'Authorization': 'Bearer ' + pm.environment.get('access_token'),
+        'X-Openerp-Session-Id': pm.environment.get('session_id'),
+        'User-Agent': pm.environment.get('user_agent')
+    }
+}, function (err, response) {
+    if (!err && response.json().companies && response.json().companies.length > 0) {
+        pm.environment.set('default_company_id', response.json().companies[0].id);
+        console.log('✅ Default company ID set: ' + response.json().companies[0].id);
+    }
+});
+```
+
+**Nota**: Este pre-request adiciona latência (~100-200ms). Preferir hardcoding de `company_ids` quando possível.
+
+### 9. Regras de Ouro
 
 1. **🚫 NUNCA** usar wrapper JSON-RPC (`{"jsonrpc": "2.0", "method": "call", "params": {...}}`) - enviar JSON direto no body
 2. **NUNCA** enviar `session_id` no body de requisições GET - será ignorado
@@ -268,6 +373,7 @@ Cada endpoint **DEVE** ter descrição documentando:
 7. **SEMPRE** adicionar test scripts para auto-popular tokens/sessions (incluindo `refresh_token`)
 8. **SEMPRE** documentar tipo de autenticação necessária na descrição
 9. **SEMPRE** salvar `refresh_token` em variável de ambiente (usado por endpoints de refresh)
+10. **SEMPRE** passar `company_ids` explicitamente em endpoints multi-tenant para evitar ambiguidade
 
 ## Consequências
 

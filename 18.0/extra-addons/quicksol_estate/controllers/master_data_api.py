@@ -8,21 +8,12 @@ from odoo.addons.thedevkitchen_apigateway.middleware import require_session, req
 
 _logger = logging.getLogger(__name__)
 
-
 class MasterDataApiController(http.Controller):
-    """REST API Controller for Master Data endpoints"""
-    
     @http.route('/api/v1/property-types', 
                 type='http', auth='none', methods=['GET'], csrf=False, cors='*')
     @require_jwt
     @require_session
     def list_property_types(self, **kwargs):
-        """
-        List all available property types.
-        
-        Requires: JWT token
-        Returns: JSON array with property types
-        """
         try:
             PropertyType = request.env['real.estate.property.type'].sudo()
             property_types = PropertyType.search([])
@@ -47,12 +38,6 @@ class MasterDataApiController(http.Controller):
     @require_jwt
     @require_session
     def list_location_types(self, **kwargs):
-        """
-        List all available location types.
-        
-        Requires: JWT token
-        Returns: JSON array with location types
-        """
         try:
             LocationType = request.env['real.estate.location.type'].sudo()
             location_types = LocationType.search([], order='sequence, name')
@@ -76,14 +61,6 @@ class MasterDataApiController(http.Controller):
     @require_jwt
     @require_session
     def list_states(self, **kwargs):
-        """
-        List all states/provinces.
-        
-        Requires: JWT token
-        Optional query params:
-        - country_id: Filter by country ID
-        Returns: JSON array with states
-        """
         try:
             country_id = kwargs.get('country_id')
             
@@ -119,12 +96,6 @@ class MasterDataApiController(http.Controller):
     @require_session
     @require_company
     def list_agents(self, **kwargs):
-        """
-        List all real estate agents.
-        
-        Requires: JWT token
-        Returns: JSON array with agents
-        """
         try:
             Agent = request.env['real.estate.agent'].sudo()
             domain = request.company_domain
@@ -145,53 +116,12 @@ class MasterDataApiController(http.Controller):
             _logger.error(f"Error in list_agents: {e}")
             return error_response(500, 'Internal server error')
     
-    @http.route('/api/v1/owners', 
-                type='http', auth='none', methods=['GET'], csrf=False, cors='*')
-    @require_jwt
-    @require_session
-    @require_company
-    def list_owners(self, **kwargs):
-        """
-        List all property owners.
-        
-        Requires: JWT token
-        Returns: JSON array with owners
-        """
-        try:
-            Owner = request.env['real.estate.property.owner'].sudo()
-            domain = [('active', '=', True)] + request.company_domain
-            owners = Owner.search(domain, order='name')
-            
-            owners_list = []
-            for owner in owners:
-                owners_list.append({
-                    'id': owner.id,
-                    'name': owner.name,
-                    'cpf': owner.cpf,
-                    'cnpj': owner.cnpj,
-                    'email': owner.email,
-                    'phone': owner.phone,
-                    'mobile': owner.mobile,
-                })
-            
-            return success_response(owners_list)
-            
-        except Exception as e:
-            _logger.error(f"Error in list_owners: {e}")
-            return error_response(500, 'Internal server error')
-    
     @http.route('/api/v1/companies', 
                 type='http', auth='none', methods=['GET'], csrf=False, cors='*')
     @require_jwt
     @require_session
     @require_company
     def list_companies(self, **kwargs):
-        """
-        List all real estate companies.
-        
-        Requires: JWT token
-        Returns: JSON array with companies
-        """
         try:
             Company = request.env['thedevkitchen.estate.company'].sudo()
             
@@ -224,12 +154,6 @@ class MasterDataApiController(http.Controller):
     @require_jwt
     @require_session
     def list_tags(self, **kwargs):
-        """
-        List all property tags.
-        
-        Requires: JWT token
-        Returns: JSON array with tags
-        """
         try:
             Tag = request.env['real.estate.property.tag'].sudo()
             domain = [('active', '=', True)]
@@ -254,12 +178,6 @@ class MasterDataApiController(http.Controller):
     @require_jwt
     @require_session
     def list_amenities(self, **kwargs):
-        """
-        List all property amenities.
-        
-        Requires: JWT token
-        Returns: JSON array with amenities
-        """
         try:
             Amenity = request.env['real.estate.amenity'].sudo()
             amenities = Amenity.search([], order='name')
