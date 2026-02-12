@@ -145,6 +145,20 @@ Os módulos customizados devem ser adicionados no diretório `18.0/extra-addons/
 | `DELETE` | `/api/v1/companies/{id}` | Archive Company (soft delete) | Bearer | Owner, Admin |
 | `GET` | `/api/v1/companies/{id}/properties` | List Company Properties (paginated) | Bearer + Session | Admin, Manager see all; Agent sees assigned |
 
+#### Assignment API
+
+| Method | Endpoint | Description | Auth | RBAC |
+|--------|----------|-------------|------|------|
+| `POST` | `/api/v1/assignments` | Create Agent-Property Assignment | Bearer + Session | Manager, Owner, Admin |
+| `GET` | `/api/v1/assignments` | List Assignments (paginated + filtered) | Bearer + Session | Admin sees all; Manager sees company; Agent sees own |
+| `GET` | `/api/v1/assignments/{id}` | Get Assignment details | Bearer + Session | Multi-tenancy enforced |
+| `PATCH` | `/api/v1/assignments/{id}` | Update Assignment | Bearer + Session | Manager/Owner: all fields; Agent: notes only |
+| `DELETE` | `/api/v1/assignments/{id}` | Deactivate Assignment (soft delete) | Bearer + Session | Manager, Owner, Admin |
+
+> **Multi-tenancy (ADR-008):** Returns 404 (not 403) for inaccessible assignments  
+> **Junction Model (ADR-014):** Uses `real.estate.agent.property.assignment` with metadata  
+> **Immutable Fields:** `agent_id`, `property_id`, `company_id` — delete and recreate instead
+
 
 #### Validation Features
 
@@ -204,6 +218,45 @@ curl -X DELETE http://localhost:8069/api/v1/owners/10/companies/5 \
 
 # List Company Properties (with filters)
 curl -X GET "http://localhost:8069/api/v1/companies/63/properties?page=1&page_size=20&property_status=available&for_sale=true&order_by=price" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "X-Openerp-Session-Id: $SESSION_ID"
+
+# Create Assignment (link agent to property)
+curl -X POST http://localhost:8069/api/v1/assignments \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "X-Openerp-Session-Id: $SESSION_ID" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agent_id": 12,
+    "property_id": 45,
+    "company_id": 63,
+    "responsibility_type": "primary",
+    "commission_percentage": 6.5
+  }'
+
+# List Assignments (with filters)
+curl -X GET "http://localhost:8069/api/v1/assignments?page=1&page_size=20&agent_id=12&active_only=true" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "X-Openerp-Session-Id: $SESSION_ID"
+
+# Get Assignment details
+curl -X GET http://localhost:8069/api/v1/assignments/5 \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "X-Openerp-Session-Id: $SESSION_ID"
+
+# Update Assignment
+curl -X PATCH http://localhost:8069/api/v1/assignments/5 \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "X-Openerp-Session-Id: $SESSION_ID" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "responsibility_type": "secondary",
+    "commission_percentage": 4.0,
+    "notes": "Assisting primary agent"
+  }'
+
+# Deactivate Assignment
+curl -X DELETE http://localhost:8069/api/v1/assignments/5 \
   -H "Authorization: Bearer $TOKEN" \
   -H "X-Openerp-Session-Id: $SESSION_ID"
 ```

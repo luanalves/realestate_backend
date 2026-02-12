@@ -661,7 +661,62 @@ curl 'http://localhost:8069/api/v1/location-types' \
             <field name="protected" eval="True"/>
             <field name="tags">Assignments</field>
             <field name="summary">Assign agent to property</field>
-            <field name="description">Create a new assignment linking an agent to a property.</field>
+            <field name="description">Create a new assignment linking an agent to a property.
+
+**Required Fields:**
+- `agent_id`: Agent ID (integer)
+- `property_id`: Property ID (integer)
+- `company_id`: Company ID (integer)
+
+**Optional Fields:**
+- `responsibility_type`: Type of responsibility (string: primary/secondary/support)
+- `commission_percentage`: Commission percentage 0-100 (float)</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_list_assignments" model="thedevkitchen.api.endpoint">
+            <field name="name">List Assignments</field>
+            <field name="path">/api/v1/assignments</field>
+            <field name="method">GET</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Assignments</field>
+            <field name="summary">List all agent-property assignments</field>
+            <field name="description">Get paginated list of assignments with filtering.
+
+**RBAC (ADR-019):**
+- **Admin**: All assignments
+- **Manager**: All assignments in company
+- **Agent**: Only own assignments
+
+**Query Parameters:**
+- `page`: Page number (default: 1)
+- `page_size`: Items per page (default: 20, max: 100)
+- `agent_id`: Filter by agent ID
+- `property_id`: Filter by property ID
+- `company_id`: Filter by company ID
+- `active_only`: Show only active (default: true)
+
+**Returns:**
+- Paginated list with HATEOAS links
+- Multi-tenancy: 404 if not accessible (ADR-008)</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_get_assignment" model="thedevkitchen.api.endpoint">
+            <field name="name">Get Assignment</field>
+            <field name="path">/api/v1/assignments/{id}</field>
+            <field name="method">GET</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Assignments</field>
+            <field name="summary">Get assignment details</field>
+            <field name="description">Get detailed information about a specific assignment.
+
+**Returns:**
+- Full assignment data with agent, property, company details
+- HATEOAS links to related resources
+- Multi-tenancy: 404 if not accessible (ADR-008)</field>
             <field name="active" eval="True"/>
         </record>
 
@@ -680,12 +735,24 @@ curl 'http://localhost:8069/api/v1/location-types' \
         <record id="api_endpoint_update_assignment" model="thedevkitchen.api.endpoint">
             <field name="name">Update Assignment</field>
             <field name="path">/api/v1/assignments/{id}</field>
-            <field name="method">PUT</field>
+            <field name="method">PATCH</field>
             <field name="module_name">quicksol_estate</field>
             <field name="protected" eval="True"/>
             <field name="tags">Assignments</field>
-            <field name="summary">Update assignment</field>
-            <field name="description">Update assignment details or end date.</field>
+            <field name="summary">Update assignment details</field>
+            <field name="description">Update assignment responsibility type, commission percentage, or notes.
+
+**RBAC (ADR-019):**
+- **Manager/Owner**: Can update all fields
+- **Agent**: Can only update notes
+
+**Editable Fields:**
+- `responsibility_type`: primary/secondary/support (Manager/Owner only)
+- `commission_percentage`: 0-100 (Manager/Owner only)
+- `notes`: Free text (all users)
+
+**Immutable Fields:**
+- `agent_id`, `property_id`, `company_id` (delete and recreate instead)</field>
             <field name="active" eval="True"/>
         </record>
 
@@ -833,9 +900,70 @@ curl 'http://localhost:8069/api/v1/location-types' \
             <field name="method">GET</field>
             <field name="module_name">quicksol_estate</field>
             <field name="protected" eval="True"/>
-            <field name="tags">Master Data</field>
+            <field name="tags">Companies</field>
             <field name="summary">List all real estate companies</field>
-            <field name="description">Get list of all active real estate companies in the system.</field>
+            <field name="description">Get list of all active real estate companies accessible to the user. Multi-tenancy validated.</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_create_company" model="thedevkitchen.api.endpoint">
+            <field name="name">Create Company</field>
+            <field name="path">/api/v1/companies</field>
+            <field name="method">POST</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Companies</field>
+            <field name="summary">Create a new real estate company</field>
+            <field name="description">Create a new real estate company. Creator is auto-linked as Owner.
+
+**Required Fields:**
+- name: Company name
+- cnpj: Brazilian business tax ID (validated)
+
+**Optional Fields:**
+- email, phone, creci, address fields
+
+**RBAC:** Owner, Admin only</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_get_company" model="thedevkitchen.api.endpoint">
+            <field name="name">Get Company by ID</field>
+            <field name="path">/api/v1/companies/{id}</field>
+            <field name="method">GET</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Companies</field>
+            <field name="summary">Get company details</field>
+            <field name="description">Get detailed information about a specific company. Multi-tenancy: returns 404 if not accessible (ADR-008).</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_update_company" model="thedevkitchen.api.endpoint">
+            <field name="name">Update Company</field>
+            <field name="path">/api/v1/companies/{id}</field>
+            <field name="method">PUT</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Companies</field>
+            <field name="summary">Update company details</field>
+            <field name="description">Update company information. Multi-tenancy validated.
+
+**RBAC:** Owner, Admin only</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_delete_company" model="thedevkitchen.api.endpoint">
+            <field name="name">Delete Company (Soft Delete)</field>
+            <field name="path">/api/v1/companies/{id}</field>
+            <field name="method">DELETE</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Companies</field>
+            <field name="summary">Archive a company (soft delete)</field>
+            <field name="description">Archive a company (soft delete). Company is deactivated but not removed from database. Multi-tenancy validated.
+
+**RBAC:** Owner, Admin only</field>
             <field name="active" eval="True"/>
         </record>
 

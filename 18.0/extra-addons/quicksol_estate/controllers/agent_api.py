@@ -1,16 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Agent API Controller
-
-RESTful API endpoints for agent management with CRECI validation,
-multi-tenant isolation, and commission tracking.
-
-Author: Quicksol Technologies
-Date: 2026-01-12
-ADRs: ADR-005 (OpenAPI), ADR-007 (HATEOAS), ADR-008 (Multi-tenancy), 
-      ADR-011 (Security), ADR-012 (CRECI Validation)
-"""
-
 import json
 import logging
 from datetime import datetime
@@ -26,29 +14,13 @@ from ..services.company_validator import CompanyValidator
 _logger = logging.getLogger(__name__)
 
 
-class AgentApiController(http.Controller):
-    """REST API Controller for Agent endpoints following ADR-011"""
-    
+class AgentApiController(http.Controller):    
     @http.route('/api/v1/agents', 
                 type='http', auth='none', methods=['GET'], csrf=False, cors='*')
     @require_jwt
     @require_session
     @require_company
     def list_agents(self, **kwargs):
-        """
-        List all agents with pagination and filtering.
-        
-        Query Parameters:
-            - active: Filter by active status ('true', 'false', 'all')
-            - company_id: Filter by company (multi-tenancy)
-            - creci_number: Filter by CRECI number
-            - creci_state: Filter by CRECI state (UF)
-            - limit: Number of records to return (default: 20, max: 100)
-            - offset: Number of records to skip (default: 0)
-            
-        Returns:
-            JSON object with agent list and pagination metadata
-        """
         try:
             user = request.env.user
             
@@ -151,22 +123,6 @@ class AgentApiController(http.Controller):
     @require_session
     @require_company
     def create_agent(self, **kwargs):
-        """
-        Create a new agent.
-        
-        Request Body:
-            JSON object with agent data:
-            - name (required): Agent full name
-            - cpf (required): Brazilian CPF (11 digits)
-            - email: Email address
-            - phone: Phone number (Brazilian format)
-            - creci: CRECI license (optional, flexible format)
-            - company_id: Company ID (defaults to user's company)
-            - hire_date: Hire date (ISO format)
-            
-        Returns:
-            JSON object with created agent details (HTTP 201)
-        """
         try:
             user = request.env.user
             
@@ -260,13 +216,6 @@ class AgentApiController(http.Controller):
     @require_session
     @require_company
     def get_agent(self, agent_id, **kwargs):
-        """
-        Get agent details by ID.
-        
-        Returns:
-            JSON object with agent details (HTTP 200)
-            HTTP 404 if agent not found or not accessible
-        """
         try:
             user = request.env.user
             Agent = request.env['real.estate.agent']
@@ -324,16 +273,6 @@ class AgentApiController(http.Controller):
     @require_session
     @require_company
     def update_agent(self, agent_id, **kwargs):
-        """
-        Update agent details.
-        
-        Request Body:
-            JSON object with fields to update
-            Note: company_id cannot be changed via API (security constraint)
-            
-        Returns:
-            JSON object with updated agent details (HTTP 200)
-        """
         try:
             user = request.env.user
             
@@ -415,15 +354,7 @@ class AgentApiController(http.Controller):
     @require_session
     @require_company
     def deactivate_agent(self, agent_id, **kwargs):
-        """
-        Deactivate agent (soft-delete following ADR-015).
-        
-        Request Body:
-            JSON object with optional 'reason' field
-            
-        Returns:
-            JSON object confirming deactivation (HTTP 200)
-        """
+
         try:
             user = request.env.user
             
@@ -474,12 +405,7 @@ class AgentApiController(http.Controller):
     @require_session
     @require_company
     def reactivate_agent(self, agent_id, **kwargs):
-        """
-        Reactivate a deactivated agent.
-        
-        Returns:
-            JSON object confirming reactivation (HTTP 200)
-        """
+
         try:
             user = request.env.user
             
@@ -522,20 +448,7 @@ class AgentApiController(http.Controller):
     @require_session
     @require_company
     def create_assignment(self, **kwargs):
-        """
-        Assign an agent to a property.
-        
-        Request Body (JSON):
-            {
-                "agent_id": int (required),
-                "property_id": int (required),
-                "responsibility_type": str (optional: 'primary', 'secondary', 'support'),
-                "notes": str (optional)
-            }
-        
-        Returns:
-            JSON object with assignment details
-        """
+
         try:
             # Parse JSON body
             try:
@@ -611,15 +524,6 @@ class AgentApiController(http.Controller):
     @require_session
     @require_company
     def get_agent_properties(self, agent_id, **kwargs):
-        """
-        Get all properties assigned to a specific agent.
-        
-        Query Parameters:
-            - active_only: Return only active assignments (default: true)
-        
-        Returns:
-            JSON object with list of assigned properties
-        """
         try:
             # Get agent
             Agent = request.env['real.estate.agent'].sudo()
@@ -678,12 +582,6 @@ class AgentApiController(http.Controller):
     @require_session
     @require_company
     def delete_assignment(self, assignment_id, **kwargs):
-        """
-        Deactivate (soft delete) an assignment.
-        
-        Returns:
-            JSON object confirming deactivation
-        """
         try:
             # Get assignment
             Assignment = request.env['real.estate.agent.property.assignment'].sudo()
@@ -714,6 +612,445 @@ class AgentApiController(http.Controller):
             _logger.exception(f'Error deleting assignment {assignment_id}')
             return error_response(500, f'Internal server error: {str(e)}')
     
+    @http.route('/api/v1/assignments', 
+                type='http', auth='none', methods=['GET'], csrf=False, cors='*')
+    @require_jwt
+    @require_session
+    @require_company
+    def list_assignments(self, page=1, page_size=20, agent_id=None, property_id=None, company_id=None, active_only='true', **kwargs):
+
+        try:
+            user = request.env.user
+            
+            # Convert pagination parameters
+            try:
+                page = int(page)
+                page_size = min(int(page_size), 100)
+            except (ValueError, TypeError):
+                return error_response(400, 'Invalid pagination parameters')
+            
+            if page < 1 or page_size < 1:
+                return error_response(400, 'Page and page_size must be positive integers')
+            
+            # Build base domain
+            domain = []
+            
+            # Active filter
+            if active_only.lower() == 'true':
+                domain.append(('active', '=', True))
+            
+            # RBAC filter (ADR-019)
+            is_admin = user.has_group('base.group_system')
+            is_manager = user.has_group('quicksol_estate.group_real_estate_manager')
+            is_agent = user.has_group('quicksol_estate.group_real_estate_agent')
+            
+            if not is_admin:
+                # Multi-tenancy: restrict to user's companies
+                domain.append(('company_id', 'in', user.estate_company_ids.ids))
+                
+                # Agent: only own assignments
+                if is_agent and not is_manager:
+                    agent_record = request.env['real.estate.agent'].search([
+                        ('user_id', '=', user.id)
+                    ], limit=1)
+                    
+                    if agent_record:
+                        domain.append(('agent_id', '=', agent_record.id))
+                    else:
+                        # Agent without agent record sees nothing
+                        domain.append(('id', '=', False))
+            
+            # Optional filters
+            if agent_id:
+                try:
+                    domain.append(('agent_id', '=', int(agent_id)))
+                except (ValueError, TypeError):
+                    return error_response(400, 'Invalid agent_id')
+            
+            if property_id:
+                try:
+                    domain.append(('property_id', '=', int(property_id)))
+                except (ValueError, TypeError):
+                    return error_response(400, 'Invalid property_id')
+            
+            if company_id:
+                try:
+                    domain.append(('company_id', '=', int(company_id)))
+                except (ValueError, TypeError):
+                    return error_response(400, 'Invalid company_id')
+            
+            # Use request.env (user context, no sudo) - ADR-011
+            Assignment = request.env['real.estate.agent.property.assignment']
+            
+            # Count total
+            total = Assignment.search_count(domain)
+            
+            # Get paginated results
+            offset = (page - 1) * page_size
+            assignments = Assignment.search(
+                domain,
+                limit=page_size,
+                offset=offset,
+                order='assignment_date DESC, id DESC'
+            )
+            
+            # Serialize assignments
+            assignment_list = []
+            for assignment in assignments:
+                assignment_data = {
+                    'id': assignment.id,
+                    'agent': {
+                        'id': assignment.agent_id.id,
+                        'name': assignment.agent_id.name,
+                        'creci': assignment.agent_id.creci
+                    } if assignment.agent_id else None,
+                    'property': {
+                        'id': assignment.property_id.id,
+                        'name': assignment.property_id.name,
+                        'city': assignment.property_id.city,
+                        'price': assignment.property_id.price
+                    } if assignment.property_id else None,
+                    'company': {
+                        'id': assignment.company_id.id,
+                        'name': assignment.company_id.name
+                    } if assignment.company_id else None,
+                    'responsibility_type': assignment.responsibility_type,
+                    'commission_percentage': assignment.commission_percentage,
+                    'assignment_date': assignment.assignment_date.isoformat() if assignment.assignment_date else None,
+                    'active': assignment.active,
+                }
+                
+                # HATEOAS links (ADR-007)
+                assignment_data['links'] = [
+                    {
+                        'href': f'/api/v1/assignments/{assignment.id}',
+                        'rel': 'self',
+                        'type': 'GET',
+                        'title': 'Get assignment details'
+                    }
+                ]
+                
+                assignment_list.append(assignment_data)
+            
+            # Build pagination links
+            base_url = '/api/v1/assignments'
+            
+            # Preserve query parameters
+            query_params = []
+            for key in ['agent_id', 'property_id', 'company_id', 'active_only']:
+                if key in kwargs:
+                    query_params.append(f'{key}={kwargs[key]}')
+            
+            query_string = '&'.join(query_params)
+            if query_string:
+                base_url += f'?{query_string}'
+                separator = '&'
+            else:
+                separator = '?'
+            
+            links = []
+            
+            # Self link
+            links.append({
+                'href': f'{base_url}{separator}page={page}&page_size={page_size}',
+                'rel': 'self',
+                'type': 'GET'
+            })
+            
+            # Previous page
+            if page > 1:
+                links.append({
+                    'href': f'{base_url}{separator}page={page-1}&page_size={page_size}',
+                    'rel': 'prev',
+                    'type': 'GET'
+                })
+            
+            # Next page
+            total_pages = (total + page_size - 1) // page_size
+            if page < total_pages:
+                links.append({
+                    'href': f'{base_url}{separator}page={page+1}&page_size={page_size}',
+                    'rel': 'next',
+                    'type': 'GET'
+                })
+            
+            from ..utils.responses import paginated_response
+            response, status = paginated_response(
+                items=assignment_list,
+                total=total,
+                page=page,
+                page_size=page_size,
+                links=links
+            )
+            
+            return request.make_json_response(response, status=status)
+            
+        except Exception as e:
+            _logger.error(f'Error listing assignments: {str(e)}', exc_info=True)
+            return error_response(500, 'Internal server error')
+    
+    @http.route('/api/v1/assignments/<int:assignment_id>', 
+                type='http', auth='none', methods=['GET'], csrf=False, cors='*')
+    @require_jwt
+    @require_session
+    @require_company
+    def get_assignment(self, assignment_id, **kwargs):
+
+        try:
+            user = request.env.user
+            
+            # Use request.env (user context) - ADR-011
+            Assignment = request.env['real.estate.agent.property.assignment']
+            
+            # Build domain with multi-tenancy filter
+            domain = [('id', '=', assignment_id)]
+            
+            # RBAC filter (ADR-019)
+            is_admin = user.has_group('base.group_system')
+            is_manager = user.has_group('quicksol_estate.group_real_estate_manager')
+            is_agent = user.has_group('quicksol_estate.group_real_estate_agent')
+            
+            if not is_admin:
+                # Multi-tenancy
+                domain.append(('company_id', 'in', user.estate_company_ids.ids))
+                
+                # Agent: only own assignments
+                if is_agent and not is_manager:
+                    agent_record = request.env['real.estate.agent'].search([
+                        ('user_id', '=', user.id)
+                    ], limit=1)
+                    
+                    if agent_record:
+                        domain.append(('agent_id', '=', agent_record.id))
+                    else:
+                        # Agent without agent record sees nothing
+                        return error_response(404, 'Assignment not found')
+            
+            assignment = Assignment.search(domain, limit=1)
+            
+            if not assignment:
+                return error_response(404, 'Assignment not found')
+            
+            # Serialize assignment
+            assignment_data = {
+                'id': assignment.id,
+                'agent': {
+                    'id': assignment.agent_id.id,
+                    'name': assignment.agent_id.name,
+                    'creci': assignment.agent_id.creci,
+                    'email': assignment.agent_id.email,
+                    'phone': assignment.agent_id.phone
+                } if assignment.agent_id else None,
+                'property': {
+                    'id': assignment.property_id.id,
+                    'name': assignment.property_id.name,
+                    'property_type': assignment.property_id.property_type_id.name if assignment.property_id.property_type_id else None,
+                    'city': assignment.property_id.city,
+                    'state': assignment.property_id.state_id.name if assignment.property_id.state_id else None,
+                    'price': assignment.property_id.price,
+                    'area': assignment.property_id.area
+                } if assignment.property_id else None,
+                'company': {
+                    'id': assignment.company_id.id,
+                    'name': assignment.company_id.name,
+                    'cnpj': assignment.company_id.cnpj
+                } if assignment.company_id else None,
+                'responsibility_type': assignment.responsibility_type,
+                'commission_percentage': assignment.commission_percentage,
+                'assignment_date': assignment.assignment_date.isoformat() if assignment.assignment_date else None,
+                'notes': assignment.notes if hasattr(assignment, 'notes') else None,
+                'active': assignment.active,
+                'create_date': assignment.create_date.isoformat() if assignment.create_date else None,
+                'write_date': assignment.write_date.isoformat() if assignment.write_date else None
+            }
+            
+            # HATEOAS links (ADR-007)
+            assignment_data['links'] = [
+                {
+                    'href': f'/api/v1/assignments/{assignment.id}',
+                    'rel': 'self',
+                    'type': 'GET',
+                    'title': 'Get assignment details'
+                },
+                {
+                    'href': f'/api/v1/assignments/{assignment.id}',
+                    'rel': 'update',
+                    'type': 'PATCH',
+                    'title': 'Update assignment'
+                },
+                {
+                    'href': f'/api/v1/assignments/{assignment.id}',
+                    'rel': 'delete',
+                    'type': 'DELETE',
+                    'title': 'Deactivate assignment'
+                },
+                {
+                    'href': '/api/v1/assignments',
+                    'rel': 'collection',
+                    'type': 'GET',
+                    'title': 'List all assignments'
+                }
+            ]
+            
+            if assignment.agent_id:
+                assignment_data['links'].append({
+                    'href': f'/api/v1/agents/{assignment.agent_id.id}',
+                    'rel': 'agent',
+                    'type': 'GET',
+                    'title': 'Get agent details'
+                })
+            
+            if assignment.property_id:
+                assignment_data['links'].append({
+                    'href': f'/api/v1/properties/{assignment.property_id.id}',
+                    'rel': 'property',
+                    'type': 'GET',
+                    'title': 'Get property details'
+                })
+            
+            if assignment.company_id:
+                assignment_data['links'].append({
+                    'href': f'/api/v1/companies/{assignment.company_id.id}',
+                    'rel': 'company',
+                    'type': 'GET',
+                    'title': 'Get company details'
+                })
+            
+            return success_response(assignment_data)
+            
+        except Exception as e:
+            _logger.error(f'Error getting assignment {assignment_id}: {str(e)}', exc_info=True)
+            return error_response(500, 'Internal server error')
+    
+    @http.route('/api/v1/assignments/<int:assignment_id>', 
+                type='http', auth='none', methods=['PATCH'], csrf=False, cors='*')
+    @require_jwt
+    @require_session
+    @require_company
+    def update_assignment(self, assignment_id, **kwargs):
+
+        try:
+            user = request.env.user
+            
+            # Parse request body
+            try:
+                data = json.loads(request.httprequest.data.decode('utf-8'))
+            except (ValueError, UnicodeDecodeError):
+                return error_response(400, 'Invalid JSON in request body')
+            
+            # Use request.env (user context) - ADR-011
+            Assignment = request.env['real.estate.agent.property.assignment']
+            
+            # Build domain with multi-tenancy filter
+            domain = [('id', '=', assignment_id)]
+            
+            # RBAC filter
+            is_admin = user.has_group('base.group_system')
+            is_manager = user.has_group('quicksol_estate.group_real_estate_manager')
+            is_owner = user.has_group('quicksol_estate.group_real_estate_owner')
+            is_agent = user.has_group('quicksol_estate.group_real_estate_agent')
+            
+            if not is_admin:
+                # Multi-tenancy
+                domain.append(('company_id', 'in', user.estate_company_ids.ids))
+                
+                # Agent: only own assignments
+                if is_agent and not (is_manager or is_owner):
+                    agent_record = request.env['real.estate.agent'].search([
+                        ('user_id', '=', user.id)
+                    ], limit=1)
+                    
+                    if agent_record:
+                        domain.append(('agent_id', '=', agent_record.id))
+                    else:
+                        return error_response(404, 'Assignment not found')
+            
+            assignment = Assignment.search(domain, limit=1)
+            
+            if not assignment:
+                return error_response(404, 'Assignment not found')
+            
+            # Build update values
+            update_vals = {}
+            
+            # Validate immutable fields
+            immutable_fields = ['agent_id', 'property_id', 'company_id']
+            for field in immutable_fields:
+                if field in data:
+                    return error_response(400, f'Field {field} is immutable. Delete and recreate assignment instead.')
+            
+            # responsibility_type (Manager/Owner/Admin only)
+            if 'responsibility_type' in data:
+                if not (is_admin or is_manager or is_owner):
+                    return error_response(403, 'Only Managers or Owners can update responsibility_type')
+                
+                if data['responsibility_type'] not in ['primary', 'secondary', 'support']:
+                    return error_response(400, 'Invalid responsibility_type. Must be: primary, secondary, support')
+                
+                update_vals['responsibility_type'] = data['responsibility_type']
+            
+            # commission_percentage (Manager/Owner/Admin only)
+            if 'commission_percentage' in data:
+                if not (is_admin or is_manager or is_owner):
+                    return error_response(403, 'Only Managers or Owners can update commission_percentage')
+                
+                try:
+                    commission = float(data['commission_percentage'])
+                    if commission < 0 or commission > 100:
+                        return error_response(400, 'commission_percentage must be between 0 and 100')
+                    update_vals['commission_percentage'] = commission
+                except (ValueError, TypeError):
+                    return error_response(400, 'Invalid commission_percentage')
+            
+            # notes (all authenticated users can update)
+            if 'notes' in data:
+                update_vals['notes'] = data['notes']
+            
+            if not update_vals:
+                return error_response(400, 'No valid fields to update')
+            
+            # Update assignment
+            assignment.write(update_vals)
+            
+            # Return updated assignment
+            assignment_data = {
+                'id': assignment.id,
+                'agent': {
+                    'id': assignment.agent_id.id,
+                    'name': assignment.agent_id.name
+                } if assignment.agent_id else None,
+                'property': {
+                    'id': assignment.property_id.id,
+                    'name': assignment.property_id.name
+                } if assignment.property_id else None,
+                'company': {
+                    'id': assignment.company_id.id,
+                    'name': assignment.company_id.name
+                } if assignment.company_id else None,
+                'responsibility_type': assignment.responsibility_type,
+                'commission_percentage': assignment.commission_percentage,
+                'assignment_date': assignment.assignment_date.isoformat() if assignment.assignment_date else None,
+                'notes': assignment.notes if hasattr(assignment, 'notes') else None,
+                'active': assignment.active,
+                'write_date': assignment.write_date.isoformat() if assignment.write_date else None
+            }
+            
+            # HATEOAS links
+            assignment_data['links'] = [
+                {
+                    'href': f'/api/v1/assignments/{assignment.id}',
+                    'rel': 'self',
+                    'type': 'GET',
+                    'title': 'Get assignment details'
+                }
+            ]
+            
+            return success_response(assignment_data)
+            
+        except Exception as e:
+            _logger.error(f'Error updating assignment {assignment_id}: {str(e)}', exc_info=True)
+            return error_response(500, 'Internal server error')
+    
     # ==================== COMMISSION RULE ENDPOINTS (US4) ====================
     
     @http.route('/api/v1/agents/<int:agent_id>/commission-rules', type='http', auth='none', methods=['POST'], csrf=False, cors='*')
@@ -721,39 +1058,7 @@ class AgentApiController(http.Controller):
     @require_session
     @require_company
     def create_commission_rule(self, agent_id, **kwargs):
-        """
-        Create commission rule for an agent.
-        
-        POST /api/v1/agents/{agent_id}/commission-rules
-        
-        Body:
-        {
-            "transaction_type": "sale",  // "sale", "rental", "both"
-            "structure_type": "percentage",  // "percentage" or "fixed"
-            "percentage": 3.0,  // 0-100 (if percentage type)
-            "fixed_amount": 0.0,  // Fixed amount (if fixed type)
-            "min_value": 100000.0,  // Optional
-            "max_value": 5000000.0,  // Optional
-            "valid_from": "2026-01-12",  // Required
-            "valid_until": "2027-01-12"  // Optional
-        }
-        
-        Response 201:
-        {
-            "data": {
-                "id": 1,
-                "agent_id": 1,
-                "agent_name": "João Silva",
-                "transaction_type": "sale",
-                "structure_type": "percentage",
-                "percentage": 3.0,
-                "fixed_amount": 0.0,
-                "is_active": true,
-                "valid_from": "2026-01-12",
-                "valid_until": "2027-01-12"
-            }
-        }
-        """
+
         try:
             # Parse request body
             body = json.loads(request.httprequest.data.decode('utf-8'))
@@ -824,29 +1129,7 @@ class AgentApiController(http.Controller):
     @require_session
     @require_company
     def list_commission_rules(self, agent_id, **kwargs):
-        """
-        List commission rules for an agent.
-        
-        GET /api/v1/agents/{agent_id}/commission-rules?active_only=true
-        
-        Query Parameters:
-        - active_only: boolean (default: false) - Only return currently active rules
-        
-        Response 200:
-        {
-            "data": [
-                {
-                    "id": 1,
-                    "agent_id": 1,
-                    "transaction_type": "sale",
-                    "percentage": 3.0,
-                    "is_active": true,
-                    "valid_from": "2026-01-12"
-                }
-            ],
-            "count": 1
-        }
-        """
+
         try:
             # Validate agent exists and belongs to user's company
             agent = request.env['real.estate.agent'].sudo().browse(agent_id)
@@ -905,27 +1188,7 @@ class AgentApiController(http.Controller):
     @require_session
     @require_company
     def update_commission_rule(self, rule_id, **kwargs):
-        """
-        Update commission rule (only valid_until and active status can be changed).
-        
-        PUT /api/v1/commission-rules/{rule_id}
-        
-        Body:
-        {
-            "valid_until": "2027-12-31",  // Optional
-            "active": false  // Optional
-        }
-        
-        Response 200:
-        {
-            "data": {
-                "id": 1,
-                "valid_until": "2027-12-31",
-                "active": false,
-                "is_active": false
-            }
-        }
-        """
+
         try:
             # Parse request body
             body = json.loads(request.httprequest.data.decode('utf-8'))
@@ -974,35 +1237,7 @@ class AgentApiController(http.Controller):
     @require_session
     @require_company
     def create_commission_transaction(self, **kwargs):
-        """
-        Create commission transaction using active rule.
-        
-        POST /api/v1/commission-transactions
-        
-        Body:
-        {
-            "agent_id": 1,
-            "transaction_type": "sale",  // "sale" or "rental"
-            "transaction_amount": 500000.00,
-            "transaction_date": "2026-01-12",  // Optional (default: today)
-            "transaction_reference": "SALE-2024-001"  // Optional
-        }
-        
-        Response 201:
-        {
-            "data": {
-                "id": 1,
-                "agent_id": 1,
-                "agent_name": "João Silva",
-                "transaction_type": "sale",
-                "transaction_amount": 500000.00,
-                "commission_amount": 15000.00,
-                "rule_percentage": 3.0,
-                "payment_status": "pending",
-                "transaction_date": "2026-01-12"
-            }
-        }
-        """
+
         try:
             # Parse request body
             body = json.loads(request.httprequest.data.decode('utf-8'))
@@ -1071,54 +1306,7 @@ class AgentApiController(http.Controller):
     @require_session
     @require_company
     def get_agent_performance(self, agent_id, **kwargs):
-        """
-        Get performance metrics for a specific agent.
-        
-        Query Parameters:
-        - start_date (optional): ISO 8601 date string (YYYY-MM-DD) - Start of date range
-        - end_date (optional): ISO 8601 date string (YYYY-MM-DD) - End of date range
-        
-        Returns:
-        - 200: Performance metrics with transactions
-        - 400: Validation error (invalid date format)
-        - 403: Access denied (agent in different company)
-        - 404: Agent not found
-        - 500: Internal server error
-        
-        Response Format:
-        {
-            "agent_id": 1,
-            "agent_name": "João Silva",
-            "company_id": 5,
-            "company_name": "Company A",
-            "period": {
-                "date_from": "2024-01-01",
-                "date_to": "2024-12-31"
-            },
-            "metrics": {
-                "total_sales_count": 10,
-                "total_commissions": 50000.00,
-                "average_commission": 5000.00,
-                "active_properties_count": 3,
-                "pending_commissions": 10000.00,
-                "paid_commissions": 35000.00,
-                "cancelled_commissions": 5000.00
-            },
-            "transactions": [
-                {
-                    "id": 100,
-                    "date": "2024-06-15",
-                    "transaction_type": "sale",
-                    "transaction_amount": 500000.00,
-                    "commission_amount": 25000.00,
-                    "payment_status": "paid",
-                    "reference": "SALE-2024-001",
-                    "property_id": 42,
-                    "property_name": "Apt 301 - Edifício Central"
-                }
-            ]
-        }
-        """
+
         try:
             # Parse query parameters
             start_date = kwargs.get('start_date')
@@ -1176,50 +1364,6 @@ class AgentApiController(http.Controller):
     @require_session
     @require_company
     def get_agents_ranking(self, **kwargs):
-        """
-        Get top agents ranking by performance metrics.
-        
-        Query Parameters:
-        - company_id (required): ID of the company
-        - metric (optional): Ranking metric - 'total_commissions' (default), 'total_sales', 'average_commission'
-        - limit (optional): Number of top agents to return (default: 10, max: 100)
-        - start_date (optional): ISO 8601 date string (YYYY-MM-DD) - Start of date range
-        - end_date (optional): ISO 8601 date string (YYYY-MM-DD) - End of date range
-        
-        Returns:
-        - 200: Ranking data with top agents
-        - 400: Validation error (missing company_id, invalid metric/limit/dates)
-        - 403: Access denied (company not accessible to user)
-        - 404: Company not found
-        - 500: Internal server error
-        
-        Response Format:
-        {
-            "company_id": 5,
-            "company_name": "Company A",
-            "metric": "total_commissions",
-            "period": {
-                "date_from": "2024-01-01",
-                "date_to": "2024-12-31"
-            },
-            "ranking": [
-                {
-                    "rank": 1,
-                    "agent_id": 10,
-                    "agent_name": "João Silva",
-                    "total_sales_count": 15,
-                    "total_commissions": 75000.00,
-                    "average_commission": 5000.00,
-                    "active_properties_count": 5
-                },
-                {
-                    "rank": 2,
-                    "agent_name": "Maria Santos",
-                    ...
-                }
-            ]
-        }
-        """
         try:
             # Parse query parameters
             company_id = kwargs.get('company_id')

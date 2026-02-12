@@ -2723,6 +2723,118 @@
             },
             "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\nSoft delete (deactivate) a company.\n**RBAC:** Admin only.\nRelated data preserved (soft delete)."
           }
+        },
+        {
+          "name": "List Company Properties",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "Session ID for fingerprint validation (REQUIRED for GET)"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/companies/{{company_id}}/properties?page=1&page_size=20",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "companies",
+                "{{company_id}}",
+                "properties"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number (default: 1)"
+                },
+                {
+                  "key": "page_size",
+                  "value": "20",
+                  "description": "Items per page (default: 20, max: 100)"
+                },
+                {
+                  "key": "property_type_id",
+                  "value": "",
+                  "description": "Filter by property type ID",
+                  "disabled": true
+                },
+                {
+                  "key": "property_status",
+                  "value": "available",
+                  "description": "Filter by status: available/rented/sold/reserved/maintenance",
+                  "disabled": true
+                },
+                {
+                  "key": "city",
+                  "value": "",
+                  "description": "Filter by city name",
+                  "disabled": true
+                },
+                {
+                  "key": "state_id",
+                  "value": "",
+                  "description": "Filter by state ID",
+                  "disabled": true
+                },
+                {
+                  "key": "agent_id",
+                  "value": "",
+                  "description": "Filter by agent ID",
+                  "disabled": true
+                },
+                {
+                  "key": "min_price",
+                  "value": "",
+                  "description": "Minimum price filter",
+                  "disabled": true
+                },
+                {
+                  "key": "max_price",
+                  "value": "",
+                  "description": "Maximum price filter",
+                  "disabled": true
+                },
+                {
+                  "key": "for_sale",
+                  "value": "true",
+                  "description": "Filter properties for sale",
+                  "disabled": true
+                },
+                {
+                  "key": "for_rent",
+                  "value": "",
+                  "description": "Filter properties for rent",
+                  "disabled": true
+                },
+                {
+                  "key": "order_by",
+                  "value": "create_date DESC",
+                  "description": "Sort field: price, create_date, name, etc.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\n**IMPORTANT:** For GET requests, session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in body.\n\nList all properties belonging to a specific company with pagination and filters.\n\n**RBAC (ADR-019):**\n- Admin/Manager: All properties in company\n- Agent: Only assigned properties\n\n**Returns:** Paginated list with HATEOAS links (self, next, prev)"
+          }
         }
       ]
     },

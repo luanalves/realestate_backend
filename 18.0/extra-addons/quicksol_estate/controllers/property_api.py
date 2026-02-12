@@ -14,29 +14,23 @@ from ..services.company_validator import CompanyValidator
 _logger = logging.getLogger(__name__)
 
 
-class PropertyApiController(http.Controller):
-    """REST API Controller for Property endpoints"""
-    
-    @http.route('/api/v1/properties', 
-                type='http', auth='none', methods=['POST'], csrf=False, cors='*')
+class PropertyApiController(http.Controller):    
+    @http.route('/api/v1/properties', type='http', auth='none', methods=['POST'], csrf=False, cors='*')
     @require_jwt
     @require_session
     @require_company
     def create_property(self, **kwargs):
-        """
-        Create a new property.
-        
-        Requires: JWT token with 'write' scope
-        Body: JSON object with property data
-        Returns: JSON object with created property details
-        """
+
         try:
             user = request.env.user
             
-            # Only managers and admins can create properties
-            if not user.has_group('quicksol_estate.group_real_estate_manager') and \
-               not user.has_group('base.group_system'):
-                return error_response(403, 'Only managers can create properties')
+            # RBAC: Owners, Managers, and Admins can create properties (ADR-019)
+            is_owner = user.has_group('quicksol_estate.group_real_estate_owner')
+            is_manager = user.has_group('quicksol_estate.group_real_estate_manager')
+            is_admin = user.has_group('base.group_system')
+            
+            if not (is_owner or is_manager or is_admin):
+                return error_response(403, 'Only Owners, Managers, or Admins can create properties')
             
             # Parse request body
             try:
@@ -287,12 +281,6 @@ class PropertyApiController(http.Controller):
     @require_session
     @require_company
     def get_property(self, property_id, **kwargs):
-        """
-        Get property details by ID.
-        
-        Requires: JWT token with 'read' scope
-        Returns: JSON object with property details
-        """
         try:
             user = request.env.user
             
@@ -316,19 +304,11 @@ class PropertyApiController(http.Controller):
             _logger.error(f"Error in get_property: {e}")
             return error_response(500, 'Internal server error')
     
-    @http.route('/api/v1/properties/<int:property_id>', 
-                type='http', auth='none', methods=['PUT'], csrf=False, cors='*')
+    @http.route('/api/v1/properties/<int:property_id>',type='http', auth='none', methods=['PUT'], csrf=False, cors='*')
     @require_jwt
     @require_session
     @require_company
     def update_property(self, property_id, **kwargs):
-        """
-        Update property by ID.
-        
-        Requires: JWT token with 'write' scope
-        Body: JSON object with fields to update
-        Returns: JSON object with updated property details
-        """
         try:
             user = request.env.user
             
@@ -411,18 +391,11 @@ class PropertyApiController(http.Controller):
             _logger.error(f"Unexpected error in update_property: {e}", exc_info=True)
             return error_response(500, f'Internal server error: {str(e)}', 'internal_error')
     
-    @http.route('/api/v1/properties/<int:property_id>', 
-                type='http', auth='none', methods=['DELETE'], csrf=False, cors='*')
+    @http.route('/api/v1/properties/<int:property_id>',type='http', auth='none', methods=['DELETE'], csrf=False, cors='*')
     @require_jwt
     @require_session
     @require_company
     def delete_property(self, property_id, **kwargs):
-        """
-        Delete property by ID.
-        
-        Requires: JWT token with 'write' scope AND Manager role
-        Returns: JSON object confirming deletion
-        """
         try:
             user = request.env.user
             

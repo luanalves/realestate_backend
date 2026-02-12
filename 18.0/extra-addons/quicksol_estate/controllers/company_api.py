@@ -1,16 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Company API Controller - Feature 007: Company & Owner Management
-
-Company CRUD endpoints with auto-linkage to creator's estate_company_ids.
-
-Endpoints:
-    POST   /api/v1/companies          → Create company (auto-links to creator)
-    GET    /api/v1/companies          → List companies (multi-tenancy filtered)
-    GET    /api/v1/companies/{id}     → Get company details
-    PUT    /api/v1/companies/{id}     → Update company
-    DELETE /api/v1/companies/{id}     → Soft delete company
-"""
 import json
 import logging
 from odoo import http
@@ -32,42 +20,10 @@ _logger = logging.getLogger(__name__)
 
 
 class CompanyApiController(http.Controller):
-    """REST API Controller for Company endpoints (Feature 007)"""
-    
-    # ========== CREATE COMPANY (T029, T030, T031) ==========
-    
     @http.route('/api/v1/companies', type='http', auth='none', methods=['POST'], csrf=False, cors='*')
     @require_jwt
     @require_session
     def create_company(self, **kwargs):
-        """
-        Create a new Real Estate Company.
-        
-        Auto-linkage: Creator is automatically added to company's estate_company_ids (FR-016, T031)
-        RBAC: Only Owner or Admin can create companies (FR-019)
-        
-        Request Body:
-            {
-                "name": "Company Name",
-                "cnpj": "XX.XXX.XXX/XXXX-XX",  // optional, must be unique
-                "creci": "CRECI/SP 123456",     // optional
-                "legal_name": "Legal Name",     // optional
-                "email": "company@example.com", // optional
-                "phone": "(11) 3456-7890",      // optional
-                "mobile": "(11) 98765-4321",    // optional
-                "website": "https://...",       // optional
-                "street": "Street Address",     // optional
-                "city": "City",                 // optional
-                "state_id": 123,                // optional
-                "zip_code": "12345-678"         // optional
-            }
-        
-        Returns:
-            201: Company created successfully
-            400: Validation error
-            403: Forbidden
-            409: CNPJ already exists
-        """
         try:
             user = request.env.user
             
@@ -191,19 +147,6 @@ class CompanyApiController(http.Controller):
     @require_session
     @require_company
     def list_companies(self, page=1, page_size=20, **kwargs):
-        """
-        List companies with multi-tenancy filtering.
-        
-        Multi-tenancy: User sees only companies in their estate_company_ids (FR-037)
-        Admin sees all companies.
-        
-        Query Parameters:
-            page: Page number (default: 1)
-            page_size: Items per page (default: 20, max: 100)
-        
-        Returns:
-            200: List of companies with pagination
-        """
         try:
             user = request.env.user
             
@@ -281,15 +224,6 @@ class CompanyApiController(http.Controller):
     @require_session
     @require_company
     def get_company(self, company_id, **kwargs):
-        """
-        Get Company details by ID.
-        
-        Multi-tenancy: Returns 404 if company not accessible (FR-039)
-        
-        Returns:
-            200: Company details with HATEOAS links
-            404: Company not found or not accessible
-        """
         try:
             user = request.env.user
             
@@ -359,20 +293,6 @@ class CompanyApiController(http.Controller):
     @require_session
     @require_company
     def update_company(self, company_id, **kwargs):
-        """
-        Update Company information.
-        
-        RBAC: Only Owner of company or Admin can update
-        
-        Request Body: Any company fields (name, cnpj, email, etc.)
-        
-        Returns:
-            200: Company updated successfully
-            400: Validation error
-            403: Forbidden
-            404: Company not found
-            409: CNPJ conflict
-        """
         try:
             user = request.env.user
             
@@ -484,17 +404,6 @@ class CompanyApiController(http.Controller):
     @require_session
     @require_company
     def delete_company(self, company_id, **kwargs):
-        """
-        Soft delete Company (set active=False).
-        
-        RBAC: Only Owner of company or Admin can delete
-        Soft delete: ADR-015 (never hard delete)
-        
-        Returns:
-            200: Company deleted successfully
-            403: Forbidden
-            404: Company not found
-        """
         try:
             user = request.env.user
             
@@ -533,34 +442,6 @@ class CompanyApiController(http.Controller):
     @require_session
     @require_company
     def list_company_properties(self, company_id, page=1, page_size=20, **kwargs):
-        """
-        List all properties of a specific company with filtering and pagination.
-        
-        Multi-tenancy: Validates user has access to company (ADR-008)
-        RBAC (ADR-019):
-            - Admin: All properties of company
-            - Manager: All properties of company
-            - Agent: Only properties assigned to them (agent_id.user_id = user.id)
-        
-        Query Parameters:
-            page: Page number (default: 1)
-            page_size: Items per page (default: 20, max: 100)
-            property_type_id: Filter by property type ID
-            property_status: Filter by status (available, sold, rented, unavailable)
-            city: Filter by city (case-insensitive)
-            state_id: Filter by state ID
-            agent_id: Filter by agent ID
-            min_price: Minimum price
-            max_price: Maximum price
-            for_sale: Filter properties for sale (true/false)
-            for_rent: Filter properties for rent (true/false)
-            order_by: Sort field (price, area, created_date, name) - default: name
-        
-        Returns:
-            200: List of properties with pagination and HATEOAS links
-            404: Company not found or not accessible
-            400: Invalid parameters
-        """
         try:
             user = request.env.user
             
