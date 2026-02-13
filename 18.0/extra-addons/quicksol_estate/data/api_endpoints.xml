@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <data noupdate="1">
+    <data noupdate="0">
         
         <!-- Property API Endpoints -->
         
@@ -568,26 +568,57 @@ curl 'http://localhost:8069/api/v1/location-types' \
             <field name="module_name">quicksol_estate</field>
             <field name="protected" eval="True"/>
             <field name="tags">Agents</field>
-            <field name="summary">List all agents</field>
-            <field name="description">Get paginated list of all agents with filtering and search capabilities.
+            <field name="summary">List agents from specified companies</field>
+            <field name="description">Get paginated list of agents from specified companies with filtering capabilities.
 
-**Query Parameters:**
-- `page`: Page number (default: 1)
+**REQUIRED Query Parameter:**
+- `company_ids` (string, REQUIRED): Comma-separated list of company IDs to filter agents. 
+  The user must have access to all specified companies (multi-tenancy validation).
+  Examples: "1" for single company, "1,2,3" for multiple companies.
+
+**Optional Query Parameters:**
 - `limit`: Items per page (default: 20, max: 100)
-- `search`: Search by name, email, CRECI
-- `active`: Filter by active status (true/false)
-- `company_id`: Filter by company
+- `offset`: Number of items to skip (default: 0)
+- `is_active`: Filter by active status (optional):
+  - Not provided: returns ALL agents (active and inactive)
+  - "true": returns only active agents
+  - "false": returns only inactive agents
+- `creci_number`: Filter by CRECI number (partial match)
+- `creci_state`: Filter by CRECI state (e.g., "SP", "RJ")
+
+**Security:**
+- Requires JWT + Session authentication
+- Multi-tenancy: User can only access agents from companies they belong to
+- Admin users can access agents from any company
 
 **Response Format (200 OK):**
 ```json
 {
-  "agents": [...],
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "name": "Agent Name",
+      "email": "agent@company.com",
+      "cpf": "123.456.789-01",
+      "creci": "CRECI-SP 12345",
+      "company_id": 1,
+      "company_name": "Company Name",
+      "_links": { "self": "/api/v1/agents/1", "properties": "/api/v1/agents/1/properties" }
+    }
+  ],
+  "count": 10,
   "total": 50,
-  "page": 1,
   "limit": 20,
-  "pages": 3
+  "offset": 0,
+  "_links": { "self": "/api/v1/agents?company_ids=1&amp;limit=20&amp;offset=0", "next": "..." }
 }
-```</field>
+```
+
+**Error Responses:**
+- 400: company_ids parameter is required
+- 400: Invalid company_ids format
+- 403: Access denied to company IDs (user doesn't have access)</field>
             <field name="active" eval="True"/>
         </record>
 
@@ -599,7 +630,27 @@ curl 'http://localhost:8069/api/v1/location-types' \
             <field name="protected" eval="True"/>
             <field name="tags">Agents</field>
             <field name="summary">Create a new agent</field>
-            <field name="description">Creates a new real estate agent with CRECI registration and commission configuration.</field>
+            <field name="description">Creates a new real estate agent with CRECI registration and commission configuration.
+
+Required fields:
+- name (string): Agent's full name (3-255 characters)
+- cpf (string): Brazilian CPF document (11 digits, format: 123.456.789-01 or 12345678901)
+- company_id (integer): ID of the real estate company the agent will belong to. Required for multi-tenancy.
+- email (string): Email address (must contain @ and .). Required for account activation email.
+
+Optional fields:
+- phone (string): Phone number
+- mobile (string): Mobile number
+- creci (string): CRECI registration number (minimum 4 characters, format: CRECI-SP 12345)
+- hire_date (string): Hire date in ISO format (YYYY-MM-DD)
+- bank_name (string): Bank name for commission payments
+- bank_account (string): Bank account number
+- pix_key (string): PIX key for payments
+
+RBAC: Only managers and admins can create agents.
+Multi-tenancy: Agent is linked to the specified company_id.
+
+Returns: Agent object with id, name, cpf, email, creci, company_id, company_name, and HATEOAS links.</field>
             <field name="active" eval="True"/>
         </record>
 

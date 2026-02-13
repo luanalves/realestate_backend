@@ -25,30 +25,49 @@ class AgentApiController(http.Controller):
             user = request.env.user
             
             # Parse query parameters
-            active_filter = kwargs.get('active', 'true')
-            company_id = kwargs.get('company_id')
+            is_active = kwargs.get('is_active')  # Optional: None=all, 'true'=active only, 'false'=inactive only
+            company_ids_param = kwargs.get('company_ids')  # Required, comma-separated
             creci_number = kwargs.get('creci_number')
             creci_state = kwargs.get('creci_state')
             limit = min(int(kwargs.get('limit', 20)), 100)
             offset = int(kwargs.get('offset', 0))
             
+            # Validate company_ids parameter (REQUIRED)
+            if not company_ids_param:
+                return error_response(400, 'company_ids parameter is required')
+            
+            # Parse company_ids (can be comma-separated: "1,2,3")
+            try:
+                requested_company_ids = [int(cid.strip()) for cid in company_ids_param.split(',')]
+            except ValueError:
+                return error_response(400, 'Invalid company_ids format. Use comma-separated integers (e.g., "1,2,3")')
+            
+            # Validate user has access to all requested companies (multi-tenancy security)
+            # Admin users (request.user_company_ids is empty for admins) skip this validation
+            if request.user_company_ids:  # Not admin
+                unauthorized_companies = [cid for cid in requested_company_ids if cid not in request.user_company_ids]
+                if unauthorized_companies:
+                    return error_response(403, f'Access denied to company IDs: {unauthorized_companies}. You can only access companies: {request.user_company_ids}')
+            
             # Build domain for filtering
             domain = []
             
             # Active filter (ADR-015: soft-delete)
-            if active_filter == 'true':
-                domain.append(('active', '=', True))
-            elif active_filter == 'false':
-                domain.append(('active', '=', False))
-            # 'all' includes both active and inactive
+            # When is_active is not provided: return ALL agents (active and inactive)
+            # When is_active='true': return only active agents
+            # When is_active='false': return only inactive agents
+            if is_active is not None:
+                if is_active.lower() == 'true':
+                    domain.append(('active', '=', True))
+                elif is_active.lower() == 'false':
+                    domain.append(('active', '=', False))
+            # If is_active is None, no filter is applied (returns all)
             
-            # Company filter (multi-tenancy isolation)
-            if company_id:
-                domain.append(('company_id', '=', int(company_id)))
+            # Company filter using validated company_ids
+            if len(requested_company_ids) == 1:
+                domain.append(('company_id', '=', requested_company_ids[0]))
             else:
-                # Default: filter by user's default company
-                if hasattr(user, 'estate_default_company_id') and user.estate_default_company_id:
-                    domain.append(('company_id', '=', user.estate_default_company_id.id))
+                domain.append(('company_id', 'in', requested_company_ids))
             
             # CRECI filters
             if creci_number:
@@ -61,9 +80,10 @@ class AgentApiController(http.Controller):
             Agent = request.env['real.estate.agent']
             
             # Use sudo() with context to bypass record rules for counting
+            # active_test=False allows querying inactive records when is_active is not specified
             total = Agent.with_context(active_test=False).sudo().search_count(domain)
             
-            agents = Agent.sudo().search(domain, limit=limit, offset=offset, order='name asc')
+            agents = Agent.with_context(active_test=False).sudo().search(domain, limit=limit, offset=offset, order='name asc')
             
             # Serialize agents
             agent_list = []
@@ -90,6 +110,7 @@ class AgentApiController(http.Controller):
                 })
             
             # Build response with pagination (ADR-007: HATEOAS)
+            company_ids_str = ','.join(str(cid) for cid in requested_company_ids)
             response_data = {
                 'success': True,
                 'data': agent_list,
@@ -98,16 +119,16 @@ class AgentApiController(http.Controller):
                 'limit': limit,
                 'offset': offset,
                 '_links': {
-                    'self': f'/api/v1/agents?limit={limit}&offset={offset}',
+                    'self': f'/api/v1/agents?company_ids={company_ids_str}&limit={limit}&offset={offset}',
                 }
             }
             
             # Add next/prev links
             if offset + limit < total:
-                response_data['_links']['next'] = f'/api/v1/agents?limit={limit}&offset={offset + limit}'
+                response_data['_links']['next'] = f'/api/v1/agents?company_ids={company_ids_str}&limit={limit}&offset={offset + limit}'
             if offset > 0:
                 prev_offset = max(0, offset - limit)
-                response_data['_links']['prev'] = f'/api/v1/agents?limit={limit}&offset={prev_offset}'
+                response_data['_links']['prev'] = f'/api/v1/agents?company_ids={company_ids_str}&limit={limit}&offset={prev_offset}'
             
             return success_response(response_data)
             
@@ -142,34 +163,26 @@ class AgentApiController(http.Controller):
             if not is_valid:
                 return error_response(400, 'Validation failed', ', '.join(errors))
             
-            # Prepare agent data
+            # Prepare agent data - only include fields that are present in request
             agent_vals = {
-                'name': data.get('name'),
-                'cpf': data.get('cpf'),
-                'email': data.get('email'),
-                'phone': data.get('phone'),
-                'mobile': data.get('mobile'),
-                'creci': data.get('creci'),
-                'hire_date': data.get('hire_date'),
-                'bank_name': data.get('bank_name'),
-                'bank_account': data.get('bank_account'),
-                'pix_key': data.get('pix_key'),
+                'name': data['name'],
+                'cpf': data['cpf'],
+                'email': data['email'],
             }
             
-            # Company ID (multi-tenancy)
-            company_id = data.get('company_id')
-            if company_id:
-                # Validate company access
-                valid, error = CompanyValidator.validate_company_ids([company_id])
-                if not valid:
-                    return error_response(403, error)
-                agent_vals['company_id'] = company_id
-            else:
-                # Default to user's company
-                if hasattr(user, 'estate_default_company_id') and user.estate_default_company_id:
-                    agent_vals['company_id'] = user.estate_default_company_id.id
-                else:
-                    return error_response(400, 'No company_id provided and user has no default company')
+            # Optional fields - only add if present (to allow model defaults)
+            optional_fields = ['phone', 'mobile', 'creci', 'hire_date', 'bank_name', 'bank_account', 'pix_key']
+            for field in optional_fields:
+                if field in data and data[field] is not None:
+                    agent_vals[field] = data[field]
+            
+            # Company ID (multi-tenancy) - required field
+            company_id = data['company_id']
+            # Validate company access
+            valid, error = CompanyValidator.validate_company_ids([company_id])
+            if not valid:
+                return error_response(403, error)
+            agent_vals['company_id'] = company_id
             
             # Create agent
             Agent = request.env['real.estate.agent']

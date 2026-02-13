@@ -24,8 +24,8 @@ class SchemaValidator:
     
     # Agent creation schema
     AGENT_CREATE_SCHEMA = {
-        'required': ['name', 'cpf'],
-        'optional': ['email', 'phone', 'mobile', 'creci', 'hire_date', 'bank_name', 'bank_account', 'pix_key', 'company_id'],
+        'required': ['name', 'cpf', 'company_id', 'email'],
+        'optional': ['phone', 'mobile', 'creci', 'hire_date', 'bank_name', 'bank_account', 'pix_key'],
         'types': {
             'name': str,
             'cpf': str,

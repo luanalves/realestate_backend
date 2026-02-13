@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "b7e3f1a2-8c4d-4e5f-9a6b-1c2d3e4f5a6b",
     "name": "Quicksol Real Estate API",
-    "description": "Complete API collection for QuickSol Real Estate Management System.\n\n## Features\n- Multi-tenancy with company isolation\n- RBAC: 9 security profiles\n- Properties, Agents, Leads management\n- Commission tracking and performance\n- Owner & Company management\n- Complete Assignment CRUD\n\n## Authentication Flow\n1. **Get OAuth Token**: POST /api/v1/auth/token\n2. **User Login**: POST /api/v1/users/login (returns session_id)\n3. **Use Both**: Authorization header + X-Openerp-Session-Id header (GET) or session_id in body (POST type=json)\n\n## Headers\n- `Authorization: Bearer {{access_token}}`\n- `X-Openerp-Session-Id: {{session_id}}` (REQUIRED for GET)\n- `User-Agent: {{user_agent}}`\n- `Content-Type: application/json`\n\n## Changelog v1.7\n- **BREAKING CHANGE**: Create Owner (POST /api/v1/owners) now requires CPF field\n- CPF validation using validate_docbr library\n- CPF unique constraint: each user must have unique CPF\n- CPF returned in Create Owner response\n\n## Previous Versions\n- v1.6: Added Assignment CRUD endpoints (list, get, update) with pagination and filters\n- v1.5: Fixed ADR-016 compliance, Master Data endpoints, folder reorganization\n- v1.4: Integrated Company & Owner Management (Feature 007)\n- v1.3: Complete API coverage (50+ endpoints)",
+    "description": "Complete API collection for QuickSol Real Estate Management System.\n\n## Features\n- Multi-tenancy with company isolation\n- RBAC: 9 security profiles\n- Properties, Agents, Leads management\n- Commission tracking and performance\n- Owner & Company management\n- Complete Assignment CRUD\n\n## Authentication Flow\n1. **Get OAuth Token**: POST /api/v1/auth/token\n2. **User Login**: POST /api/v1/users/login (returns session_id)\n3. **Use Both**: Authorization header + X-Openerp-Session-Id header (GET) or session_id in body (POST type=json)\n\n## Headers\n- `Authorization: Bearer {{access_token}}`\n- `X-Openerp-Session-Id: {{session_id}}` (REQUIRED for GET)\n- `User-Agent: {{user_agent}}`\n- `Content-Type: application/json`\n\n## Changelog v1.7\n- **BREAKING CHANGE**: Create Owner (POST /api/v1/owners) now requires CPF field\n- CPF validation using validate_docbr library\n- CPF unique constraint: each user must have unique CPF\n- CPF returned in Create Owner response\n- Updated Create Agent (POST /api/v1/agents) with complete field documentation\n- Create Agent now shows company_id parameter for multi-tenancy\n\n## Previous Versions\n- v1.6: Added Assignment CRUD endpoints (list, get, update) with pagination and filters\n- v1.5: Fixed ADR-016 compliance, Master Data endpoints, folder reorganization\n- v1.4: Integrated Company & Owner Management (Feature 007)\n- v1.3: Complete API coverage (50+ endpoints)",
     "version": "1.7",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
@@ -657,7 +657,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"João Silva\",\n  \"email\": \"joao.silva@example.com\",\n  \"phone\": \"+55 11 98765-4321\",\n  \"creci\": \"F123456\"\n}"
+              "raw": "{\n  \"name\": \"João Silva\",\n  \"cpf\": \"123.456.789-09\",\n  \"company_id\": {{company_id}},\n  \"email\": \"joao.silva.agent@example.com\",\n  \"phone\": \"+55 11 98765-4321\",\n  \"mobile\": \"+55 11 91234-5678\",\n  \"creci\": \"CRECI-SP 12345\",\n  \"hire_date\": \"2026-02-13\",\n  \"bank_name\": \"Banco do Brasil\",\n  \"bank_account\": \"12345-6\",\n  \"pix_key\": \"joao.silva@email.com\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/agents",
@@ -670,7 +670,7 @@
                 "agents"
               ]
             },
-            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\nCreate a new agent in the current company. CRECI is validated per ADR-012."
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\nCreate a new real estate agent.\n\n**Required fields:**\n- name (string): Agent's full name (3-255 chars)\n- cpf (string): Brazilian CPF (11 digits)\n- company_id (integer): Real estate company ID (required for multi-tenancy)\n- email (string): Email address (required for account activation)\n\n**Optional fields:**\n- phone (string): Phone number\n- mobile (string): Mobile number\n- creci (string): CRECI registration (min 4 chars)\n- hire_date (string): ISO date (YYYY-MM-DD)\n- bank_name (string): Bank name\n- bank_account (string): Account number\n- pix_key (string): PIX key\n\n**RBAC:** Only managers and admins can create agents.\n**Response:** 201 with agent object and HATEOAS links."
           }
         },
         {

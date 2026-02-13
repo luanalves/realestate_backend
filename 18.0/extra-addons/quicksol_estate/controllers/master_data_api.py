@@ -9,8 +9,7 @@ from odoo.addons.thedevkitchen_apigateway.middleware import require_session, req
 _logger = logging.getLogger(__name__)
 
 class MasterDataApiController(http.Controller):
-    @http.route('/api/v1/property-types', 
-                type='http', auth='none', methods=['GET'], csrf=False, cors='*')
+    @http.route('/api/v1/property-types', type='http', auth='none', methods=['GET'], csrf=False, cors='*')
     @require_jwt
     @require_session
     def list_property_types(self, **kwargs):
@@ -33,8 +32,7 @@ class MasterDataApiController(http.Controller):
             _logger.error(f"Error in list_property_types: {e}")
             return error_response(500, 'Internal server error')
     
-    @http.route('/api/v1/location-types', 
-                type='http', auth='none', methods=['GET'], csrf=False, cors='*')
+    @http.route('/api/v1/location-types', type='http', auth='none', methods=['GET'], csrf=False, cors='*')
     @require_jwt
     @require_session
     def list_location_types(self, **kwargs):
@@ -56,14 +54,12 @@ class MasterDataApiController(http.Controller):
             _logger.error(f"Error in list_location_types: {e}")
             return error_response(500, 'Internal server error')
     
-    @http.route('/api/v1/states', 
-                type='http', auth='none', methods=['GET'], csrf=False, cors='*')
+    @http.route('/api/v1/states', type='http', auth='none', methods=['GET'], csrf=False, cors='*')
     @require_jwt
     @require_session
     def list_states(self, **kwargs):
         try:
             country_id = kwargs.get('country_id')
-            
             domain = []
             if country_id:
                 domain.append(('country_id', '=', int(country_id)))
@@ -90,34 +86,10 @@ class MasterDataApiController(http.Controller):
             _logger.error(f"Error in list_states: {e}")
             return error_response(500, 'Internal server error')
     
-    @http.route('/api/v1/agents', 
-                type='http', auth='none', methods=['GET'], csrf=False, cors='*')
-    @require_jwt
-    @require_session
-    @require_company
-    def list_agents(self, **kwargs):
-        try:
-            Agent = request.env['real.estate.agent'].sudo()
-            domain = request.company_domain
-            agents = Agent.search(domain, order='name')
-            
-            agents_list = []
-            for agent in agents:
-                agents_list.append({
-                    'id': agent.id,
-                    'name': agent.name,
-                    'email': agent.email,
-                    'phone': agent.phone,
-                })
-            
-            return success_response(agents_list)
-            
-        except Exception as e:
-            _logger.error(f"Error in list_agents: {e}")
-            return error_response(500, 'Internal server error')
+    # NOTE: GET /api/v1/agents is defined in agent_api.py with full features
+    # (pagination, filtering, complete response structure)
     
-    @http.route('/api/v1/companies', 
-                type='http', auth='none', methods=['GET'], csrf=False, cors='*')
+    @http.route('/api/v1/companies', type='http', auth='none', methods=['GET'], csrf=False, cors='*')
     @require_jwt
     @require_session
     @require_company
@@ -149,8 +121,7 @@ class MasterDataApiController(http.Controller):
             _logger.error(f"Error in list_companies: {e}")
             return error_response(500, 'Internal server error')
     
-    @http.route('/api/v1/tags', 
-                type='http', auth='none', methods=['GET'], csrf=False, cors='*')
+    @http.route('/api/v1/tags', type='http', auth='none', methods=['GET'], csrf=False, cors='*')
     @require_jwt
     @require_session
     def list_tags(self, **kwargs):
@@ -173,8 +144,7 @@ class MasterDataApiController(http.Controller):
             _logger.error(f"Error in list_tags: {e}")
             return error_response(500, 'Internal server error')
     
-    @http.route('/api/v1/amenities', 
-                type='http', auth='none', methods=['GET'], csrf=False, cors='*')
+    @http.route('/api/v1/amenities', type='http', auth='none', methods=['GET'], csrf=False, cors='*')
     @require_jwt
     @require_session
     def list_amenities(self, **kwargs):
