@@ -1011,7 +1011,35 @@ Returns: Agent object with id, name, cpf, email, creci, company_id, company_name
             <field name="protected" eval="True"/>
             <field name="tags">Performance</field>
             <field name="summary">Get agents ranking</field>
-            <field name="description">Get ranking of agents by performance metrics (sales, commissions, etc.).</field>
+            <field name="description">Get ranking of agents by performance metrics.
+
+**Required Parameters:**
+- company_id (integer): Company ID
+
+**Optional Parameters:**
+- metric (string): Ranking criteria - "total_commissions" (default), "total_sales", or "average_commission"
+- limit (integer): Max results 1-100 (default: 10)
+- start_date (string): Start date filter YYYY-MM-DD
+- end_date (string): End date filter YYYY-MM-DD
+
+**Example:**
+`GET /api/v1/agents/ranking?company_id=63&amp;metric=total_sales&amp;limit=10`
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "rank": 1,
+      "agent_id": 20,
+      "agent_name": "João Silva",
+      "total_sales": 1500000.00,
+      "total_commissions": 75000.00
+    }
+  ]
+}
+```</field>
             <field name="active" eval="True"/>
         </record>
 

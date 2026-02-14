@@ -1538,7 +1538,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/agents/ranking?metric=sales_count&period=month&limit=10",
+              "raw": "{{base_url}}/api/v1/agents/ranking?company_id={{company_id}}&metric=total_sales&limit=10",
               "host": [
                 "{{base_url}}"
               ],
@@ -1550,22 +1550,35 @@
               ],
               "query": [
                 {
-                  "key": "metric",
-                  "value": "sales_count",
-                  "description": "sales_count, sales_value, commission_earned"
+                  "key": "company_id",
+                  "value": "{{company_id}}",
+                  "description": "(Required) Company ID"
                 },
                 {
-                  "key": "period",
-                  "value": "month",
-                  "description": "month, quarter, year"
+                  "key": "metric",
+                  "value": "total_sales",
+                  "description": "total_commissions (default), total_sales, average_commission"
                 },
                 {
                   "key": "limit",
-                  "value": "10"
+                  "value": "10",
+                  "description": "Max results 1-100 (default: 10)"
+                },
+                {
+                  "key": "start_date",
+                  "value": "",
+                  "description": "Optional: Start date YYYY-MM-DD",
+                  "disabled": true
+                },
+                {
+                  "key": "end_date",
+                  "value": "",
+                  "description": "Optional: End date YYYY-MM-DD",
+                  "disabled": true
                 }
               ]
             },
-            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\n**IMPORTANT:** For GET requests, session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in body.\n\nGet ranked list of agents by metric (sales_count, sales_value, commission_earned)."
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\n**IMPORTANT:** For GET requests, session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in body.\n\n**Required:** company_id\n\n**Metrics:**\n- total_commissions (default)\n- total_sales\n- average_commission\n\nGet ranked list of agents by performance metric."
           }
         }
       ]
