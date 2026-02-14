@@ -122,7 +122,7 @@ A manager needs to archive (deactivate) tenants, leases, and sales without perma
 - **FR-004**: System MUST allow retrieval of a single tenant by ID, including related lease references
 - **FR-005**: System MUST allow updating tenant contact information (name, phone, email, occupation, birthdate)
 - **FR-006**: System MUST support logical deletion (archiving) of tenants, preserving the record for audit
-- **FR-007**: System MUST support reactivation of archived tenants
+- **FR-007**: System MUST support reactivation of archived tenants, leases, and sales
 - **FR-008**: System MUST return all leases for a specific tenant via a dedicated sub-resource endpoint
 
 **Lease Management**
@@ -131,7 +131,7 @@ A manager needs to archive (deactivate) tenants, leases, and sales without perma
 - **FR-010**: System MUST validate that end date is after start date when creating or updating a lease
 - **FR-011**: System MUST validate that rent amount is a positive value
 - **FR-012**: System MUST validate that the referenced property and tenant exist and belong to the user's company
-- **FR-013**: System MUST reject lease creation if the property already has an active lease with overlapping dates — only one active lease per property at a time
+- **FR-013**: System MUST reject lease creation if the property already has an active lease with overlapping dates (one active lease per property at a time) or if the property status is "sold" (per FR-029)
 - **FR-014**: System MUST return paginated lease lists filtered by the user's company, with optional filters for property, tenant, and status
 - **FR-015**: System MUST allow retrieval of a single lease by ID with property and tenant details
 - **FR-016**: System MUST allow updating lease fields (dates, rent amount) for non-terminated leases
