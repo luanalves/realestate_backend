@@ -3,6 +3,77 @@
     <data noupdate="0">
         
         <!-- Property API Endpoints -->
+
+        <record id="api_endpoint_list_properties" model="thedevkitchen.api.endpoint">
+            <field name="name">List Properties</field>
+            <field name="path">/api/v1/properties</field>
+            <field name="method">GET</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Properties</field>
+            <field name="summary">List properties from specified companies</field>
+            <field name="description">Get paginated list of properties from specified companies with filtering capabilities.
+
+**REQUIRED Query Parameter:**
+- `company_ids` (string, REQUIRED): Comma-separated list of company IDs to filter properties. 
+  The user must have access to all specified companies (multi-tenancy validation).
+  Examples: "1" for single company, "1,2,3" for multiple companies.
+
+**Optional Query Parameters:**
+- `limit`: Items per page (default: 20, max: 100)
+- `offset`: Number of items to skip (default: 0)
+- `is_active`: Filter by active status (optional):
+  - Not provided: returns ALL properties (active and inactive)
+  - "true": returns only active properties
+  - "false": returns only inactive properties
+- `property_type_id`: Filter by property type ID
+- `property_status`: Filter by status (available, sold, rented, unavailable)
+- `agent_id`: Filter by agent ID
+- `city`: Filter by city (partial match)
+- `state_id`: Filter by state ID
+- `min_price`: Filter by minimum price
+- `max_price`: Filter by maximum price
+- `for_sale`: Filter by for_sale flag ('true' or 'false')
+- `for_rent`: Filter by for_rent flag ('true' or 'false')
+
+**Security:**
+- Requires JWT + Session authentication
+- Multi-tenancy: User can only access properties from companies they belong to
+- Admin users can access properties from any company
+- Agents can only see their assigned properties
+
+**Response Format (200 OK):**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "name": "Casa Moderna",
+      "price": 850000.0,
+      "price_formatted": "R$ 850.000,00",
+      "status": "available",
+      "property_type": { "id": 2, "name": "House" },
+      "agent": { "id": 1, "name": "Agent Name" },
+      "company": { "id": 1, "name": "Company Name" },
+      "address": { "city": "São Paulo", "state": { "code": "SP" } },
+      "_links": { "self": "/api/v1/properties/1" }
+    }
+  ],
+  "count": 10,
+  "total": 50,
+  "limit": 20,
+  "offset": 0,
+  "_links": { "self": "/api/v1/properties?company_ids=1&amp;limit=20&amp;offset=0", "next": "..." }
+}
+```
+
+**Error Responses:**
+- 400: company_ids parameter is required
+- 400: Invalid company_ids format
+- 403: Access denied to company IDs (user doesn't have access)</field>
+            <field name="active" eval="True"/>
+        </record>
         
         <record id="api_endpoint_create_property" model="thedevkitchen.api.endpoint">
             <field name="name">Create Property</field>
@@ -735,22 +806,34 @@ Returns: Agent object with id, name, cpf, email, creci, company_id, company_name
             <field name="summary">List all agent-property assignments</field>
             <field name="description">Get paginated list of assignments with filtering.
 
+**Required Parameters:**
+- `company_ids` (string, REQUIRED): Comma-separated company IDs (e.g., "1,2,3"). User must have access to all specified companies.
+
 **RBAC (ADR-019):**
-- **Admin**: All assignments
-- **Manager**: All assignments in company
-- **Agent**: Only own assignments
+- **Admin**: All assignments in requested companies
+- **Manager**: All assignments in requested companies (must have access)
+- **Agent**: Only own assignments in requested companies
 
 **Query Parameters:**
 - `page`: Page number (default: 1)
 - `page_size`: Items per page (default: 20, max: 100)
 - `agent_id`: Filter by agent ID
 - `property_id`: Filter by property ID
-- `company_id`: Filter by company ID
 - `active_only`: Show only active (default: true)
+
+**Multi-tenancy Security:**
+- Validates user has access to all requested company_ids
+- Returns 403 if user tries to access unauthorized companies
+- Admin users bypass company validation
 
 **Returns:**
 - Paginated list with HATEOAS links
-- Multi-tenancy: 404 if not accessible (ADR-008)</field>
+- Multi-tenancy: 403 if company not accessible
+
+**Error Responses:**
+- 400: company_ids parameter is required
+- 400: Invalid company_ids format
+- 403: Access denied to company IDs</field>
             <field name="active" eval="True"/>
         </record>
 

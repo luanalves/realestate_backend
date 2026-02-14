@@ -14,7 +14,165 @@ from ..services.company_validator import CompanyValidator
 _logger = logging.getLogger(__name__)
 
 
-class PropertyApiController(http.Controller):    
+class PropertyApiController(http.Controller):
+    @http.route('/api/v1/properties',type='http', auth='none', methods=['GET'], csrf=False, cors='*')
+    @require_jwt
+    @require_session
+    @require_company
+    def list_properties(self, **kwargs):
+        try:
+            user = request.env.user
+            
+            # Parse query parameters
+            is_active = kwargs.get('is_active')  
+            company_ids_param = kwargs.get('company_ids')  
+            limit = min(int(kwargs.get('limit', 20)), 100)
+            offset = int(kwargs.get('offset', 0))
+            
+            # Validate company_ids parameter (REQUIRED)
+            if not company_ids_param:
+                return error_response(400, 'company_ids parameter is required')
+            
+            # Parse company_ids (can be comma-separated: "1,2,3")
+            try:
+                requested_company_ids = [int(cid.strip()) for cid in company_ids_param.split(',')]
+            except ValueError:
+                return error_response(400, 'Invalid company_ids format. Use comma-separated integers (e.g., "1,2,3")')
+            
+            # Validate user has access to all requested companies (multi-tenancy security)
+            # Admin users (request.user_company_ids is empty for admins) skip this validation
+            if request.user_company_ids:  # Not admin
+                unauthorized_companies = [cid for cid in requested_company_ids if cid not in request.user_company_ids]
+                if unauthorized_companies:
+                    return error_response(403, f'Access denied to company IDs: {unauthorized_companies}. You can only access companies: {request.user_company_ids}')
+            
+            # Build domain for filtering
+            domain = []
+            
+            # Active filter (ADR-015: soft-delete)
+            if is_active is not None:
+                if is_active.lower() == 'true':
+                    domain.append(('active', '=', True))
+                elif is_active.lower() == 'false':
+                    domain.append(('active', '=', False))
+            # If is_active is None, no filter is applied (returns all)
+            
+            # Company filter using validated company_ids
+            if len(requested_company_ids) == 1:
+                domain.append(('company_ids', 'in', requested_company_ids))
+            else:
+                domain.append(('company_ids', 'in', requested_company_ids))
+            
+            # Optional filters
+            if kwargs.get('property_type_id'):
+                try:
+                    domain.append(('property_type_id', '=', int(kwargs['property_type_id'])))
+                except ValueError:
+                    return error_response(400, 'Invalid property_type_id')
+            
+            if kwargs.get('property_status'):
+                status = kwargs['property_status']
+                if status not in ['available', 'sold', 'rented', 'unavailable']:
+                    return error_response(400, 'Invalid property_status. Must be: available, sold, rented, unavailable')
+                domain.append(('property_status', '=', status))
+            
+            if kwargs.get('agent_id'):
+                try:
+                    domain.append(('agent_id', '=', int(kwargs['agent_id'])))
+                except ValueError:
+                    return error_response(400, 'Invalid agent_id')
+            
+            if kwargs.get('city'):
+                domain.append(('city', 'ilike', kwargs['city']))
+            
+            if kwargs.get('state_id'):
+                try:
+                    domain.append(('state_id', '=', int(kwargs['state_id'])))
+                except ValueError:
+                    return error_response(400, 'Invalid state_id')
+            
+            if kwargs.get('min_price'):
+                try:
+                    domain.append(('price', '>=', float(kwargs['min_price'])))
+                except ValueError:
+                    return error_response(400, 'Invalid min_price')
+            
+            if kwargs.get('max_price'):
+                try:
+                    domain.append(('price', '<=', float(kwargs['max_price'])))
+                except ValueError:
+                    return error_response(400, 'Invalid max_price')
+            
+            if kwargs.get('for_sale') is not None:
+                for_sale = kwargs['for_sale'].lower() == 'true'
+                domain.append(('for_sale', '=', for_sale))
+            
+            if kwargs.get('for_rent') is not None:
+                for_rent = kwargs['for_rent'].lower() == 'true'
+                domain.append(('for_rent', '=', for_rent))
+            
+            # RBAC filter
+            is_admin = user.has_group('base.group_system')
+            is_manager = user.has_group('quicksol_estate.group_real_estate_manager')
+            is_owner = user.has_group('quicksol_estate.group_real_estate_owner')
+            is_agent = user.has_group('quicksol_estate.group_real_estate_agent')
+            
+            if not is_admin and not is_manager and not is_owner:
+                if is_agent:
+                    # Agent sees only their assigned properties
+                    agent_record = request.env['real.estate.agent'].sudo().search([
+                        ('user_id', '=', user.id)
+                    ], limit=1)
+                    
+                    if agent_record:
+                        domain.append(('agent_id', '=', agent_record.id))
+                    else:
+                        # Agent without agent record sees nothing
+                        domain.append(('id', '=', False))
+            
+            # Query properties
+            Property = request.env['real.estate.property']
+            
+            # Use active_test=False to include inactive records when is_active is not specified
+            total = Property.with_context(active_test=False).sudo().search_count(domain)
+            properties = Property.with_context(active_test=False).sudo().search(
+                domain, limit=limit, offset=offset, order='name asc'
+            )
+            
+            # Serialize properties
+            property_list = []
+            for prop in properties:
+                property_list.append(serialize_property(prop))
+            
+            # Build response with pagination (ADR-007: HATEOAS)
+            company_ids_str = ','.join(str(cid) for cid in requested_company_ids)
+            response_data = {
+                'success': True,
+                'data': property_list,
+                'count': len(property_list),
+                'total': total,
+                'limit': limit,
+                'offset': offset,
+                '_links': {
+                    'self': f'/api/v1/properties?company_ids={company_ids_str}&limit={limit}&offset={offset}',
+                }
+            }
+            
+            # Add next/prev links
+            if offset + limit < total:
+                response_data['_links']['next'] = f'/api/v1/properties?company_ids={company_ids_str}&limit={limit}&offset={offset + limit}'
+            if offset > 0:
+                prev_offset = max(0, offset - limit)
+                response_data['_links']['prev'] = f'/api/v1/properties?company_ids={company_ids_str}&limit={limit}&offset={prev_offset}'
+            
+            return success_response(response_data)
+            
+        except ValueError as e:
+            return error_response(400, f'Invalid parameter: {str(e)}')
+        except Exception as e:
+            _logger.exception('Error listing properties')
+            return error_response(500, f'Internal server error: {str(e)}')
+    
     @http.route('/api/v1/properties', type='http', auth='none', methods=['POST'], csrf=False, cors='*')
     @require_jwt
     @require_session
@@ -275,8 +433,7 @@ class PropertyApiController(http.Controller):
             
             return error_response(500, f'Internal server error: {str(e)}', 'internal_error')
     
-    @http.route('/api/v1/properties/<int:property_id>', 
-                type='http', auth='none', methods=['GET'], csrf=False, cors='*')
+    @http.route('/api/v1/properties/<int:property_id>',type='http', auth='none', methods=['GET'], csrf=False, cors='*')
     @require_jwt
     @require_session
     @require_company

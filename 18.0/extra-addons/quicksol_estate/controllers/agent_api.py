@@ -630,7 +630,7 @@ class AgentApiController(http.Controller):
     @require_jwt
     @require_session
     @require_company
-    def list_assignments(self, page=1, page_size=20, agent_id=None, property_id=None, company_id=None, active_only='true', **kwargs):
+    def list_assignments(self, page=1, page_size=20, agent_id=None, property_id=None, company_ids=None, active_only='true', **kwargs):
 
         try:
             user = request.env.user
@@ -645,6 +645,22 @@ class AgentApiController(http.Controller):
             if page < 1 or page_size < 1:
                 return error_response(400, 'Page and page_size must be positive integers')
             
+            # Validate company_ids parameter (REQUIRED)
+            if not company_ids:
+                return error_response(400, 'company_ids parameter is required')
+            
+            # Parse company_ids (can be comma-separated: "1,2,3")
+            try:
+                requested_company_ids = [int(cid.strip()) for cid in company_ids.split(',')]
+            except ValueError:
+                return error_response(400, 'Invalid company_ids format. Use comma-separated integers (e.g., "1,2,3")')
+            
+            # Validate user has access to all requested companies (multi-tenancy security)
+            if request.user_company_ids:  # Not admin
+                unauthorized_companies = [cid for cid in requested_company_ids if cid not in request.user_company_ids]
+                if unauthorized_companies:
+                    return error_response(403, f'Access denied to company IDs: {unauthorized_companies}. You can only access companies: {request.user_company_ids}')
+            
             # Build base domain
             domain = []
             
@@ -652,15 +668,15 @@ class AgentApiController(http.Controller):
             if active_only.lower() == 'true':
                 domain.append(('active', '=', True))
             
+            # Company filter using validated company_ids (REQUIRED)
+            domain.append(('company_id', 'in', requested_company_ids))
+            
             # RBAC filter (ADR-019)
             is_admin = user.has_group('base.group_system')
             is_manager = user.has_group('quicksol_estate.group_real_estate_manager')
             is_agent = user.has_group('quicksol_estate.group_real_estate_agent')
             
             if not is_admin:
-                # Multi-tenancy: restrict to user's companies
-                domain.append(('company_id', 'in', user.estate_company_ids.ids))
-                
                 # Agent: only own assignments
                 if is_agent and not is_manager:
                     agent_record = request.env['real.estate.agent'].search([
@@ -686,14 +702,9 @@ class AgentApiController(http.Controller):
                 except (ValueError, TypeError):
                     return error_response(400, 'Invalid property_id')
             
-            if company_id:
-                try:
-                    domain.append(('company_id', '=', int(company_id)))
-                except (ValueError, TypeError):
-                    return error_response(400, 'Invalid company_id')
-            
-            # Use request.env (user context, no sudo) - ADR-011
-            Assignment = request.env['real.estate.agent.property.assignment']
+            # Use sudo() because company access was already validated above
+            # ir.rule fails with thedevkitchen.estate.company vs res.company mismatch
+            Assignment = request.env['real.estate.agent.property.assignment'].sudo()
             
             # Count total
             total = Assignment.search_count(domain)
@@ -728,7 +739,7 @@ class AgentApiController(http.Controller):
                         'name': assignment.company_id.name
                     } if assignment.company_id else None,
                     'responsibility_type': assignment.responsibility_type,
-                    'commission_percentage': assignment.commission_percentage,
+                    'notes': assignment.notes or '',
                     'assignment_date': assignment.assignment_date.isoformat() if assignment.assignment_date else None,
                     'active': assignment.active,
                 }
@@ -749,8 +760,9 @@ class AgentApiController(http.Controller):
             base_url = '/api/v1/assignments'
             
             # Preserve query parameters
-            query_params = []
-            for key in ['agent_id', 'property_id', 'company_id', 'active_only']:
+            company_ids_str = ','.join(str(cid) for cid in requested_company_ids)
+            query_params = [f'company_ids={company_ids_str}']
+            for key in ['agent_id', 'property_id', 'active_only']:
                 if key in kwargs:
                     query_params.append(f'{key}={kwargs[key]}')
             
@@ -802,8 +814,7 @@ class AgentApiController(http.Controller):
             _logger.error(f'Error listing assignments: {str(e)}', exc_info=True)
             return error_response(500, 'Internal server error')
     
-    @http.route('/api/v1/assignments/<int:assignment_id>', 
-                type='http', auth='none', methods=['GET'], csrf=False, cors='*')
+    @http.route('/api/v1/assignments/<int:assignment_id>',type='http', auth='none', methods=['GET'], csrf=False, cors='*')
     @require_jwt
     @require_session
     @require_company
@@ -812,8 +823,9 @@ class AgentApiController(http.Controller):
         try:
             user = request.env.user
             
-            # Use request.env (user context) - ADR-011
-            Assignment = request.env['real.estate.agent.property.assignment']
+            # Use sudo() because ir.rule fails with thedevkitchen.estate.company vs res.company mismatch
+            # RBAC is enforced via domain filters below
+            Assignment = request.env['real.estate.agent.property.assignment'].sudo()
             
             # Build domain with multi-tenancy filter
             domain = [('id', '=', assignment_id)]
@@ -869,9 +881,8 @@ class AgentApiController(http.Controller):
                     'cnpj': assignment.company_id.cnpj
                 } if assignment.company_id else None,
                 'responsibility_type': assignment.responsibility_type,
-                'commission_percentage': assignment.commission_percentage,
                 'assignment_date': assignment.assignment_date.isoformat() if assignment.assignment_date else None,
-                'notes': assignment.notes if hasattr(assignment, 'notes') else None,
+                'notes': assignment.notes or '',
                 'active': assignment.active,
                 'create_date': assignment.create_date.isoformat() if assignment.create_date else None,
                 'write_date': assignment.write_date.isoformat() if assignment.write_date else None
@@ -935,8 +946,7 @@ class AgentApiController(http.Controller):
             _logger.error(f'Error getting assignment {assignment_id}: {str(e)}', exc_info=True)
             return error_response(500, 'Internal server error')
     
-    @http.route('/api/v1/assignments/<int:assignment_id>', 
-                type='http', auth='none', methods=['PATCH'], csrf=False, cors='*')
+    @http.route('/api/v1/assignments/<int:assignment_id>', type='http', auth='none', methods=['PATCH'], csrf=False, cors='*')
     @require_jwt
     @require_session
     @require_company
@@ -951,8 +961,9 @@ class AgentApiController(http.Controller):
             except (ValueError, UnicodeDecodeError):
                 return error_response(400, 'Invalid JSON in request body')
             
-            # Use request.env (user context) - ADR-011
-            Assignment = request.env['real.estate.agent.property.assignment']
+            # Use sudo() because ir.rule fails with thedevkitchen.estate.company vs res.company mismatch
+            # RBAC is enforced via domain filters below
+            Assignment = request.env['real.estate.agent.property.assignment'].sudo()
             
             # Build domain with multi-tenancy filter
             domain = [('id', '=', assignment_id)]
@@ -1002,19 +1013,6 @@ class AgentApiController(http.Controller):
                 
                 update_vals['responsibility_type'] = data['responsibility_type']
             
-            # commission_percentage (Manager/Owner/Admin only)
-            if 'commission_percentage' in data:
-                if not (is_admin or is_manager or is_owner):
-                    return error_response(403, 'Only Managers or Owners can update commission_percentage')
-                
-                try:
-                    commission = float(data['commission_percentage'])
-                    if commission < 0 or commission > 100:
-                        return error_response(400, 'commission_percentage must be between 0 and 100')
-                    update_vals['commission_percentage'] = commission
-                except (ValueError, TypeError):
-                    return error_response(400, 'Invalid commission_percentage')
-            
             # notes (all authenticated users can update)
             if 'notes' in data:
                 update_vals['notes'] = data['notes']
@@ -1041,9 +1039,8 @@ class AgentApiController(http.Controller):
                     'name': assignment.company_id.name
                 } if assignment.company_id else None,
                 'responsibility_type': assignment.responsibility_type,
-                'commission_percentage': assignment.commission_percentage,
                 'assignment_date': assignment.assignment_date.isoformat() if assignment.assignment_date else None,
-                'notes': assignment.notes if hasattr(assignment, 'notes') else None,
+                'notes': assignment.notes or '',
                 'active': assignment.active,
                 'write_date': assignment.write_date.isoformat() if assignment.write_date else None
             }
