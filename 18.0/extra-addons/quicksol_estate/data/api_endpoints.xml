@@ -1043,6 +1043,278 @@ Returns: Agent object with id, name, cpf, email, creci, company_id, company_name
             <field name="active" eval="True"/>
         </record>
 
+        <!-- Lead Management Endpoints -->
+
+        <record id="api_endpoint_list_leads" model="thedevkitchen.api.endpoint">
+            <field name="name">List Leads</field>
+            <field name="path">/api/v1/leads</field>
+            <field name="method">GET</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Leads</field>
+            <field name="summary">List leads with pagination and filters</field>
+            <field name="description">List leads with RBAC (agents see own, managers see all).
+
+**Query Parameters:**
+- state (string): Filter by state (new/contacted/qualified/won/lost)
+- agent_id (integer): Filter by agent (managers only)
+- search (string): Free-text search (name, phone, email)
+- active (string): Filter by active status (true/false/all, default: true)
+- budget_min (number): Minimum budget filter
+- budget_max (number): Maximum budget filter
+- bedrooms (integer): Number of bedrooms needed
+- property_type_id (integer): Property type interest
+- location (string): Location preference filter
+- sort_by (string): Sort field (default: create_date)
+- sort_order (string): asc or desc (default: desc)
+- limit (integer): Results per page (default: 20, max: 100)
+- offset (integer): Pagination offset (default: 0)
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": [...],
+  "count": 5,
+  "total": 50,
+  "limit": 20,
+  "offset": 0
+}
+```</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_create_lead" model="thedevkitchen.api.endpoint">
+            <field name="name">Create Lead</field>
+            <field name="path">/api/v1/leads</field>
+            <field name="method">POST</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Leads</field>
+            <field name="summary">Create new lead</field>
+            <field name="description">Create a new lead. Agent is auto-assigned from current user.
+
+**Required Fields:**
+- name (string): Lead title (max 100 chars)
+
+**Optional Fields:**
+- phone (string): Phone number
+- email (string): Email address
+- partner_id (integer): Contact ID
+- state (string): Initial state (default: new)
+- budget_min (number): Minimum budget (BRL)
+- budget_max (number): Maximum budget (BRL)
+- property_type_interest (integer): Property type ID
+- location_preference (string): Location preference
+- bedrooms_needed (integer): Number of bedrooms
+- min_area (number): Minimum area m²
+- max_area (number): Maximum area m²
+- property_interest (integer): Property of interest ID
+- first_contact_date (string): YYYY-MM-DD
+- expected_closing_date (string): YYYY-MM-DD
+
+**Example Body:**
+```json
+{
+  "name": "João Silva - Apartamento Centro",
+  "phone": "+55 11 98765-4321",
+  "email": "joao@example.com",
+  "budget_min": 300000,
+  "budget_max": 500000
+}
+```</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_get_lead" model="thedevkitchen.api.endpoint">
+            <field name="name">Get Lead</field>
+            <field name="path">/api/v1/leads/{id}</field>
+            <field name="method">GET</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Leads</field>
+            <field name="summary">Get lead details</field>
+            <field name="description">Get full details of a specific lead.
+
+**Path Parameters:**
+- id (integer): Lead ID
+
+**Query Parameters:**
+- include_activities (string): Set to "true" to include recent activities</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_update_lead" model="thedevkitchen.api.endpoint">
+            <field name="name">Update Lead</field>
+            <field name="path">/api/v1/leads/{id}</field>
+            <field name="method">PUT</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Leads</field>
+            <field name="summary">Update lead</field>
+            <field name="description">Update lead fields. Same fields as create (all optional).</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_delete_lead" model="thedevkitchen.api.endpoint">
+            <field name="name">Delete Lead</field>
+            <field name="path">/api/v1/leads/{id}</field>
+            <field name="method">DELETE</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Leads</field>
+            <field name="summary">Archive lead (soft delete)</field>
+            <field name="description">Soft delete a lead (sets active=false). Returns 204 No Content on success.</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_convert_lead" model="thedevkitchen.api.endpoint">
+            <field name="name">Convert Lead</field>
+            <field name="path">/api/v1/leads/{id}/convert</field>
+            <field name="method">POST</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Leads</field>
+            <field name="summary">Convert lead to sale</field>
+            <field name="description">Convert a qualified lead to a sale.
+
+**Required Fields:**
+- property_id (integer): Property ID to link to sale
+
+**Example Body:**
+```json
+{
+  "property_id": 123
+}
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "lead_id": 1,
+    "lead_state": "won",
+    "sale_id": 45,
+    "property_id": 123,
+    "message": "Lead converted successfully"
+  }
+}
+```</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_reopen_lead" model="thedevkitchen.api.endpoint">
+            <field name="name">Reopen Lead</field>
+            <field name="path">/api/v1/leads/{id}/reopen</field>
+            <field name="method">POST</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Leads</field>
+            <field name="summary">Reopen lost lead</field>
+            <field name="description">Reopen a lead that was marked as lost. Only works for leads in "lost" state.
+
+**Optional Fields:**
+- reason (string): Reason for reopening</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_lead_statistics" model="thedevkitchen.api.endpoint">
+            <field name="name">Lead Statistics</field>
+            <field name="path">/api/v1/leads/statistics</field>
+            <field name="method">GET</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Leads</field>
+            <field name="summary">Get lead statistics</field>
+            <field name="description">Get lead statistics for managers/owners. Returns counts by state, conversion rates, and pipeline metrics.</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_export_leads" model="thedevkitchen.api.endpoint">
+            <field name="name">Export Leads</field>
+            <field name="path">/api/v1/leads/export</field>
+            <field name="method">GET</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Leads</field>
+            <field name="summary">Export leads to CSV</field>
+            <field name="description">Export leads to CSV file. Same filters as list_leads apply.</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_list_lead_activities" model="thedevkitchen.api.endpoint">
+            <field name="name">List Lead Activities</field>
+            <field name="path">/api/v1/leads/{id}/activities</field>
+            <field name="method">GET</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Leads</field>
+            <field name="summary">List activities for lead</field>
+            <field name="description">Get all activities (calls, emails, meetings, etc.) for a specific lead.</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_create_lead_activity" model="thedevkitchen.api.endpoint">
+            <field name="name">Create Lead Activity</field>
+            <field name="path">/api/v1/leads/{id}/activities</field>
+            <field name="method">POST</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Leads</field>
+            <field name="summary">Create activity for lead</field>
+            <field name="description">Create a new activity for a lead (call, email, meeting, etc.).</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_schedule_lead_activity" model="thedevkitchen.api.endpoint">
+            <field name="name">Schedule Lead Activity</field>
+            <field name="path">/api/v1/leads/{id}/schedule-activity</field>
+            <field name="method">POST</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Leads</field>
+            <field name="summary">Schedule activity for lead</field>
+            <field name="description">Schedule a future activity for a lead with reminders.</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_list_lead_filters" model="thedevkitchen.api.endpoint">
+            <field name="name">List Lead Filters</field>
+            <field name="path">/api/v1/leads/filters</field>
+            <field name="method">GET</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Leads</field>
+            <field name="summary">List saved lead filters</field>
+            <field name="description">Get user's saved lead filters for quick access.</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_create_lead_filter" model="thedevkitchen.api.endpoint">
+            <field name="name">Create Lead Filter</field>
+            <field name="path">/api/v1/leads/filters</field>
+            <field name="method">POST</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Leads</field>
+            <field name="summary">Create saved lead filter</field>
+            <field name="description">Save a lead filter configuration for quick access.</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_delete_lead_filter" model="thedevkitchen.api.endpoint">
+            <field name="name">Delete Lead Filter</field>
+            <field name="path">/api/v1/leads/filters/{id}</field>
+            <field name="method">DELETE</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Leads</field>
+            <field name="summary">Delete saved lead filter</field>
+            <field name="description">Delete a saved lead filter. Returns 204 No Content on success.</field>
+            <field name="active" eval="True"/>
+        </record>
+
         <!-- Master Data Endpoints -->
 
         <record id="api_endpoint_list_tags" model="thedevkitchen.api.endpoint">
