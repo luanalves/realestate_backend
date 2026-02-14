@@ -1,0 +1,334 @@
+openapi: "3.0.3"
+info:
+  title: Sale API
+  version: "1.0.0"
+  description: REST API for sale management within the Quicksol Real Estate platform.
+
+servers:
+  - url: "{base_url}/api/v1"
+    variables:
+      base_url:
+        default: "http://localhost:8069"
+
+security:
+  - bearerAuth: []
+    sessionAuth: []
+
+paths:
+  /sales:
+    get:
+      operationId: listSales
+      summary: List sales for a company
+      tags: [Sales]
+      parameters:
+        - name: company_ids
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Comma-separated company IDs
+        - name: property_id
+          in: query
+          schema:
+            type: integer
+        - name: agent_id
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [completed, cancelled]
+        - name: min_price
+          in: query
+          schema:
+            type: number
+        - name: max_price
+          in: query
+          schema:
+            type: number
+        - name: is_active
+          in: query
+          schema:
+            type: string
+            enum: ["true", "false"]
+            default: "true"
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: Paginated list of sales
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SaleListResponse"
+        "400":
+          description: Missing company_ids
+        "401":
+          description: Unauthorized
+
+    post:
+      operationId: createSale
+      summary: Register a new sale
+      tags: [Sales]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaleCreateRequest"
+      responses:
+        "201":
+          description: Sale created, property marked as sold, sale.created event emitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SaleResponse"
+        "400":
+          description: Validation error (price, agent company mismatch)
+        "404":
+          description: Property not found
+        "401":
+          description: Unauthorized
+
+  /sales/{id}:
+    get:
+      operationId: getSale
+      summary: Get sale by ID
+      tags: [Sales]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Sale details with buyer, agent, lead, property info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SaleResponse"
+        "404":
+          description: Sale not found
+        "403":
+          description: Forbidden
+
+    put:
+      operationId: updateSale
+      summary: Update sale (non-cancelled only)
+      tags: [Sales]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaleUpdateRequest"
+      responses:
+        "200":
+          description: Sale updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SaleResponse"
+        "400":
+          description: Validation error or sale is cancelled
+        "404":
+          description: Sale not found
+
+  /sales/{id}/cancel:
+    post:
+      operationId: cancelSale
+      summary: Cancel a sale (reverts property status)
+      tags: [Sales]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaleCancelRequest"
+      responses:
+        "200":
+          description: Sale cancelled, property status reverted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SaleResponse"
+        "400":
+          description: Sale already cancelled
+        "404":
+          description: Sale not found
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    sessionAuth:
+      type: apiKey
+      in: header
+      name: X-Openerp-Session-Id
+
+  schemas:
+    SaleCreateRequest:
+      type: object
+      required: [property_id, company_id, buyer_name, sale_date, sale_price]
+      properties:
+        property_id:
+          type: integer
+        company_id:
+          type: integer
+        buyer_name:
+          type: string
+          maxLength: 100
+        buyer_phone:
+          type: string
+          maxLength: 20
+        buyer_email:
+          type: string
+          format: email
+          maxLength: 120
+        sale_date:
+          type: string
+          format: date
+        sale_price:
+          type: number
+          format: float
+          minimum: 0.01
+        agent_id:
+          type: integer
+          description: Optional — must belong to same company
+        lead_id:
+          type: integer
+          description: Optional — originating lead
+
+    SaleUpdateRequest:
+      type: object
+      properties:
+        buyer_name:
+          type: string
+        buyer_phone:
+          type: string
+        buyer_email:
+          type: string
+          format: email
+        sale_date:
+          type: string
+          format: date
+        sale_price:
+          type: number
+          format: float
+          minimum: 0.01
+        agent_id:
+          type: integer
+
+    SaleCancelRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          description: Reason for cancellation
+
+    SaleResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: "#/components/schemas/Sale"
+        _links:
+          type: object
+
+    SaleListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Sale"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
+        _links:
+          type: object
+
+    Sale:
+      type: object
+      properties:
+        id:
+          type: integer
+        property_id:
+          type: integer
+        property_name:
+          type: string
+        buyer_name:
+          type: string
+        buyer_phone:
+          type: string
+        buyer_email:
+          type: string
+        sale_date:
+          type: string
+          format: date
+        sale_price:
+          type: number
+          format: float
+        agent_id:
+          type: integer
+        agent_name:
+          type: string
+        lead_id:
+          type: integer
+        status:
+          type: string
+          enum: [completed, cancelled]
+        active:
+          type: boolean
+        cancellation_date:
+          type: string
+          format: date
+        cancellation_reason:
+          type: string
+        company_id:
+          type: integer
+        company_ids:
+          type: array
+          items:
+            type: integer
+
+    PaginationMeta:
+      type: object
+      properties:
+        total:
+          type: integer
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total_pages:
+          type: integer
