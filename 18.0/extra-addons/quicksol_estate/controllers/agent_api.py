@@ -1124,7 +1124,7 @@ class AgentApiController(http.Controller):
                 'valid_until': str(rule.valid_until) if rule.valid_until else None,
                 'is_active': rule.is_active,
                 'active': rule.active,
-            }, status=201)
+            }, status_code=201)
             
         except json.JSONDecodeError:
             return error_response(400, 'Invalid JSON in request body')
@@ -1253,22 +1253,28 @@ class AgentApiController(http.Controller):
             body = json.loads(request.httprequest.data.decode('utf-8'))
             
             # Validate required fields
-            required_fields = ['agent_id', 'transaction_type', 'transaction_amount']
+            required_fields = ['agent_id', 'company_id', 'transaction_type', 'transaction_amount']
             missing = [f for f in required_fields if f not in body]
             if missing:
                 return error_response(400, f'Missing required fields: {", ".join(missing)}')
             
-            # Validate agent exists and belongs to user's company
+            # Validate agent exists
             agent_id = body['agent_id']
+            company_id = body['company_id']
             agent = request.env['real.estate.agent'].sudo().browse(agent_id)
             if not agent.exists():
                 return error_response(404, f'Agent {agent_id} not found')
             
-            # Company isolation check
+            # Validate agent belongs to the specified company
+            agent_company_ids = agent.company_ids.ids if agent.company_ids else [agent.company_id.id]
+            if company_id not in agent_company_ids:
+                return error_response(400, f'Agent {agent_id} does not belong to company {company_id}')
+            
+            # Company isolation check - user must have access to the company
             user = request.env.user
             if hasattr(user, 'estate_company_ids'):
-                if agent.company_id.id not in user.estate_company_ids.ids:
-                    return error_response(403, 'Cannot create commission transaction for agent in different company')
+                if company_id not in user.estate_company_ids.ids:
+                    return error_response(403, 'You do not have access to this company')
             
             # Use CommissionService to create transaction
             from ..services.commission_service import CommissionService
@@ -1276,6 +1282,7 @@ class AgentApiController(http.Controller):
             
             transaction = commission_service.create_commission_transaction(
                 agent_id=agent_id,
+                company_id=company_id,
                 transaction_type=body['transaction_type'],
                 transaction_amount=body['transaction_amount'],
                 transaction_date=body.get('transaction_date'),
@@ -1299,7 +1306,7 @@ class AgentApiController(http.Controller):
                 'transaction_date': str(transaction.transaction_date),
                 'transaction_reference': transaction.transaction_reference,
                 'calculated_at': transaction.calculated_at.isoformat(),
-            }, status=201)
+            }, status_code=201)
             
         except json.JSONDecodeError:
             return error_response(400, 'Invalid JSON in request body')

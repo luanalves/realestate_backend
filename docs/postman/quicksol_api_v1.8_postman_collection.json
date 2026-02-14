@@ -1352,7 +1352,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"percentage\": 5.0,\n  \"min_sale_value\": 100000,\n  \"max_sale_value\": 500000\n}"
+              "raw": "{\n  \"transaction_type\": \"sale\",\n  \"structure_type\": \"percentage\",\n  \"valid_from\": \"2026-02-14\",\n  \"percentage\": 5.0,\n  \"min_value\": 100000,\n  \"max_value\": 500000\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/agents/{{agent_id}}/commission-rules",
@@ -1367,7 +1367,7 @@
                 "commission-rules"
               ]
             },
-            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\nCreate a new commission rule for an agent. Rules define percentage by sale value range (ADR-013)."
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n\n**Required Fields:**\n- `transaction_type` (string): \"sale\" or \"rent\"\n- `structure_type` (string): \"percentage\", \"fixed\", or \"tiered\"\n- `valid_from` (string): Start date in ISO format (YYYY-MM-DD)\n\n**Optional Fields:**\n- `percentage` (float): Commission percentage (default: 0.0)\n- `fixed_amount` (float): Fixed commission amount (default: 0.0)\n- `min_value` (float): Minimum transaction value (default: 0.0)\n- `max_value` (float): Maximum transaction value (default: 999999999.99)\n- `valid_until` (string): Expiration date in ISO format (optional)\n\n**RBAC:** Only Manager, Owner, or Admin can create commission rules."
           }
         },
         {
@@ -1439,7 +1439,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"agent_id\": {{agent_id}},\n  \"sale_id\": 1,\n  \"amount\": 15000.00,\n  \"transaction_type\": \"earned\"\n}"
+              "raw": "{\n  \"agent_id\": {{agent_id}},\n  \"company_id\": {{company_id}},\n  \"transaction_type\": \"sale\",\n  \"transaction_amount\": 850000.00,\n  \"transaction_reference\": \"VENDA-2024-001\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/commission-transactions",

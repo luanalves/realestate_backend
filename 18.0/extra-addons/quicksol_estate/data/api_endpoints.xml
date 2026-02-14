@@ -900,7 +900,34 @@ Returns: Agent object with id, name, cpf, email, creci, company_id, company_name
             <field name="protected" eval="True"/>
             <field name="tags">Commissions</field>
             <field name="summary">Create commission rule for agent</field>
-            <field name="description">Define commission calculation rules for an agent.</field>
+            <field name="description">Define commission calculation rules for an agent.
+
+**Required Fields:**
+- `transaction_type` (string): Type of transaction - "sale" or "rent"
+- `structure_type` (string): Commission structure - "percentage", "fixed", or "tiered"
+- `valid_from` (string): Start date in ISO format (YYYY-MM-DD)
+
+**Optional Fields:**
+- `percentage` (float): Commission percentage (default: 0.0)
+- `fixed_amount` (float): Fixed commission amount (default: 0.0)
+- `min_value` (float): Minimum transaction value to apply rule (default: 0.0)
+- `max_value` (float): Maximum transaction value to apply rule (default: 999999999.99)
+- `valid_until` (string): Expiration date in ISO format (optional)
+
+**Example Request Body:**
+```json
+{
+  "transaction_type": "sale",
+  "structure_type": "percentage",
+  "valid_from": "2026-02-14",
+  "percentage": 5.0,
+  "min_value": 100000,
+  "max_value": 500000
+}
+```
+
+**RBAC:** Only Manager, Owner, or Admin can create commission rules.
+**Multi-tenancy:** Rule is automatically linked to agent's company.</field>
             <field name="active" eval="True"/>
         </record>
 
@@ -936,7 +963,29 @@ Returns: Agent object with id, name, cpf, email, creci, company_id, company_name
             <field name="protected" eval="True"/>
             <field name="tags">Commissions</field>
             <field name="summary">Record commission transaction</field>
-            <field name="description">Record a commission payment or transaction for an agent.</field>
+            <field name="description">Record a commission transaction for an agent. Automatically calculates commission based on active rules.
+
+**Required Fields:**
+- agent_id (integer): Agent ID
+- company_id (integer): Company ID (validates agent belongs to company)
+- transaction_type (string): "sale" or "rental"
+- transaction_amount (number): Transaction value
+
+**Optional Fields:**
+- transaction_reference (string): External reference (contract ID, etc)
+- transaction_date (string): Date in YYYY-MM-DD format (defaults to today)
+- preview_only (boolean): Calculate without persisting
+
+**Example Body:**
+```json
+{
+  "agent_id": 1,
+  "company_id": 63,
+  "transaction_type": "sale",
+  "transaction_amount": 850000.00,
+  "transaction_reference": "VENDA-2024-001"
+}
+```</field>
             <field name="active" eval="True"/>
         </record>
 
