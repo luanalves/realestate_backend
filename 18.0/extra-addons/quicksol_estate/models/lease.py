@@ -15,6 +15,22 @@ class Lease(models.Model):
     end_date = fields.Date(string='End Date', required=True)
     rent_amount = fields.Float(string='Rent', required=True)
 
+    # Feature 008: Lifecycle & soft-delete fields
+    active = fields.Boolean(string='Active', default=True)
+    status = fields.Selection([
+        ('draft', 'Draft'),
+        ('active', 'Active'),
+        ('terminated', 'Terminated'),
+        ('expired', 'Expired'),
+    ], string='Status', default='draft', required=True)
+    termination_date = fields.Date(string='Termination Date')
+    termination_reason = fields.Text(string='Termination Reason')
+    termination_penalty = fields.Float(string='Termination Penalty')
+    renewal_history_ids = fields.One2many(
+        'real.estate.lease.renewal.history', 'lease_id',
+        string='Renewal History',
+    )
+
     @api.depends('property_id', 'tenant_id', 'start_date')
     def _compute_name(self):
         for record in self:
@@ -30,3 +46,27 @@ class Lease(models.Model):
             if record.start_date and record.end_date:
                 if record.end_date <= record.start_date:
                     raise ValidationError("End date must be after start date.")
+
+    @api.constrains('rent_amount')
+    def _validate_rent_amount(self):
+        """Validate rent amount is positive (FR-011)."""
+        for record in self:
+            if record.rent_amount is not None and record.rent_amount <= 0:
+                raise ValidationError("Rent amount must be greater than zero.")
+
+    @api.constrains('property_id', 'start_date', 'end_date', 'status')
+    def _check_concurrent_lease(self):
+        """One active lease per property at a time (FR-013)."""
+        for record in self:
+            if record.status in ('draft', 'active'):
+                overlapping = self.search([
+                    ('id', '!=', record.id),
+                    ('property_id', '=', record.property_id.id),
+                    ('status', 'in', ['draft', 'active']),
+                    ('start_date', '<=', record.end_date),
+                    ('end_date', '>=', record.start_date),
+                ])
+                if overlapping:
+                    raise ValidationError(
+                        "Property already has an active or draft lease in this period."
+                    )

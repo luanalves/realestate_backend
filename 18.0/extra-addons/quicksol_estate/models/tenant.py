@@ -16,6 +16,11 @@ class Tenant(models.Model):
     occupation = fields.Char('Occupation')
     birthdate = fields.Date('Birthdate')
 
+    # Feature 008: Soft delete fields (ADR-015)
+    active = fields.Boolean(string='Active', default=True)
+    deactivation_date = fields.Datetime(string='Deactivation Date')
+    deactivation_reason = fields.Text(string='Deactivation Reason')
+
     @api.constrains('email')
     def _validate_email(self):
         """Validate email format using regex pattern"""

@@ -153,3 +153,7 @@ access_agent_commission_transaction,Agent: Commission Transactions,model_real_es
 access_agent_lead_filter,Agent: Lead Filters,model_real_estate_lead_filter,group_real_estate_agent,1,1,1,1
 access_manager_lead_filter,Manager: Lead Filters,model_real_estate_lead_filter,group_real_estate_manager,1,1,1,1
 access_owner_lead_filter,Owner: Lead Filters,model_real_estate_lead_filter,group_real_estate_owner,1,1,1,1
+access_user_lease_renewal_history,User: Lease Renewal History (Read),model_real_estate_lease_renewal_history,base.group_user,1,0,0,0
+access_system_admin_lease_renewal_history,System Admin: Lease Renewal History,model_real_estate_lease_renewal_history,base.group_system,1,1,1,1
+access_owner_lease_renewal_history,Owner: Lease Renewal History,model_real_estate_lease_renewal_history,group_real_estate_owner,1,1,1,0
+access_manager_lease_renewal_history,Manager: Lease Renewal History,model_real_estate_lease_renewal_history,group_real_estate_manager,1,1,1,0

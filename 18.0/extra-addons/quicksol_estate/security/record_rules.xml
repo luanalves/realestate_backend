@@ -543,5 +543,35 @@
             <field name="groups" eval="[(4, ref('group_real_estate_agent'))]"/>
         </record>
         
+        <!-- ===== FEATURE 008: LEASE RENEWAL HISTORY RECORD RULES ===== -->
+        
+        <!-- Lease Renewal History: Company isolation via parent lease -->
+        <record id="rule_lease_renewal_history_multi_company" model="ir.rule">
+            <field name="name">Lease Renewal History: Multi-company Access</field>
+            <field name="model_id" ref="model_real_estate_lease_renewal_history"/>
+            <field name="domain_force">[('lease_id.company_ids', 'in', user.estate_company_ids.ids)]</field>
+            <field name="groups" eval="[(4, ref('group_real_estate_user')), (4, ref('group_real_estate_manager'))]"/>
+        </record>
+        
+        <!-- Agent: Own lease renewal history (via property assignment) -->
+        <record id="rule_lease_renewal_history_agent_own" model="ir.rule">
+            <field name="name">Lease Renewal History: Agent Own</field>
+            <field name="model_id" ref="model_real_estate_lease_renewal_history"/>
+            <field name="domain_force">[('lease_id.property_id.agent_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_real_estate_agent'))]"/>
+        </record>
+        
+        <!-- Owner: All company lease renewal history -->
+        <record id="rule_owner_lease_renewal_history" model="ir.rule">
+            <field name="name">Owner: Company Lease Renewal History</field>
+            <field name="model_id" ref="model_real_estate_lease_renewal_history"/>
+            <field name="domain_force">[('lease_id.company_ids', 'in', user.estate_company_ids.ids)]</field>
+            <field name="groups" eval="[(4, ref('group_real_estate_owner'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+        
     </data>
 </odoo>

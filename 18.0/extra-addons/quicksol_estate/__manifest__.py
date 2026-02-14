@@ -1,6 +1,6 @@
 {
     'name': 'Real Estate Management - Kenlo Imóveis Edition',
-    'version': '18.0.2.0.0',
+    'version': '18.0.2.1.0',
     'category': 'Real Estate',
     'summary': 'Complete property management system following Kenlo Imóveis standards with RBAC',
     'description': """

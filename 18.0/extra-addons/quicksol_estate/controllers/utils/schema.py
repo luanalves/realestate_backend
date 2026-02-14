@@ -100,6 +100,160 @@ class SchemaValidator:
             'metric': lambda v: v in ['sales', 'commission', 'properties'] if v else True,
         }
     }
+
+    # ===== Feature 008: Tenant, Lease & Sale schemas =====
+
+    # Tenant creation schema (FR-001, FR-002)
+    TENANT_CREATE_SCHEMA = {
+        'required': ['name'],
+        'optional': ['phone', 'email', 'occupation', 'birthdate'],
+        'types': {
+            'name': str,
+            'phone': str,
+            'email': str,
+            'occupation': str,
+            'birthdate': str,
+        },
+        'constraints': {
+            'name': lambda v: len(v.strip()) > 0,
+            'email': lambda v: '@' in v and '.' in v.split('@')[-1] if v else True,
+        }
+    }
+
+    # Tenant update schema (FR-004)
+    TENANT_UPDATE_SCHEMA = {
+        'required': [],
+        'optional': ['name', 'phone', 'email', 'occupation', 'birthdate'],
+        'types': {
+            'name': str,
+            'phone': str,
+            'email': str,
+            'occupation': str,
+            'birthdate': str,
+        },
+        'constraints': {
+            'name': lambda v: len(v.strip()) > 0 if v else True,
+            'email': lambda v: '@' in v and '.' in v.split('@')[-1] if v else True,
+        }
+    }
+
+    # Lease creation schema (FR-009, FR-010, FR-011)
+    LEASE_CREATE_SCHEMA = {
+        'required': ['property_id', 'tenant_id', 'start_date', 'end_date', 'rent_amount'],
+        'optional': ['status'],
+        'types': {
+            'property_id': int,
+            'tenant_id': int,
+            'start_date': str,
+            'end_date': str,
+            'rent_amount': (int, float),
+            'status': str,
+        },
+        'constraints': {
+            'property_id': lambda v: v > 0,
+            'tenant_id': lambda v: v > 0,
+            'rent_amount': lambda v: v > 0,
+            'status': lambda v: v in ('draft', 'active') if v else True,
+        }
+    }
+
+    # Lease update schema (FR-016)
+    LEASE_UPDATE_SCHEMA = {
+        'required': [],
+        'optional': ['start_date', 'end_date', 'rent_amount', 'status'],
+        'types': {
+            'start_date': str,
+            'end_date': str,
+            'rent_amount': (int, float),
+            'status': str,
+        },
+        'constraints': {
+            'rent_amount': lambda v: v > 0 if v else True,
+            'status': lambda v: v in ('draft', 'active') if v else True,
+        }
+    }
+
+    # Lease renew schema (FR-017)
+    LEASE_RENEW_SCHEMA = {
+        'required': ['new_end_date'],
+        'optional': ['new_rent_amount', 'reason'],
+        'types': {
+            'new_end_date': str,
+            'new_rent_amount': (int, float),
+            'reason': str,
+        },
+        'constraints': {
+            'new_rent_amount': lambda v: v > 0 if v else True,
+        }
+    }
+
+    # Lease terminate schema (FR-018)
+    LEASE_TERMINATE_SCHEMA = {
+        'required': ['termination_date'],
+        'optional': ['reason', 'penalty_amount'],
+        'types': {
+            'termination_date': str,
+            'reason': str,
+            'penalty_amount': (int, float),
+        },
+        'constraints': {
+            'penalty_amount': lambda v: v >= 0 if v is not None else True,
+        }
+    }
+
+    # Sale creation schema (FR-021, FR-022)
+    SALE_CREATE_SCHEMA = {
+        'required': ['property_id', 'company_id', 'buyer_name', 'sale_date', 'sale_price'],
+        'optional': ['buyer_phone', 'buyer_email', 'agent_id', 'lead_id'],
+        'types': {
+            'property_id': int,
+            'company_id': int,
+            'buyer_name': str,
+            'sale_date': str,
+            'sale_price': (int, float),
+            'buyer_phone': str,
+            'buyer_email': str,
+            'agent_id': int,
+            'lead_id': int,
+        },
+        'constraints': {
+            'property_id': lambda v: v > 0,
+            'company_id': lambda v: v > 0,
+            'buyer_name': lambda v: len(v.strip()) > 0,
+            'sale_price': lambda v: v > 0,
+            'buyer_email': lambda v: '@' in v and '.' in v.split('@')[-1] if v else True,
+        }
+    }
+
+    # Sale update schema (FR-025)
+    SALE_UPDATE_SCHEMA = {
+        'required': [],
+        'optional': ['buyer_name', 'buyer_phone', 'buyer_email', 'sale_date', 'sale_price'],
+        'types': {
+            'buyer_name': str,
+            'buyer_phone': str,
+            'buyer_email': str,
+            'sale_date': str,
+            'sale_price': (int, float),
+        },
+        'constraints': {
+            'buyer_name': lambda v: len(v.strip()) > 0 if v else True,
+            'sale_price': lambda v: v > 0 if v else True,
+            'buyer_email': lambda v: '@' in v and '.' in v.split('@')[-1] if v else True,
+        }
+    }
+
+    # Sale cancel schema (FR-027)
+    SALE_CANCEL_SCHEMA = {
+        'required': ['reason'],
+        'optional': [],
+        'types': {
+            'reason': str,
+        },
+        'constraints': {
+            'reason': lambda v: len(v.strip()) > 0,
+        }
+    }
     
     @staticmethod
     def validate_request(data, schema):
