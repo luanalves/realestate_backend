@@ -1,6 +1,9 @@
 from odoo import models, fields, api
 from odoo.exceptions import ValidationError
 
+import logging
+_logger = logging.getLogger(__name__)
+
 class Lease(models.Model):
     _name = 'real.estate.lease'
     _description = 'Lease Agreement'
@@ -70,3 +73,60 @@ class Lease(models.Model):
                     raise ValidationError(
                         "Property already has an active or draft lease in this period."
                     )
+
+    # ===== Lease Status Transitions (CHK024) =====
+
+    VALID_TRANSITIONS = {
+        'draft': ['active'],
+        'active': ['terminated'],  # expired handled by cron only
+        'terminated': [],
+        'expired': [],
+    }
+
+    def write(self, vals):
+        """Override write to enforce valid status transitions (CHK024).
+
+        Context flags that bypass validation:
+          - cron_expire: used by _cron_expire_leases (active→expired)
+          - lease_terminate: used by terminate endpoint (active→terminated)
+        """
+        if 'status' in vals and not self.env.context.get('cron_expire'):
+            new_status = vals['status']
+            for record in self:
+                old_status = record.status
+                if old_status != new_status:
+                    # terminate endpoint uses context flag
+                    if self.env.context.get('lease_terminate') and new_status == 'terminated':
+                        continue
+                    allowed = self.VALID_TRANSITIONS.get(old_status, [])
+                    if new_status not in allowed:
+                        raise ValidationError(
+                            f"Invalid status transition: {old_status} → {new_status}. "
+                            f"Allowed: {', '.join(allowed) if allowed else 'none (terminal state)'}."
+                        )
+        return super().write(vals)
+
+    # ===== Cron: Auto-expire leases (CHK002) =====
+
+    @api.model
+    def _cron_expire_leases(self):
+        """Transition active leases past end_date to 'expired' status.
+
+        Called by ir.cron scheduled action (data/lease_cron.xml).
+        Bypasses write() transition validation via context flag.
+        """
+        today = fields.Date.today()
+        expired_leases = self.search([
+            ('status', '=', 'active'),
+            ('end_date', '<', today),
+        ])
+        if expired_leases:
+            # Use context flag to bypass transition validation (cron-only path)
+            expired_leases.with_context(cron_expire=True).sudo().write({
+                'status': 'expired',
+            })
+            _logger.info(
+                "Cron: expired %d lease(s): %s",
+                len(expired_leases),
+                expired_leases.ids,
+            )

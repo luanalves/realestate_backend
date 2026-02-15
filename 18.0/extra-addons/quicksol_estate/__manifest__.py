@@ -74,6 +74,7 @@ Property Form Sections:
         'data/api_endpoints.xml',
         'data/user_auth_endpoints_data.xml',
         'data/system_parameters.xml',
+        'data/lease_cron.xml',  # CHK002: Auto-expire leases cron job
         # 'data/default_groups.xml',  # Demo data temporarily disabled - complex dependencies
         
         # Views (actions must be loaded before menus that reference them)

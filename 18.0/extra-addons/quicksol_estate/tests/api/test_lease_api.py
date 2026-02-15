@@ -266,6 +266,118 @@ class TestLeaseStatusTransitions(unittest.TestCase):
         self.assertEqual(result, 'rejected')
 
 
+# ===== State machine validation (CHK024) =====
+
+VALID_TRANSITIONS = {
+    'draft': ['active'],
+    'active': ['terminated'],
+    'terminated': [],
+    'expired': [],
+}
+
+
+def validate_status_transition(old_status, new_status):
+    """Reproduce lease.py write() state machine check."""
+    if old_status == new_status:
+        return  # no-op
+    allowed = VALID_TRANSITIONS.get(old_status, [])
+    if new_status not in allowed:
+        raise ValidationError(
+            f"Invalid status transition: {old_status} → {new_status}. "
+            f"Allowed: {', '.join(allowed) if allowed else 'none (terminal state)'}."
+        )
+
+
+class TestLeaseStateMachine(unittest.TestCase):
+    """Test lease status transition state machine (CHK024)"""
+
+    def test_draft_to_active_allowed(self):
+        """draft → active should be allowed"""
+        validate_status_transition('draft', 'active')
+
+    def test_active_to_terminated_allowed(self):
+        """active → terminated should be allowed"""
+        validate_status_transition('active', 'terminated')
+
+    def test_draft_to_terminated_rejected(self):
+        """draft → terminated should be rejected"""
+        with self.assertRaises(ValidationError):
+            validate_status_transition('draft', 'terminated')
+
+    def test_draft_to_expired_rejected(self):
+        """draft → expired should be rejected"""
+        with self.assertRaises(ValidationError):
+            validate_status_transition('draft', 'expired')
+
+    def test_active_to_draft_rejected(self):
+        """active → draft should be rejected (no rollback)"""
+        with self.assertRaises(ValidationError):
+            validate_status_transition('active', 'draft')
+
+    def test_terminated_to_active_rejected(self):
+        """terminated → active should be rejected (terminal state)"""
+        with self.assertRaises(ValidationError):
+            validate_status_transition('terminated', 'active')
+
+    def test_terminated_to_draft_rejected(self):
+        """terminated is terminal — no transitions"""
+        with self.assertRaises(ValidationError):
+            validate_status_transition('terminated', 'draft')
+
+    def test_expired_to_active_rejected(self):
+        """expired is terminal — no transitions"""
+        with self.assertRaises(ValidationError):
+            validate_status_transition('expired', 'active')
+
+    def test_same_status_noop(self):
+        """Setting same status should be a no-op (no error)"""
+        validate_status_transition('active', 'active')
+        validate_status_transition('draft', 'draft')
+        validate_status_transition('terminated', 'terminated')
+
+    def test_active_to_expired_rejected_via_write(self):
+        """active → expired must only happen via cron, not manual write"""
+        with self.assertRaises(ValidationError):
+            validate_status_transition('active', 'expired')
+
+
+# ===== Sale cancel property guard (CHK009/CHK031) =====
+
+def action_cancel_guarded(sale_status, property_state, reason):
+    """Reproduce sale.py action_cancel with guard."""
+    if sale_status == 'cancelled':
+        raise ValidationError("Sale is already cancelled.")
+    # Only revert property if still 'sold'
+    new_property_state = property_state
+    if property_state == 'sold':
+        new_property_state = 'new'
+    return new_property_state
+
+
+class TestSaleCancelGuard(unittest.TestCase):
+    """Test sale cancel property status guard (CHK009/CHK031)"""
+
+    def test_cancel_reverts_sold_property(self):
+        """Cancel should revert property from 'sold' to 'new'"""
+        result = action_cancel_guarded('completed', 'sold', 'Deal fell through')
+        self.assertEqual(result, 'new')
+
+    def test_cancel_preserves_non_sold_property(self):
+        """Cancel should NOT revert property if no longer 'sold' (CHK031)"""
+        result = action_cancel_guarded('completed', 'rented', 'Deal fell through')
+        self.assertEqual(result, 'rented')
+
+    def test_cancel_preserves_new_property(self):
+        """Cancel should keep property as 'new' if already 'new'"""
+        result = action_cancel_guarded('completed', 'new', 'Deal fell through')
+        self.assertEqual(result, 'new')
+
+    def test_double_cancel_raises(self):
+        """Cancelling already-cancelled sale should raise"""
+        with self.assertRaises(ValidationError):
+            action_cancel_guarded('cancelled', 'new', 'Retry cancel')
+
+
 class TestLeaseCreateSchema(unittest.TestCase):
     """Test LEASE_CREATE_SCHEMA validation"""
 

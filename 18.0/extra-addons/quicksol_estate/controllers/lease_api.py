@@ -599,7 +599,7 @@ class LeaseApiController(http.Controller):
             if 'penalty_amount' in data:
                 update_vals['termination_penalty'] = data['penalty_amount']
 
-            lease.write(update_vals)
+            lease.with_context(lease_terminate=True).write(update_vals)
 
             lease_data = self._serialize_lease(lease)
             links = build_hateoas_links('/api/v1/leases', lease.id)
