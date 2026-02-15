@@ -2,8 +2,8 @@
   "info": {
     "_postman_id": "f008-tenant-lease-sale-api-collection",
     "name": "Feature 008 - Tenant, Lease & Sale API",
-    "description": "REST API endpoints for tenant, lease, and sale management.\n\nFeature: 008-tenant-lease-sale-api\nEndpoints: 19 (Tenants: 6, Leases: 7, Sales: 5, Auth: 1)\n\nRequires OAuth token + session for all endpoints (except token).",
-    "version": "1.0",
+    "description": "REST API endpoints for tenant, lease, and sale management.\n\nFeature: 008-tenant-lease-sale-api\nEndpoints: 20 (Auth: 2, Tenants: 6, Leases: 7, Sales: 5)\n\nRequires OAuth token + session for all endpoints (except token).\n\n**v1.1 Changes:**\n- Lease state machine documented (draft → active → terminated | expired)\n- Sale cancel guard: property reverted only if still in 'sold' state\n- Tenant archive: active-lease warning in response\n- Lease cron: daily auto-expiration of past-due leases",
+    "version": "1.1",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -95,7 +95,7 @@
     },
     {
       "name": "2. Tenants",
-      "description": "Tenant CRUD operations (US1, US4, US5)\n\nEndpoints:\n- GET /tenants — List with pagination\n- POST /tenants — Create\n- GET /tenants/{id} — Get by ID\n- PUT /tenants/{id} — Update (+ reactivation)\n- DELETE /tenants/{id} — Archive (soft delete)\n- GET /tenants/{id}/leases — Lease history",
+      "description": "Tenant CRUD operations (US1, US4, US5)\n\nEndpoints:\n- GET /tenants — List with pagination\n- POST /tenants — Create\n- GET /tenants/{id} — Get by ID with lease summaries\n- PUT /tenants/{id} — Update (+ reactivation)\n- DELETE /tenants/{id} — Archive (soft delete, warns on active leases)\n- GET /tenants/{id}/leases — Lease history (active + archived)",
       "item": [
         {
           "name": "List Tenants",
@@ -114,10 +114,10 @@
               "query": [
                 {"key": "page", "value": "1"},
                 {"key": "page_size", "value": "20"},
-                {"key": "is_active", "value": "true", "disabled": true}
+                {"key": "is_active", "value": "false", "disabled": true, "description": "Set to 'false' to list archived tenants"}
               ]
             },
-            "description": "**Authentication:** Bearer Token + Session ID required\n\nQuery parameters:\n- `page` (int, default 1)\n- `page_size` (int, default 20, max 100)\n- `is_active` (optional: 'false' to see archived)"
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For GET requests, session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in request body.\n\nReturns paginated list of tenants in the current company.\nAgents see only tenants with leases on their assigned properties (transitive RBAC).\n\nQuery parameters:\n- `page` (int, default 1)\n- `page_size` (int, default 20, max 100)\n- `is_active` (optional: 'false' to see archived)"
           }
         },
         {
@@ -153,7 +153,7 @@
               "host": ["{{base_url}}"],
               "path": ["api", "v1", "tenants"]
             },
-            "description": "**Authentication:** Bearer Token + Session (in body) required\n\nRequired: `name`\nOptional: `phone`, `email`, `occupation`, `birthdate`\n\nAuto-saves `tenant_id` for subsequent requests."
+            "description": "**Authentication:** Bearer Token + Session (in body) required\n**Multi-tenancy:** Company isolation active (@require_company)\n\n**IMPORTANT:** Business endpoints do NOT use JSON-RPC format. Send JSON directly in body.\n\nCreates a new tenant linked to the current company.\nEmail format is validated (RFC 5322 simplified).\n\nRequired: `name`\nOptional: `phone`, `email`, `occupation`, `birthdate` (YYYY-MM-DD)\n\nAuto-saves `tenant_id` for subsequent requests."
           }
         },
         {
@@ -171,7 +171,7 @@
               "host": ["{{base_url}}"],
               "path": ["api", "v1", "tenants", "{{tenant_id}}"]
             },
-            "description": "**Authentication:** Bearer Token + Session ID required\n\nReturns tenant details with HATEOAS links."
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n\n**IMPORTANT:** For GET requests, session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in body.\n\nReturns tenant details with inline lease summaries and HATEOAS links.\nIncludes `leases` array with each lease's id, property, dates, rent, and status."
           }
         },
         {
@@ -192,7 +192,7 @@
               "host": ["{{base_url}}"],
               "path": ["api", "v1", "tenants", "{{tenant_id}}"]
             },
-            "description": "**Authentication:** Bearer Token + Session (in body) required\n\nAll fields optional. Also supports reactivation: `{\"active\": true}`"
+            "description": "**Authentication:** Bearer Token + Session (in body) required\n**Multi-tenancy:** Company isolation active (@require_company)\n\nAll fields optional. Supports reactivation of archived tenants: `{\"active\": true}`\nReactivation clears `deactivation_date` and `deactivation_reason`."
           }
         },
         {
@@ -214,7 +214,7 @@
               "host": ["{{base_url}}"],
               "path": ["api", "v1", "tenants", "{{tenant_id}}"]
             },
-            "description": "**Authentication:** Bearer Token + Session ID required\n\nSoft archive — sets active=false. Optional: `reason` in body."
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n\nSoft archive — sets active=false, records deactivation_date. Optional `reason` in body.\n\n**Active-Lease Warning (TD-004):** If tenant has draft/active leases, response includes a `warning` field:\n```json\n{\n  \"data\": {\n    \"id\": 10,\n    \"active\": false,\n    \"warning\": \"Tenant has 2 active lease(s). Leases remain active; tenant record is now archived.\"\n  }\n}\n```\nLeases are NOT automatically terminated when tenant is archived."
           }
         },
         {
@@ -236,14 +236,14 @@
                 {"key": "page_size", "value": "20"}
               ]
             },
-            "description": "**Authentication:** Bearer Token + Session ID required\n\nReturns all leases (active + historical) for the tenant."
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n\n**IMPORTANT:** For GET requests, session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in body.\n\nReturns all leases (active + historical, including archived) for the tenant.\nIncludes `status` field: draft, active, terminated, expired.\nAccepts archived tenants (active_test=False) for full history view."
           }
         }
       ]
     },
     {
       "name": "3. Leases",
-      "description": "Lease lifecycle management (US2)\n\nEndpoints:\n- GET /leases — List with pagination + filters\n- POST /leases — Create\n- GET /leases/{id} — Get by ID with renewal history\n- PUT /leases/{id} — Update (+ reactivation)\n- DELETE /leases/{id} — Archive\n- POST /leases/{id}/renew — Renew in-place\n- POST /leases/{id}/terminate — Early termination",
+      "description": "Lease lifecycle management (US2)\n\n**State Machine (TD-011):**\n- draft → active → terminated | expired\n- Only forward transitions allowed\n- Cron `_cron_expire_leases()` runs daily to auto-expire past-due leases\n\nEndpoints:\n- GET /leases — List with pagination + filters\n- POST /leases — Create (default status: draft)\n- GET /leases/{id} — Get by ID with renewal history\n- PUT /leases/{id} — Update (status transitions validated)\n- DELETE /leases/{id} — Archive\n- POST /leases/{id}/renew — Renew in-place with audit trail\n- POST /leases/{id}/terminate — Early termination (active only)",
       "item": [
         {
           "name": "List Leases",
@@ -262,13 +262,13 @@
               "query": [
                 {"key": "page", "value": "1"},
                 {"key": "page_size", "value": "20"},
-                {"key": "property_id", "value": "", "disabled": true},
-                {"key": "tenant_id", "value": "", "disabled": true},
-                {"key": "status", "value": "", "disabled": true},
-                {"key": "is_active", "value": "true", "disabled": true}
+                {"key": "property_id", "value": "", "disabled": true, "description": "Filter by property ID"},
+                {"key": "tenant_id", "value": "", "disabled": true, "description": "Filter by tenant ID"},
+                {"key": "status", "value": "", "disabled": true, "description": "Filter: draft | active | terminated | expired"},
+                {"key": "is_active", "value": "false", "disabled": true, "description": "Set to 'false' to list archived leases"}
               ]
             },
-            "description": "**Authentication:** Bearer Token + Session ID required\n\nFilters: `property_id`, `tenant_id`, `status` (draft/active/terminated/expired), `is_active`"
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For GET requests, session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in body.\n\nReturns paginated leases. Agents see only leases on assigned properties.\n\nFilters: `property_id`, `tenant_id`, `status` (draft/active/terminated/expired), `is_active`"
           }
         },
         {
@@ -304,7 +304,7 @@
               "host": ["{{base_url}}"],
               "path": ["api", "v1", "leases"]
             },
-            "description": "**Authentication:** Bearer Token + Session (in body) required\n\nRequired: `property_id`, `tenant_id`, `start_date`, `end_date`, `rent_amount`\nValidations: rent > 0, dates ordered, no concurrent lease on same property\n\nAuto-saves `lease_id`."
+            "description": "**Authentication:** Bearer Token + Session (in body) required\n**Multi-tenancy:** Company isolation active (@require_company)\n\n**IMPORTANT:** Business endpoints do NOT use JSON-RPC format. Send JSON directly in body.\n\nCreates a new lease (default status: `draft`).\n\nRequired: `property_id`, `tenant_id`, `start_date`, `end_date`, `rent_amount`\nOptional: `status` (draft | active)\n\nValidations:\n- rent_amount > 0\n- end_date > start_date\n- Property not sold\n- No concurrent active lease on same property (ORM constraint)\n\nAuto-saves `lease_id`."
           }
         },
         {
@@ -322,7 +322,7 @@
               "host": ["{{base_url}}"],
               "path": ["api", "v1", "leases", "{{lease_id}}"]
             },
-            "description": "**Authentication:** Bearer Token + Session ID required\n\nReturns lease details with property, tenant info, and renewal history."
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n\n**IMPORTANT:** For GET requests, session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in body.\n\nReturns lease details with:\n- property_id, property_name\n- tenant_id, tenant_name\n- status (draft | active | terminated | expired)\n- termination_date, termination_reason, termination_penalty\n- renewal_count\n- `renewal_history[]` — audit trail of all renewals with previous/new values"
           }
         },
         {
@@ -343,7 +343,7 @@
               "host": ["{{base_url}}"],
               "path": ["api", "v1", "leases", "{{lease_id}}"]
             },
-            "description": "**Authentication:** Bearer Token + Session (in body) required\n\nCannot update terminated/expired leases. Supports reactivation: `{\"active\": true}`"
+            "description": "**Authentication:** Bearer Token + Session (in body) required\n**Multi-tenancy:** Company isolation active (@require_company)\n\nUpdatable fields: `start_date`, `end_date`, `rent_amount`, `status`\n\n**State Machine (TD-011):** Status transitions must follow valid paths:\n- draft → active\n- active → terminated (use /terminate endpoint) | expired (cron only)\n- Invalid transitions return 400\n\nCannot update terminated/expired leases.\nSupports reactivation: `{\"active\": true}`"
           }
         },
         {
@@ -361,7 +361,7 @@
               "host": ["{{base_url}}"],
               "path": ["api", "v1", "leases", "{{lease_id}}"]
             },
-            "description": "**Authentication:** Bearer Token + Session ID required\n\nSoft archive — sets active=false."
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n\nSoft archive — sets active=false. Lease is hidden from default listings but visible via `is_active=false` filter."
           }
         },
         {
@@ -382,7 +382,7 @@
               "host": ["{{base_url}}"],
               "path": ["api", "v1", "leases", "{{lease_id}}", "renew"]
             },
-            "description": "**Authentication:** Bearer Token + Session (in body) required\n\nRequired: `new_end_date` (must be after current end_date)\nOptional: `new_rent_amount`, `reason`\n\nCreates a renewal history record and updates lease in-place."
+            "description": "**Authentication:** Bearer Token + Session (in body) required\n**Multi-tenancy:** Company isolation active (@require_company)\n\nRenews a lease in-place with audit trail.\n\n**Precondition:** Lease must be in `active` status. Other statuses return 400.\n\nRequired: `new_end_date` (must be after current end_date)\nOptional: `new_rent_amount` (keeps current if omitted), `reason`\n\nSide effects:\n- Creates `real.estate.lease.renewal.history` record with previous/new values\n- Updates lease end_date (and rent_amount if provided)\n- Increments renewal_count"
           }
         },
         {
@@ -403,14 +403,14 @@
               "host": ["{{base_url}}"],
               "path": ["api", "v1", "leases", "{{lease_id}}", "terminate"]
             },
-            "description": "**Authentication:** Bearer Token + Session (in body) required\n\nRequired: `termination_date`\nOptional: `reason`, `penalty_amount`\n\nSets lease status to 'terminated'. Only active leases can be terminated."
+            "description": "**Authentication:** Bearer Token + Session (in body) required\n**Multi-tenancy:** Company isolation active (@require_company)\n\nTerminates a lease early.\n\n**Precondition:** Lease must be in `active` status (state machine TD-011). Other statuses return 400.\n\nRequired: `termination_date`\nOptional: `reason`, `penalty_amount` (informational only, TD-005)\n\nSets lease status to `terminated` via context flag `lease_terminate=True`."
           }
         }
       ]
     },
     {
       "name": "4. Sales",
-      "description": "Sale registration and management (US3)\n\nEndpoints:\n- GET /sales — List with pagination + filters\n- POST /sales — Create (marks property as sold)\n- GET /sales/{id} — Get by ID\n- PUT /sales/{id} — Update (+ reactivation)\n- POST /sales/{id}/cancel — Cancel (reverts property status)",
+      "description": "Sale registration and management (US3)\n\n**No DELETE endpoint** — sales use cancel semantics only (TD-003)\n**Cancel Guard (TD-012):** Property status reverted only if still 'sold'\n\nEndpoints:\n- GET /sales — List with pagination + filters\n- POST /sales — Create (marks property as sold, emits sale.created event)\n- GET /sales/{id} — Get by ID with lead info\n- PUT /sales/{id} — Update (+ reactivation)\n- POST /sales/{id}/cancel — Cancel with reason (conditionally reverts property)",
       "item": [
         {
           "name": "List Sales",
@@ -429,15 +429,15 @@
               "query": [
                 {"key": "page", "value": "1"},
                 {"key": "page_size", "value": "20"},
-                {"key": "property_id", "value": "", "disabled": true},
-                {"key": "agent_id", "value": "", "disabled": true},
-                {"key": "status", "value": "", "disabled": true},
-                {"key": "min_price", "value": "", "disabled": true},
-                {"key": "max_price", "value": "", "disabled": true},
-                {"key": "is_active", "value": "true", "disabled": true}
+                {"key": "property_id", "value": "", "disabled": true, "description": "Filter by property ID"},
+                {"key": "agent_id", "value": "", "disabled": true, "description": "Filter by agent ID"},
+                {"key": "status", "value": "", "disabled": true, "description": "Filter: completed | cancelled"},
+                {"key": "min_price", "value": "", "disabled": true, "description": "Minimum sale price"},
+                {"key": "max_price", "value": "", "disabled": true, "description": "Maximum sale price"},
+                {"key": "is_active", "value": "false", "disabled": true, "description": "Set to 'false' to list archived sales"}
               ]
             },
-            "description": "**Authentication:** Bearer Token + Session ID required\n\nFilters: `property_id`, `agent_id`, `status` (completed/cancelled), `min_price`, `max_price`, `is_active`"
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For GET requests, session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in body.\n\nReturns paginated sales. Agents see only sales on assigned properties.\n\nFilters: `property_id`, `agent_id`, `status` (completed/cancelled), `min_price`, `max_price`, `is_active`"
           }
         },
         {
@@ -473,7 +473,7 @@
               "host": ["{{base_url}}"],
               "path": ["api", "v1", "sales"]
             },
-            "description": "**Authentication:** Bearer Token + Session (in body) required\n\nRequired: `property_id`, `company_id`, `buyer_name`, `sale_date`, `sale_price`\nOptional: `buyer_phone`, `buyer_email`, `agent_id`, `lead_id`\n\nSide effect: Property status set to 'sold'.\nAuto-saves `sale_id`."
+            "description": "**Authentication:** Bearer Token + Session (in body) required\n**Multi-tenancy:** Company isolation active (@require_company)\n\n**IMPORTANT:** Business endpoints do NOT use JSON-RPC format. Send JSON directly in body.\n\nRequired: `property_id`, `company_id`, `buyer_name`, `sale_date`, `sale_price`\nOptional: `buyer_phone`, `buyer_email` (validated), `agent_id` (must belong to company — FR-023), `lead_id`\n\nSide effects:\n- Property status → 'sold'\n- Emits `sale.created` event via event bus (fire-and-forget, TD-002)\n\nAuto-saves `sale_id`."
           }
         },
         {
@@ -491,7 +491,7 @@
               "host": ["{{base_url}}"],
               "path": ["api", "v1", "sales", "{{sale_id}}"]
             },
-            "description": "**Authentication:** Bearer Token + Session ID required\n\nReturns sale details with property, agent, and lead info."
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n\n**IMPORTANT:** For GET requests, session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in body.\n\nReturns sale details with:\n- property_id, property_name\n- buyer_name, buyer_phone, buyer_email (full exposure, TD-010)\n- agent_id, agent_name\n- lead_id + lead summary (if linked)\n- status (completed | cancelled)\n- cancellation_date, cancellation_reason (if cancelled)"
           }
         },
         {
@@ -512,7 +512,7 @@
               "host": ["{{base_url}}"],
               "path": ["api", "v1", "sales", "{{sale_id}}"]
             },
-            "description": "**Authentication:** Bearer Token + Session (in body) required\n\nCannot update cancelled sales. Supports reactivation: `{\"active\": true}`"
+            "description": "**Authentication:** Bearer Token + Session (in body) required\n**Multi-tenancy:** Company isolation active (@require_company)\n\nUpdatable: `buyer_name`, `buyer_phone`, `buyer_email`, `sale_date`, `sale_price`\nCannot update cancelled sales (returns 400).\nSupports reactivation: `{\"active\": true}` (clears cancellation fields).\n\n**Note:** No DELETE endpoint for sales — use Cancel instead (TD-003)."
           }
         },
         {
@@ -533,7 +533,7 @@
               "host": ["{{base_url}}"],
               "path": ["api", "v1", "sales", "{{sale_id}}", "cancel"]
             },
-            "description": "**Authentication:** Bearer Token + Session (in body) required\n\nRequired: `reason`\n\nSide effect: Property status reverted from 'sold'."
+            "description": "**Authentication:** Bearer Token + Session (in body) required\n**Multi-tenancy:** Company isolation active (@require_company)\n\nRequired: `reason`\n\nCancels a sale with mandatory reason.\n\n**Cancel Guard (TD-012):** Property status is reverted from 'sold' ONLY if the property is still in 'sold' state. If property was re-listed or changed, the guard prevents incorrect reversion.\n\nAlready-cancelled sales return 400."
           }
         }
       ]

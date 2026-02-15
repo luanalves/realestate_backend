@@ -1,0 +1,1616 @@
+openapi: 3.0.3
+info:
+  title: Tenant, Lease & Sale Management API
+  description: |
+    REST API for managing Tenants, Leases, and Sales in the Real Estate platform.
+
+    **Feature:** 008-tenant-lease-sale-api
+    **Endpoints:** 18 (Tenants: 6, Leases: 7, Sales: 5)
+
+    **Authentication**: All endpoints require OAuth 2.0 JWT token + session + company context.
+
+    **Authorization**:
+    - Manager / Owner: Full CRUD within own companies
+    - Agent: Read-only on tenants/leases/sales linked to assigned properties (transitive RBAC)
+
+    **Multi-tenancy**: Users only see records belonging to their `estate_company_ids`.
+
+    **State Machine — Lease Status**:
+    - `draft` → `active` → `terminated` | `expired`
+    - Only forward transitions are allowed (TD-011)
+
+    **Sale Cancel Guard**: Property status is only reverted from `sold` if it is still `sold` at the time of cancellation (TD-012).
+  version: 1.0.0
+  contact:
+    name: TheDevKitchen
+    email: api@thedevkitchen.com.br
+
+servers:
+  - url: http://localhost:8069/api/v1
+    description: Development server
+  - url: https://api.realestate.com/api/v1
+    description: Production server
+
+tags:
+  - name: Tenants
+    description: Tenant CRUD and lease history (US1, US4, US5)
+  - name: Leases
+    description: Lease lifecycle — create, renew, terminate, archive (US2)
+  - name: Sales
+    description: Sale registration, update, and cancellation (US3)
+
+paths:
+  # ============================================================
+  # TENANTS
+  # ============================================================
+  /tenants:
+    get:
+      tags:
+        - Tenants
+      summary: List tenants
+      description: |
+        Returns tenants the authenticated user has access to, with pagination and company isolation.
+        Agents see only tenants with leases on their assigned properties (transitive RBAC).
+      operationId: listTenants
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          description: Page number (1-based)
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+            example: 1
+        - name: page_size
+          in: query
+          description: Results per page
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+            example: 20
+        - name: is_active
+          in: query
+          description: Filter by active status. Use `false` to see archived tenants.
+          schema:
+            type: string
+            enum: ['true', 'false']
+            example: 'true'
+      responses:
+        '200':
+          description: Paginated list of tenants
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantListResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    post:
+      tags:
+        - Tenants
+      summary: Create tenant
+      description: |
+        Creates a new tenant linked to the user's current company.
+        Email format is validated (RFC 5322 simplified regex).
+      operationId: createTenant
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TenantCreate'
+      responses:
+        '201':
+          description: Tenant created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /tenants/{tenant_id}:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+
+    get:
+      tags:
+        - Tenants
+      summary: Get tenant details
+      description: Returns tenant details with inline lease summaries and HATEOAS links.
+      operationId: getTenant
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Tenant details with lease summaries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantDetailResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Tenants
+      summary: Update tenant
+      description: |
+        Updates tenant fields. Supports reactivation of archived records
+        by sending `{"active": true}`.
+      operationId: updateTenant
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TenantUpdate'
+      responses:
+        '200':
+          description: Tenant updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Tenants
+      summary: Archive tenant (soft delete)
+      description: |
+        Soft-archives a tenant (sets `active=false`). Optional `reason` in request body.
+
+        **Warning**: If the tenant has active leases, the response includes a `warning` field
+        indicating the number of active leases remaining. Leases are NOT automatically terminated (TD-004).
+      operationId: deleteTenant
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TenantArchiveRequest'
+      responses:
+        '200':
+          description: Tenant archived. May include active-lease warning.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantArchiveResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /tenants/{tenant_id}/leases:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+
+    get:
+      tags:
+        - Tenants
+      summary: Get tenant lease history
+      description: |
+        Returns all leases (active + historical, including archived) for a tenant.
+        Includes both active and inactive leases for full history view.
+      operationId: getTenantLeases
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+            example: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+            example: 20
+      responses:
+        '200':
+          description: Paginated lease history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeaseListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ============================================================
+  # LEASES
+  # ============================================================
+  /leases:
+    get:
+      tags:
+        - Leases
+      summary: List leases
+      description: |
+        Returns leases with pagination, filters, and company isolation.
+        Agents see only leases on their assigned properties.
+      operationId: listLeases
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+            example: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+            example: 20
+        - name: property_id
+          in: query
+          description: Filter by property
+          schema:
+            type: integer
+            example: 42
+        - name: tenant_id
+          in: query
+          description: Filter by tenant
+          schema:
+            type: integer
+            example: 10
+        - name: status
+          in: query
+          description: Filter by lease status
+          schema:
+            type: string
+            enum: [draft, active, terminated, expired]
+            example: active
+        - name: is_active
+          in: query
+          description: Filter by archived status
+          schema:
+            type: string
+            enum: ['true', 'false']
+      responses:
+        '200':
+          description: Paginated list of leases
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeaseListResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    post:
+      tags:
+        - Leases
+      summary: Create lease
+      description: |
+        Creates a new lease. Validates:
+        - Property exists and belongs to user's company
+        - Property is not sold
+        - Tenant exists and belongs to user's company
+        - `end_date > start_date`
+        - No concurrent active lease on the same property (ORM constraint)
+
+        Default status is `draft`.
+      operationId: createLease
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LeaseCreate'
+      responses:
+        '201':
+          description: Lease created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeaseResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Property or Tenant not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /leases/{lease_id}:
+    parameters:
+      - $ref: '#/components/parameters/LeaseId'
+
+    get:
+      tags:
+        - Leases
+      summary: Get lease details
+      description: Returns lease details with property info, tenant info, and renewal history.
+      operationId: getLease
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Lease details with renewal history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeaseDetailResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Leases
+      summary: Update lease
+      description: |
+        Updates lease fields. Cannot update terminated or expired leases.
+        Supports reactivation via `{"active": true}`.
+
+        **State machine**: Direct status changes via update must follow valid
+        transitions: `draft→active→terminated|expired` (TD-011).
+      operationId: updateLease
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LeaseUpdate'
+      responses:
+        '200':
+          description: Lease updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeaseResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Leases
+      summary: Archive lease (soft delete)
+      description: Soft-archives a lease (sets `active=false`).
+      operationId: deleteLease
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Lease archived
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArchiveResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /leases/{lease_id}/renew:
+    parameters:
+      - $ref: '#/components/parameters/LeaseId'
+
+    post:
+      tags:
+        - Leases
+      summary: Renew lease
+      description: |
+        Renews a lease in-place with audit trail.
+        - Only **active** leases can be renewed
+        - `new_end_date` must be after the current `end_date`
+        - Creates a `real.estate.lease.renewal.history` audit record
+        - Updates `end_date` (and optionally `rent_amount`) directly on the lease
+      operationId: renewLease
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LeaseRenew'
+      responses:
+        '200':
+          description: Lease renewed with updated dates
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeaseResponse'
+        '400':
+          description: Invalid renewal (e.g., lease not active, date before current end)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /leases/{lease_id}/terminate:
+    parameters:
+      - $ref: '#/components/parameters/LeaseId'
+
+    post:
+      tags:
+        - Leases
+      summary: Terminate lease early
+      description: |
+        Terminates a lease before its natural end date.
+        - Only **active** leases can be terminated
+        - Sets status to `terminated` via state machine context flag
+        - Optional `penalty_amount` is informational only (TD-005)
+      operationId: terminateLease
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LeaseTerminate'
+      responses:
+        '200':
+          description: Lease terminated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeaseResponse'
+        '400':
+          description: Invalid termination (e.g., lease not active)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ============================================================
+  # SALES
+  # ============================================================
+  /sales:
+    get:
+      tags:
+        - Sales
+      summary: List sales
+      description: |
+        Returns sales with pagination, filters, and company isolation.
+        Supports filtering by property, agent, status, and price range.
+      operationId: listSales
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+            example: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+            example: 20
+        - name: property_id
+          in: query
+          description: Filter by property
+          schema:
+            type: integer
+            example: 42
+        - name: agent_id
+          in: query
+          description: Filter by agent
+          schema:
+            type: integer
+            example: 5
+        - name: status
+          in: query
+          description: Filter by sale status
+          schema:
+            type: string
+            enum: [completed, cancelled]
+            example: completed
+        - name: min_price
+          in: query
+          description: Minimum sale price
+          schema:
+            type: number
+            format: float
+            example: 100000.00
+        - name: max_price
+          in: query
+          description: Maximum sale price
+          schema:
+            type: number
+            format: float
+            example: 500000.00
+        - name: is_active
+          in: query
+          description: Filter by archived status
+          schema:
+            type: string
+            enum: ['true', 'false']
+      responses:
+        '200':
+          description: Paginated list of sales
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SaleListResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    post:
+      tags:
+        - Sales
+      summary: Create sale
+      description: |
+        Creates a new sale record.
+        - Validates property exists and belongs to user's company
+        - Validates agent belongs to specified company (FR-023)
+        - Validates buyer email format if provided
+        - **Side effect**: Property status is set to `sold`
+        - Emits `sale.created` event via event bus (fire-and-forget, TD-002)
+      operationId: createSale
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaleCreate'
+      responses:
+        '201':
+          description: Sale created — property marked as sold
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SaleResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Access denied to specified company
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Property, Company, or Agent not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /sales/{sale_id}:
+    parameters:
+      - $ref: '#/components/parameters/SaleId'
+
+    get:
+      tags:
+        - Sales
+      summary: Get sale details
+      description: Returns sale details with property, agent, and lead info.
+      operationId: getSale
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Sale details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SaleDetailResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Sales
+      summary: Update sale
+      description: |
+        Updates sale fields. Cannot update cancelled sales.
+        Supports reactivation via `{"active": true}`.
+
+        **Note**: No DELETE endpoint for sales — use cancel instead (TD-003).
+      operationId: updateSale
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaleUpdate'
+      responses:
+        '200':
+          description: Sale updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SaleResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /sales/{sale_id}/cancel:
+    parameters:
+      - $ref: '#/components/parameters/SaleId'
+
+    post:
+      tags:
+        - Sales
+      summary: Cancel sale
+      description: |
+        Cancels a sale with a mandatory reason.
+        - Sets sale status to `cancelled`, records cancellation date
+        - **Side effect**: Property status is reverted from `sold` only if the property
+          is still in `sold` state (cancel guard — TD-012)
+        - Already-cancelled sales return 400
+      operationId: cancelSale
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaleCancel'
+      responses:
+        '200':
+          description: Sale cancelled — property status may be reverted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SaleResponse'
+        '400':
+          description: Sale already cancelled or validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+# ============================================================
+# COMPONENTS
+# ============================================================
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: OAuth 2.0 JWT token from `/api/v1/auth/token`
+
+  parameters:
+    TenantId:
+      name: tenant_id
+      in: path
+      required: true
+      description: Tenant record ID
+      schema:
+        type: integer
+        example: 10
+
+    LeaseId:
+      name: lease_id
+      in: path
+      required: true
+      description: Lease record ID
+      schema:
+        type: integer
+        example: 25
+
+    SaleId:
+      name: sale_id
+      in: path
+      required: true
+      description: Sale record ID
+      schema:
+        type: integer
+        example: 8
+
+  schemas:
+    # ----------------------------------------------------------
+    # TENANT SCHEMAS
+    # ----------------------------------------------------------
+    TenantCreate:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: Full name of the tenant
+          example: "João Silva"
+        phone:
+          type: string
+          description: Contact phone number
+          example: "11999887766"
+        email:
+          type: string
+          format: email
+          description: Email address (RFC 5322 validated)
+          example: "joao.silva@example.com"
+        occupation:
+          type: string
+          description: Tenant's occupation
+          example: "Engineer"
+        birthdate:
+          type: string
+          format: date
+          description: Date of birth (YYYY-MM-DD)
+          example: "1990-05-15"
+
+    TenantUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "João Silva Updated"
+        phone:
+          type: string
+          example: "11988776655"
+        email:
+          type: string
+          format: email
+          example: "updated@example.com"
+        occupation:
+          type: string
+          example: "Senior Engineer"
+        birthdate:
+          type: string
+          format: date
+          example: "1990-05-15"
+        active:
+          type: boolean
+          description: Set to `true` to reactivate an archived tenant
+          example: true
+
+    TenantArchiveRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          description: Optional reason for archiving
+          example: "No longer active tenant"
+
+    Tenant:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 10
+        name:
+          type: string
+          example: "João Silva"
+        phone:
+          type: string
+          nullable: true
+          example: "11999887766"
+        email:
+          type: string
+          nullable: true
+          example: "joao.silva@example.com"
+        occupation:
+          type: string
+          nullable: true
+          example: "Engineer"
+        birthdate:
+          type: string
+          format: date
+          nullable: true
+          example: "1990-05-15"
+        active:
+          type: boolean
+          example: true
+        company_ids:
+          type: array
+          items:
+            type: integer
+          example: [63]
+        lease_count:
+          type: integer
+          description: Number of leases associated
+          example: 2
+        _links:
+          $ref: '#/components/schemas/HATEOASLinks'
+
+    TenantDetail:
+      allOf:
+        - $ref: '#/components/schemas/Tenant'
+        - type: object
+          properties:
+            leases:
+              type: array
+              description: Inline lease summaries
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    example: 25
+                  name:
+                    type: string
+                    example: "LEASE/2026/001"
+                  property_id:
+                    type: integer
+                    example: 42
+                  property_name:
+                    type: string
+                    example: "Apartamento Centro"
+                  start_date:
+                    type: string
+                    format: date
+                    example: "2026-03-01"
+                  end_date:
+                    type: string
+                    format: date
+                    example: "2027-02-28"
+                  rent_amount:
+                    type: number
+                    format: float
+                    example: 2500.00
+                  status:
+                    type: string
+                    enum: [draft, active, terminated, expired]
+                    example: "active"
+
+    # ----------------------------------------------------------
+    # LEASE SCHEMAS
+    # ----------------------------------------------------------
+    LeaseCreate:
+      type: object
+      required:
+        - property_id
+        - tenant_id
+        - start_date
+        - end_date
+        - rent_amount
+      properties:
+        property_id:
+          type: integer
+          description: ID of the property being leased
+          example: 42
+        tenant_id:
+          type: integer
+          description: ID of the tenant
+          example: 10
+        start_date:
+          type: string
+          format: date
+          description: Lease start date (YYYY-MM-DD)
+          example: "2026-03-01"
+        end_date:
+          type: string
+          format: date
+          description: Lease end date (must be after start_date)
+          example: "2027-02-28"
+        rent_amount:
+          type: number
+          format: float
+          description: Monthly rent (must be > 0)
+          example: 2500.00
+        status:
+          type: string
+          enum: [draft, active]
+          description: Initial status (default `draft`)
+          default: draft
+          example: "draft"
+
+    LeaseUpdate:
+      type: object
+      properties:
+        start_date:
+          type: string
+          format: date
+          example: "2026-03-01"
+        end_date:
+          type: string
+          format: date
+          example: "2027-06-30"
+        rent_amount:
+          type: number
+          format: float
+          example: 2800.00
+        status:
+          type: string
+          enum: [draft, active, terminated, expired]
+          description: |
+            State transitions must follow: draft → active → terminated | expired.
+            Invalid transitions are rejected by the state machine (TD-011).
+          example: "active"
+        active:
+          type: boolean
+          description: Set to `true` to reactivate an archived lease
+          example: true
+
+    LeaseRenew:
+      type: object
+      required:
+        - new_end_date
+      properties:
+        new_end_date:
+          type: string
+          format: date
+          description: New end date (must be after current end_date)
+          example: "2028-02-28"
+        new_rent_amount:
+          type: number
+          format: float
+          description: Updated rent amount (optional, keeps current if omitted)
+          example: 3000.00
+        reason:
+          type: string
+          description: Reason for renewal (stored in audit history)
+          example: "Annual renewal with adjustment"
+
+    LeaseTerminate:
+      type: object
+      required:
+        - termination_date
+      properties:
+        termination_date:
+          type: string
+          format: date
+          description: Date of early termination
+          example: "2026-06-30"
+        reason:
+          type: string
+          description: Reason for termination
+          example: "Tenant relocation"
+        penalty_amount:
+          type: number
+          format: float
+          description: Informational penalty amount (not enforced, TD-005)
+          example: 5000.00
+
+    Lease:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 25
+        name:
+          type: string
+          description: Auto-generated lease reference
+          example: "LEASE/2026/001"
+        property_id:
+          type: integer
+          example: 42
+        property_name:
+          type: string
+          nullable: true
+          example: "Apartamento Centro"
+        tenant_id:
+          type: integer
+          example: 10
+        tenant_name:
+          type: string
+          nullable: true
+          example: "João Silva"
+        start_date:
+          type: string
+          format: date
+          example: "2026-03-01"
+        end_date:
+          type: string
+          format: date
+          example: "2027-02-28"
+        rent_amount:
+          type: number
+          format: float
+          example: 2500.00
+        status:
+          type: string
+          enum: [draft, active, terminated, expired]
+          example: "active"
+        active:
+          type: boolean
+          example: true
+        termination_date:
+          type: string
+          format: date
+          nullable: true
+          example: null
+        termination_reason:
+          type: string
+          nullable: true
+          example: null
+        termination_penalty:
+          type: number
+          format: float
+          example: 0.0
+        renewal_count:
+          type: integer
+          description: Number of times this lease has been renewed
+          example: 1
+        company_ids:
+          type: array
+          items:
+            type: integer
+          example: [63]
+        _links:
+          $ref: '#/components/schemas/HATEOASLinks'
+
+    LeaseDetail:
+      allOf:
+        - $ref: '#/components/schemas/Lease'
+        - type: object
+          properties:
+            renewal_history:
+              type: array
+              description: Audit trail of all renewals
+              items:
+                $ref: '#/components/schemas/RenewalHistory'
+
+    RenewalHistory:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        previous_end_date:
+          type: string
+          format: date
+          example: "2027-02-28"
+        previous_rent_amount:
+          type: number
+          format: float
+          example: 2500.00
+        new_end_date:
+          type: string
+          format: date
+          example: "2028-02-28"
+        new_rent_amount:
+          type: number
+          format: float
+          example: 3000.00
+        renewed_by:
+          type: string
+          nullable: true
+          description: Name of the user who renewed
+          example: "Luan Admin"
+        reason:
+          type: string
+          nullable: true
+          example: "Annual renewal with adjustment"
+        renewal_date:
+          type: string
+          format: date-time
+          example: "2027-01-15"
+
+    # ----------------------------------------------------------
+    # SALE SCHEMAS
+    # ----------------------------------------------------------
+    SaleCreate:
+      type: object
+      required:
+        - property_id
+        - company_id
+        - buyer_name
+        - sale_date
+        - sale_price
+      properties:
+        property_id:
+          type: integer
+          description: ID of the property being sold
+          example: 42
+        company_id:
+          type: integer
+          description: ID of the real estate company handling the sale
+          example: 63
+        buyer_name:
+          type: string
+          description: Full name of the buyer
+          example: "Maria Santos"
+        buyer_phone:
+          type: string
+          description: Buyer phone number
+          example: "11999887766"
+        buyer_email:
+          type: string
+          format: email
+          description: Buyer email (validated)
+          example: "maria@example.com"
+        sale_date:
+          type: string
+          format: date
+          description: Date of the sale
+          example: "2026-03-15"
+        sale_price:
+          type: number
+          format: float
+          description: Sale price
+          example: 450000.00
+        agent_id:
+          type: integer
+          description: ID of the agent handling the sale (must belong to company, FR-023)
+          example: 5
+        lead_id:
+          type: integer
+          description: ID of the associated lead
+          example: 12
+
+    SaleUpdate:
+      type: object
+      properties:
+        buyer_name:
+          type: string
+          example: "Maria Santos Updated"
+        buyer_phone:
+          type: string
+          example: "11988776655"
+        buyer_email:
+          type: string
+          format: email
+          example: "maria.updated@example.com"
+        sale_date:
+          type: string
+          format: date
+          example: "2026-03-20"
+        sale_price:
+          type: number
+          format: float
+          example: 460000.00
+        active:
+          type: boolean
+          description: Set to `true` to reactivate an archived sale
+          example: true
+
+    SaleCancel:
+      type: object
+      required:
+        - reason
+      properties:
+        reason:
+          type: string
+          description: Mandatory cancellation reason
+          example: "Buyer withdrew from deal"
+
+    Sale:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 8
+        property_id:
+          type: integer
+          example: 42
+        property_name:
+          type: string
+          nullable: true
+          example: "Apartamento Centro"
+        buyer_name:
+          type: string
+          example: "Maria Santos"
+        buyer_phone:
+          type: string
+          nullable: true
+          example: "11999887766"
+        buyer_email:
+          type: string
+          nullable: true
+          example: "maria@example.com"
+        company_id:
+          type: integer
+          nullable: true
+          example: 63
+        company_ids:
+          type: array
+          items:
+            type: integer
+          example: [63]
+        agent_id:
+          type: integer
+          nullable: true
+          example: 5
+        agent_name:
+          type: string
+          nullable: true
+          example: "Pedro Agent"
+        lead_id:
+          type: integer
+          nullable: true
+          example: 12
+        sale_date:
+          type: string
+          format: date
+          example: "2026-03-15"
+        sale_price:
+          type: number
+          format: float
+          example: 450000.00
+        status:
+          type: string
+          enum: [completed, cancelled]
+          example: "completed"
+        active:
+          type: boolean
+          example: true
+        cancellation_date:
+          type: string
+          format: date
+          nullable: true
+          example: null
+        cancellation_reason:
+          type: string
+          nullable: true
+          example: null
+        _links:
+          $ref: '#/components/schemas/HATEOASLinks'
+
+    SaleDetail:
+      allOf:
+        - $ref: '#/components/schemas/Sale'
+        - type: object
+          properties:
+            lead:
+              type: object
+              nullable: true
+              description: Associated lead summary (if linked)
+              properties:
+                id:
+                  type: integer
+                  example: 12
+                name:
+                  type: string
+                  example: "Maria Santos Lead"
+
+    # ----------------------------------------------------------
+    # RESPONSE WRAPPERS
+    # ----------------------------------------------------------
+    TenantResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Tenant created successfully"
+        data:
+          $ref: '#/components/schemas/Tenant'
+
+    TenantDetailResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/TenantDetail'
+
+    TenantArchiveResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Tenant archived successfully"
+        data:
+          type: object
+          properties:
+            id:
+              type: integer
+              example: 10
+            active:
+              type: boolean
+              example: false
+            warning:
+              type: string
+              nullable: true
+              description: Present when tenant has active leases at archive time (TD-004)
+              example: "Tenant has 2 active lease(s). Leases remain active; tenant record is now archived."
+
+    TenantListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            count:
+              type: integer
+              example: 15
+            page:
+              type: integer
+              example: 1
+            page_size:
+              type: integer
+              example: 20
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/Tenant'
+            _links:
+              $ref: '#/components/schemas/PaginationLinks'
+
+    LeaseResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Lease created successfully"
+        data:
+          $ref: '#/components/schemas/Lease'
+
+    LeaseDetailResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/LeaseDetail'
+
+    LeaseListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            count:
+              type: integer
+              example: 8
+            page:
+              type: integer
+              example: 1
+            page_size:
+              type: integer
+              example: 20
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/Lease'
+            _links:
+              $ref: '#/components/schemas/PaginationLinks'
+
+    SaleResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Sale created successfully"
+        data:
+          $ref: '#/components/schemas/Sale'
+
+    SaleDetailResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/SaleDetail'
+
+    SaleListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            count:
+              type: integer
+              example: 3
+            page:
+              type: integer
+              example: 1
+            page_size:
+              type: integer
+              example: 20
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/Sale'
+            _links:
+              $ref: '#/components/schemas/PaginationLinks'
+
+    ArchiveResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Lease archived successfully"
+        data:
+          type: object
+          properties:
+            id:
+              type: integer
+              example: 25
+            active:
+              type: boolean
+              example: false
+
+    # ----------------------------------------------------------
+    # SHARED / HATEOAS / ERROR SCHEMAS
+    # ----------------------------------------------------------
+    HATEOASLinks:
+      type: object
+      description: HATEOAS navigation links
+      additionalProperties:
+        type: string
+      example:
+        self: "/api/v1/tenants/10"
+        update: "/api/v1/tenants/10"
+        delete: "/api/v1/tenants/10"
+        leases: "/api/v1/tenants/10/leases"
+
+    PaginationLinks:
+      type: object
+      properties:
+        self:
+          type: string
+          example: "/api/v1/tenants?page=1"
+        next:
+          type: string
+          nullable: true
+          example: "/api/v1/tenants?page=2"
+        prev:
+          type: string
+          nullable: true
+          example: null
+        first:
+          type: string
+          example: "/api/v1/tenants?page=1"
+        last:
+          type: string
+          example: "/api/v1/tenants?page=3"
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+          example: "validation_error"
+        message:
+          type: string
+          example: "End date must be after start date"
+
+    ValidationErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+          example: "validation_error"
+        message:
+          type: string
+          example: "Validation failed"
+        errors:
+          type: object
+          properties:
+            validation:
+              type: array
+              items:
+                type: string
+              example:
+                - "Missing required field: property_id"
+                - "Missing required field: tenant_id"
+
+  responses:
+    Unauthorized:
+      description: Authentication required or invalid/expired token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error: "unauthorized"
+            message: "Invalid or expired token"
+
+    Forbidden:
+      description: Insufficient permissions or company access denied
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error: "forbidden"
+            message: "Access denied"
+
+    NotFound:
+      description: Resource not found or not accessible in current company context
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error: "not_found"
+            message: "Resource not found"
+
+    ValidationError:
+      description: Request validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationErrorResponse'
