@@ -1474,5 +1474,1082 @@ Returns: Owner object with id, name, email, cpf, phone, mobile, company_count, c
             <field name="active" eval="True"/>
         </record>
 
+        <!-- ============================================================ -->
+        <!-- TENANT API ENDPOINTS (Feature 008) -->
+        <!-- ============================================================ -->
+
+        <record id="api_endpoint_list_tenants" model="thedevkitchen.api.endpoint">
+            <field name="name">List Tenants</field>
+            <field name="path">/api/v1/tenants</field>
+            <field name="method">GET</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Tenants</field>
+            <field name="summary">List tenants with pagination and company isolation</field>
+            <field name="description">Get paginated list of tenants filtered by company.
+
+**Security:**
+- Requires JWT + Session + Company authentication (@require_jwt, @require_session, @require_company)
+- Multi-tenancy: User can only access tenants from companies in their `estate_company_ids`
+- Admin users can access all tenants
+- Agents: Transitive RBAC — only see tenants with leases on their assigned properties
+
+**Query Parameters:**
+- `page` (integer, default: 1): Page number
+- `page_size` (integer, default: 20, max: 100): Items per page
+- `is_active` (string, optional): Filter by archived status ("true" or "false"). If omitted, returns active only.
+
+**Response Format (200 OK):**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "name": "João Silva",
+      "phone": "(11) 99999-0001",
+      "email": "joao@example.com",
+      "occupation": "Engineer",
+      "birthdate": "1990-05-15",
+      "active": true,
+      "company_ids": [63],
+      "lease_count": 2,
+      "_links": {
+        "self": "/api/v1/tenants/1",
+        "update": "/api/v1/tenants/1",
+        "delete": "/api/v1/tenants/1",
+        "leases": "/api/v1/tenants/1/leases"
+      }
+    }
+  ],
+  "count": 1,
+  "total": 15,
+  "page": 1,
+  "page_size": 20,
+  "_links": {
+    "self": "/api/v1/tenants?page=1",
+    "next": "/api/v1/tenants?page=2",
+    "first": "/api/v1/tenants?page=1",
+    "last": "/api/v1/tenants?page=1"
+  }
+}
+```
+
+**Error Responses:**
+- 400: Invalid pagination parameters
+- 401: Invalid or missing JWT token
+- 403: Access denied to companies</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_create_tenant" model="thedevkitchen.api.endpoint">
+            <field name="name">Create Tenant</field>
+            <field name="path">/api/v1/tenants</field>
+            <field name="method">POST</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Tenants</field>
+            <field name="summary">Create a new tenant</field>
+            <field name="description">Creates a new tenant with schema validation.
+
+**Security:**
+- Requires JWT + Session + Company authentication
+- Multi-tenancy: Tenant is automatically linked to user's companies
+
+**Required Fields:**
+- `name` (string): Tenant name (non-empty after trim)
+
+**Optional Fields:**
+- `phone` (string): Phone number
+- `email` (string): Email address (validated format)
+- `occupation` (string): Occupation
+- `birthdate` (string): Birth date (format: YYYY-MM-DD)
+
+**Request Example:**
+```json
+{
+  "name": "Maria Santos",
+  "phone": "(11) 98765-4321",
+  "email": "maria@example.com",
+  "occupation": "Lawyer",
+  "birthdate": "1985-03-20"
+}
+```
+
+**Response Format (201 Created):**
+```json
+{
+  "success": true,
+  "message": "Tenant created successfully",
+  "data": {
+    "id": 10,
+    "name": "Maria Santos",
+    "phone": "(11) 98765-4321",
+    "email": "maria@example.com",
+    "occupation": "Lawyer",
+    "birthdate": "1985-03-20",
+    "active": true,
+    "company_ids": [63],
+    "lease_count": 0,
+    "_links": {
+      "self": "/api/v1/tenants/10",
+      "update": "/api/v1/tenants/10",
+      "delete": "/api/v1/tenants/10",
+      "leases": "/api/v1/tenants/10/leases"
+    }
+  }
+}
+```
+
+**Error Responses:**
+- 400: Validation failed (missing name, invalid email format)
+- 401: Invalid or missing JWT token
+- 403: Access denied</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_get_tenant" model="thedevkitchen.api.endpoint">
+            <field name="name">Get Tenant</field>
+            <field name="path">/api/v1/tenants/{tenant_id}</field>
+            <field name="method">GET</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Tenants</field>
+            <field name="summary">Get tenant details by ID</field>
+            <field name="description">Returns tenant details with inline lease summaries and HATEOAS links.
+
+**Security:**
+- Requires JWT + Session + Company authentication
+- Multi-tenancy: Tenant must belong to user's companies
+- Agents: Only see tenants with leases on their assigned properties (transitive RBAC)
+
+**Path Parameters:**
+- `tenant_id` (integer): Tenant ID
+
+**Response Format (200 OK):**
+```json
+{
+  "success": true,
+  "data": {
+    "id": 10,
+    "name": "Maria Santos",
+    "phone": "(11) 98765-4321",
+    "email": "maria@example.com",
+    "occupation": "Lawyer",
+    "birthdate": "1985-03-20",
+    "active": true,
+    "company_ids": [63],
+    "lease_count": 1,
+    "leases": [
+      {
+        "id": 5,
+        "name": "LEASE/2026/0005",
+        "property_id": 2,
+        "property_name": "Apartamento Centro",
+        "start_date": "2026-01-01",
+        "end_date": "2027-01-01",
+        "rent_amount": 2500.00,
+        "status": "active"
+      }
+    ],
+    "_links": {
+      "self": "/api/v1/tenants/10",
+      "update": "/api/v1/tenants/10",
+      "delete": "/api/v1/tenants/10",
+      "leases": "/api/v1/tenants/10/leases"
+    }
+  }
+}
+```
+
+**Error Responses:**
+- 401: Invalid or missing JWT token
+- 403: Access denied
+- 404: Tenant not found or not in user's company context</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_update_tenant" model="thedevkitchen.api.endpoint">
+            <field name="name">Update Tenant</field>
+            <field name="path">/api/v1/tenants/{tenant_id}</field>
+            <field name="method">PUT</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Tenants</field>
+            <field name="summary">Update an existing tenant</field>
+            <field name="description">Updates tenant fields. Supports reactivation of archived records via `{"active": true}`.
+
+**Security:**
+- Requires JWT + Session + Company authentication
+- Multi-tenancy: Tenant must belong to user's companies
+
+**Path Parameters:**
+- `tenant_id` (integer): Tenant ID
+
+**Optional Fields (at least one required):**
+- `name` (string): Tenant name
+- `phone` (string): Phone number
+- `email` (string): Email address (validated format)
+- `occupation` (string): Occupation
+- `birthdate` (string): Birth date (YYYY-MM-DD)
+- `active` (boolean): Set to `true` to reactivate archived tenant
+
+**Request Example:**
+```json
+{
+  "phone": "(11) 91234-5678",
+  "email": "maria.new@example.com"
+}
+```
+
+**Response Format (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Tenant updated successfully",
+  "data": {
+    "id": 10,
+    "name": "Maria Santos",
+    "phone": "(11) 91234-5678",
+    "email": "maria.new@example.com",
+    "active": true,
+    "company_ids": [63],
+    "lease_count": 1,
+    "_links": { "self": "/api/v1/tenants/10" }
+  }
+}
+```
+
+**Error Responses:**
+- 400: Validation failed, no fields to update, or invalid email format
+- 401: Invalid or missing JWT token
+- 403: Access denied
+- 404: Tenant not found</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_delete_tenant" model="thedevkitchen.api.endpoint">
+            <field name="name">Archive Tenant (Soft Delete)</field>
+            <field name="path">/api/v1/tenants/{tenant_id}</field>
+            <field name="method">DELETE</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Tenants</field>
+            <field name="summary">Archive a tenant (soft delete)</field>
+            <field name="description">Soft-archives a tenant (sets `active=false`). ADR-015 compliant.
+
+**Warning**: If the tenant has active leases, the response includes a `warning` field indicating the number of active leases remaining. Leases are NOT automatically terminated (TD-004).
+
+**Security:**
+- Requires JWT + Session + Company authentication
+- Multi-tenancy: Tenant must belong to user's companies
+
+**Path Parameters:**
+- `tenant_id` (integer): Tenant ID
+
+**Optional Request Body:**
+```json
+{
+  "reason": "Moved to another city"
+}
+```
+
+**Response Format (200 OK) — no active leases:**
+```json
+{
+  "success": true,
+  "message": "Tenant archived successfully",
+  "data": {
+    "id": 10,
+    "active": false
+  }
+}
+```
+
+**Response Format (200 OK) — with active leases warning:**
+```json
+{
+  "success": true,
+  "message": "Tenant archived successfully",
+  "data": {
+    "id": 10,
+    "active": false,
+    "warning": "Tenant has 2 active lease(s). Leases remain active; tenant record is now archived."
+  }
+}
+```
+
+**Error Responses:**
+- 401: Invalid or missing JWT token
+- 403: Access denied
+- 404: Tenant not found</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_tenant_lease_history" model="thedevkitchen.api.endpoint">
+            <field name="name">Get Tenant Lease History</field>
+            <field name="path">/api/v1/tenants/{tenant_id}/leases</field>
+            <field name="method">GET</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Tenants</field>
+            <field name="summary">Get all leases (active + historical) for a tenant</field>
+            <field name="description">Returns paginated list of all leases (active + archived) for a tenant. Includes historical data.
+
+**Security:**
+- Requires JWT + Session + Company authentication
+- Multi-tenancy: Tenant must belong to user's companies
+- Agents: Only see leases on their assigned properties
+
+**Path Parameters:**
+- `tenant_id` (integer): Tenant ID
+
+**Query Parameters:**
+- `page` (integer, default: 1): Page number
+- `page_size` (integer, default: 20, max: 100): Items per page
+
+**Response Format (200 OK):**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 5,
+      "property_id": 2,
+      "property_name": "Apartamento Centro",
+      "start_date": "2026-01-01",
+      "end_date": "2027-01-01",
+      "rent_amount": 2500.00,
+      "status": "active",
+      "active": true,
+      "_links": { "self": "/api/v1/leases/5" }
+    },
+    {
+      "id": 3,
+      "property_id": 1,
+      "property_name": "Casa Jardim",
+      "start_date": "2024-01-01",
+      "end_date": "2025-01-01",
+      "rent_amount": 1800.00,
+      "status": "expired",
+      "active": false,
+      "_links": { "self": "/api/v1/leases/3" }
+    }
+  ],
+  "count": 2,
+  "total": 2,
+  "page": 1,
+  "page_size": 20,
+  "_links": {
+    "self": "/api/v1/tenants/10/leases?page=1",
+    "tenant": "/api/v1/tenants/10"
+  }
+}
+```
+
+**Error Responses:**
+- 400: Invalid pagination parameters
+- 401: Invalid or missing JWT token
+- 403: Access denied
+- 404: Tenant not found</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <!-- ============================================================ -->
+        <!-- LEASE API ENDPOINTS (Feature 008) -->
+        <!-- ============================================================ -->
+
+        <record id="api_endpoint_list_leases" model="thedevkitchen.api.endpoint">
+            <field name="name">List Leases</field>
+            <field name="path">/api/v1/leases</field>
+            <field name="method">GET</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Leases</field>
+            <field name="summary">List leases with pagination and filters</field>
+            <field name="description">Get paginated list of leases with multiple filters.
+
+**Security:**
+- Requires JWT + Session + Company authentication
+- Multi-tenancy: User can only access leases from companies in their `estate_company_ids`
+- Agents: Transitive RBAC — only see leases on their assigned properties
+
+**State Machine — Lease Status:**
+- `draft` → `active` → `terminated` | `expired`
+- Only forward transitions are allowed (TD-011)
+- Expired leases are set automatically by cron job (CHK002)
+
+**Query Parameters:**
+- `page` (integer, default: 1): Page number
+- `page_size` (integer, default: 20, max: 100): Items per page
+- `property_id` (integer, optional): Filter by property ID
+- `tenant_id` (integer, optional): Filter by tenant ID
+- `status` (string, optional): Filter by status (draft, active, terminated, expired)
+- `is_active` (string, optional): Filter by archived status ("true" or "false")
+
+**Response Format (200 OK):**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 5,
+      "name": "LEASE/2026/0005",
+      "property_id": 2,
+      "property_name": "Apartamento Centro",
+      "tenant_id": 10,
+      "tenant_name": "Maria Santos",
+      "start_date": "2026-01-01",
+      "end_date": "2027-01-01",
+      "rent_amount": 2500.00,
+      "status": "active",
+      "active": true,
+      "_links": { "self": "/api/v1/leases/5" }
+    }
+  ],
+  "count": 1,
+  "total": 20,
+  "page": 1,
+  "page_size": 20
+}
+```
+
+**Error Responses:**
+- 400: Invalid pagination parameters or filter values
+- 401: Invalid or missing JWT token
+- 403: Access denied to companies</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_create_lease" model="thedevkitchen.api.endpoint">
+            <field name="name">Create Lease</field>
+            <field name="path">/api/v1/leases</field>
+            <field name="method">POST</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Leases</field>
+            <field name="summary">Create a new lease</field>
+            <field name="description">Creates a new lease with validation.
+
+**Security:**
+- Requires JWT + Session + Company authentication
+
+**Validations:**
+- Property exists and belongs to user's company
+- Property is not sold
+- Tenant exists and belongs to user's company
+- `end_date` must be after `start_date`
+- No concurrent active lease on the same property (ORM constraint)
+
+**Required Fields:**
+- `property_id` (integer): Property ID
+- `tenant_id` (integer): Tenant ID
+- `start_date` (string): Start date (YYYY-MM-DD)
+- `end_date` (string): End date (YYYY-MM-DD)
+- `rent_amount` (number): Monthly rent amount (> 0)
+
+**Optional Fields:**
+- `status` (string): Initial status — "draft" (default) or "active"
+
+**Request Example:**
+```json
+{
+  "property_id": 2,
+  "tenant_id": 10,
+  "start_date": "2026-02-01",
+  "end_date": "2027-02-01",
+  "rent_amount": 3000.00,
+  "status": "draft"
+}
+```
+
+**Response Format (201 Created):**
+```json
+{
+  "success": true,
+  "message": "Lease created successfully",
+  "data": {
+    "id": 12,
+    "name": "LEASE/2026/0012",
+    "property_id": 2,
+    "tenant_id": 10,
+    "start_date": "2026-02-01",
+    "end_date": "2027-02-01",
+    "rent_amount": 3000.00,
+    "status": "draft",
+    "active": true,
+    "_links": { "self": "/api/v1/leases/12" }
+  }
+}
+```
+
+**Error Responses:**
+- 400: Validation failed (missing fields, end_date before start_date, property already has active lease)
+- 401: Invalid or missing JWT token
+- 403: Access denied
+- 404: Property or Tenant not found</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_get_lease" model="thedevkitchen.api.endpoint">
+            <field name="name">Get Lease</field>
+            <field name="path">/api/v1/leases/{lease_id}</field>
+            <field name="method">GET</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Leases</field>
+            <field name="summary">Get lease details by ID</field>
+            <field name="description">Returns lease details with property info, tenant info, and renewal history.
+
+**Security:**
+- Requires JWT + Session + Company authentication
+- Multi-tenancy: Lease must belong to user's companies
+- Agents: Only see leases on their assigned properties
+
+**Path Parameters:**
+- `lease_id` (integer): Lease ID
+
+**Response Format (200 OK):**
+```json
+{
+  "success": true,
+  "data": {
+    "id": 5,
+    "name": "LEASE/2026/0005",
+    "property": { "id": 2, "name": "Apartamento Centro" },
+    "tenant": { "id": 10, "name": "Maria Santos" },
+    "start_date": "2026-01-01",
+    "end_date": "2027-01-01",
+    "rent_amount": 2500.00,
+    "status": "active",
+    "active": true,
+    "renewal_history": [
+      {
+        "id": 1,
+        "previous_end_date": "2026-06-30",
+        "new_end_date": "2027-01-01",
+        "previous_rent": 2200.00,
+        "new_rent": 2500.00,
+        "reason": "Annual renewal",
+        "renewal_date": "2026-06-15T10:00:00Z"
+      }
+    ],
+    "_links": {
+      "self": "/api/v1/leases/5",
+      "renew": "/api/v1/leases/5/renew",
+      "terminate": "/api/v1/leases/5/terminate"
+    }
+  }
+}
+```
+
+**Error Responses:**
+- 401: Invalid or missing JWT token
+- 403: Access denied
+- 404: Lease not found</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_update_lease" model="thedevkitchen.api.endpoint">
+            <field name="name">Update Lease</field>
+            <field name="path">/api/v1/leases/{lease_id}</field>
+            <field name="method">PUT</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Leases</field>
+            <field name="summary">Update lease fields</field>
+            <field name="description">Updates lease fields. Cannot update terminated or expired leases. Supports reactivation via `{"active": true}`.
+
+**State Machine**: Direct status changes must follow valid transitions: `draft→active→terminated|expired` (TD-011).
+
+**Security:**
+- Requires JWT + Session + Company authentication
+
+**Path Parameters:**
+- `lease_id` (integer): Lease ID
+
+**Optional Fields:**
+- `start_date` (string): Start date (YYYY-MM-DD)
+- `end_date` (string): End date (YYYY-MM-DD)
+- `rent_amount` (number): Monthly rent (> 0)
+- `status` (string): Status — only valid forward transitions allowed
+
+**Request Example:**
+```json
+{
+  "rent_amount": 2800.00,
+  "status": "active"
+}
+```
+
+**Response Format (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Lease updated successfully",
+  "data": {
+    "id": 12,
+    "rent_amount": 2800.00,
+    "status": "active",
+    "_links": { "self": "/api/v1/leases/12" }
+  }
+}
+```
+
+**Error Responses:**
+- 400: Validation failed, invalid state transition, or end_date before start_date
+- 401: Invalid or missing JWT token
+- 403: Access denied
+- 404: Lease not found</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_delete_lease" model="thedevkitchen.api.endpoint">
+            <field name="name">Archive Lease (Soft Delete)</field>
+            <field name="path">/api/v1/leases/{lease_id}</field>
+            <field name="method">DELETE</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Leases</field>
+            <field name="summary">Archive a lease (soft delete)</field>
+            <field name="description">Soft-archives a lease (sets `active=false`). ADR-015 compliant.
+
+**Security:**
+- Requires JWT + Session + Company authentication
+
+**Path Parameters:**
+- `lease_id` (integer): Lease ID
+
+**Response Format (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Lease archived successfully",
+  "data": {
+    "id": 12,
+    "active": false
+  }
+}
+```
+
+**Error Responses:**
+- 401: Invalid or missing JWT token
+- 403: Access denied
+- 404: Lease not found</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_renew_lease" model="thedevkitchen.api.endpoint">
+            <field name="name">Renew Lease</field>
+            <field name="path">/api/v1/leases/{lease_id}/renew</field>
+            <field name="method">POST</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Leases</field>
+            <field name="summary">Renew an active lease</field>
+            <field name="description">Renews a lease in-place with audit trail.
+
+**Rules:**
+- Only **active** leases can be renewed
+- `new_end_date` must be after the current `end_date`
+- Creates a `real.estate.lease.renewal.history` audit record
+- Updates `end_date` (and optionally `rent_amount`) directly on the lease
+
+**Security:**
+- Requires JWT + Session + Company authentication
+
+**Path Parameters:**
+- `lease_id` (integer): Lease ID
+
+**Required Fields:**
+- `new_end_date` (string): New end date (YYYY-MM-DD, must be after current end_date)
+
+**Optional Fields:**
+- `new_rent_amount` (number): New monthly rent (> 0)
+- `reason` (string): Reason for renewal
+
+**Request Example:**
+```json
+{
+  "new_end_date": "2028-01-01",
+  "new_rent_amount": 2800.00,
+  "reason": "Annual renewal with adjustment"
+}
+```
+
+**Response Format (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Lease renewed successfully",
+  "data": {
+    "id": 5,
+    "end_date": "2028-01-01",
+    "rent_amount": 2800.00,
+    "status": "active",
+    "_links": { "self": "/api/v1/leases/5" }
+  }
+}
+```
+
+**Error Responses:**
+- 400: Lease not active, new_end_date before current end_date, or validation error
+- 401: Invalid or missing JWT token
+- 403: Access denied
+- 404: Lease not found</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_terminate_lease" model="thedevkitchen.api.endpoint">
+            <field name="name">Terminate Lease</field>
+            <field name="path">/api/v1/leases/{lease_id}/terminate</field>
+            <field name="method">POST</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Leases</field>
+            <field name="summary">Terminate a lease early</field>
+            <field name="description">Terminates a lease before its natural end date.
+
+**Rules:**
+- Only **active** leases can be terminated
+- Sets status to `terminated` via state machine context flag
+- `penalty_amount` is informational only (TD-005)
+
+**Security:**
+- Requires JWT + Session + Company authentication
+
+**Path Parameters:**
+- `lease_id` (integer): Lease ID
+
+**Required Fields:**
+- `termination_date` (string): Termination date (YYYY-MM-DD)
+
+**Optional Fields:**
+- `reason` (string): Reason for termination
+- `penalty_amount` (number): Penalty amount (>= 0, informational only)
+
+**Request Example:**
+```json
+{
+  "termination_date": "2026-09-30",
+  "reason": "Early termination by tenant",
+  "penalty_amount": 5000.00
+}
+```
+
+**Response Format (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Lease terminated successfully",
+  "data": {
+    "id": 5,
+    "status": "terminated",
+    "termination_date": "2026-09-30",
+    "_links": { "self": "/api/v1/leases/5" }
+  }
+}
+```
+
+**Error Responses:**
+- 400: Lease not active or validation error
+- 401: Invalid or missing JWT token
+- 403: Access denied
+- 404: Lease not found</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <!-- ============================================================ -->
+        <!-- SALE API ENDPOINTS (Feature 008) -->
+        <!-- ============================================================ -->
+
+        <record id="api_endpoint_list_sales" model="thedevkitchen.api.endpoint">
+            <field name="name">List Sales</field>
+            <field name="path">/api/v1/sales</field>
+            <field name="method">GET</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Sales</field>
+            <field name="summary">List sales with pagination and filters</field>
+            <field name="description">Get paginated list of sales with multiple filters.
+
+**Security:**
+- Requires JWT + Session + Company authentication
+- Multi-tenancy: User can only access sales from companies in their `estate_company_ids`
+- Agents: Transitive RBAC — only see sales on their assigned properties
+
+**Query Parameters:**
+- `page` (integer, default: 1): Page number
+- `page_size` (integer, default: 20, max: 100): Items per page
+- `property_id` (integer, optional): Filter by property ID
+- `agent_id` (integer, optional): Filter by agent ID
+- `status` (string, optional): Filter by status (completed, cancelled)
+- `min_price` (number, optional): Minimum sale price
+- `max_price` (number, optional): Maximum sale price
+- `is_active` (string, optional): Filter by archived status ("true" or "false")
+
+**Response Format (200 OK):**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "property_id": 2,
+      "property_name": "Apartamento Centro",
+      "buyer_name": "Carlos Souza",
+      "sale_date": "2026-02-10",
+      "sale_price": 450000.00,
+      "status": "completed",
+      "agent": { "id": 3, "name": "João Agent" },
+      "_links": { "self": "/api/v1/sales/1" }
+    }
+  ],
+  "count": 1,
+  "total": 8,
+  "page": 1,
+  "page_size": 20
+}
+```
+
+**Error Responses:**
+- 400: Invalid pagination or filter parameters
+- 401: Invalid or missing JWT token
+- 403: Access denied to companies</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_create_sale" model="thedevkitchen.api.endpoint">
+            <field name="name">Create Sale</field>
+            <field name="path">/api/v1/sales</field>
+            <field name="method">POST</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Sales</field>
+            <field name="summary">Create a new sale</field>
+            <field name="description">Creates a new sale record.
+
+**Side Effects:**
+- Property status is set to `sold`
+- Emits `sale.created` event via event bus (fire-and-forget, TD-002)
+
+**Validations:**
+- Property exists and belongs to user's company
+- Agent belongs to specified company (FR-023)
+- Buyer email format validated if provided
+
+**Security:**
+- Requires JWT + Session + Company authentication
+
+**Required Fields:**
+- `property_id` (integer): Property ID
+- `company_id` (integer): Company ID
+- `buyer_name` (string): Buyer's name
+- `sale_date` (string): Sale date (YYYY-MM-DD)
+- `sale_price` (number): Sale price (> 0)
+
+**Optional Fields:**
+- `buyer_phone` (string): Buyer's phone
+- `buyer_email` (string): Buyer's email (validated format)
+- `agent_id` (integer): Responsible agent ID
+- `lead_id` (integer): Originating lead ID
+
+**Request Example:**
+```json
+{
+  "property_id": 2,
+  "company_id": 63,
+  "buyer_name": "Carlos Souza",
+  "sale_date": "2026-02-10",
+  "sale_price": 450000.00,
+  "buyer_phone": "(11) 99888-7766",
+  "buyer_email": "carlos@example.com",
+  "agent_id": 3
+}
+```
+
+**Response Format (201 Created):**
+```json
+{
+  "success": true,
+  "message": "Sale created successfully",
+  "data": {
+    "id": 8,
+    "property_id": 2,
+    "buyer_name": "Carlos Souza",
+    "sale_date": "2026-02-10",
+    "sale_price": 450000.00,
+    "status": "completed",
+    "_links": { "self": "/api/v1/sales/8" }
+  }
+}
+```
+
+**Error Responses:**
+- 400: Validation failed (missing fields, invalid email, negative price)
+- 401: Invalid or missing JWT token
+- 403: Access denied to specified company
+- 404: Property, Company, or Agent not found</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_get_sale" model="thedevkitchen.api.endpoint">
+            <field name="name">Get Sale</field>
+            <field name="path">/api/v1/sales/{sale_id}</field>
+            <field name="method">GET</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Sales</field>
+            <field name="summary">Get sale details by ID</field>
+            <field name="description">Returns sale details with property, agent, and lead info.
+
+**Security:**
+- Requires JWT + Session + Company authentication
+- Multi-tenancy: Sale must belong to user's companies
+- Agents: Only see sales on their assigned properties
+
+**Path Parameters:**
+- `sale_id` (integer): Sale ID
+
+**Response Format (200 OK):**
+```json
+{
+  "success": true,
+  "data": {
+    "id": 8,
+    "property": { "id": 2, "name": "Apartamento Centro" },
+    "buyer_name": "Carlos Souza",
+    "buyer_phone": "(11) 99888-7766",
+    "buyer_email": "carlos@example.com",
+    "sale_date": "2026-02-10",
+    "sale_price": 450000.00,
+    "status": "completed",
+    "agent": { "id": 3, "name": "João Agent" },
+    "lead": null,
+    "company": { "id": 63, "name": "Imobiliária Exemplo" },
+    "_links": {
+      "self": "/api/v1/sales/8",
+      "cancel": "/api/v1/sales/8/cancel"
+    }
+  }
+}
+```
+
+**Error Responses:**
+- 401: Invalid or missing JWT token
+- 403: Access denied
+- 404: Sale not found</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_update_sale" model="thedevkitchen.api.endpoint">
+            <field name="name">Update Sale</field>
+            <field name="path">/api/v1/sales/{sale_id}</field>
+            <field name="method">PUT</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Sales</field>
+            <field name="summary">Update sale fields</field>
+            <field name="description">Updates sale fields. Cannot update cancelled sales. Supports reactivation via `{"active": true}`.
+
+**Note**: No DELETE endpoint for sales — use cancel instead (TD-003).
+
+**Security:**
+- Requires JWT + Session + Company authentication
+
+**Path Parameters:**
+- `sale_id` (integer): Sale ID
+
+**Optional Fields:**
+- `buyer_name` (string): Buyer's name
+- `buyer_phone` (string): Buyer's phone
+- `buyer_email` (string): Buyer's email (validated format)
+- `sale_date` (string): Sale date (YYYY-MM-DD)
+- `sale_price` (number): Sale price (> 0)
+
+**Request Example:**
+```json
+{
+  "sale_price": 460000.00,
+  "buyer_email": "carlos.new@example.com"
+}
+```
+
+**Response Format (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Sale updated successfully",
+  "data": {
+    "id": 8,
+    "sale_price": 460000.00,
+    "buyer_email": "carlos.new@example.com",
+    "_links": { "self": "/api/v1/sales/8" }
+  }
+}
+```
+
+**Error Responses:**
+- 400: Validation failed or sale is cancelled
+- 401: Invalid or missing JWT token
+- 403: Access denied
+- 404: Sale not found</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_cancel_sale" model="thedevkitchen.api.endpoint">
+            <field name="name">Cancel Sale</field>
+            <field name="path">/api/v1/sales/{sale_id}/cancel</field>
+            <field name="method">POST</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Sales</field>
+            <field name="summary">Cancel a sale with mandatory reason</field>
+            <field name="description">Cancels a sale with a mandatory reason.
+
+**Side Effects:**
+- Sets sale status to `cancelled`, records cancellation date
+- Property status is reverted from `sold` only if property is still in `sold` state (cancel guard — TD-012)
+- Already-cancelled sales return 400
+
+**Security:**
+- Requires JWT + Session + Company authentication
+
+**Path Parameters:**
+- `sale_id` (integer): Sale ID
+
+**Required Fields:**
+- `reason` (string): Reason for cancellation
+
+**Request Example:**
+```json
+{
+  "reason": "Buyer withdrew from deal"
+}
+```
+
+**Response Format (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Sale cancelled successfully",
+  "data": {
+    "id": 8,
+    "status": "cancelled",
+    "cancellation_date": "2026-02-15",
+    "cancellation_reason": "Buyer withdrew from deal",
+    "_links": { "self": "/api/v1/sales/8" }
+  }
+}
+```
+
+**Error Responses:**
+- 400: Sale already cancelled, missing reason, or validation error
+- 401: Invalid or missing JWT token
+- 403: Access denied
+- 404: Sale not found</field>
+            <field name="active" eval="True"/>
+        </record>
+
     </data>
 </odoo>
