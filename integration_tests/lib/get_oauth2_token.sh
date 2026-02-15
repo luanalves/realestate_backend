@@ -13,8 +13,8 @@ get_oauth2_token() {
     BASE_URL="${BASE_URL:-http://localhost:8069}"
     
     # OAuth2 credentials (from seed data - see 18.0/extra-addons/quicksol_estate/data/oauth2_seed.xml)
-    CLIENT_ID="${OAUTH2_CLIENT_ID:-test-client-id}"
-    CLIENT_SECRET="${OAUTH2_CLIENT_SECRET:-test-client-secret-12345}"
+    CLIENT_ID="${OAUTH_CLIENT_ID:-test-client-id}"
+    CLIENT_SECRET="${OAUTH_CLIENT_SECRET:-test-client-secret-12345}"
     
     # Request OAuth2 token using client_credentials grant
     TOKEN_RESPONSE=$(curl -s -X POST "${BASE_URL}/api/v1/auth/token" \

@@ -25,8 +25,8 @@ get_full_auth() {
     DB_NAME="${POSTGRES_DB:-realestate}"
     
     # Step 1: Get OAuth2 JWT token
-    CLIENT_ID="${OAUTH2_CLIENT_ID:-test-client-id}"
-    CLIENT_SECRET="${OAUTH2_CLIENT_SECRET:-test-client-secret-12345}"
+    CLIENT_ID="${OAUTH_CLIENT_ID:-test-client-id}"
+    CLIENT_SECRET="${OAUTH_CLIENT_SECRET:-test-client-secret-12345}"
     
     TOKEN_RESPONSE=$(curl -s -X POST "${BASE_URL}/api/v1/auth/token" \
         -H "Content-Type: application/x-www-form-urlencoded" \
@@ -42,25 +42,21 @@ get_full_auth() {
     
     # Step 2: Get API session via /api/v1/users/login
     # This creates a thedevkitchen.api.session record (not just web session)
-    ADMIN_LOGIN="${TEST_USER_ADMIN_LOGIN:-admin}"
-    ADMIN_PASSWORD="${TEST_USER_ADMIN_PASSWORD:-admin}"
+    # Uses manager credentials (has estate_company_ids for @require_company)
+    ADMIN_LOGIN="${TEST_USER_MANAGER:-admin}"
+    ADMIN_PASSWORD="${TEST_PASSWORD_MANAGER:-admin}"
     
     SESSION_RESPONSE=$(curl -s -X POST "${BASE_URL}/api/v1/users/login" \
         -H "Content-Type: application/json" \
         -H "Authorization: Bearer ${ACCESS_TOKEN}" \
         -d "{
-            \"jsonrpc\": \"2.0\",
-            \"method\": \"call\",
-            \"params\": {
-                \"email\": \"${ADMIN_LOGIN}\",
-                \"password\": \"${ADMIN_PASSWORD}\"
-            },
-            \"id\": 1
+            \"email\": \"${ADMIN_LOGIN}\",
+            \"password\": \"${ADMIN_PASSWORD}\"
         }")
     
     # Extract session_id and user_id from result
-    SESSION_ID=$(echo "$SESSION_RESPONSE" | jq -r '.result.session_id // empty')
-    ADMIN_UID=$(echo "$SESSION_RESPONSE" | jq -r '.result.user.id // empty')
+    SESSION_ID=$(echo "$SESSION_RESPONSE" | jq -r '.session_id // .result.session_id // empty')
+    ADMIN_UID=$(echo "$SESSION_RESPONSE" | jq -r '.user.id // .result.user.id // empty')
     
     if [ -z "$SESSION_ID" ] || [ "$SESSION_ID" = "null" ]; then
         echo "ERROR: Failed to get API session" >&2
@@ -87,7 +83,12 @@ EOF
     # Export for use in caller script
     export ACCESS_TOKEN
     export ADMIN_UID
+    export SESSION_ID
     export SESSION_COOKIE_FILE="/tmp/odoo_test_session.txt"
+    
+    # Extract company_ids from login response for property queries
+    COMPANY_IDS=$(echo "$SESSION_RESPONSE" | jq -r '[.user.companies[].id // empty] | join(",")')
+    export COMPANY_IDS
     
     return 0
 }

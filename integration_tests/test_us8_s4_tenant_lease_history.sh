@@ -38,9 +38,9 @@ PASS_COUNT=0
 FAIL_COUNT=0
 WARN_COUNT=0
 
-pass() { echo -e "${GREEN}✓ PASS${NC}: $1"; ((PASS_COUNT++)); }
-fail() { echo -e "${RED}✗ FAIL${NC}: $1"; ((FAIL_COUNT++)); }
-warn() { echo -e "${YELLOW}⚠ WARN${NC}: $1"; ((WARN_COUNT++)); }
+pass() { echo -e "${GREEN}✓ PASS${NC}: $1"; ((PASS_COUNT++)) || true; }
+fail() { echo -e "${RED}✗ FAIL${NC}: $1"; ((FAIL_COUNT++)) || true; }
+warn() { echo -e "${YELLOW}⚠ WARN${NC}: $1"; ((WARN_COUNT++)) || true; }
 
 echo "============================================"
 echo "US8-S4: Tenant Lease History"
@@ -110,10 +110,11 @@ echo ""
 # ──────────────── STEP 4: Create a lease for the tenant ────────────────
 echo -e "${BLUE}STEP 4${NC}: Finding property and creating lease..."
 
-PROPERTY_LIST=$(curl -s -X GET "${BASE_URL}/api/v1/properties?page=1&page_size=5" \
+PROPERTY_LIST=$(curl -s -X GET "${BASE_URL}/api/v1/properties?offset=0&limit=5&company_ids=${COMPANY_IDS}" \
     -H "Authorization: Bearer ${ACCESS_TOKEN}" \
-    -b "${SESSION_COOKIE_FILE}" \
-    -H "Content-Type: application/json")
+    -H "X-Openerp-Session-Id: ${SESSION_ID}" \
+    -H "Content-Type: application/json" \
+    -b "${SESSION_COOKIE_FILE}")
 
 PROPERTY_ID=$(echo "$PROPERTY_LIST" | jq -r '.data[0].id // empty')
 if [ -z "$PROPERTY_ID" ] || [ "$PROPERTY_ID" = "null" ]; then

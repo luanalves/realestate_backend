@@ -40,9 +40,9 @@ PASS_COUNT=0
 FAIL_COUNT=0
 WARN_COUNT=0
 
-pass() { echo -e "${GREEN}✓ PASS${NC}: $1"; ((PASS_COUNT++)); }
-fail() { echo -e "${RED}✗ FAIL${NC}: $1"; ((FAIL_COUNT++)); }
-warn() { echo -e "${YELLOW}⚠ WARN${NC}: $1"; ((WARN_COUNT++)); }
+pass() { echo -e "${GREEN}✓ PASS${NC}: $1"; ((PASS_COUNT++)) || true; }
+fail() { echo -e "${RED}✗ FAIL${NC}: $1"; ((FAIL_COUNT++)) || true; }
+warn() { echo -e "${YELLOW}⚠ WARN${NC}: $1"; ((WARN_COUNT++)) || true; }
 
 echo "============================================"
 echo "US8-S5: Soft Delete & Record Recovery"

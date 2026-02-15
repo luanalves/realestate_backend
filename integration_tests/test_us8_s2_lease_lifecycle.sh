@@ -45,9 +45,9 @@ PASS_COUNT=0
 FAIL_COUNT=0
 WARN_COUNT=0
 
-pass() { echo -e "${GREEN}✓ PASS${NC}: $1"; ((PASS_COUNT++)); }
-fail() { echo -e "${RED}✗ FAIL${NC}: $1"; ((FAIL_COUNT++)); }
-warn() { echo -e "${YELLOW}⚠ WARN${NC}: $1"; ((WARN_COUNT++)); }
+pass() { echo -e "${GREEN}✓ PASS${NC}: $1"; ((PASS_COUNT++)) || true; }
+fail() { echo -e "${RED}✗ FAIL${NC}: $1"; ((FAIL_COUNT++)) || true; }
+warn() { echo -e "${YELLOW}⚠ WARN${NC}: $1"; ((WARN_COUNT++)) || true; }
 
 echo "============================================"
 echo "US8-S2: Lease Lifecycle Management"
@@ -94,10 +94,11 @@ echo ""
 # ──────────────── STEP 3: Get a valid property ID ────────────────
 echo -e "${BLUE}STEP 3${NC}: Finding a valid property..."
 
-PROPERTY_LIST=$(curl -s -X GET "${BASE_URL}/api/v1/properties?page=1&page_size=5" \
+PROPERTY_LIST=$(curl -s -X GET "${BASE_URL}/api/v1/properties?offset=0&limit=5&company_ids=${COMPANY_IDS}" \
     -H "Authorization: Bearer ${ACCESS_TOKEN}" \
-    -b "${SESSION_COOKIE_FILE}" \
-    -H "Content-Type: application/json")
+    -H "X-Openerp-Session-Id: ${SESSION_ID}" \
+    -H "Content-Type: application/json" \
+    -b "${SESSION_COOKIE_FILE}")
 
 PROPERTY_ID=$(echo "$PROPERTY_LIST" | jq -r '.data[0].id // empty')
 if [ -n "$PROPERTY_ID" ] && [ "$PROPERTY_ID" != "null" ]; then
@@ -112,8 +113,10 @@ echo ""
 # ──────────────── STEP 4: Create lease (201) ────────────────
 echo -e "${BLUE}STEP 4${NC}: Creating lease (POST /api/v1/leases)..."
 
-START_DATE="2026-03-01"
-END_DATE="2027-02-28"
+# Use far-future dates to avoid concurrent lease conflicts with previous test runs
+YEAR_OFFSET=$(( (TIMESTAMP % 50) + 2030 ))
+START_DATE="${YEAR_OFFSET}-01-01"
+END_DATE="${YEAR_OFFSET}-12-31"
 
 CREATE_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${BASE_URL}/api/v1/leases" \
     -H "Authorization: Bearer ${ACCESS_TOKEN}" \
@@ -282,6 +285,36 @@ fi
 
 echo ""
 
+# ──────────────── STEP 9b: Activate lease (draft → active) ────────────────
+echo -e "${BLUE}STEP 9b${NC}: Activating lease (PUT /api/v1/leases/${LEASE_ID} status=active)..."
+
+ACTIVATE_RESPONSE=$(curl -s -w "\n%{http_code}" -X PUT "${BASE_URL}/api/v1/leases/${LEASE_ID}" \
+    -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+    -b "${SESSION_COOKIE_FILE}" \
+    -H "Content-Type: application/json" \
+    -d "{
+        \"status\": \"active\"
+    }")
+
+HTTP_CODE=$(echo "$ACTIVATE_RESPONSE" | tail -n 1)
+BODY=$(echo "$ACTIVATE_RESPONSE" | sed '$d')
+
+if [ "$HTTP_CODE" = "200" ]; then
+    pass "Lease activated (draft → active)"
+else
+    fail "Expected 200 for activation, got ${HTTP_CODE}"
+    echo "  Response: $BODY"
+fi
+
+LEASE_STATUS=$(echo "$BODY" | jq -r '.data.status // empty')
+if [ "$LEASE_STATUS" = "active" ]; then
+    pass "Lease status confirmed: active"
+else
+    warn "Expected status 'active', got '${LEASE_STATUS}'"
+fi
+
+echo ""
+
 # ──────────────── STEP 10: Renew lease (200) — creates history ────────────────
 echo -e "${BLUE}STEP 10${NC}: Renewing lease (POST /api/v1/leases/${LEASE_ID}/renew)..."
 
@@ -290,7 +323,7 @@ RENEW_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${BASE_URL}/api/v1/leases/
     -b "${SESSION_COOKIE_FILE}" \
     -H "Content-Type: application/json" \
     -d "{
-        \"new_end_date\": \"2028-02-28\",
+        \"new_end_date\": \"$(( YEAR_OFFSET + 1 ))-12-31\",
         \"new_rent_amount\": 3000.00,
         \"reason\": \"Annual renewal with adjustment\"
     }")
@@ -307,8 +340,8 @@ fi
 
 # Verify updated end_date
 NEW_END=$(echo "$BODY" | jq -r '.data.end_date // empty')
-if [ "$NEW_END" = "2028-02-28" ]; then
-    pass "End date updated to 2028-02-28"
+if [ "$NEW_END" = "$(( YEAR_OFFSET + 1 ))-12-31" ]; then
+    pass "End date updated to $(( YEAR_OFFSET + 1 ))-12-31"
 else
     warn "End date mismatch: ${NEW_END}"
 fi

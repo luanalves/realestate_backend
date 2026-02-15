@@ -44,9 +44,9 @@ PASS_COUNT=0
 FAIL_COUNT=0
 WARN_COUNT=0
 
-pass() { echo -e "${GREEN}✓ PASS${NC}: $1"; ((PASS_COUNT++)); }
-fail() { echo -e "${RED}✗ FAIL${NC}: $1"; ((FAIL_COUNT++)); }
-warn() { echo -e "${YELLOW}⚠ WARN${NC}: $1"; ((WARN_COUNT++)); }
+pass() { echo -e "${GREEN}✓ PASS${NC}: $1"; ((PASS_COUNT++)) || true; }
+fail() { echo -e "${RED}✗ FAIL${NC}: $1"; ((FAIL_COUNT++)) || true; }
+warn() { echo -e "${YELLOW}⚠ WARN${NC}: $1"; ((WARN_COUNT++)) || true; }
 
 echo "============================================"
 echo "US8-S3: Sale Management"
@@ -69,13 +69,15 @@ TIMESTAMP=$(date +%s)
 # ──────────────── STEP 2: Get a valid property + company ────────────────
 echo -e "${BLUE}STEP 2${NC}: Finding a valid property and company..."
 
-PROPERTY_LIST=$(curl -s -X GET "${BASE_URL}/api/v1/properties?page=1&page_size=5" \
+PROPERTY_LIST=$(curl -s -X GET "${BASE_URL}/api/v1/properties?offset=0&limit=5&company_ids=${COMPANY_IDS}" \
     -H "Authorization: Bearer ${ACCESS_TOKEN}" \
-    -b "${SESSION_COOKIE_FILE}" \
-    -H "Content-Type: application/json")
+    -H "X-Openerp-Session-Id: ${SESSION_ID}" \
+    -H "Content-Type: application/json" \
+    -b "${SESSION_COOKIE_FILE}")
 
 PROPERTY_ID=$(echo "$PROPERTY_LIST" | jq -r '.data[0].id // empty')
-COMPANY_ID=$(echo "$PROPERTY_LIST" | jq -r '.data[0].company_ids[0] // .data[0].company_id // empty')
+# Use the first estate company from login (COMPANY_IDS) rather than property response
+COMPANY_ID=$(echo "$COMPANY_IDS" | cut -d',' -f1)
 
 if [ -n "$PROPERTY_ID" ] && [ "$PROPERTY_ID" != "null" ]; then
     echo -e "${GREEN}✓${NC} Property found (ID: ${PROPERTY_ID})"
