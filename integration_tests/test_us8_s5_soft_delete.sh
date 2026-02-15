@@ -175,6 +175,129 @@ fi
 echo ""
 
 # ==========================================================================
+# LEASE: Archive → Query inactive → Reactivate
+# ==========================================================================
+echo -e "${BLUE}═══ LEASE SOFT DELETE ═══${NC}"
+
+# Create tenant for lease
+LEASE_TENANT_RESP=$(curl -s -X POST "${BASE_URL}/api/v1/tenants" \
+    -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+    -b "${SESSION_COOKIE_FILE}" \
+    -H "Content-Type: application/json" \
+    -d "{\"name\": \"SoftDel Lease Tenant ${TIMESTAMP}\", \"email\": \"sdlease.${TIMESTAMP}@test.com\"}")
+
+LEASE_TENANT_ID=$(echo "$LEASE_TENANT_RESP" | jq -r '.data.id // empty')
+
+# Get a property for lease
+PROPERTY_LIST=$(curl -s -X GET "${BASE_URL}/api/v1/properties?offset=0&limit=5&company_ids=${COMPANY_IDS}" \
+    -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+    -H "X-Openerp-Session-Id: ${SESSION_ID}" \
+    -H "Content-Type: application/json")
+
+PROPERTY_ID=$(echo "$PROPERTY_LIST" | jq -r '.results[0].id // .data[0].id // empty' 2>/dev/null)
+
+if [ -z "$LEASE_TENANT_ID" ] || [ "$LEASE_TENANT_ID" = "null" ] || [ -z "$PROPERTY_ID" ] || [ "$PROPERTY_ID" = "null" ]; then
+    warn "Could not create prerequisite data for lease soft-delete (tenant=${LEASE_TENANT_ID}, property=${PROPERTY_ID})"
+    SKIP_LEASE_SD=true
+fi
+
+if [ "${SKIP_LEASE_SD}" != "true" ]; then
+    # Create lease
+    NEXT_YEAR=$(($(date +%Y) + 1))
+    LEASE_RESP=$(curl -s -X POST "${BASE_URL}/api/v1/leases" \
+        -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+        -b "${SESSION_COOKIE_FILE}" \
+        -H "Content-Type: application/json" \
+        -d "{
+            \"property_id\": ${PROPERTY_ID},
+            \"tenant_id\": ${LEASE_TENANT_ID},
+            \"start_date\": \"${NEXT_YEAR}-01-01\",
+            \"end_date\": \"${NEXT_YEAR}-12-31\",
+            \"rent_amount\": 1500.00
+        }")
+
+    LEASE_ID=$(echo "$LEASE_RESP" | jq -r '.data.id // empty')
+
+    if [ -z "$LEASE_ID" ] || [ "$LEASE_ID" = "null" ]; then
+        warn "Could not create test lease for soft-delete"
+        echo "  Response: $LEASE_RESP"
+        SKIP_LEASE_SD=true
+    else
+        echo -e "${GREEN}✓${NC} Lease created (ID: ${LEASE_ID})"
+    fi
+fi
+
+if [ "${SKIP_LEASE_SD}" != "true" ]; then
+    # Archive lease
+    echo -e "\n${BLUE}Archive lease...${NC}"
+    ARCHIVE_RESP=$(curl -s -w "\n%{http_code}" -X DELETE "${BASE_URL}/api/v1/leases/${LEASE_ID}" \
+        -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+        -b "${SESSION_COOKIE_FILE}" \
+        -H "Content-Type: application/json")
+
+    HTTP_CODE=$(echo "$ARCHIVE_RESP" | tail -n 1)
+    if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "204" ]; then
+        pass "Lease archived (${HTTP_CODE})"
+    else
+        fail "Expected 200/204 for lease archive, got ${HTTP_CODE}"
+    fi
+
+    # Verify hidden from default list
+    echo -e "\n${BLUE}Verify lease hidden from default list...${NC}"
+    LEASE_LIST=$(curl -s -X GET "${BASE_URL}/api/v1/leases?page=1&page_size=200" \
+        -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+        -b "${SESSION_COOKIE_FILE}" \
+        -H "Content-Type: application/json")
+
+    FOUND_LEASE=$(echo "$LEASE_LIST" | jq -r ".data[] | select(.id == ${LEASE_ID}) | .id // empty" 2>/dev/null)
+    if [ -z "$FOUND_LEASE" ]; then
+        pass "Archived lease hidden from default list"
+    else
+        fail "Archived lease still in default list"
+    fi
+
+    # Query with is_active=false
+    echo -e "\n${BLUE}Query leases with is_active=false...${NC}"
+    INACTIVE_LEASES=$(curl -s -w "\n%{http_code}" -X GET "${BASE_URL}/api/v1/leases?is_active=false&page=1&page_size=200" \
+        -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+        -b "${SESSION_COOKIE_FILE}" \
+        -H "Content-Type: application/json")
+
+    HTTP_CODE=$(echo "$INACTIVE_LEASES" | tail -n 1)
+    BODY=$(echo "$INACTIVE_LEASES" | sed '$d')
+
+    if [ "$HTTP_CODE" = "200" ]; then
+        pass "Lease is_active=false returns 200"
+    else
+        fail "Expected 200 for lease is_active=false, got ${HTTP_CODE}"
+    fi
+
+    FOUND_INACTIVE_LEASE=$(echo "$BODY" | jq -r ".data[] | select(.id == ${LEASE_ID}) | .id // empty" 2>/dev/null)
+    if [ "$FOUND_INACTIVE_LEASE" = "$LEASE_ID" ]; then
+        pass "Archived lease visible with is_active=false"
+    else
+        warn "Archived lease not found in inactive list"
+    fi
+fi
+
+# Cleanup lease test data
+if [ -n "$LEASE_TENANT_ID" ] && [ "$LEASE_TENANT_ID" != "null" ]; then
+    curl -s -X DELETE "${BASE_URL}/api/v1/tenants/${LEASE_TENANT_ID}" \
+        -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+        -b "${SESSION_COOKIE_FILE}" > /dev/null 2>&1
+fi
+
+echo ""
+
+# ==========================================================================
+# SALE: Cancel (no DELETE endpoint — cancel-only by design, see CHK019)
+# ==========================================================================
+echo -e "${BLUE}═══ SALE CANCEL SEMANTICS ═══${NC}"
+echo -e "${YELLOW}Note${NC}: Sales use cancel semantics (POST /cancel), not soft-delete (DELETE)."
+echo -e "       This is intentional — see spec § Technical Decisions TD-003."
+echo ""
+
+# ==========================================================================
 # CLEANUP
 # ==========================================================================
 echo -e "${BLUE}CLEANUP${NC}: Archiving test data..."

@@ -6,20 +6,20 @@
 **Feature**: [spec.md](../spec.md)
 **Depth**: Standard | **Audience**: PR Reviewer | **Focus**: All domains
 
-**Triage Summary**: 23 ✅ RESOLVED | 14 ⚠️ SPEC GAP | 8 ℹ️ ACCEPTABLE
+**Triage Summary**: 37 ✅ RESOLVED | 0 ⚠️ SPEC GAP | 8 ℹ️ ACCEPTABLE — ALL GAPS CLOSED
 
 ## Requirement Completeness
 
-- [ ] CHK001 - ⚠️ **SPEC GAP** — Are error response formats (shape, status codes, error codes) standardized across all 18 endpoints? Two competing shapes coexist: `error_response()` → `{error, message, code}` vs `util_error()` → `{success, message, errors}`. Controllers mix both within the same endpoint. **Action: unify error envelope or document both as valid.**
+- [x] CHK001 - ✅ RESOLVED — Dual error envelope documented in spec § TD-001. Both shapes are intentional: `error_response()` for gateway-layer errors, `util_error()` for structured validation errors. Consumers MUST handle both. Unification deferred.
 - [x] CHK002 - ✅ RESOLVED — Lease `expired` transition implemented via `_cron_expire_leases()` daily cron (data/lease_cron.xml). Searches active leases with `end_date < today`, sets expired via context flag `cron_expire`.
 - [x] CHK003 - ✅ RESOLVED — Event payload is `{sale_id: int, sale: recordset}`, emitted synchronously via `_emit_sync`. Documented in code; spec can reference as-is.
 - [x] CHK004 - ✅ RESOLVED — All 3 controllers use consistent defaults: `page_size=20`, `max=100` via `min(int(page_size), 100)`.
-- [ ] CHK005 - ⚠️ **SPEC GAP** — Event emission runs inside the same transaction. Observer failures are silently swallowed (fire-and-forget for non-`before_` events). If `event_bus.emit()` itself raises, the entire sale creation rolls back. **Action: document "fire-and-forget" behavior in spec.**
+- [x] CHK005 - ✅ RESOLVED — Fire-and-forget event semantics documented in spec § TD-002. Observer failures for `after_` events are caught/logged; `before_` events propagate and abort. Bus infrastructure failure causes rollback.
 - [x] CHK006 - ℹ️ ACCEPTABLE — No bulk endpoints exist. Consistent with CRUD-first approach; can be added later.
-- [ ] CHK007 - ⚠️ **SPEC GAP** — Only lease renewals have dedicated audit trail (`renewal_history`). Tenant archive stores `deactivation_date`/`reason` on the record. Sale cancellation stores `cancellation_date`/`reason` on the record. No general-purpose audit log model. **Action: document that audit is limited to in-record fields + renewal history.**
+- [x] CHK007 - ✅ RESOLVED — Audit trail scope documented in spec § TD-005. In-record fields for tenant/sale, `lease.renewal.history` model for lease renewals. General audit log deferred.
 - [x] CHK008 - ✅ RESOLVED — Computed name: `"{Property} - {Tenant} ({start_date})"`, fallback `"New Lease"`. Stored computed field.
 - [x] CHK009 - ✅ RESOLVED — `action_cancel()` now guards property revert: only sets `state='new'` if `property_id.state == 'sold'`. Skips revert if property state was changed after sale creation.
-- [ ] CHK010 - ⚠️ **SPEC GAP** — Tenant archive (`DELETE`) performs soft-delete **without checking for active leases**. No warning, no guard. Spec edge case mentions warning but no endpoint implements it. **Action: add active-lease check or remove warning from spec.**
+- [x] CHK010 - ✅ RESOLVED — Added active-lease check to `delete_tenant()`. Archive proceeds but response includes `warning` field with count of active leases. Matches spec edge case. Documented in § TD-004.
 
 ## Requirement Clarity
 
@@ -34,9 +34,9 @@
 ## Requirement Consistency
 
 - [x] CHK018 - ✅ RESOLVED (by design) — Sale's dual `company_id` (M2O) + `company_ids` (M2M) is intentional: `company_id` = primary transaction company, `company_ids` = visibility scope. Controller validates and sets both.
-- [ ] CHK019 - ⚠️ **SPEC GAP** — Sale has **no DELETE endpoint** (only `POST /cancel`). Tenant and Lease have `DELETE` (soft-archive). Sale uses cancel semantics instead of archive. `active` field exists but no archive endpoint. **Action: add `DELETE /sales/<id>` for archive, or document cancel-only as intentional.**
+- [x] CHK019 - ✅ RESOLVED — Cancel-only semantics for sales documented in spec § TD-003. Sales use `POST /cancel` (business action with property revert), not soft-archive. The `active` field is not toggled by any endpoint. Intentional by design.
 - [x] CHK020 - ✅ RESOLVED — All controllers include status-aware action links: lease has `renew`/`terminate` (when active), sale has `cancel` (when not cancelled), tenant has `leases` sub-resource link.
-- [ ] CHK021 - ⚠️ **SPEC GAP** — Integration test `test_us8_s5_soft_delete.sh` tests **only tenants**. No lease or sale soft-delete/reactivation integration tests. **Action: extend S5 test to cover all 3 entities.**
+- [x] CHK021 - ✅ RESOLVED — Extended `test_us8_s5_soft_delete.sh` with lease archive→query inactive→verify hidden cycle (4 new tests). Sale section documents cancel-only semantics per TD-003. S5 now passes 11/11.
 
 ## Acceptance Criteria Quality
 
@@ -47,7 +47,7 @@
 
 ## Scenario Coverage
 
-- [ ] CHK026 - ⚠️ **SPEC GAP** — Concurrent lease check is ORM-level `@api.constrains` (read-then-check). No `SELECT FOR UPDATE`, no advisory lock. Two simultaneous requests could pass the check before either commits. **Action: document as known limitation or add DB-level locking.**
+- [x] CHK026 - ✅ RESOLVED — Concurrent lease race condition documented as known limitation in spec § TD-006. ORM-level check is sufficient for MVP low-concurrency usage. PostgreSQL `EXCLUDE` constraint or `FOR UPDATE` lock documented as future mitigation.
 - [x] CHK027 - ✅ RESOLVED — Added agent RBAC tests in `test_us8_s6_isolation_rbac.sh` (Part 2): Agent login → list tenants/leases/sales → verifies filtered results. Gracefully skips when agent user not provisioned.
 - [x] CHK028 - ℹ️ ACCEPTABLE — Unbounded `One2many` for renewal history is standard Odoo pattern. `lease_id` has `index=True`. Pagination on detail endpoint mitigates performance concerns.
 - [x] CHK029 - ✅ RESOLVED — Sale model has **no FK to Tenant** (`buyer_name`/`buyer_partner_id` are separate fields). Tenant archive has no sale integrity concern.
@@ -62,23 +62,23 @@
 
 ## Non-Functional Requirements
 
-- [ ] CHK035 - ⚠️ **SPEC GAP** — No rate limiting on CRUD endpoints. A `rate_limit_exceeded` helper exists in `error_handler.py` (returns 429) but is **never called** from feature 008 controllers. **Action: define rate limit thresholds or note as deferred.**
+- [x] CHK035 - ✅ RESOLVED — Rate limiting deferred, documented in spec § TD-007. Internal API behind SSR frontend; Odoo WSGI `limit_request` provides natural back-pressure. Per-endpoint thresholds to be defined if public exposure is planned.
 - [x] CHK036 - ℹ️ ACCEPTABLE — Odoo WSGI `limit_request` (default 8192) covers payload limits. No custom validation needed for JSON payloads.
-- [ ] CHK037 - ⚠️ **SPEC GAP** — Only global SC-006 (<2s). No per-endpoint thresholds. List endpoints with large datasets may need different targets. **Action: add per-endpoint SLAs or note global threshold as sufficient.**
+- [x] CHK037 - ✅ RESOLVED — Global `< 2s` threshold documented as sufficient in spec § TD-008. All endpoints use indexed CRUD with pagination capped at 100 items. Per-endpoint SLAs to be introduced if degradation is observed.
 - [x] CHK038 - ✅ RESOLVED — All 3 controllers use `_logger.error(exc_info=True)` on catch blocks and `_logger.warning` for validation errors. EventBus uses `_logger.debug`. Structured logging in place.
-- [ ] CHK039 - ⚠️ **SPEC GAP** — All error messages are hardcoded English. `_()` i18n function only in `schema.py`, not in controllers. Headless API typically uses English errors, but spec should clarify given Portuguese user base. **Action: decide on i18n policy for API errors.**
+- [x] CHK039 - ✅ RESOLVED — English-only API error policy documented in spec § TD-009. Headless API uses stable English strings; SSR frontend translates to user's locale. Standard practice for machine-consumable APIs.
 
 ## Security Requirements
 
 - [x] CHK040 - ✅ RESOLVED — Company isolation violations consistently return **404** (not 403) across all 3 controllers. Prevents information leakage (can't distinguish "not found" vs "not yours").
-- [ ] CHK041 - ⚠️ **SPEC GAP** — `_serialize_sale` **always** returns `buyer_phone`/`buyer_email` regardless of role. Agents, managers, and owners see identical fields. **Action: define field visibility policy by role or document full exposure as acceptable.**
+- [x] CHK041 - ✅ RESOLVED — Full buyer field exposure documented as acceptable in spec § TD-010. All authenticated roles have legitimate business need for buyer contact. LGPD field-level masking documented as future enhancement.
 - [x] CHK042 - ℹ️ ACCEPTABLE — No HTML rendering in REST API → no XSS risk. Odoo ORM uses parameterized queries → no SQLi risk. `.strip()` applied to key string fields. Adequate for headless API.
 
 ## Dependencies & Assumptions
 
 - [x] CHK043 - ✅ RESOLVED — `quicksol.event.bus` exists, is fully implemented, imported, tested (in `tests/observers/`), and used by sale, property, and auth modules.
 - [x] CHK044 - ✅ RESOLVED — Spec explicitly justifies in two places: "shared email (e.g., a household) is acceptable". Code matches — no `_sql_constraints` on email, only format validation.
-- [ ] CHK045 - ⚠️ **SPEC GAP** — Redis and PostgreSQL are documented only in `plan.md`, not in `spec.md` Dependencies section. **Action: add infrastructure requirements reference to spec or cross-link to plan.**
+- [x] CHK045 - ✅ RESOLVED — Infrastructure dependencies (PostgreSQL 14+, Redis 7) added to spec § Dependencies with cross-reference to plan.md § Technical Context.
 
 ---
 
@@ -86,26 +86,41 @@
 
 | Verdict | Count | Items |
 |---------|-------|-------|
-| ✅ RESOLVED | 23 | CHK002-004, 006, 008-009, 011-018, 020, 022-025, 027, 029-032, 034, 036, 038, 040, 042-044 |
-| ⚠️ SPEC GAP | 14 | CHK001, 005, 007, 010, 019, 021, 026, 035, 037, 039, 041, 045 |
+| ✅ RESOLVED | 37 | CHK001-005, 007-009, 010-015, 016-027, 029-032, 034-037, 038-041, 042-045 |
+| ⚠️ SPEC GAP | 0 | — |
 | ℹ️ ACCEPTABLE | 8 | CHK006, 011, 012, 016, 017, 028, 033, 034, 036 |
 
-### Critical Gaps — ALL RESOLVED ✅
+### All Gaps Closed ✅
 
-| # | Gap | Resolution |
-|---|-----|-----------|
-| CHK002 | No `expired` status transition | ✅ Added `_cron_expire_leases()` daily cron + `data/lease_cron.xml` |
-| CHK009/031 | Sale cancel reverts property blindly | ✅ Added guard: only revert if `property_id.state == 'sold'` |
-| CHK022 | No cross-company isolation tests | ✅ Added `test_us8_s6_isolation_rbac.sh` Part 1 (cross-company negative tests) |
-| CHK024 | No state machine validation | ✅ Added `VALID_TRANSITIONS` in `write()` override + 10 unit tests |
-| CHK027 | No agent-scoped integration tests | ✅ Added `test_us8_s6_isolation_rbac.sh` Part 2 (agent RBAC tests) |
+**Critical gaps** (5 items — code fixes, committed `3059278`):
 
-### Low Priority (document in spec, address later)
+| # | Resolution |
+|---|-----------|
+| CHK002 | `_cron_expire_leases()` daily cron + `data/lease_cron.xml` |
+| CHK009/031 | Sale cancel guard: only revert if `property_id.state == 'sold'` |
+| CHK024 | `VALID_TRANSITIONS` state machine in `write()` + 10 unit tests |
+| CHK022 | `test_us8_s6_isolation_rbac.sh` Part 1 (cross-company negative tests) |
+| CHK027 | `test_us8_s6_isolation_rbac.sh` Part 2 (agent RBAC tests) |
 
-| # | Gap | Notes |
-|---|-----|-------|
-| CHK001 | Dual error response format | Cosmetic; both work. Unify in future refactor |
-| CHK005 | Event failure behavior | Already fire-and-forget; just document it |
-| CHK007 | Limited audit beyond renewals | In-record fields adequate for MVP |
-| CHK035 | No rate limiting | Deferred; not in MVP scope |
-| CHK039 | English-only error messages | Standard for headless API |
+**Spec documentation gaps** (10 items — documented in spec.md § Technical Decisions):
+
+| # | Decision | Spec § |
+|---|----------|--------|
+| CHK001 | Dual error envelope: both valid, unification deferred | TD-001 |
+| CHK005 | Event bus fire-and-forget semantics | TD-002 |
+| CHK019 | Sale cancel-only, no DELETE endpoint | TD-003 |
+| CHK010 | Tenant archive with active-lease warning | TD-004 |
+| CHK007 | Audit trail scope: in-record fields + renewal history | TD-005 |
+| CHK026 | Concurrent lease overlap: ORM-level, known limitation | TD-006 |
+| CHK035 | Rate limiting deferred (internal API) | TD-007 |
+| CHK037 | Global < 2s SLA sufficient | TD-008 |
+| CHK039 | English-only error messages (SSR translates) | TD-009 |
+| CHK041 | Full buyer field exposure acceptable for MVP | TD-010 |
+| CHK045 | Infrastructure deps added to spec Dependencies | — |
+
+**Code fixes** (2 items — implemented):
+
+| # | Fix |
+|---|-----|
+| CHK010 | Active-lease warning in `delete_tenant()` response |
+| CHK021 | S5 extended with lease soft-delete tests (11/11 passing) |

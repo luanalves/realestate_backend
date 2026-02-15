@@ -384,6 +384,22 @@ class TenantApiController(http.Controller):
             except Exception:
                 pass
 
+            # Active-lease warning (Edge Case: tenant archived with active leases)
+            active_leases = request.env['real.estate.lease'].sudo().search([
+                ('tenant_id', '=', tenant.id),
+                ('status', 'in', ['draft', 'active']),
+                ('active', '=', True),
+            ])
+            warning = None
+            if active_leases:
+                warning = (
+                    f"Tenant has {len(active_leases)} active lease(s). "
+                    "Leases remain active; tenant record is now archived."
+                )
+                _logger.warning(
+                    f"Archiving tenant {tenant_id} with {len(active_leases)} active lease(s)"
+                )
+
             # Soft delete
             tenant.write({
                 'active': False,
@@ -391,8 +407,12 @@ class TenantApiController(http.Controller):
                 'deactivation_reason': reason,
             })
 
+            response_data = {'id': tenant.id, 'active': False}
+            if warning:
+                response_data['warning'] = warning
+
             resp, code = util_success(
-                data={'id': tenant.id, 'active': False},
+                data=response_data,
                 message='Tenant archived successfully',
             )
             return request.make_json_response(resp, status=code)

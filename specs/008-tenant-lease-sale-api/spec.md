@@ -213,3 +213,112 @@ A manager needs to archive (deactivate) tenants, leases, and sales without perma
 - Authentication gateway and session management must be operational
 - Event bus system must be functional for sale creation events
 - RBAC (role-based access control) framework must be in place for profile-based permissions
+- **Infrastructure**: PostgreSQL 14+ (data persistence via Odoo ORM), Redis 7 (HTTP session storage). See [plan.md](plan.md) § Technical Context for versions and configuration.
+
+## Technical Decisions
+
+*Recorded during implementation to close specification gaps identified by checklist triage.*
+
+### TD-001 — Dual Error Response Envelope (CHK001)
+
+Two error response shapes coexist across endpoints:
+
+| Origin | Shape | Used By |
+|--------|-------|---------|
+| `error_response()` (response.py) | `{error, message, code}` | Legacy catch-all blocks, 500 errors, auth failures |
+| `util_error()` (responses.py) | `{success: false, message, errors}` | Validation errors, business logic rejections |
+
+**Decision**: Both shapes are **valid and intentional**. `error_response()` is the gateway-layer error format shared across all features. `util_error()` is the feature-specific format that supports structured `errors` payloads (e.g., field-level validation). Consumers MUST handle both envelopes. Unification is deferred to a cross-feature refactoring effort.
+
+### TD-002 — Event Bus Fire-and-Forget Semantics (CHK005)
+
+Domain events emitted via `event_bus.emit()` (e.g., `sale.created`) execute **synchronously within the same database transaction**:
+
+- **Success**: Observer callbacks run and complete before the HTTP response.
+- **Observer failure** (`after_` events): Exceptions are caught and logged; the parent operation (sale creation) **succeeds**. This is fire-and-forget by design.
+- **`before_` events**: Observer exceptions propagate and **abort** the parent operation (transaction rollback).
+- **Bus infrastructure failure**: If `event_bus.emit()` itself raises (e.g., invalid event name), the entire operation rolls back.
+
+This behavior is acceptable for MVP. Async event delivery (via Celery/RabbitMQ) is a future enhancement — see `PLANO-CELERY-RABBITMQ.md`.
+
+### TD-003 — Sale: Cancel-Only, No DELETE Endpoint (CHK019)
+
+Sales intentionally use **cancel semantics** (`POST /api/v1/sales/<id>/cancel`) instead of soft-archive (`DELETE`). Rationale:
+
+- A cancelled sale records `cancellation_date`, `cancellation_reason`, and reverts the property status — this is a **business action** with side effects, not a simple visibility toggle.
+- Soft-deleting a sale (hiding it from listings) would lose auditability of completed-then-cancelled transactions.
+- The `active` field exists on the Sale model for Odoo framework compatibility but is **not toggled** by any endpoint.
+
+If archive semantics are needed in the future, a `DELETE /api/v1/sales/<id>` endpoint can be added separately from cancellation.
+
+### TD-004 — Tenant Archive with Active Leases (CHK010)
+
+When a tenant with active or draft leases is archived (`DELETE /api/v1/tenants/<id>`):
+
+- The archive **proceeds** (tenant is deactivated).
+- Active leases **remain active** — they are not terminated or cascaded.
+- A `warning` field is included in the response indicating the number of ongoing leases.
+- This matches the Edge Case specification: "Active leases associated with the tenant remain active; a warning is returned."
+
+### TD-005 — Audit Trail Scope (CHK007)
+
+Audit capabilities in this feature are **in-record** — no general-purpose audit log model is implemented:
+
+| Entity | Audit Fields |
+|--------|-------------|
+| Tenant | `deactivation_date`, `deactivation_reason` on archive |
+| Lease | `renewal_history` (One2many to `lease.renewal.history` model), `termination_date`, `termination_reason`, `termination_penalty` on terminate |
+| Sale | `cancellation_date`, `cancellation_reason` on cancel |
+
+The `lease.renewal.history` model provides full provenance: who renewed, why, when, and previous contract terms. A general audit log (e.g., `mail.tracking.value`) is deferred.
+
+### TD-006 — Concurrent Lease Overlap: ORM-Level Check (CHK026)
+
+The overlapping-lease constraint (`@api.constrains` on `property_id`, `start_date`, `end_date`, `status`) is enforced at the **ORM level** using a read-then-check pattern:
+
+- Under normal load, this is sufficient — Odoo's transaction isolation (READ COMMITTED) ensures consistency for sequential requests.
+- Under **concurrent load** (two simultaneous lease creation requests for the same property), a TOCTOU race is theoretically possible: both requests read "no overlap" before either commits.
+- **Known limitation**: No `SELECT FOR UPDATE` or advisory lock is used. For MVP, this is acceptable given the low-concurrency nature of property management operations.
+- **Mitigation**: A PostgreSQL-level `EXCLUDE` constraint or application-level `FOR UPDATE` lock can be added if concurrent write patterns emerge in production.
+
+### TD-007 — Rate Limiting: Deferred (CHK035)
+
+Rate limiting is **not implemented** on Feature 008 endpoints. A `rate_limit_exceeded()` helper exists in the error handler module (returns HTTP 429) but is not called from tenant, lease, or sale controllers.
+
+**Rationale**: Feature 008 endpoints are internal APIs consumed by the SSR frontend, not public-facing. Odoo's WSGI worker pool (`limit_request`) provides a natural back-pressure mechanism. Rate limiting per-endpoint thresholds will be defined if public API exposure is planned.
+
+### TD-008 — Performance SLAs: Global Threshold (CHK037)
+
+SC-006 defines a **global** response time target: `< 2 seconds` for all 18 endpoints. No per-endpoint thresholds are specified.
+
+**Rationale**: All endpoints perform simple CRUD operations against indexed PostgreSQL tables. List endpoints use `LIMIT/OFFSET` pagination capped at 100 items, which bounds query time. If specific endpoints (e.g., `GET /tenants/<id>/leases` with large histories) show degraded performance, per-endpoint SLAs will be introduced.
+
+### TD-009 — API Error Messages: English Only (CHK039)
+
+All API error messages are in **English**. The `_()` i18n function is used in `schema.py` validation labels but **not** in controller error strings.
+
+**Decision**: Headless REST APIs conventionally use English for machine-consumable error messages. The SSR frontend is responsible for translating error codes/messages to the user's locale (Portuguese). Controller messages are stable, developer-facing strings (e.g., `"Tenant not found"`, `"Invalid email format"`).
+
+### TD-010 — Sale Serialization: Full Field Exposure (CHK041)
+
+`_serialize_sale()` returns `buyer_phone` and `buyer_email` to **all authenticated roles** (agent, manager, owner) without field-level filtering.
+
+**Decision**: Acceptable for MVP. All users with access to a sale record have a legitimate business need for buyer contact information (e.g., agents coordinate with buyers). If GDPR/LGPD field-level masking is required, a role-based serialization filter will be added: agents see partial phone (`***-1234`), managers see full fields.
+
+### TD-011 — Lease State Machine (CHK024, implemented)
+
+Lease status transitions are enforced by a `write()` override with explicit transition rules:
+
+```
+draft → [active]
+active → [terminated]  (via terminate endpoint)
+active → [expired]     (via daily cron only)
+terminated → []        (final state)
+expired → []           (final state)
+```
+
+Context flags `cron_expire` and `lease_terminate` allow controlled bypass for the cron job and terminate endpoint respectively. Generic `PUT /leases/<id>` with `status` field is validated against this state machine.
+
+### TD-012 — Sale Cancel Property Guard (CHK009/CHK031, implemented)
+
+`action_cancel()` only reverts the property status to `'new'` if the property is currently `'sold'`. If the property state was changed after the sale was created (e.g., a new lease was started), the revert is skipped to avoid overwriting a valid state.
