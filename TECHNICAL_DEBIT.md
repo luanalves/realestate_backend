@@ -2,12 +2,8 @@
 - usar uuid para identificar imóveis ao invés de id sequencial
 - criar teste e2e para criar usuários com níveis diferentes de rbac e testar os endpoints
 - colocar as api's no padrão restfull com HATEOAS - https://medium.com/@mellomaths/a-import%C3%A2ncia-do-hateoas-em-apis-restful-1ca2dc081288
-- SWAGGER
-Criar funções auxiliares para gerar schemas comuns automaticamente
-Validar sincronização entre documentação e implementação via testes automatizados
 - integrar modulo de imobiliaria com company do odoo
 - usuários administradores não devem acessar as api's dos usuários finais, somente usuários de imobiliarias devem poder fazer login e logout
-- integrar mensageria (/opt/homebrew/var/www/realestate/odoo-docker/PLANO-CELERY-RABBITMQ.md)
 - validar se tem arquivos duplicados no repositório e remover /opt/homebrew/var/www/realestate/odoo-docker/18.0/extra-addons/quicksol_estate/tests/api
 - Configurar cors nos endpoints, mas a configuração deve ser dinamica
 - o processo de login tem algumas formas de melhorar a performance, porque esta utilizando recursos do banco de dados, podemos substituir por cache na memoria (redis/memcached), também podemos utilizar tokens JWT para evitar consultas ao banco de dados.
@@ -16,3 +12,6 @@ Validar sincronização entre documentação e implementação via testes automa
 - arquivos que tem o skip como tracking_disable, podem ser problema de segurança, validar se é necessário manter desta forma?
 - melhorar a documentação técnica do sistema de RBAC e dos perfis de usuários
 - unificar as tabelas de usuário da aplicação, utilizar o documento /opt/homebrew/var/www/realestate/odoo-docker/docs/architecture/DATABASE_ARCHITECTURE_USERS.md. para compreender os usuários. O ponto importante é que vamos ter que criar o sistema de EAV para armazenar os dados adicionais dos usuários, como por exemplo o telefone, endereço, etc.
+- agents, tenants, e todos os demais perfis de usuários devem ser unificados em uma única tabela de usuários, com um campo de perfil para identificar o tipo de usuário. Isso vai facilitar a gestão dos usuários e a implementação do RBAC.
+- todos os perfis devem poder logar na aplicação e quando eles foram adicionados por outra pessoa, eles devem receber um email com um link para criar a senha. O processo de criação de senha deve ser seguro e deve expirar após um determinado período de tempo.
+- repassar perfis dos usuários para implementar função que permite cpf/cnpj /opt/homebrew/var/www/realestate/realestate_backend/18.0/extra-addons/quicksol_estate/utils/validators.py

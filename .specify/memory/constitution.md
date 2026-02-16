@@ -1,3 +1,13 @@
+## Utilitários de Validação de CPF/CNPJ (Governança de Dados)
+
+Para garantir unicidade, integridade e reutilização de validação de documentos fiscais brasileiros, o backend implementa as seguintes funções utilitárias em `utils/validators.py`:
+
+- `normalize_document(document)`: Remove pontuação/máscara, retorna apenas dígitos.
+- `is_cpf(document)`: Retorna True se for CPF válido.
+- `is_cnpj(document)`: Retorna True se for CNPJ válido.
+- `validate_document(document)`: Retorna True se for CPF ou CNPJ válido.
+
+Essas funções devem ser usadas em todos os endpoints e modelos que aceitam documentos fiscais, garantindo padronização e governança de dados.
 <!--
 Sync Impact Report - Constitution v1.2.0
 ========================================
