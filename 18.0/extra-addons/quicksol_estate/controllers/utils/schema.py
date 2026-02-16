@@ -120,7 +120,7 @@ class SchemaValidator:
         'constraints': {
             'name': lambda v: len(v.strip()) > 0,
             'company_id': lambda v: isinstance(v, int),
-            'document': validators.validate_document,
+            'document': lambda v: validators.validate_document(v) if v else False,
             'phone': lambda v: len(v.strip()) > 0,
             'email': lambda v: '@' in v and '.' in v.split('@')[-1] if v else False,
             'birthdate': lambda v: len(v.strip()) > 0,
