@@ -67,11 +67,25 @@ class AgentPropertyAssignment(models.Model):
     
     # ==================== CONSTRAINTS ====================
     
-    _sql_constraints = [
-        ('agent_property_unique',
-         'UNIQUE(agent_id, property_id, active) WHERE active = TRUE',
-         'This agent is already assigned to this property')
-    ]
+    # Note: SQL constraint with WHERE clause not supported in Odoo
+    # Using Python constraint instead (see _check_duplicate_assignment below)
+    _sql_constraints = []
+    
+    @api.constrains('agent_id', 'property_id', 'active')
+    def _check_duplicate_assignment(self):
+        """Prevent duplicate active assignments for the same agent-property pair"""
+        for assignment in self:
+            if assignment.active:
+                duplicate = self.search([
+                    ('id', '!=', assignment.id),
+                    ('agent_id', '=', assignment.agent_id.id),
+                    ('property_id', '=', assignment.property_id.id),
+                    ('active', '=', True)
+                ], limit=1)
+                if duplicate:
+                    raise ValidationError(_(
+                        'Agent %s is already assigned to property %s'
+                    ) % (assignment.agent_id.name, assignment.property_id.name))
     
     @api.constrains('agent_id', 'property_id', 'company_id')
     def _check_company_match(self):

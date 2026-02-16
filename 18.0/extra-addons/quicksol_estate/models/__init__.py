@@ -30,5 +30,6 @@ from . import lead  # FR-001: Lead management model
 from . import lead_filter  # FR-048: Saved search filters
 from . import sale
 from . import tenant
+from . import lease_renewal_history  # Feature 008: Lease renewal audit trail
 from . import company
 from . import res_users

@@ -170,7 +170,7 @@ class CommissionService:
             )
             return False
     
-    def create_commission_transaction(self, agent_id, transaction_type, transaction_amount, 
+    def create_commission_transaction(self, agent_id, company_id, transaction_type, transaction_amount, 
                                      transaction_date=None, transaction_reference=None):
         """
         Create commission transaction using active rule for agent.
@@ -182,6 +182,7 @@ class CommissionService:
         
         Args:
             agent_id: int - Agent ID
+            company_id: int - Company ID (required, validates agent belongs to company)
             transaction_type: str - 'sale' or 'rental'
             transaction_amount: float - Transaction value
             transaction_date: date - Transaction date (default: today)
@@ -198,6 +199,7 @@ class CommissionService:
             >>> service = CommissionService(env)
             >>> transaction = service.create_commission_transaction(
             ...     agent_id=1,
+            ...     company_id=63,
             ...     transaction_type='sale',
             ...     transaction_amount=500000.00,
             ...     transaction_reference='SALE-2024-001'
@@ -244,6 +246,7 @@ class CommissionService:
         # Create transaction record
         transaction = self.env['real.estate.commission.transaction'].create({
             'agent_id': agent_id,
+            'company_id': company_id,
             'rule_id': rule.id,
             'transaction_type': transaction_type,
             'transaction_amount': transaction_amount,

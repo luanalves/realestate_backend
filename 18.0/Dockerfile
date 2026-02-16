@@ -74,7 +74,8 @@ RUN pip3 install --break-system-packages --ignore-installed \
     PyJWT==2.10.1 \
     bcrypt==5.0.0 \
     cryptography==46.0.3 \
-    jsonschema==4.25.1
+    jsonschema==4.25.1 \
+    email-validator==2.1.0
 
 # Install Python development and code quality tools
 RUN pip3 install --break-system-packages \

@@ -1,7 +1,24 @@
 from odoo import models, fields, api
+from odoo.exceptions import ValidationError
 
 class ResUsers(models.Model):
     _inherit = 'res.users'
+
+    # CPF - Documento de pessoa física (obrigatório, único)
+    cpf = fields.Char(
+        string='CPF',
+        size=14,  # Format: 123.456.789-01
+        index=True,
+        tracking=True,
+        help='Brazilian individual taxpayer registry (CPF). Required for all users.'
+    )
+    
+    # SQL constraint for CPF uniqueness
+    _sql_constraints = [
+        ('cpf_unique',
+         'UNIQUE(cpf)',
+         'CPF já cadastrado. Cada usuário deve ter um CPF único.')
+    ]
 
     # Relacionamento com imobiliárias
     estate_company_ids = fields.Many2many(
@@ -19,6 +36,27 @@ class ResUsers(models.Model):
         string='Main Real Estate Company',
         help='Imobiliária principal do usuário para filtros padrão'
     )
+    
+    # Feature 007: Computed field for Owner's companies (T004)
+    owner_company_ids = fields.Many2many(
+        'thedevkitchen.estate.company',
+        compute='_compute_owner_companies',
+        string='Owned Companies',
+        help='Companies where this user is an Owner (has group_real_estate_owner)'
+    )
+    
+    @api.depends('groups_id', 'estate_company_ids')
+    def _compute_owner_companies(self):
+        """
+        Compute companies owned by this user.
+        Only users with group_real_estate_owner see their estate_company_ids as owner_company_ids.
+        """
+        owner_group = self.env.ref('quicksol_estate.group_real_estate_owner', raise_if_not_found=False)
+        for user in self:
+            if owner_group and owner_group in user.groups_id:
+                user.owner_company_ids = user.estate_company_ids
+            else:
+                user.owner_company_ids = False
     
     @api.model
     def get_user_companies(self):
@@ -41,6 +79,24 @@ class ResUsers(models.Model):
         """Garante que a imobiliária principal esteja nas imobiliárias do usuário"""
         if self.main_estate_company_id and self.main_estate_company_id not in self.estate_company_ids:
             self.estate_company_ids = [(4, self.main_estate_company_id.id)]
+    
+    @api.constrains('cpf')
+    def _check_cpf_format(self):
+        """Validate CPF format and checksum using validate_docbr"""
+        try:
+            from validate_docbr import CPF
+            cpf_validator = CPF()
+        except ImportError:
+            # validate_docbr not installed - skip validation
+            return
+        
+        for user in self:
+            if user.cpf:
+                # Remove formatting (dots and dashes)
+                cpf_clean = ''.join(filter(str.isdigit, user.cpf))
+                
+                if not cpf_validator.validate(cpf_clean):
+                    raise ValidationError(f'CPF inválido: {user.cpf}. Digite um CPF válido com 11 dígitos.')
     
     @api.model_create_multi
     def create(self, vals_list):

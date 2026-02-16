@@ -2,6 +2,7 @@ from odoo import http, fields
 from odoo.http import request
 from ..services.audit_logger import AuditLogger
 from ..middleware import require_jwt, require_session
+import json
 import logging
 
 _logger = logging.getLogger(__name__)
@@ -9,55 +10,30 @@ _logger = logging.getLogger(__name__)
 
 class UserAuthController(http.Controller):
 
-    @http.route('/api/v1/users/login', type='json', auth='none', methods=['POST'], csrf=False, cors='*')
+    @http.route('/api/v1/users/login', type='http', auth='none', methods=['POST'], csrf=False, cors='*')
     @require_jwt
-    def login(self, email=None, password=None):
+    def login(self, **kwargs):
         ip_address = request.httprequest.remote_addr
         user_agent = request.httprequest.headers.get('User-Agent', 'Unknown')
         application = request.jwt_application
         
-        # Extrai dados do JSON quando não vêm como parâmetros diretos
-        if email is None or password is None:
-            data = request.get_json_data() or {}
-            email = email or data.get('email') or data.get('login') or ''
-            password = password or data.get('password') or ''
+        # Extrai dados do JSON body
+        try:
+            data = json.loads(request.httprequest.get_data(as_text=True) or '{}')
+        except (json.JSONDecodeError, ValueError):
+            return request.make_json_response(
+                {'error': {'status': 400, 'message': 'Invalid JSON body'}},
+                status=400
+            )
+        
+        email = data.get('email') or data.get('login') or ''
+        password = data.get('password') or ''
         
         # Normaliza email
         email = (email or '').strip().lower()
 
         try:
-            _logger.info(f"Login attempt: {email} from {ip_address} by app: {application.name}")
-
-            # IMPORTANTE: auth='none' significa env.uid=None, então precisamos .sudo() para buscar usuários
-            _logger.info(f"Searching for user: {email}")
-            users = request.env['res.users'].sudo().search([('login', '=', email)], limit=1)
-            _logger.info(f"Search result: {users}, count: {len(users) if users else 0}")
-
-            if not users:
-                _logger.warning(f"User not found: {email}")
-                AuditLogger.log_failed_login(ip_address, email)
-                return {
-                    'error': {
-                        'status': 401,
-                        'message': 'Invalid credentials'
-                    }
-                }
-
-            user = users[0]
-            _logger.info(f"User found: {user.login}, active: {user.active}")
-
-            if not user.active:
-                _logger.warning(f"User inactive: {email}")
-                AuditLogger.log_failed_login(ip_address, email, 'User inactive')
-                return {
-                    'error': {
-                        'status': 403,
-                        'message': 'User inactive'
-                    }
-                }
-
-            _logger.info(f"Authenticating user: {email}")
-
+            # Autentica primeiro (valida credenciais e cria sessão)
             try:
                 credential = {
                     'type': 'password',
@@ -65,60 +41,47 @@ class UserAuthController(http.Controller):
                     'password': password
                 }
                 auth_info = request.session.authenticate(request.env.cr.dbname, credential)
-                _logger.info(f"Authentication result: uid={auth_info.get('uid')}")
 
                 uid = auth_info.get('uid')
                 if not uid or uid == -1:
                     _logger.warning(f"Auth failed for {email}: uid={uid}")
                     AuditLogger.log_failed_login(ip_address, email)
-                    return {
-                        'error': {
-                            'status': 401,
-                            'message': 'Invalid credentials'
-                        }
-                    }
+                    return request.make_json_response(
+                        {'error': {'status': 401, 'message': 'Invalid credentials'}},
+                        status=401
+                    )
                     
                 # Captura session_id APÓS authenticate (que pode gerar novo sid)
                 session_id = request.session.sid
-                _logger.info(f"Session ID after auth: {session_id}")
                 
             except Exception as auth_error:
                 _logger.error(f"Auth exception for {email}: {type(auth_error).__name__}: {auth_error}")
                 AuditLogger.log_failed_login(ip_address, email, str(auth_error))
-                return {
-                    'error': {
-                        'status': 401,
-                        'message': 'Invalid credentials'
-                    }
-                }
+                return request.make_json_response(
+                    {'error': {'status': 401, 'message': 'Invalid credentials'}},
+                    status=401
+                )
+            
+            # Após autenticação bem-sucedida, busca o usuário com sudo
+            # (usuário já autenticado, sudo é seguro aqui para ler dados do próprio usuário)
+            user = request.env['res.users'].sudo().browse(uid)
+            
+            if not user.active:
+                _logger.warning(f"User inactive: {email}")
+                AuditLogger.log_failed_login(ip_address, email, 'User inactive')
+                return request.make_json_response(
+                    {'error': {'status': 403, 'message': 'User inactive'}},
+                    status=403
+                )
 
-            _logger.info(f"Checking companies for user {email}")
-            has_companies = bool(user.estate_company_ids)
-            is_system_admin = user.has_group('base.group_system')
 
-            if not has_companies and not is_system_admin:
-                _logger.warning(f"User has no companies: {email}")
-                AuditLogger.log_failed_login(ip_address, email, 'No companies')
-                return {
-                    'error': {
-                        'status': 403,
-                        'message': 'User has no companies assigned'
-                    }
-                }
-
-            _logger.info(f"Creating API session for user {email}, session_id: {session_id}")
-
-            # Usar .sudo() para operações de API session porque:
-            # 1. É uma operação de sistema (registrar sessões), não do usuário
-            # 2. O usuário não deve precisar de permissão explícita para o sistema registrar sua própria sessão
-            # 3. Evita problemas de cache de permissões após autenticação
+            # Invalidar sessões antigas do usuário
             try:
-                old_sessions = request.env['thedevkitchen.api.session'].sudo().search([
+                old_sessions = request.env['thedevkitchen.api.session'].search([
                     ('user_id', '=', user.id),
                     ('is_active', '=', True),
                 ])
                 for old_session in old_sessions:
-                    _logger.info(f"Invalidating previous session {old_session.session_id} for user {email}")
                     old_session.write({
                         'is_active': False,
                         'logout_at': fields.Datetime.now()
@@ -129,7 +92,7 @@ class UserAuthController(http.Controller):
                 raise
 
             try:
-                api_session_record = request.env['thedevkitchen.api.session'].sudo().create({
+                api_session_record = request.env['thedevkitchen.api.session'].create({
                     'session_id': session_id,
                     'user_id': user.id,
                     'ip_address': ip_address,
@@ -142,8 +105,6 @@ class UserAuthController(http.Controller):
 
             AuditLogger.log_successful_login(ip_address, email, user.id)
 
-            _logger.info(f"Login successful for {email}")
-
             # Generate JWT token for session security (prevents session hijacking)
             try:
                 ir_http = request.env['ir.http']
@@ -152,7 +113,6 @@ class UserAuthController(http.Controller):
                     request.session['_security_token'] = security_token
                     # Também armazenar no registro de API session para persistência
                     api_session_record.security_token = security_token
-                    _logger.info(f"[SESSION TOKEN] Created for user {email} (UID {user.id})")
                 else:
                     _logger.warning(f"Failed to generate session token for {email}")
             except Exception as token_error:
@@ -160,107 +120,81 @@ class UserAuthController(http.Controller):
 
             try:
                 user_response = self._build_user_response(user)
-                _logger.info(f"User response built: {user_response}")
             except Exception as build_error:
                 _logger.error(f"Error building user response: {type(build_error).__name__}: {build_error}", exc_info=True)
                 raise
 
-            return {
+            return request.make_json_response({
                 'session_id': session_id,
                 'user': user_response
-            }
+            })
 
         except Exception as e:
             AuditLogger.log_error('user.login', email, str(e))
-            return {
-                'error': {
-                    'status': 500,
-                    'message': 'Internal server error'
-                }
-            }
+            return request.make_json_response(
+                {'error': {'status': 500, 'message': 'Internal server error'}},
+                status=500
+            )
 
-    @http.route('/api/v1/users/logout', type='json', auth='none', methods=['POST'], csrf=False, cors='*')
+    @http.route('/api/v1/users/logout', type='http', auth='none', methods=['POST'], csrf=False, cors='*')
     @require_jwt
     @require_session
-    def logout(self):
+    def logout(self, **kwargs):
+    
         try:
-            session_id = request.get_json_data().get('session_id')
+            user = request.env.user
+            api_session = request.api_session
+            session_id = request.session_id
             ip_address = request.httprequest.remote_addr
-            
-            _logger.info(f"Logout attempt for session_id: {session_id} from {ip_address}")
-            
-            if not session_id:
-                _logger.warning(f"Logout failed: no session_id provided from {ip_address}")
-                return {
-                    'error': {
-                        'status': 400,
-                        'message': 'session_id is required'
-                    }
-                }
 
-            # Find and validate API session
-            # Usar .sudo() pois logout é operação de sistema
-            try:
-                api_session = request.env['thedevkitchen.api.session'].sudo().search([
-                    ('session_id', '=', session_id),
-                    ('is_active', '=', True)
-                ], limit=1)
-            except Exception as search_error:
-                _logger.error(f"Error searching for session: {type(search_error).__name__}: {search_error}", exc_info=True)
-                raise
-
-            if not api_session:
-                _logger.warning(f"Logout failed: no active session found for {session_id}")
-                return {
-                    'error': {
-                        'status': 401,
-                        'message': 'Session not found or already logged out'
-                    }
-                }
-
-            # Get user info before deactivating
-            user = api_session.user_id
-            _logger.info(f"Logging out user: {user.login}")
-
-            # Deactivate session
-            try:
-                api_session.write({
-                    'is_active': False,
-                    'logout_at': fields.Datetime.now()
-                })
-            except Exception as write_error:
-                _logger.error(f"Error deactivating session: {type(write_error).__name__}: {write_error}", exc_info=True)
-                raise
+            api_session.write({
+                'is_active': False,
+                'logout_at': fields.Datetime.now()
+            })
 
             AuditLogger.log_logout(ip_address, user.email or user.login, user.id)
-            _logger.info(f"Logout successful for {user.login}")
-
-            return {'message': 'Logged out successfully'}
+            return request.make_json_response({'message': 'Logged out successfully'})
 
         except Exception as e:
             _logger.error(f"Logout error: {str(e)}", exc_info=True)
-            return {
-                'error': {
-                    'status': 500,
-                    'message': 'Internal server error'
-                }
-            }
+            return request.make_json_response(
+                {'error': {'status': 500, 'message': 'Internal server error'}},
+                status=500
+            )
 
-    @http.route('/api/v1/users/profile', type='json', auth='none', methods=['PATCH'], csrf=False, cors='*')
+    @http.route('/api/v1/users/profile', type='http', auth='none', methods=['PATCH'], csrf=False, cors='*')
     @require_jwt
     @require_session
-    def update_profile(self):
+    def update_profile(self, **kwargs):
         try:
             user = request.env.user
-            data = request.get_json_data()
+            try:
+                data = json.loads(request.httprequest.get_data(as_text=True) or '{}')
+            except (json.JSONDecodeError, ValueError):
+                return request.make_json_response(
+                    {'error': {'status': 400, 'message': 'Invalid JSON body'}},
+                    status=400
+                )
             ip_address = request.httprequest.remote_addr
             
             updates = {}
             
+            if 'name' in data:
+                name = str(data['name']).strip()
+                if not name:
+                    return request.make_json_response(
+                        {'error': {'status': 400, 'message': 'Name cannot be empty'}},
+                        status=400
+                    )
+                updates['name'] = name
+            
             if 'email' in data:
                 email = str(data['email']).strip().lower()
                 if '@' not in email or '.' not in email.split('@')[1]:
-                    return {'error': {'status': 400, 'message': 'Invalid email format'}}
+                    return request.make_json_response(
+                        {'error': {'status': 400, 'message': 'Invalid email format'}},
+                        status=400
+                    )
                 
                 existing = request.env['res.users'].search([
                     ('email', '=', email),
@@ -269,7 +203,10 @@ class UserAuthController(http.Controller):
                 ], limit=1)
                 
                 if existing:
-                    return {'error': {'status': 409, 'message': 'Email already in use'}}
+                    return request.make_json_response(
+                        {'error': {'status': 409, 'message': 'Email already in use'}},
+                        status=409
+                    )
                 
                 updates['email'] = email
             
@@ -280,106 +217,113 @@ class UserAuthController(http.Controller):
                 updates['mobile'] = str(data['mobile']).strip() or False
             
             if not updates:
-                return {'error': {'status': 400, 'message': 'No fields to update'}}
+                return request.make_json_response(
+                    {'error': {'status': 400, 'message': 'No fields to update'}},
+                    status=400
+                )
             
+            # Update user and reload from database
             user.write(updates)
+            request.env.cr.commit()  # Force commit to ensure DB update
+            user.invalidate_recordset()  # Clear cache to reload from database
+            
             AuditLogger.log_successful_login(ip_address, user.email or user.login, user.id)
             
-            return {
+            return request.make_json_response({
                 'user': self._build_user_response(user),
                 'message': 'Profile updated successfully'
-            }
+            })
 
         except Exception as e:
             _logger.error(f"Profile update error: {e}", exc_info=True)
-            return {'error': {'status': 500, 'message': 'Internal server error'}}
+            return request.make_json_response(
+                {'error': {'status': 500, 'message': 'Internal server error'}},
+                status=500
+            )
 
-    @http.route('/api/v1/users/change-password', type='json', auth='none', methods=['POST'], csrf=False, cors='*')
+    @http.route('/api/v1/users/change-password', type='http', auth='none', methods=['POST'], csrf=False, cors='*')
     @require_jwt
     @require_session
-    def change_password(self):
+    def change_password(self, **kwargs):
         try:
-            # Obter a sessão da API e encontrar o usuário
-            session_id = request.get_json_data().get('session_id')
-            data = request.get_json_data()
+            # Use validated objects from @require_session decorator (ADR-011)
+            user = request.env.user
             ip_address = request.httprequest.remote_addr
             
-            if not session_id:
-                _logger.warning(f"Change password failed: no session_id provided")
-                return {'error': {'status': 400, 'message': 'session_id is required'}}
+            # Extrai dados do JSON body
+            try:
+                data = json.loads(request.httprequest.get_data(as_text=True) or '{}')
+            except (json.JSONDecodeError, ValueError):
+                return request.make_json_response(
+                    {'error': {'status': 400, 'message': 'Invalid JSON body'}},
+                    status=400
+                )
             
-            # Buscar a sessão da API
-            api_session = request.env['thedevkitchen.api.session'].sudo().search([
-                ('session_id', '=', session_id),
-                ('is_active', '=', True)
-            ], limit=1)
-            
-            if not api_session:
-                _logger.warning(f"Change password failed: Invalid or inactive session {session_id}")
-                return {'error': {'status': 401, 'message': 'Invalid session'}}
-            
-            user = api_session.user_id
-            _logger.info(f"Change password request for user: {user.email or user.login}")
-            
-            # Validação de campos vazios
-            current_password = data.get('current_password', '').strip() if data.get('current_password') else ''
+            # Validação de campos vazios (suporta old_password e current_password)
+            current_password = (data.get('current_password') or data.get('old_password') or '').strip()
             new_password = data.get('new_password', '').strip() if data.get('new_password') else ''
             confirm_password = data.get('confirm_password', '').strip() if data.get('confirm_password') else ''
             
             # Validação 1: Campos obrigatórios
             if not current_password:
                 _logger.warning(f"Change password failed: current_password is empty for {user.email or user.login}")
-                return {'error': {'status': 400, 'message': 'Current password is required'}}
+                return request.make_json_response(
+                    {'error': {'status': 400, 'message': 'Current password is required'}},
+                    status=400
+                )
             
             if not new_password:
                 _logger.warning(f"Change password failed: new_password is empty for {user.email or user.login}")
-                return {'error': {'status': 400, 'message': 'New password is required'}}
+                return request.make_json_response(
+                    {'error': {'status': 400, 'message': 'New password is required'}},
+                    status=400
+                )
             
-            if not confirm_password:
-                _logger.warning(f"Change password failed: confirm_password is empty for {user.email or user.login}")
-                return {'error': {'status': 400, 'message': 'Password confirmation is required'}}
-            
-            # Validação 2: Passwords coincidem
-            if new_password != confirm_password:
+            # Validação 2: Passwords coincidem (se confirm_password foi fornecido)
+            if confirm_password and new_password != confirm_password:
                 _logger.warning(f"Change password failed: Passwords do not match for {user.email or user.login}")
-                return {'error': {'status': 400, 'message': 'New password and confirmation do not match'}}
+                return request.make_json_response(
+                    {'error': {'status': 400, 'message': 'New password and confirmation do not match'}},
+                    status=400
+                )
             
             # Validação 3: Comprimento mínimo
             if len(new_password) < 8:
-                _logger.warning(f"Change password failed: Password too short ({len(new_password)} chars) for {user.email or user.login}")
-                return {'error': {'status': 400, 'message': 'Password must be at least 8 characters long'}}
-            
-            # Validação 4: Verificar senha atual
-            # Usa o método padrão de autenticação do Odoo
-            try:
-                # Tenta autenticar o usuário com a senha fornecida
-                user_id = request.env['res.users'].authenticate(
-                    request.env.cr.dbname,  # database name
-                    user.login,
-                    current_password
+                return request.make_json_response(
+                    {'error': {'status': 400, 'message': 'Password must be at least 8 characters long'}},
+                    status=400
                 )
-                
-                if not user_id or user_id != user.id:
-                    _logger.warning(f"Change password failed: Invalid current password for {user.email or user.login}")
-                    AuditLogger.log_failed_login(ip_address, user.email or user.login, 'Invalid current password during change')
-                    return {'error': {'status': 401, 'message': 'Current password is incorrect'}}
+            
+            # Verifica se a senha atual está correta
+            try:
+                # _check_credentials espera um dict com type e password
+                user._check_credentials({'type': 'password', 'password': current_password}, {'interactive': False})
             except Exception as cred_error:
-                _logger.error(f"Error checking credentials for {user.email or user.login}: {cred_error}", exc_info=True)
-                return {'error': {'status': 401, 'message': 'Failed to verify current password'}}
+                AuditLogger.log_failed_login(ip_address, user.email or user.login, 'Invalid current password during change')
+                return request.make_json_response(
+                    {'error': {'status': 401, 'message': 'Current password is incorrect'}},
+                    status=401
+                )
             
             # Atualizar password
             try:
                 user.write({'password': new_password})
-                _logger.info(f"Password changed successfully for {user.email or user.login}")
+                request.env.cr.commit()
                 AuditLogger.log_successful_login(ip_address, user.email or user.login, user.id)
-                return {'message': 'Password changed successfully'}
+                return request.make_json_response({'message': 'Password changed successfully'})
             except Exception as write_error:
                 _logger.error(f"Error writing new password for {user.email or user.login}: {write_error}", exc_info=True)
-                return {'error': {'status': 500, 'message': 'Failed to update password in database'}}
+                return request.make_json_response(
+                    {'error': {'status': 500, 'message': 'Failed to update password in database'}},
+                    status=500
+                )
 
         except Exception as e:
             _logger.error(f"Unexpected error in change_password: {e}", exc_info=True)
-            return {'error': {'status': 500, 'message': f'Internal server error'}}
+            return request.make_json_response(
+                {'error': {'status': 500, 'message': 'Internal server error'}},
+                status=500
+            )
 
     def _build_user_response(self, user):
         return {

@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        
+        <!-- Feature 007: Company Form View (T008) -->
+        <record id="view_company_form" model="ir.ui.view">
+            <field name="name">thedevkitchen.estate.company.form</field>
+            <field name="model">thedevkitchen.estate.company</field>
+            <field name="arch" type="xml">
+                <form string="Real Estate Company">
+                    <header>
+                        <button name="action_view_properties" type="object" string="View Properties" 
+                                class="oe_highlight" invisible="property_count == 0"/>
+                        <button name="action_view_agents" type="object" string="View Agents" 
+                                class="oe_highlight" invisible="agent_count == 0"/>
+                    </header>
+                    <sheet>
+                        <div class="oe_button_box" name="button_box">
+                            <!-- T039: Owners smart button -->
+                            <button name="action_view_owners" type="object" class="oe_stat_button" icon="fa-user-circle">
+                                <field name="owner_count" widget="statinfo" string="Owners"/>
+                            </button>
+                            <button name="action_view_properties" type="object" class="oe_stat_button" icon="fa-building">
+                                <field name="property_count" widget="statinfo" string="Properties"/>
+                            </button>
+                            <button name="action_view_agents" type="object" class="oe_stat_button" icon="fa-users">
+                                <field name="agent_count" widget="statinfo" string="Agents"/>
+                            </button>
+                            <button name="action_view_tenants" type="object" class="oe_stat_button" icon="fa-user">
+                                <field name="tenant_count" widget="statinfo" string="Tenants"/>
+                            </button>
+                            <button name="action_view_leases" type="object" class="oe_stat_button" icon="fa-file-text">
+                                <field name="lease_count" widget="statinfo" string="Leases"/>
+                            </button>
+                        </div>
+                        
+                        <field name="logo" widget="image" class="oe_avatar"/>
+                        
+                        <div class="oe_title">
+                            <label for="name" class="oe_edit_only"/>
+                            <h1>
+                                <field name="name" placeholder="Company Name"/>
+                            </h1>
+                        </div>
+                        
+                        <group>
+                            <group string="Basic Information">
+                                <field name="legal_name" placeholder="Legal Name (Razão Social)"/>
+                                <field name="cnpj" placeholder="XX.XXX.XXX/XXXX-XX"/>
+                                <field name="creci" placeholder="CRECI Registration"/>
+                                <field name="foundation_date"/>
+                                <field name="active"/>
+                            </group>
+                            
+                            <group string="Contact Information">
+                                <field name="email" widget="email" placeholder="email@company.com"/>
+                                <field name="phone" placeholder="(XX) XXXX-XXXX"/>
+                                <field name="mobile" placeholder="(XX) 9XXXX-XXXX"/>
+                                <field name="website" widget="url" placeholder="https://"/>
+                            </group>
+                        </group>
+                        
+                        <group string="Address">
+                            <group>
+                                <field name="street" placeholder="Street Address"/>
+                                <field name="street2" placeholder="Complement"/>
+                                <field name="city"/>
+                            </group>
+                            <group>
+                                <field name="state_id" options="{'no_create': True}"/>
+                                <field name="zip_code" placeholder="12345-678"/>
+                                <field name="country_id" options="{'no_create': True}"/>
+                            </group>
+                        </group>
+                        
+                        <notebook>
+                            <page string="Description">
+                                <field name="description" placeholder="Company description..."/>
+                            </page>
+                        </notebook>
+                    </sheet>
+                    <div class="oe_chatter">
+                        <field name="message_follower_ids"/>
+                        <field name="activity_ids"/>
+                        <field name="message_ids"/>
+                    </div>
+                </form>
+            </field>
+        </record>
+        
+        <!-- Feature 007: Company List View (T008) -->
+        <record id="view_company_tree" model="ir.ui.view">
+            <field name="name">thedevkitchen.estate.company.tree</field>
+            <field name="model">thedevkitchen.estate.company</field>
+            <field name="arch" type="xml">
+                <list string="Real Estate Companies">
+                    <field name="name"/>
+                    <field name="cnpj"/>
+                    <field name="email"/>
+                    <field name="phone"/>
+                    <field name="city"/>
+                    <field name="state_id"/>
+                    <field name="agent_count"/>
+                    <field name="property_count"/>
+                    <field name="active" invisible="1"/>
+                </list>
+            </field>
+        </record>
+        
+        <!-- Feature 007: Company Search View (T008) -->
+        <record id="view_company_search" model="ir.ui.view">
+            <field name="name">thedevkitchen.estate.company.search</field>
+            <field name="model">thedevkitchen.estate.company</field>
+            <field name="arch" type="xml">
+                <search string="Search Companies">
+                    <field name="name" string="Company" filter_domain="['|', ('name', 'ilike', self), ('legal_name', 'ilike', self)]"/>
+                    <field name="cnpj"/>
+                    <field name="creci"/>
+                    <field name="city"/>
+                    <field name="state_id"/>
+                    
+                    <filter name="active" string="Active" domain="[('active', '=', True)]"/>
+                    <filter name="inactive" string="Inactive" domain="[('active', '=', False)]"/>
+                    
+                    <!-- TEMPORARILY DISABLED: computed fields need store=True to be searchable -->
+                    <!-- <filter name="has_properties" string="With Properties" domain="[('property_count', '>', 0)]"/> -->
+                    <!-- <filter name="has_agents" string="With Agents" domain="[('agent_count', '>', 0)]"/> -->
+                    
+                    <group expand="0" string="Group By">
+                        <filter name="group_by_state" string="State" context="{'group_by': 'state_id'}"/>
+                        <filter name="group_by_city" string="City" context="{'group_by': 'city'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+        
+        <!-- Feature 007: Company Action (T008, T009) -->
+        <record id="action_company" model="ir.actions.act_window">
+            <field name="name">Real Estate Companies</field>
+            <field name="res_model">thedevkitchen.estate.company</field>
+            <field name="view_mode">list,form</field>
+            <field name="context">{'search_default_active': 1}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Create your first Real Estate Company
+                </p>
+                <p>
+                    Manage real estate companies (imobiliárias) in the system. 
+                    Owners can create and manage their own companies.
+                </p>
+            </field>
+        </record>
+        
+    </data>
+</odoo>

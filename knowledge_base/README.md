@@ -27,6 +27,7 @@ Esta knowledge base foi criada a partir da documentação oficial do Odoo e cont
 |-----------|-----------|---------|
 | [🚀 Programming in Odoo](07-programming-in-odoo.md) | Boas práticas específicas do framework | Context, extensibilidade, transações, exceções |
 | [🏷️ Symbols and Conventions](08-symbols-conventions.md) | Nomenclatura de variáveis, métodos e classes | Models, fields, methods, ordenação de atributos |
+| [🗄️ Database Best Practices](09-database-best-practices.md) | Boas práticas para banco de dados relacional | Normalização, nomenclatura, índices, constraints, migrations |
 
 ---
 
@@ -85,7 +86,8 @@ Esta knowledge base foi criada a partir da documentação oficial do Odoo e cont
 | ⚡ Implementar widgets JS | [JavaScript Guidelines](05-javascript-guidelines.md) |
 | 🎨 Estilizar componentes | [CSS/SCSS Guidelines](06-css-scss-guidelines.md) |
 | 🏷️ Nomear variáveis/métodos | [Symbols & Conventions](08-symbols-conventions.md) |
-| 💡 Ver exemplos práticos | [EXAMPLES.md](EXAMPLES.md) |
+| �️ Design de banco de dados | [Database Best Practices](09-database-best-practices.md) |
+| �💡 Ver exemplos práticos | [EXAMPLES.md](EXAMPLES.md) |
 | ⚡ Consulta rápida | [QUICK_REFERENCE.md](QUICK_REFERENCE.md) |
 
 ---

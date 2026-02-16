@@ -94,7 +94,7 @@
     <menuitem
         id="menu_lead_filters"
         name="Saved Filters"
-        parent="menu_lead"
+        parent="menu_real_estate_lead"
         action="action_lead_filter"
         sequence="20"/>
 

@@ -10,27 +10,22 @@ _logger = logging.getLogger(__name__)
 
 
 class MeController(http.Controller):
-    """Endpoint /api/v1/me - Retorna dados do usuário da sessão"""
 
-    @http.route('/api/v1/me', type='json', auth='none', methods=['POST'], csrf=False, cors='*')
+    @http.route('/api/v1/me', type='http', auth='none', methods=['GET'], csrf=False, cors='*')
     @require_jwt
     @require_session
     def get_me(self, **kwargs):
-        """
-        GET /api/v1/me
-        
-        Returns authenticated user data including companies.
-        Requires OAuth 2.0 Bearer token + valid user session (ADR-009).
-        """
         try:
             user = request.env.user
 
             if not user or user.id == 4:
                 _logger.warning('Unauthorized /api/v1/me access attempt')
-                return {
-                    'error': 'session_required',
-                    'error_description': 'Valid user session required'
-                }
+                return request.make_json_response({
+                    'error': {
+                        'status': 401,
+                        'message': 'Valid user session required'
+                    }
+                }, status=401)
 
             companies = [
                 {
@@ -57,9 +52,13 @@ class MeController(http.Controller):
                 'active': user.active
             }
 
-            _logger.info(f'User {user.login} (UID {user.id}) retrieved profile - {len(companies)} company(ies)')
-            return {'user': user_data}
+            return request.make_json_response({'user': user_data})
 
         except Exception as e:
             _logger.error(f'Error in /api/v1/me: {e}', exc_info=True)
-            return {'error': 'server_error', 'error_description': str(e)}
+            return request.make_json_response({
+                'error': {
+                    'status': 500,
+                    'message': 'Internal server error'
+                }
+            }, status=500)

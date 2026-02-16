@@ -14,16 +14,13 @@ def require_jwt(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         auth_header = request.httprequest.headers.get('Authorization')
-        is_json = request.httprequest.method in ('POST', 'PUT', 'PATCH') and 'json' in request.httprequest.content_type.lower()
         
         if not auth_header:
-            error_dict = {'error': {'code': 'unauthorized', 'message': 'Authorization header is required'}}
-            return error_dict if is_json else _error_response(401, 'unauthorized', 'Authorization header is required')
+            return _error_response(401, 'unauthorized', 'Authorization header is required')
         
         parts = auth_header.split()
         if len(parts) != 2 or parts[0].lower() != 'bearer':
-            error_dict = {'error': {'code': 'invalid_token', 'message': 'Authorization header must be "Bearer <token>"'}}
-            return error_dict if is_json else _error_response(401, 'invalid_token', 'Authorization header must be "Bearer <token>"')
+            return _error_response(401, 'invalid_token', 'Authorization header must be "Bearer <token>"')
         
         token = parts[1]
         
@@ -31,20 +28,16 @@ def require_jwt(func):
         token_record = Token.search([('access_token', '=', token)], limit=1)
         
         if not token_record:
-            error_dict = {'error': {'code': 'invalid_token', 'message': 'Token not found or invalid'}}
-            return error_dict if is_json else _error_response(401, 'invalid_token', 'Token not found or invalid')
+            return _error_response(401, 'invalid_token', 'Token not found or invalid')
         
         if token_record.token_type != 'Bearer':
-            error_dict = {'error': {'code': 'invalid_token', 'message': 'Token type must be Bearer'}}
-            return error_dict if is_json else _error_response(401, 'invalid_token', 'Token type must be Bearer')
+            return _error_response(401, 'invalid_token', 'Token type must be Bearer')
         
         if token_record.expires_at and token_record.expires_at < fields.Datetime.now():
-            error_dict = {'error': {'code': 'token_expired', 'message': 'Token has expired'}}
-            return error_dict if is_json else _error_response(401, 'token_expired', 'Token has expired')
+            return _error_response(401, 'token_expired', 'Token has expired')
         
         if token_record.revoked:
-            error_dict = {'error': {'code': 'token_revoked', 'message': 'Token has been revoked'}}
-            return error_dict if is_json else _error_response(401, 'token_revoked', 'Token has been revoked')
+            return _error_response(401, 'token_revoked', 'Token has been revoked')
         
         request.jwt_token = token_record
         request.jwt_application = token_record.application_id
@@ -297,7 +290,12 @@ def require_session(func):
                 }
             }, status=401)
 
+        # Inject user and api_session into request context
+        # This makes them available to all endpoints using @require_session
         request.env = request.env(user=user)
+        request.api_session = api_session  # ← ADR-011: Decorator provides validated session
+        request.session_id = session_id    # ← Validated session_id for convenience
+        
         return func(*args, **kwargs)
 
     return wrapper
@@ -310,16 +308,12 @@ def require_company(func):
 
         if user.has_group('base.group_system'):
             request.company_domain = []
+            request.user_company_ids = []  # Admin has access to all companies
             return func(*args, **kwargs)
 
         if not user.estate_company_ids:
             _logger.warning(f'User {user.login} has no companies')
-            return {
-                'error': {
-                    'status': 403,
-                    'message': 'User has no company access'
-                }
-            }
+            return _error_response(403, 'no_company', 'User has no company access')
 
         request.company_domain = [('company_ids', 'in', user.estate_company_ids.ids)]
         request.user_company_ids = user.estate_company_ids.ids

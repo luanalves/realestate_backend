@@ -26,21 +26,81 @@ O framework `odoo.tests.common.HttpCase` **não persiste dados** no banco de dad
 
 **Por isso, utilizamos curl para testes de API** - ele executa contra a instância real do Odoo, persistindo dados normalmente.
 
-### ⚠️ NUNCA use JSON-RPC em testes
+### 🔐 Endpoints de Autenticação Disponíveis
+
+**Use APENAS os endpoints existentes - NÃO crie novos sistemas de autenticação.**
+
+| Endpoint | Arquivo | Tipo | Uso Recomendado | Status |
+|----------|---------|------|-----------------|--------|
+| `/api/v1/auth/token` | `auth_controller.py` | OAuth2 `client_credentials` | ✅ **PREFERENCIAL** para testes E2E (curl) | Ativo |
+| `/api/v1/users/login` | `user_auth_controller.py` | JSON-RPC | ⚠️ **EVITAR** (legado) | Ativo |
+
+**Como obter token OAuth2:**
+
+```bash
+# 1. Credenciais estão em 18.0/.env
+OAUTH_CLIENT_ID=client_xxx
+OAUTH_CLIENT_SECRET=secret_yyy
+
+# 2. Request token
+curl -X POST http://localhost:8069/api/v1/auth/token \
+  -H "Content-Type: application/json" \
+  -d '{
+    "grant_type": "client_credentials",
+    "client_id": "'$OAUTH_CLIENT_ID'",
+    "client_secret": "'$OAUTH_CLIENT_SECRET'"
+  }'
+
+# 3. Use token
+curl -X GET http://localhost:8069/api/v1/owners \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+**Helper disponível:**
+```bash
+# integration_tests/lib/get_token.sh
+source lib/get_token.sh
+TOKEN=$(get_oauth_token)
+```
+
+### ⚠️ NUNCA use JSON-RPC em novos testes
 
 Endpoints REST deste projeto **NÃO usam formato JSON-RPC**. Envie JSON direto no body:
 
 ```json
-// ✅ CORRETO - JSON direto
+// ✅ CORRETO - JSON direto (REST)
 {"email": "user@example.com", "password": "secret"}
 
-// ❌ ERRADO - wrapper JSON-RPC (NÃO usar)
+// ❌ ERRADO - wrapper JSON-RPC (EVITAR - apenas legado)
 {"jsonrpc": "2.0", "method": "call", "params": {...}}
 ```
+
+**Por que evitar JSON-RPC?**
+- ❌ Não é padrão REST
+- ❌ Dificulta integração com ferramentas
+- ❌ Adiciona camada de complexidade desnecessária
+- ✅ Usar REST puro (preferência do projeto)
 
 ## Decision
 
 **Todos os módulos desenvolvidos ou modificados neste projeto DEVEM ter cobertura de testes automatizados.**
+
+### 🎯 Princípio Arquitetural Fundamental
+
+**OS TESTES DEVEM SE ADAPTAR À APLICAÇÃO, NÃO O CONTRÁRIO.**
+
+| ❌ ERRADO | ✅ CORRETO |
+|-----------|------------|
+| Criar novos endpoints só para testes | Usar endpoints existentes nos testes |
+| Modificar middleware para testes passarem | Adaptar testes ao middleware existente |
+| Criar sistema paralelo de autenticação | Usar OAuth2 já implementado |
+| Duplicar código para facilitar testes | Testes devem usar infraestrutura real |
+
+**Justificativa:**
+- Testes que forçam mudanças na aplicação geram débito técnico
+- Código duplicado aumenta manutenção
+- Sistemas paralelos criam inconsistências
+- Testes devem validar o comportamento REAL do sistema
 
 ### Regra Fundamental: Testes Automatizados, Nunca Manuais
 

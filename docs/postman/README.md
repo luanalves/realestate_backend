@@ -4,17 +4,17 @@
 
 Complete Postman collection for Quicksol Real Estate Management System API.
 
-**Version:** 1.5.0  
-**Last Updated:** 2026-02-03  
-**Spec Coverage:** Complete API (50+ endpoints)
+**Version:** 1.7.0  
+**Last Updated:** 2026-02-12  
+**Spec Coverage:** Complete API (55+ endpoints)
 
 ## Available Collections
 
-### 1. Complete API Collection (v1.3) ⭐ RECOMMENDED
-**File:** `quicksol_api_v1.3_postman_collection.json`  
-**Coverage:** All 50+ endpoints - Complete API coverage  
+### 1. Complete API Collection (v1.7) ⭐ RECOMMENDED
+**File:** `quicksol_api_v1.7_postman_collection.json`  
+**Coverage:** All 55+ endpoints - Complete API coverage  
 **ADR Compliance:** ADR-016 (complete)  
-**Includes:** Authentication, Users, Properties, Agents, Assignments, Commissions, Performance, Leads, Activities, Filters, Master Data
+**Includes:** Authentication, Users, Properties, Agents, Assignments (full CRUD), Commissions, Performance, Leads, Activities, Filters, Master Data
 
 ### 2. Lead-Focused Collection (v1.2)
 **File:** `quicksol_api_v1.2_postman_collection.json`  
@@ -30,7 +30,32 @@ Complete Postman collection for Quicksol Real Estate Management System API.
 **Coverage:** Lead CRUD, conversions, statistics, multi-tenancy tests  
 **Feature:** 006-lead-management
 
-## Changelog v1.3 (Latest)
+## Changelog v1.7 (Latest)
+
+⚠️ **BREAKING CHANGE:** Create Owner (POST /api/v1/owners) now requires CPF field  
+✅ CPF validation using validate_docbr library  
+✅ CPF unique constraint: each user must have unique CPF  
+✅ CPF returned in Create Owner response
+
+## Changelog v1.6
+
+✅ Added GET /api/v1/assignments (list with pagination + filters)  
+✅ Added GET /api/v1/assignments/{id} (detail)  
+✅ Added PATCH /api/v1/assignments/{id} (update)  
+✅ Updated POST /api/v1/assignments (added company_id, responsibility_type, commission_percentage)  
+✅ RBAC: Admin sees all, Manager sees company, Agent sees own  
+✅ Multi-tenancy: 404 if not accessible (ADR-008)  
+✅ HATEOAS: Pagination links (self, next, prev)
+
+## Changelog v1.5
+
+✅ Fixed ADR-016 compliance: version format (major.minor only)  
+✅ Fixed Master Data endpoints: added required auth headers (JWT + Session + Company)  
+✅ Fixed Link Owner to Company URL (POST to /owners/:id/companies with company_id in body)  
+✅ Reorganized folder structure: merged Feature 007 into numbered folders  
+✅ Added missing variables: owner_id, company_id
+
+## Changelog v1.3
 
 ✅ Complete API coverage (50+ endpoints)  
 ✅ 13 organized folders by domain  

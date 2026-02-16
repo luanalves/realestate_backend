@@ -7,6 +7,10 @@ class Tenant(models.Model):
     _description = 'Tenant'
 
     name = fields.Char(string='Tenant Name', required=True)
+    document = fields.Char(string='CPF/CNPJ', required=True, index=True, copy=False)
+    _sql_constraints = [
+        ('document_unique', 'unique(document)', 'O documento (CPF/CNPJ) já está cadastrado para outro inquilino.')
+    ]
     partner_id = fields.Many2one('res.partner', string='Related Partner', help='Partner record for tenant (enables Portal access)')
     phone = fields.Char(string='Phone Number')
     email = fields.Char(string='Email')
@@ -15,6 +19,11 @@ class Tenant(models.Model):
     profile_picture = fields.Binary('Profile Picture')
     occupation = fields.Char('Occupation')
     birthdate = fields.Date('Birthdate')
+
+    # Feature 008: Soft delete fields (ADR-015)
+    active = fields.Boolean(string='Active', default=True)
+    deactivation_date = fields.Datetime(string='Deactivation Date')
+    deactivation_reason = fields.Text(string='Deactivation Reason')
 
     @api.constrains('email')
     def _validate_email(self):

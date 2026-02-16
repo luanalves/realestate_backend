@@ -116,6 +116,33 @@ class SwaggerController(http.Controller):
                 }
             }
             
+            # Add request body schema if defined (for POST, PUT, PATCH)
+            if endpoint.request_schema and method in ['post', 'put', 'patch']:
+                try:
+                    request_schema_obj = json.loads(endpoint.request_schema)
+                    operation["requestBody"] = {
+                        "required": True,
+                        "content": {
+                            "application/json": {
+                                "schema": request_schema_obj
+                            }
+                        }
+                    }
+                except json.JSONDecodeError:
+                    pass  # Ignore invalid JSON
+            
+            # Add response schema if defined
+            if endpoint.response_schema:
+                try:
+                    response_schema_obj = json.loads(endpoint.response_schema)
+                    operation["responses"]["200"]["content"] = {
+                        "application/json": {
+                            "schema": response_schema_obj
+                        }
+                    }
+                except json.JSONDecodeError:
+                    pass  # Ignore invalid JSON
+            
             # Add security if protected
             if not endpoint.protected:
                 operation["security"] = []

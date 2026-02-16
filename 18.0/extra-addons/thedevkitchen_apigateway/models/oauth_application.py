@@ -286,7 +286,7 @@ Copy it NOW or use "Regenerate Secret" to get a new one.'''
         return {
             'name': f'Tokens - {self.name}',
             'type': 'ir.actions.act_window',
-            'res_model': 'oauth.token',
+            'res_model': 'thedevkitchen.oauth.token',
             'view_mode': 'list,form',
             'domain': [('application_id', '=', self.id)],
             'context': {'default_application_id': self.id},

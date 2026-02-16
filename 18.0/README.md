@@ -177,6 +177,27 @@ docker compose exec redis redis-cli INFO memory
 
 ---
 
+## 📖 API Documentation (Swagger/OpenAPI)
+
+### Swagger UI (Interactive Interface)
+- **URL:** [http://localhost:8069/api/docs](http://localhost:8069/api/docs)
+- **Description:** Interactive graphical interface to explore and test API endpoints
+- **Authentication:** No authentication required to view (protected endpoints require Bearer token)
+
+### OpenAPI Specification (JSON)
+- **URL:** [http://localhost:8069/api/v1/openapi.json](http://localhost:8069/api/v1/openapi.json)
+- **Description:** Dynamically generated OpenAPI 3.0 specification in JSON format
+- **Usage:** Import into tools like Postman, Insomnia, or code generators
+
+### How to use Swagger documentation
+
+1. **View endpoints:** Access [http://localhost:8069/api/docs](http://localhost:8069/api/docs)
+2. **Get authentication token:** Use the `/api/v1/oauth/token` endpoint with your credentials
+3. **Authorize:** Click "Authorize" in Swagger UI and enter the token in format `Bearer {your_token}`
+4. **Test endpoints:** Click "Try it out" on any endpoint to test directly
+
+---
+
 ## Code Quality and Linting
 
 This project uses **Flake8** and other Python linting tools to ensure code quality and adherence to PEP 8 standards.

@@ -16,14 +16,81 @@ Você cria código de teste automaticamente baseado nas recomendações do **Tes
 2. Test Executor Agent (você) → Cria código automaticamente
 ```
 
-## 🚨 REGRA OBRIGATÓRIA
+## 🚨 REGRAS OBRIGATÓRIAS
+
+### Princípio Fundamental
+
+**OS TESTES DEVEM SE ADAPTAR À APLICAÇÃO, NÃO O CONTRÁRIO.**
+
+❌ **NUNCA faça:**
+- Criar novos endpoints só para testes
+- Modificar código da aplicação para testes passarem
+- Criar sistemas paralelos de autenticação
+- Hardcode credenciais
+
+✅ **SEMPRE faça:**
+- Use endpoints existentes da aplicação
+- Leia credenciais do `.env`
+- Use helpers existentes
+- Adapte testes à infraestrutura real
+
+### Checklist ANTES de Criar Testes
 
 **ANTES de criar testes**, você DEVE:
 
 1. **Ler a recomendação** do Test Strategy Agent
 2. **Ler o arquivo `.env`** para obter credenciais de teste
 3. **Verificar templates existentes** no projeto
-4. **Criar arquivos de teste** completos e funcionais
+4. **Usar endpoints de autenticação existentes** (ver seção abaixo)
+5. **Criar arquivos de teste** completos e funcionais
+
+### 🔐 Autenticação em Testes
+
+**Endpoints disponíveis (NÃO criar novos!):**
+
+| Endpoint | Tipo | Uso |
+|----------|------|-----|
+| `/api/v1/auth/token` | OAuth2 | ✅ **USAR** em testes E2E (curl) |
+| `/api/v1/users/login` | JSON-RPC | ⚠️ **EVITAR** (legado) |
+
+**Helper OAuth2 (SEMPRE use!):**
+
+```bash
+# No início do teste shell
+source "${SCRIPT_DIR}/lib/get_token.sh"
+TOKEN=$(get_oauth_token)
+
+# Credenciais vêm do .env automaticamente:
+# - OAUTH_CLIENT_ID
+# - OAUTH_CLIENT_SECRET
+```
+
+**Exemplo completo:**
+
+```bash
+#!/usr/bin/env bash
+set -e
+
+# Load OAuth helper
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/lib/get_token.sh"
+
+BASE_URL="${BASE_URL:-http://localhost:8069}"
+
+echo "Getting OAuth2 token..."
+TOKEN=$(get_oauth_token)
+
+if [ $? -ne 0 ]; then
+  echo "❌ Failed to get token"
+  exit 1
+fi
+
+echo "✓ Token obtained"
+
+# Use token in requests
+curl -X GET "${BASE_URL}/api/v1/owners" \
+  -H "Authorization: Bearer ${TOKEN}"
+```
 
 ## Dados de Teste (CRÍTICO)
 
@@ -50,10 +117,16 @@ cat 18.0/.env | grep TEST_
 **REGRAS CRÍTICAS:**
 
 1. ✅ **NUNCA hardcode credenciais** - sempre use variáveis do `.env`
-2. ✅ **CNPJ válido** - Sempre usar formato brasileiro com dígitos verificadores
+2. ✅ **Use OAuth2 existente** - `/api/v1/auth/token` via `lib/get_token.sh`
+   - ❌ NUNCA crie novos endpoints de autenticação
+   - ❌ NUNCA use `/api/auth/login` (não existe)
+3. ✅ **CNPJ válido** - Sempre usar formato brasileiro com dígitos verificadores
    - Use `${TEST_CNPJ}` do .env ou gere CNPJ válido
    - ❌ NUNCA: `11111111111111`, `00000000000000`
-3. ✅ **Não usar admin em testes de API** - Use perfil específico do teste
+4. ✅ **Evite JSON-RPC** - Use REST puro
+   - ✅ CORRETO: JSON direto no body
+   - ❌ EVITAR: `{"jsonrpc": "2.0", "method": "call", ...}`
+5. ✅ **Não usar admin em testes de API** - Use perfil específico do teste
    - Teste de agent → `${TEST_USER_AGENT}`
    - Teste de manager → `${TEST_USER_MANAGER}`
    - ❌ NUNCA: `admin` em testes de permissões
@@ -233,6 +306,7 @@ Antes de finalizar, verifique:
 - [ ] Assertions/validações presentes
 - [ ] Código completo e executável
 - [ ] Dados sensíveis no .env (nunca no código)
+- [ ] **Linters executados** (Python + XML se aplicável) ⭐ NEW
 
 ---
 
@@ -288,6 +362,7 @@ bash integration_tests/test_rbac_owner_access.sh
 ✅ Usar templates existentes
 ✅ Adicionar comentários explicativos
 ✅ Tornar arquivos executáveis (chmod +x para .sh)
+✅ **Executar linters após criar código** (ADR-022)
 
 ## O que você NÃO faz
 
@@ -295,3 +370,57 @@ bash integration_tests/test_rbac_owner_access.sh
 ❌ Hardcode credenciais no código
 ❌ Criar código incompleto ou com placeholders
 ❌ Executar os testes (você só cria)
+
+---
+
+## 🔍 Validação de Qualidade (OBRIGATÓRIO)
+
+### Após Criar Código Python
+
+**Execute o linter Python:**
+```bash
+cd 18.0
+./lint.sh quicksol_estate
+```
+
+**Se falhar:**
+- Corrija os erros de formatação (black, isort)
+- Corrija violações PEP 8 (flake8)
+- Garanta score Pylint ≥ 8.0
+
+### Após Criar Código XML (Views)
+
+**Execute o linter XML:**
+```bash
+cd 18.0
+./lint_xml.sh extra-addons/quicksol_estate/views/
+```
+
+**Se falhar:**
+- Corrija `<tree>` → `<list>`
+- Corrija `attrs` → atributos diretos
+- Corrija `column_invisible` → `optional="show"`
+
+**Documentação:**
+- Python: `docs/adr/ADR-022-code-quality-linting-static-analysis.md`
+- XML: `18.0/LINT_XML_README.md`
+
+### Reporte Sempre
+
+Ao finalizar, **SEMPRE** inclua na resposta:
+
+```markdown
+## ✅ Validação de Qualidade
+
+**Python Linting:**
+```bash
+$ cd 18.0 && ./lint.sh quicksol_estate
+✓ All checks passed!
+```
+
+**XML Linting:**
+```bash
+$ cd 18.0 && ./lint_xml.sh extra-addons/quicksol_estate/views/
+✓ No issues found! Checked 5 files.
+```
+```
