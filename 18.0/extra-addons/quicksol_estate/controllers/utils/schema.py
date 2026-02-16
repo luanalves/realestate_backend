@@ -12,6 +12,7 @@ Date: 2026-01-15
 from odoo import _
 from odoo.exceptions import ValidationError
 import logging
+from ...utils import validators
 
 from ...utils import validators
 
