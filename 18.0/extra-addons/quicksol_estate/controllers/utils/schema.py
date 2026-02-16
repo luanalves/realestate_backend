@@ -13,6 +13,8 @@ from odoo import _
 from odoo.exceptions import ValidationError
 import logging
 
+from ...utils import validators
+
 _logger = logging.getLogger(__name__)
 
 
@@ -119,7 +121,7 @@ class SchemaValidator:
         'constraints': {
             'name': lambda v: len(v.strip()) > 0,
             'company_id': lambda v: isinstance(v, int),
-            'document': lambda v: __import__('..utils.validators', fromlist=['validate_document']).validate_document(v) if v else False,
+            'document': lambda v: validators.validate_document(v) if v else False,
             'phone': lambda v: len(v.strip()) > 0,
             'email': lambda v: '@' in v and '.' in v.split('@')[-1] if v else False,
             'birthdate': lambda v: len(v.strip()) > 0,
