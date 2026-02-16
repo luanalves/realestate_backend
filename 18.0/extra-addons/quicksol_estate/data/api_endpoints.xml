@@ -1557,6 +1557,47 @@ Returns: Owner object with id, name, email, cpf, phone, mobile, company_count, c
             <field name="protected" eval="True"/>
             <field name="tags">Tenants</field>
             <field name="summary">Create a new tenant</field>
+            <field name="request_schema">{
+  "type": "object",
+  "required": ["name", "company_id", "document", "phone", "email", "birthdate"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Tenant name (non-empty after trim)",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "company_id": {
+      "type": "integer",
+      "description": "Company ID (explicit, required)",
+      "minimum": 1
+    },
+    "document": {
+      "type": "string",
+      "description": "CPF ou CNPJ do inquilino (obrigatório, único na base, aceita máscara ou só números)",
+      "pattern": "^[0-9./-]+$"
+    },
+    "phone": {
+      "type": "string",
+      "description": "Phone number (required)",
+      "minLength": 1
+    },
+    "email": {
+      "type": "string",
+      "format": "email",
+      "description": "Email address (required, valid format)"
+    },
+    "birthdate": {
+      "type": "string",
+      "format": "date",
+      "description": "Birth date (required, format: YYYY-MM-DD)"
+    },
+    "occupation": {
+      "type": "string",
+      "description": "Occupation (optional)"
+    }
+  }
+}</field>
             <field name="description">Creates a new tenant with schema validation.
 
 
