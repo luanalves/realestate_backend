@@ -1498,7 +1498,7 @@ Returns: Owner object with id, name, email, cpf, phone, mobile, company_count, c
 - `offset` (integer, default: 0): Number of items to skip
 - `is_active` (string, optional): Filter by archived status ("true" or "false"). If omitted, returns active only.
 
-**RBAC & Security:**
+**RBAC &amp; Security:**
 - Requires JWT + Session + Company authentication (@require_jwt, @require_session, @require_company)
 - Multi-tenancy: User can only access tenants from companies in their `estate_company_ids`
 - **Admin**: Can access tenants from any company
@@ -1534,7 +1534,7 @@ Returns: Owner object with id, name, email, cpf, phone, mobile, company_count, c
   "limit": 20,
   "offset": 0,
   "_links": {
-    "self": "/api/v1/tenants?company_ids=1&limit=20&offset=0",
+    "self": "/api/v1/tenants?company_ids=1&amp;limit=20&amp;offset=0",
     "next": "..."
   }
 }
