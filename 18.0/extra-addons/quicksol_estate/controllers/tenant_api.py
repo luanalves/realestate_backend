@@ -202,11 +202,15 @@ class TenantApiController(http.Controller):
 
 
             # Validate required fields strictly as per schema
-            required_fields = ['name', 'company_id', 'document', 'phone', 'email', 'birthdate']
-            for field in required_fields:
+            # Validate string fields
+            string_fields = ['name', 'document', 'phone', 'email', 'birthdate']
+            for field in string_fields:
                 if not data.get(field) or not isinstance(data.get(field), str) or not data[field].strip():
                     return error_response(400, f"Missing or invalid tenant {field}")
-            # company_id must be int
+            
+            # Validate company_id (integer)
+            if 'company_id' not in data or data['company_id'] is None:
+                return error_response(400, 'Missing or invalid tenant company_id')
             try:
                 company_id = int(data['company_id'])
             except Exception:
