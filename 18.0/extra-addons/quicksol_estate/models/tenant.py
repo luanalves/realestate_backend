@@ -7,6 +7,10 @@ class Tenant(models.Model):
     _description = 'Tenant'
 
     name = fields.Char(string='Tenant Name', required=True)
+    document = fields.Char(string='CPF/CNPJ', required=True, index=True, copy=False)
+    _sql_constraints = [
+        ('document_unique', 'unique(document)', 'O documento (CPF/CNPJ) já está cadastrado para outro inquilino.')
+    ]
     partner_id = fields.Many2one('res.partner', string='Related Partner', help='Partner record for tenant (enables Portal access)')
     phone = fields.Char(string='Phone Number')
     email = fields.Char(string='Email')

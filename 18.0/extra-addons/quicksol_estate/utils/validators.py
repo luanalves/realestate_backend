@@ -1,3 +1,37 @@
+def normalize_document(document):
+    """
+    Remove qualquer pontuação de CPF ou CNPJ, retornando apenas os dígitos.
+    """
+    if not document:
+        return ''
+    return re.sub(r'[^0-9]', '', document)
+
+def is_cpf(document):
+    """
+    Retorna True se o documento for um CPF válido.
+    """
+    cpf = normalize_document(document)
+    if len(cpf) != 11 or cpf == cpf[0] * 11:
+        return False
+    for i in range(9, 11):
+        value = sum((int(cpf[num]) * ((i+1) - num) for num in range(0, i)))
+        check = ((value * 10) % 11) % 10
+        if check != int(cpf[i]):
+            return False
+    return True
+
+def is_cnpj(document):
+    """
+    Retorna True se o documento for um CNPJ válido.
+    """
+    return validate_cnpj(document)
+
+def validate_document(document):
+    """
+    Retorna True se o documento for um CPF ou CNPJ válido.
+    """
+    doc = normalize_document(document)
+    return is_cpf(doc) or is_cnpj(doc)
 # -*- coding: utf-8 -*-
 """
 Reusable validation functions for Company & Owner Management

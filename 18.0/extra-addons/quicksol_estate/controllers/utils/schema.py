@@ -105,18 +105,24 @@ class SchemaValidator:
 
     # Tenant creation schema (FR-001, FR-002)
     TENANT_CREATE_SCHEMA = {
-        'required': ['name'],
-        'optional': ['phone', 'email', 'occupation', 'birthdate'],
+        'required': ['name', 'company_id', 'document', 'phone', 'email', 'birthdate'],
+        'optional': ['occupation'],
         'types': {
             'name': str,
+            'company_id': int,
+            'document': str,
             'phone': str,
             'email': str,
-            'occupation': str,
             'birthdate': str,
+            'occupation': str,
         },
         'constraints': {
             'name': lambda v: len(v.strip()) > 0,
-            'email': lambda v: '@' in v and '.' in v.split('@')[-1] if v else True,
+            'company_id': lambda v: isinstance(v, int),
+            'document': lambda v: __import__('..utils.validators', fromlist=['validate_document']).validate_document(v) if v else False,
+            'phone': lambda v: len(v.strip()) > 0,
+            'email': lambda v: '@' in v and '.' in v.split('@')[-1] if v else False,
+            'birthdate': lambda v: len(v.strip()) > 0,
         }
     }
 

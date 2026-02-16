@@ -92,11 +92,33 @@ class TenantApiController(http.Controller):
     @require_jwt
     @require_session
     @require_company
-    def list_tenants(self, page=1, page_size=20, **kwargs):
-        """List tenants with pagination and company isolation."""
+    def list_tenants(self, page=1, page_size=20, company_ids=None, **kwargs):
+        """List tenants with pagination, RBAC and company_ids (required)."""
         try:
             user = request.env.user
-            company_ids = self._get_company_ids()
+
+            # company_ids: required, string of comma-separated IDs (from query string or kwargs)
+            if not company_ids:
+                # Try to get from query string directly (robust for Odoo routing)
+                company_ids = request.params.get('company_ids')
+            if not company_ids:
+                resp, code = util_error('company_ids parameter is required', status_code=400)
+                return request.make_json_response(resp, status=code)
+            try:
+                company_ids_list = [int(cid.strip()) for cid in company_ids.split(',') if cid.strip()]
+            except Exception:
+                resp, code = util_error('Invalid company_ids format (must be comma-separated integers)', status_code=400)
+                return request.make_json_response(resp, status=code)
+            if not company_ids_list:
+                resp, code = util_error('company_ids parameter is required', status_code=400)
+                return request.make_json_response(resp, status=code)
+
+            # RBAC: user must have access to all requested companies (unless admin)
+            if not user.has_group('base.group_system'):
+                allowed_ids = set(user.estate_company_ids.ids)
+                if not set(company_ids_list).issubset(allowed_ids):
+                    resp, code = util_error('Access denied to one or more company_ids', status_code=403)
+                    return request.make_json_response(resp, status=code)
 
             # Pagination
             try:
@@ -105,7 +127,6 @@ class TenantApiController(http.Controller):
             except (ValueError, TypeError):
                 resp, code = util_error('Invalid pagination parameters', status_code=400)
                 return request.make_json_response(resp, status=code)
-
             if page < 1 or page_size < 1:
                 resp, code = util_error('Page and page_size must be positive integers', status_code=400)
                 return request.make_json_response(resp, status=code)
@@ -113,18 +134,17 @@ class TenantApiController(http.Controller):
             # Base domain: active records only (soft delete)
             domain = [('active', '=', True)]
 
-            # is_active filter (US5 — will be enhanced in Phase 7)
+            # is_active filter
             is_active = kwargs.get('is_active')
             if is_active is not None and is_active.lower() == 'false':
                 domain = [('active', '=', False)]
 
-            # Company isolation (FR-030)
-            if company_ids is not None:
-                domain.append(('company_ids', 'in', company_ids))
+            # Company filter (required)
+            domain.append(('company_ids', 'in', company_ids_list))
 
             # Agent RBAC: transitive filtering via property assignment (R3)
             if self._is_agent_role(user):
-                assigned_prop_ids = self._get_agent_property_ids(user, company_ids or [])
+                assigned_prop_ids = self._get_agent_property_ids(user, company_ids_list)
                 if assigned_prop_ids:
                     # Filter tenants who have leases on assigned properties
                     tenant_ids = request.env['real.estate.lease'].sudo().search([
@@ -172,7 +192,7 @@ class TenantApiController(http.Controller):
     @require_session
     @require_company
     def create_tenant(self, **kwargs):
-        """Create a new tenant with schema validation."""
+        """Create a new tenant with schema validation and explicit company_id."""
         try:
             # Parse body
             try:
@@ -180,32 +200,53 @@ class TenantApiController(http.Controller):
             except (ValueError, UnicodeDecodeError):
                 return error_response(400, 'Invalid JSON in request body')
 
-            # Validate schema
-            is_valid, errors = SchemaValidator.validate_request(data, SchemaValidator.TENANT_CREATE_SCHEMA)
-            if not is_valid:
-                resp, code = util_error('Validation failed', errors={'validation': errors}, status_code=400)
-                return request.make_json_response(resp, status=code)
+
+            # Validate required fields strictly as per schema
+            required_fields = ['name', 'company_id', 'document', 'phone', 'email', 'birthdate']
+            for field in required_fields:
+                if not data.get(field) or not isinstance(data.get(field), str) or not data[field].strip():
+                    return error_response(400, f"Missing or invalid tenant {field}")
+            # company_id must be int
+            try:
+                company_id = int(data['company_id'])
+            except Exception:
+                return error_response(400, 'company_id must be an integer')
+
+            # Validate document (CPF/CNPJ)
+            from ..utils import validators
+            document_raw = data['document'].strip()
+            document = validators.normalize_document(document_raw)
+            if not validators.validate_document(document):
+                return error_response(400, 'Documento deve ser um CPF ou CNPJ válido')
+            # Checar duplicidade
+            Tenant = request.env['real.estate.tenant'].sudo()
+            existing = Tenant.search([('document', '=', document)], limit=1)
+            if existing:
+                return error_response(400, 'Documento já cadastrado para outro inquilino')
+
+            # RBAC: user must have access to the company (unless admin)
+            user = request.env.user
+            if not user.has_group('base.group_system'):
+                allowed_ids = set(user.estate_company_ids.ids)
+                if company_id not in allowed_ids:
+                    return error_response(403, 'Access denied to company_id')
 
             # Validate email format (FR-002)
-            if data.get('email') and not validate_email_format(data['email']):
+            if not validate_email_format(data['email']):
                 resp, code = util_error(f"Invalid email format: {data['email']}", status_code=400)
                 return request.make_json_response(resp, status=code)
-
-            # Get company from request context
-            company_ids = self._get_company_ids()
-            if not company_ids:
-                return error_response(400, 'No company context available')
 
             # Prepare vals
             tenant_vals = {
                 'name': data['name'].strip(),
-                'company_ids': [(6, 0, company_ids)],
+                'company_ids': [(6, 0, [company_id])],
+                'document': document,
+                'phone': data['phone'].strip(),
+                'email': data['email'].strip(),
+                'birthdate': data['birthdate'].strip(),
             }
-
-            # Optional fields
-            for field in ['phone', 'email', 'occupation', 'birthdate']:
-                if field in data and data[field] is not None:
-                    tenant_vals[field] = data[field]
+            if 'occupation' in data and data['occupation'] is not None:
+                tenant_vals['occupation'] = data['occupation']
 
             # Create
             tenant = request.env['real.estate.tenant'].sudo().create(tenant_vals)
