@@ -1478,26 +1478,33 @@ Returns: Owner object with id, name, email, cpf, phone, mobile, company_count, c
         <!-- TENANT API ENDPOINTS (Feature 008) -->
         <!-- ============================================================ -->
 
-        <record id="api_endpoint_list_tenants" model="thedevkitchen.api.endpoint">
-            <field name="name">List Tenants</field>
-            <field name="path">/api/v1/tenants</field>
-            <field name="method">GET</field>
-            <field name="module_name">quicksol_estate</field>
-            <field name="protected" eval="True"/>
-            <field name="tags">Tenants</field>
-            <field name="summary">List tenants with pagination and company isolation</field>
-            <field name="description">Get paginated list of tenants filtered by company.
+		<record id="api_endpoint_list_tenants" model="thedevkitchen.api.endpoint">
+			<field name="name">List Tenants</field>
+			<field name="path">/api/v1/tenants</field>
+			<field name="method">GET</field>
+			<field name="module_name">quicksol_estate</field>
+			<field name="protected" eval="True"/>
+			<field name="tags">Tenants</field>
+			<field name="summary">List tenants from specified companies (RBAC, multi-tenancy, pagination)</field>
+			<field name="description">Get paginated list of tenants from specified companies with RBAC and multi-tenancy isolation.
 
-**Security:**
+**REQUIRED Query Parameter:**
+- `company_ids` (string, REQUIRED): Comma-separated list of company IDs to filter tenants. 
+  The user must have access to all specified companies (multi-tenancy validation).
+  Examples: "1" for single company, "1,2,3" for multiple companies.
+
+**Optional Query Parameters:**
+- `limit` (integer, default: 20, max: 100): Items per page
+- `offset` (integer, default: 0): Number of items to skip
+- `is_active` (string, optional): Filter by archived status ("true" or "false"). If omitted, returns active only.
+
+**RBAC & Security:**
 - Requires JWT + Session + Company authentication (@require_jwt, @require_session, @require_company)
 - Multi-tenancy: User can only access tenants from companies in their `estate_company_ids`
-- Admin users can access all tenants
-- Agents: Transitive RBAC — only see tenants with leases on their assigned properties
-
-**Query Parameters:**
-- `page` (integer, default: 1): Page number
-- `page_size` (integer, default: 20, max: 100): Items per page
-- `is_active` (string, optional): Filter by archived status ("true" or "false"). If omitted, returns active only.
+- **Admin**: Can access tenants from any company
+- **Manager**: Can access tenants from their companies
+- **Agent**: Only see tenants with leases on their assigned properties (transitive RBAC)
+- **Other roles**: No access
 
 **Response Format (200 OK):**
 ```json
@@ -1524,23 +1531,23 @@ Returns: Owner object with id, name, email, cpf, phone, mobile, company_count, c
   ],
   "count": 1,
   "total": 15,
-  "page": 1,
-  "page_size": 20,
+  "limit": 20,
+  "offset": 0,
   "_links": {
-    "self": "/api/v1/tenants?page=1",
-    "next": "/api/v1/tenants?page=2",
-    "first": "/api/v1/tenants?page=1",
-    "last": "/api/v1/tenants?page=1"
+    "self": "/api/v1/tenants?company_ids=1&limit=20&offset=0",
+    "next": "..."
   }
 }
 ```
 
 **Error Responses:**
-- 400: Invalid pagination parameters
+- 400: company_ids parameter is required
+- 400: Invalid company_ids format
+- 403: Access denied to company IDs (user doesn't have access)
 - 401: Invalid or missing JWT token
-- 403: Access denied to companies</field>
-            <field name="active" eval="True"/>
-        </record>
+</field>
+			<field name="active" eval="True"/>
+		</record>
 
         <record id="api_endpoint_create_tenant" model="thedevkitchen.api.endpoint">
             <field name="name">Create Tenant</field>
@@ -1552,27 +1559,51 @@ Returns: Owner object with id, name, email, cpf, phone, mobile, company_count, c
             <field name="summary">Create a new tenant</field>
             <field name="description">Creates a new tenant with schema validation.
 
+
 **Security:**
 - Requires JWT + Session + Company authentication
 - Multi-tenancy: Tenant is automatically linked to user's companies
 
+
+
 **Required Fields:**
 - `name` (string): Tenant name (non-empty after trim)
+- `document` (string): CPF ou CNPJ do inquilino (obrigatório, único na base, aceita máscara ou só números)
+  - Exemplo CPF: "123.456.789-09" ou "12345678909"
+  - Exemplo CNPJ: "12.345.678/0001-95" ou "12345678000195"
+- `company_id` (integer): Company ID (explicit, obrigatório)
+- `phone` (string): Phone number (obrigatório)
+- `email` (string): Email address (obrigatório, formato válido)
+- `birthdate` (string): Birth date (obrigatório, formato: YYYY-MM-DD)
 
 **Optional Fields:**
-- `phone` (string): Phone number
-- `email` (string): Email address (validated format)
 - `occupation` (string): Occupation
-- `birthdate` (string): Birth date (format: YYYY-MM-DD)
+
+
+
 
 **Request Example:**
 ```json
 {
   "name": "Maria Santos",
+  "document": "123.456.789-09",
+  "company_id": 63,
   "phone": "(11) 98765-4321",
   "email": "maria@example.com",
-  "occupation": "Lawyer",
-  "birthdate": "1985-03-20"
+  "birthdate": "1985-03-20",
+  "occupation": "Lawyer"
+}
+```
+
+```json
+{
+  "name": "Empresa XYZ Ltda",
+  "document": "12.345.678/0001-95",
+  "company_id": 63,
+  "phone": "(11) 3333-4444",
+  "email": "contato@xyz.com.br",
+  "occupation": "Empresa",
+  "birthdate": null
 }
 ```
 
