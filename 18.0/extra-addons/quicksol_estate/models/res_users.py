@@ -9,7 +9,6 @@ class ResUsers(models.Model):
         string='CPF',
         size=14,  # Format: 123.456.789-01
         index=True,
-        tracking=True,
         help='Brazilian individual taxpayer registry (CPF). Required for all users.'
     )
     
