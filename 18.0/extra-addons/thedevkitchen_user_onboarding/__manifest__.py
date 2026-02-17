@@ -52,7 +52,7 @@ Technical Details:
         "security/ir.model.access.csv",
         "security/record_rules.xml",
         "data/default_settings.xml",
-        # "data/email_templates.xml",  # TODO: Fix XML schema validation issue in Odoo 18
+        "data/email_templates.xml",
         "views/email_link_settings_views.xml",
         "views/menu.xml",
     ],
