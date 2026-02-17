@@ -94,6 +94,18 @@ Os módulos customizados devem ser adicionados no diretório `18.0/extra-addons/
 - **Audit Worker:** Registra alterações de segurança e dados
 - **Status:** `docker compose ps` ou Flower UI
 
+### MailHog (Email Testing - Development)
+- **SMTP Server:** `mailhog:1025` (configurar no Odoo)
+- **Web UI:** http://localhost:8025
+- **Purpose:** Captura todos os emails enviados sem enviá-los realmente
+- **Usage:** Ideal para testar fluxos de email (convites, password reset, notificações)
+- **Configuration:** Settings > Technical > Email > Outgoing Mail Servers
+  - SMTP Server: `mailhog`
+  - SMTP Port: `1025`
+  - Connection Security: `None`
+  - Username/Password: (deixar vazio)
+- **Production:** Ver [ADR-023](docs/adr/ADR-023-mailhog-email-testing-development.md) para configuração SMTP de produção
+
 ---
 
 ## � Documentação da API (Swagger/OpenAPI)
