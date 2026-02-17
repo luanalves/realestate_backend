@@ -13,6 +13,8 @@ Auto-generated from all feature plans. Last updated: 2026-01-15
 - PostgreSQL 14+ with existing tables (thedevkitchen_estate_company, res_users) (007-company-owner-management)
 - Python 3.12 (Ubuntu Noble Docker image) + Odoo 18.0 (ORM, HTTP framework), Redis 7 (sessions) (008-tenant-lease-sale-api)
 - PostgreSQL 14+ via Odoo ORM, Redis 7 for HTTP sessions (008-tenant-lease-sale-api)
+- Python 3.10+ (Odoo 18.0 framework) + Odoo 18.0, `thedevkitchen_apigateway` v18.0.1.1.0 (auth middleware), `quicksol_estate` v18.0.2.1.0 (RBAC groups, models), `validate_docbr` (CPF validation), `email_validator` (009-user-onboarding-password-management)
+- PostgreSQL 14+ (tokens, settings, users) + Redis 7+ (sessions, cache) (009-user-onboarding-password-management)
 
 - Python 3.11 (Odoo 18.0) + Odoo 18.0, PyJWT, Redis 7-alpine, PostgreSQL 16 (001-bearer-token-validation)
 
@@ -33,9 +35,9 @@ cd src [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECHNOLO
 Python 3.11 (Odoo 18.0): Follow standard conventions
 
 ## Recent Changes
+- 009-user-onboarding-password-management: Added Python 3.10+ (Odoo 18.0 framework) + Odoo 18.0, `thedevkitchen_apigateway` v18.0.1.1.0 (auth middleware), `quicksol_estate` v18.0.2.1.0 (RBAC groups, models), `validate_docbr` (CPF validation), `email_validator`
 - 008-tenant-lease-sale-api: Added Python 3.12 (Ubuntu Noble Docker image) + Odoo 18.0 (ORM, HTTP framework), Redis 7 (sessions)
 - 008-tenant-lease-sale-api: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
-- 007-company-owner-management: Added Python 3.10+ (Odoo 18.0) + Odoo 18.0 ORM, thedevkitchen_apigateway (OAuth2/JWT), quicksol_estate (existing module)
 
 
 <!-- MANUAL ADDITIONS START -->
