@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        
+        <!-- Email Template: User Invite -->
+        <record id="email_template_user_invite" model="mail.template">
+            <field name="name">Convite para Criação de Senha</field>
+            <field name="model_id" ref="base.model_res_users"/>
+            <field name="subject">Convite para Criar Senha - ${object.company_id.name or 'Sistema Imobiliário'}</field>
+            <field name="email_from">${(object.company_id.email or 'noreply@thedevkitchen.com')}</field>
+            <field name="email_to">${object.email}</field>
+            <field name="lang">${object.lang}</field>
+            <field name="body_html" type="html">
+                <![CDATA[
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #007bff; color: white; padding: 20px; text-align: center; }
+        .content { padding: 30px; background-color: #f9f9f9; }
+        .button { display: inline-block; padding: 12px 24px; background-color: #28a745; color: white; text-decoration: none; border-radius: 4px; margin: 20px 0; }
+        .footer { padding: 20px; text-align: center; font-size: 12px; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Bem-vindo(a) ao Sistema Imobiliário</h1>
+        </div>
+        <div class="content">
+            <p>Olá, <strong>${object.name}</strong>!</p>
+            
+            <p>Você foi convidado(a) para acessar o sistema <strong>${object.company_id.name or 'Sistema Imobiliário'}</strong>.</p>
+            
+            <p>Para criar sua senha e ativar sua conta, clique no botão abaixo:</p>
+            
+            <p style="text-align: center;">
+                <a href="${ctx.get('invite_link', '#')}" class="button">Criar Minha Senha</a>
+            </p>
+            
+            <p><strong>⚠️ Este link expira em ${ctx.get('expires_hours', 24)} horas.</strong></p>
+            
+            <p>Se você não conseguir clicar no botão, copie e cole o link abaixo no seu navegador:</p>
+            <p style="word-break: break-all; background-color: #fff; padding: 10px; border: 1px solid #ddd;">
+                ${ctx.get('invite_link', '#')}
+            </p>
+            
+            <p>Se você não solicitou este convite, ignore este email.</p>
+        </div>
+        <div class="footer">
+            <p>&copy; ${datetime.datetime.now().year} ${object.company_id.name or 'TheDevKitchen'}. Todos os direitos reservados.</p>
+        </div>
+    </div>
+</body>
+</html>
+                ]]>
+            </field>
+        </record>
+        
+        <!-- Email Template: Password Reset -->
+        <record id="email_template_password_reset" model="mail.template">
+            <field name="name">Recuperação de Senha</field>
+            <field name="model_id" ref="base.model_res_users"/>
+            <field name="subject">Recuperação de Senha - ${object.company_id.name or 'Sistema Imobiliário'}</field>
+            <field name="email_from">${(object.company_id.email or 'noreply@thedevkitchen.com')}</field>
+            <field name="email_to">${object.email}</field>
+            <field name="lang">${object.lang}</field>
+            <field name="body_html" type="html">
+                <![CDATA[
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #dc3545; color: white; padding: 20px; text-align: center; }
+        .content { padding: 30px; background-color: #f9f9f9; }
+        .button { display: inline-block; padding: 12px 24px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px; margin: 20px 0; }
+        .footer { padding: 20px; text-align: center; font-size: 12px; color: #666; }
+        .warning { background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 10px; margin: 15px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Recuperação de Senha</h1>
+        </div>
+        <div class="content">
+            <p>Olá, <strong>${object.name}</strong>!</p>
+            
+            <p>Recebemos uma solicitação para redefinir sua senha no sistema <strong>${object.company_id.name or 'Sistema Imobiliário'}</strong>.</p>
+            
+            <p>Para criar uma nova senha, clique no botão abaixo:</p>
+            
+            <p style="text-align: center;">
+                <a href="${ctx.get('reset_link', '#')}" class="button">Redefinir Senha</a>
+            </p>
+            
+            <p><strong>⚠️ Este link expira em ${ctx.get('expires_hours', 24)} horas.</strong></p>
+            
+            <p>Se você não conseguir clicar no botão, copie e cole o link abaixo no seu navegador:</p>
+            <p style="word-break: break-all; background-color: #fff; padding: 10px; border: 1px solid #ddd;">
+                ${ctx.get('reset_link', '#')}
+            </p>
+            
+            <div class="warning">
+                <strong>⚠️ Importante:</strong>
+                <ul>
+                    <li>Se você não solicitou esta recuperação, <strong>ignore este email</strong>.</li>
+                    <li>Nunca compartilhe este link com outras pessoas.</li>
+                    <li>Todas as suas sessões ativas serão encerradas após a redefinição.</li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer">
+            <p>&copy; ${datetime.datetime.now().year} ${object.company_id.name or 'TheDevKitchen'}. Todos os direitos reservados.</p>
+        </div>
+    </div>
+</body>
+</html>
+                ]]>
+            </field>
+        </record>
+        
+    </data>
+</odoo>

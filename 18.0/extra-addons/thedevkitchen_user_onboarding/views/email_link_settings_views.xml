@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <!-- Form View for Email Link Settings -->
+    <record id="view_email_link_settings_form" model="ir.ui.view">
+        <field name="name">email.link.settings.form</field>
+        <field name="model">thedevkitchen.email.link.settings</field>
+        <field name="arch" type="xml">
+            <form string="Email Link Settings">
+                <sheet>
+                    <group>
+                        <group string="Link Validity Configuration">
+                            <field name="invite_link_ttl_hours" 
+                                   help="Time-to-live for invite links sent by email (1-720 hours)"/>
+                            <field name="reset_link_ttl_hours" 
+                                   help="Time-to-live for password reset links sent by email (1-720 hours)"/>
+                        </group>
+                        <group string="Frontend Configuration">
+                            <field name="frontend_base_url" 
+                                   help="Base URL of the frontend application for constructing email links"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Rate Limiting">
+                            <field name="max_resend_attempts" 
+                                   help="Maximum number of invite resend attempts per user"/>
+                            <field name="rate_limit_forgot_per_hour" 
+                                   help="Maximum forgot-password requests per email per hour"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    
+    <!-- Action for Email Link Settings -->
+    <record id="action_email_link_settings" model="ir.actions.act_window">
+        <field name="name">Email Link Settings</field>
+        <field name="res_model">thedevkitchen.email.link.settings</field>
+        <field name="view_mode">form</field>
+        <field name="target">inline</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Configure email link validity and rate limiting
+            </p>
+            <p>
+                These settings control the expiration time for invite and password reset links sent via email,
+                as well as rate limiting for security purposes.
+            </p>
+        </field>
+    </record>
+    
+</odoo>

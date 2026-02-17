@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <!-- Menu Item: Email Link Settings (under Technical > Configuration) -->
+    <menuitem 
+        id="menu_email_link_settings"
+        name="Email Link Settings"
+        action="action_email_link_settings"
+        parent="base.menu_administration"
+        groups="base.group_system"
+        sequence="100"/>
+    
+</odoo>

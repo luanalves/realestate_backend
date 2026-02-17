@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_password_token_user,User: Password Tokens,model_thedevkitchen_password_token,quicksol_estate.group_real_estate_user,1,1,0,0
+access_password_token_admin,Admin: Password Tokens,model_thedevkitchen_password_token,base.group_system,1,1,1,1
+access_email_link_settings_user,User: Email Link Settings,model_thedevkitchen_email_link_settings,quicksol_estate.group_real_estate_user,1,0,0,0
+access_email_link_settings_admin,Admin: Email Link Settings,model_thedevkitchen_email_link_settings,base.group_system,1,1,1,1
