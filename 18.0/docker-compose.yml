@@ -184,6 +184,20 @@ services:
     networks:
       - odoo-net
 
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: mailhog
+    ports:
+      - "1025:1025"  # SMTP server
+      - "8025:8025"  # Web UI: http://localhost:8025
+    networks:
+      - odoo-net
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8025"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
 volumes:
   odoo18-db:
   odoo18-data:
