@@ -76,6 +76,7 @@ mailhog:
 
 ```ini
 # Outgoing Mail Server
+Authenticate with: Username
 SMTP Server: mailhog
 SMTP Port: 1025
 Connection Security: None
