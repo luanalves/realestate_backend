@@ -1,15 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Invite Controller
-
-Handles user invitation endpoints: POST /api/v1/users/invite and POST /api/v1/users/{id}/resend-invite.
-All endpoints require authentication (JWT + session + company).
-
-Author: TheDevKitchen
-Date: 2026-02-16
-ADRs: ADR-005 (API-First), ADR-007 (HATEOAS), ADR-011 (Security), ADR-018 (Validation)
-"""
-
 import json
 import logging
 from odoo import http
@@ -27,7 +16,6 @@ _logger = logging.getLogger(__name__)
 
 
 class InviteController(http.Controller):
-
     @http.route(
         "/api/v1/users/invite",
         type="http",
@@ -40,37 +28,6 @@ class InviteController(http.Controller):
     @require_session
     @require_company
     def invite_user(self, **kwargs):
-        """
-        POST /api/v1/users/invite
-
-        Create a new user and send invite email with password creation link.
-        Supports dual record creation for portal profile (res.users + real.estate.tenant).
-
-        Authorization Matrix:
-        - Owner: can invite all profiles
-        - Manager: can invite agent, prospector, receptionist, financial, legal
-        - Agent: can invite owner (property owner), portal (tenant)
-
-        Request Body:
-        {
-            "name": "string (required)",
-            "email": "string (required)",
-            "document": "string (required - CPF or CNPJ)",
-            "profile": "string (required - owner|director|manager|agent|prospector|receptionist|financial|legal|portal)",
-            "phone": "string (optional for most, required for portal)",
-            "mobile": "string (optional)",
-            "birthdate": "string (required for portal - YYYY-MM-DD)",
-            "company_id": "integer (required for portal)",
-            "occupation": "string (optional for portal)"
-        }
-
-        Returns:
-            201: User invited successfully
-            400: Validation error
-            401: Unauthorized (missing/invalid JWT)
-            403: Forbidden (authorization matrix violation)
-            409: Conflict (email or document already exists)
-        """
         try:
             # Parse request body
             try:
@@ -119,22 +76,45 @@ class InviteController(http.Controller):
                 )
 
             # Get authenticated user and company context
-            current_user = request.env["res.users"].sudo().browse(request.session.uid)
+            # User is set by @require_session decorator (request.env = request.env(user=user))
+            _logger.info(f"[INVITE] Starting invite process for {data.get('email')}, profile={data.get('profile')}")
+            current_user = request.env.user
+            _logger.info(f"[INVITE] Current user: {current_user.login}, id={current_user.id}")
+            
             company_id = request.httprequest.headers.get("X-Company-ID")
+            if not company_id:
+                _logger.error("[INVITE] Missing X-Company-ID header")
+                return self._error_response(400, "validation_error", "X-Company-ID header is required")
+            
+            _logger.info(f"[INVITE] Company ID from header: {company_id}")
+            
             company = (
                 request.env["thedevkitchen.estate.company"]
                 .sudo()
                 .browse(int(company_id))
             )
+            
+            # Validate company exists
+            if not company or not company.exists():
+                _logger.error(f"[INVITE] Company {company_id} not found in database")
+                return self._error_response(
+                    404, "not_found", f"Company {company_id} not found"
+                )
+            
+            _logger.info(f"[INVITE] Company loaded: id={company.id}, name={company.name}")
 
             # Initialize services
             invite_service = InviteService(request.env)
             token_service = PasswordTokenService(request.env)
+            _logger.info("[INVITE] Services initialized")
 
             # Check authorization
+            _logger.info(f"[INVITE] Checking authorization for {current_user.login} to invite {profile}")
             try:
                 invite_service.check_authorization(current_user, profile)
+                _logger.info(f"[INVITE] Authorization granted")
             except UserError as e:
+                _logger.warning(f"[INVITE] Authorization denied: {e}")
                 return self._error_response(403, "forbidden", str(e))
 
             # Handle portal profile (dual record creation)
@@ -171,6 +151,7 @@ class InviteController(http.Controller):
                     return self._error_response(400, "validation_error", str(e))
             else:
                 # Standard user creation (non-portal)
+                _logger.info(f"[INVITE] Creating standard user: email={email}, profile={profile}")
                 try:
                     user = invite_service.create_invited_user(
                         name=data["name"],
@@ -182,8 +163,10 @@ class InviteController(http.Controller):
                         phone=data.get("phone"),
                         mobile=data.get("mobile"),
                     )
+                    _logger.info(f"[INVITE] User created successfully: id={user.id}, login={user.login}")
                     tenant = None
                 except ValidationError as e:
+                    _logger.error(f"[INVITE] Validation error creating user: {e}")
                     if "already exists" in str(e):
                         field = "cpf" if "CPF" in str(e) else "email"
                         return self._error_response(
@@ -192,22 +175,29 @@ class InviteController(http.Controller):
                     return self._error_response(400, "validation_error", str(e))
 
             # Generate invite token
+            _logger.info(f"[INVITE] Generating invite token for user {user.id}")
             raw_token, token_record = token_service.generate_token(
                 user=user, token_type="invite", company=company, created_by=current_user
             )
+            _logger.info(f"[INVITE] Token generated: token_id={token_record.id}")
 
             # Get settings for TTL and frontend URL
+            _logger.info("[INVITE] Loading email link settings")
             settings = request.env["thedevkitchen.email.link.settings"].get_settings()
+            _logger.info(f"[INVITE] Settings loaded: TTL={settings.invite_link_ttl_hours}h, frontend={settings.frontend_base_url}")
 
             # Send invite email
+            _logger.info(f"[INVITE] Sending invite email to {user.email}")
             email_sent = invite_service.send_invite_email(
                 user=user,
                 raw_token=raw_token,
                 expires_hours=settings.invite_link_ttl_hours,
                 frontend_base_url=settings.frontend_base_url,
             )
+            _logger.info(f"[INVITE] Email sent: {email_sent}")
 
             # Build response data
+            _logger.info("[INVITE] Building response data")
             response_data = {
                 "id": user.id,
                 "name": user.name,
@@ -245,26 +235,15 @@ class InviteController(http.Controller):
             if not email_sent:
                 response_data["email_status"] = "failed"
 
-            # Build HATEOAS links
-            links = [
-                {"href": f"/api/v1/users/{user.id}", "rel": "self", "type": "GET"},
-                {
-                    "href": f"/api/v1/users/{user.id}/resend-invite",
-                    "rel": "resend_invite",
-                    "type": "POST",
-                },
-                {"href": "/api/v1/users", "rel": "collection", "type": "GET"},
-            ]
+            # Build HATEOAS links (as dict for easier access in tests)
+            links = {
+                "self": f"/api/v1/users/{user.id}",
+                "resend_invite": f"/api/v1/users/{user.id}/resend-invite",
+                "collection": "/api/v1/users",
+            }
 
             if tenant:
-                links.insert(
-                    1,
-                    {
-                        "href": f"/api/v1/tenants/{tenant.id}",
-                        "rel": "tenant",
-                        "type": "GET",
-                    },
-                )
+                links["tenant"] = f"/api/v1/tenants/{tenant.id}"
 
             return self._success_response(
                 201,
@@ -274,9 +253,13 @@ class InviteController(http.Controller):
             )
 
         except Exception as e:
-            _logger.exception(f"Unexpected error in invite_user: {e}")
+            _logger.exception(f"[INVITE ERROR] Unexpected error in invite_user: {e}")
+            _logger.error(f"[INVITE ERROR] Error type: {type(e).__name__}")
+            _logger.error(f"[INVITE ERROR] Error details: {str(e)}")
+            import traceback
+            _logger.error(f"[INVITE ERROR] Traceback: {traceback.format_exc()}")
             return self._error_response(
-                500, "internal_error", "An unexpected error occurred"
+                500, "internal_error", f"An unexpected error occurred: {str(e)}"
             )
 
     # Helper methods
@@ -332,34 +315,6 @@ class InviteController(http.Controller):
     @require_session
     @require_company
     def resend_invite(self, user_id, **kwargs):
-        """
-        POST /api/v1/users/{id}/resend-invite
-
-        Resend invite email to a user who has not yet set their password.
-        Invalidates previous invite tokens and generates a new one.
-
-        Authorization Matrix: Same as invite endpoint
-        - Owner: can resend to all profiles
-        - Manager: can resend to agent, prospector, receptionist, financial, legal
-        - Agent: can resend to owner (property owner), portal (tenant)
-
-        Path Parameters:
-        - user_id: ID of the user to resend invite
-
-        Returns:
-        - 200: Invite resent successfully
-        - 400: User already active (password already set)
-        - 401: Unauthorized (no JWT or session)
-        - 403: Forbidden (authorization matrix violation)
-        - 404: User not found or not in requester's company
-
-        Response Body (200):
-        {
-            "message": "Invite email resent successfully",
-            "invite_expires_at": "2026-02-17T14:30:00Z",
-            "email_status": "sent" | "failed"
-        }
-        """
         try:
             # Get session context
             session_data = getattr(request, "session_data", {})
@@ -467,15 +422,7 @@ class InviteController(http.Controller):
             )
 
     def _get_user_profile(self, user):
-        """
-        Determine the profile of a user based on their groups.
 
-        Args:
-            user: res.users record
-
-        Returns:
-            str: Profile name (owner, director, manager, agent, etc.)
-        """
         # Map of group XML IDs to profile names
         group_to_profile = {
             "quicksol_estate.group_real_estate_owner": "owner",

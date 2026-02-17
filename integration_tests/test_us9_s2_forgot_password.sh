@@ -20,6 +20,11 @@
 
 set -e
 
+# Load environment variables
+if [ -f "../18.0/.env" ]; then
+    source ../18.0/.env
+fi
+
 # Configuration
 BASE_URL="${BASE_URL:-http://localhost:8069}"
 API_BASE="${BASE_URL}/api/v1"
@@ -90,7 +95,7 @@ assert_sql_result() {
     local expected=$2
     local description=$3
     
-    local result=$(PGPASSWORD=odoo psql -h localhost -U odoo -d realestate -t -c "$query" | xargs)
+    local result=$(docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate -t -c "$query" | xargs)
     
     if [ "$result" == "$expected" ]; then
         echo -e "  ${GREEN}✓${NC} SQL assertion passed: $description (got: $result)"
@@ -105,7 +110,7 @@ cleanup_test_data() {
     log_info "Cleaning up test data..."
     
     # SQL cleanup script
-    PGPASSWORD=odoo psql -h localhost -U odoo -d realestate <<EOF
+    docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF
         -- Delete test users
         DELETE FROM res_users WHERE login LIKE 'reset_test_%@example.com';
         
@@ -147,8 +152,8 @@ log_info "Creating test user with active session..."
 OWNER_LOGIN=$(curl -s -X POST "$API_BASE/users/login" \
     -H "Content-Type: application/json" \
     -d '{
-        "login": "owner@example.com",
-        "password": "owner123"
+        "login": "'"$TEST_USER_OWNER"'",
+        "password": "'"$TEST_PASSWORD_OWNER"'"
     }')
 
 OWNER_JWT=$(echo "$OWNER_LOGIN" | jq -r '.access_token // empty')
@@ -170,7 +175,7 @@ TEST_USER_ID=$(echo "$TEST_USER_RESPONSE" | jq -r '.data.id')
 log_info "Test user created with ID: $TEST_USER_ID"
 
 # Set password for test user directly via SQL
-PGPASSWORD=odoo psql -h localhost -U odoo -d realestate <<EOF
+docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF
     UPDATE res_users 
     SET password = crypt('originalpassword123', gen_salt('bf')),
         signup_pending = FALSE
@@ -266,7 +271,7 @@ log_info "Simulating reset password with mismatched passwords..."
 RAW_RESET_TOKEN="reset-token-$(date +%s)"
 RESET_TOKEN_HASH=$(echo -n "$RAW_RESET_TOKEN" | sha256sum | awk '{print $1}')
 
-PGPASSWORD=odoo psql -h localhost -U odoo -d realestate <<EOF
+docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF
     UPDATE thedevkitchen_password_token
     SET token = '$RESET_TOKEN_HASH',
         expires_at = NOW() + INTERVAL '24 hours'
@@ -414,7 +419,7 @@ curl -s -X POST "$API_BASE/auth/forgot-password" \
 EXPIRED_RAW_TOKEN="expired-reset-token-$(date +%s)"
 EXPIRED_TOKEN_HASH=$(echo -n "$EXPIRED_RAW_TOKEN" | sha256sum | awk '{print $1}')
 
-PGPASSWORD=odoo psql -h localhost -U odoo -d realestate <<EOF
+docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF
     UPDATE thedevkitchen_password_token
     SET token = '$EXPIRED_TOKEN_HASH',
         expires_at = NOW() - INTERVAL '1 day'

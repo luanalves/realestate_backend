@@ -15,6 +15,11 @@
 
 set -e
 
+# Load environment variables
+if [ -f "../18.0/.env" ]; then
+    source ../18.0/.env
+fi
+
 # Configuration
 BASE_URL="${BASE_URL:-http://localhost:8069}"
 API_BASE="${BASE_URL}/api/v1"
@@ -98,7 +103,7 @@ cleanup_test_data() {
     log_info "Cleaning up test data..."
     
     # SQL cleanup script
-    PGPASSWORD=odoo psql -h localhost -U odoo -d realestate <<EOF
+    docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF
         -- Delete test users
         DELETE FROM res_users WHERE login LIKE 'resend_test_%@example.com';
         
@@ -133,15 +138,14 @@ log_info "Setting up authentication..."
 LOGIN_RESPONSE=$(curl -s -X POST "$API_BASE/users/login" \
     -H "Content-Type: application/json" \
     -d '{
-        "login": "owner@example.com",
-        "password": "owner123"
+        "login": "'"$TEST_USER_OWNER"'",
+        "password": "'"$TEST_PASSWORD_OWNER"'"
     }')
 
-JWT_TOKEN=$(echo "$LOGIN_RESPONSE" | jq -r '.access_token // empty')
 SESSION_ID=$(echo "$LOGIN_RESPONSE" | jq -r '.session_id // empty')
 
 if [ -z "$JWT_TOKEN" ] || [ -z "$SESSION_ID" ]; then
-    log_error "Failed to authenticate. Please ensure owner@example.com exists with password owner123"
+    log_error "Failed to authenticate. Please ensure $TEST_USER_OWNER exists in the database"
     exit 1
 fi
 
@@ -156,7 +160,7 @@ test_scenario "Resend invite to pending user returns 200 with new token and inva
 log_info "  Step 1: Creating pending user..."
 INVITE_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/invite" \
     -H "Content-Type: application/json" \
-    -H "Authorization: Bearer $JWT_TOKEN" \
+    -H "Authorization: Bearer $BEARER_TOKEN" \
     -H "X-Session-ID: $SESSION_ID" \
     -d '{
         "name": "Resend Test Agent",
@@ -189,7 +193,7 @@ sleep 2
 log_info "  Step 2: Resending invite..."
 RESEND_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/$USER_ID/resend-invite" \
     -H "Content-Type: application/json" \
-    -H "Authorization: Bearer $JWT_TOKEN" \
+    -H "Authorization: Bearer $BEARER_TOKEN" \
     -H "X-Session-ID: $SESSION_ID")
 
 RESEND_BODY=$(echo "$RESEND_RESPONSE" | head -n -1)
@@ -216,7 +220,7 @@ log_info "  Step 3: Verifying old token is invalidated..."
 
 # Note: We can't directly test the old token without having the raw token value,
 # but we can verify via database that previous tokens were invalidated
-OLD_TOKEN_COUNT=$(PGPASSWORD=odoo psql -h localhost -U odoo -d realestate -t -c \
+OLD_TOKEN_COUNT=$(docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate -t -c \
     "SELECT COUNT(*) FROM thedevkitchen_password_token 
      WHERE user_id = $USER_ID 
      AND token_type = 'invite' 
@@ -243,7 +247,7 @@ log_info "  Step 1: Creating and activating user..."
 # Create pending user
 ACTIVE_INVITE_RESPONSE=$(curl -s -X POST "$API_BASE/users/invite" \
     -H "Content-Type: application/json" \
-    -H "Authorization: Bearer $JWT_TOKEN" \
+    -H "Authorization: Bearer $BEARER_TOKEN" \
     -H "X-Session-ID: $SESSION_ID" \
     -d '{
         "name": "Resend Test Active",
@@ -255,7 +259,7 @@ ACTIVE_INVITE_RESPONSE=$(curl -s -X POST "$API_BASE/users/invite" \
 ACTIVE_USER_ID=$(echo "$ACTIVE_INVITE_RESPONSE" | jq -r '.data.id // empty')
 
 # Simulate user activation by setting signup_pending=False
-PGPASSWORD=odoo psql -h localhost -U odoo -d realestate -c \
+docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate -c \
     "UPDATE res_users SET signup_pending = FALSE WHERE id = $ACTIVE_USER_ID;"
 
 log_info "  Created and activated user ID: $ACTIVE_USER_ID"
@@ -264,7 +268,7 @@ log_info "  Created and activated user ID: $ACTIVE_USER_ID"
 log_info "  Step 2: Attempting to resend invite to active user..."
 ACTIVE_RESEND_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/$ACTIVE_USER_ID/resend-invite" \
     -H "Content-Type: application/json" \
-    -H "Authorization: Bearer $JWT_TOKEN" \
+    -H "Authorization: Bearer $BEARER_TOKEN" \
     -H "X-Session-ID: $SESSION_ID")
 
 ACTIVE_RESEND_BODY=$(echo "$ACTIVE_RESEND_RESPONSE" | head -n -1)
@@ -294,7 +298,7 @@ log_info "  Testing with non-existent user ID (simulates other company)..."
 FOREIGN_USER_ID=999999
 OTHER_COMPANY_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/$FOREIGN_USER_ID/resend-invite" \
     -H "Content-Type: application/json" \
-    -H "Authorization: Bearer $JWT_TOKEN" \
+    -H "Authorization: Bearer $BEARER_TOKEN" \
     -H "X-Session-ID: $SESSION_ID")
 
 OTHER_COMPANY_BODY=$(echo "$OTHER_COMPANY_RESPONSE" | head -n -1)

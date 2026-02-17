@@ -18,6 +18,11 @@
 
 set -e
 
+# Load environment variables
+if [ -f "../18.0/.env" ]; then
+    source ../18.0/.env
+fi
+
 # Configuration
 BASE_URL="${BASE_URL:-http://localhost:8069}"
 API_BASE="${BASE_URL}/api/v1"
@@ -88,7 +93,7 @@ assert_sql_result() {
     local expected=$2
     local description=$3
     
-    local result=$(PGPASSWORD=odoo psql -h localhost -U odoo -d realestate -t -c "$query" | xargs)
+    local result=$(docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate -t -c "$query" | xargs)
     
     if [ "$result" == "$expected" ]; then
         echo -e "  ${GREEN}✓${NC} SQL assertion passed: $description (got: $result)"
@@ -103,7 +108,7 @@ cleanup_test_data() {
     log_info "Cleaning up test data..."
     
     # SQL cleanup script
-    PGPASSWORD=odoo psql -h localhost -U odoo -d realestate <<EOF
+    docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF
         -- Delete test users
         DELETE FROM res_users WHERE login LIKE 'mt_test_%@example.com';
         
@@ -145,11 +150,11 @@ cleanup_test_data
 log_info "Setting up test environment with two companies..."
 
 # Get Company A ID (first company in database)
-COMPANY_A_ID=$(PGPASSWORD=odoo psql -h localhost -U odoo -d realestate -t -c \
+COMPANY_A_ID=$(docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate -t -c \
     "SELECT id FROM res_company ORDER BY id LIMIT 1 OFFSET 0;" | xargs)
 
 # Get Company B ID (second company in database)
-COMPANY_B_ID=$(PGPASSWORD=odoo psql -h localhost -U odoo -d realestate -t -c \
+COMPANY_B_ID=$(docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate -t -c \
     "SELECT id FROM res_company ORDER BY id LIMIT 1 OFFSET 1;" | xargs)
 
 if [ -z "$COMPANY_A_ID" ] || [ -z "$COMPANY_B_ID" ]; then
@@ -157,13 +162,13 @@ if [ -z "$COMPANY_A_ID" ] || [ -z "$COMPANY_B_ID" ]; then
     log_info "Creating second company for testing..."
     
     # Create Company B if doesn't exist
-    PGPASSWORD=odoo psql -h localhost -U odoo -d realestate <<EOF
+    docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF
         INSERT INTO res_company (name, create_date, write_date)
         VALUES ('Test Company B', NOW(), NOW())
         RETURNING id;
 EOF
     
-    COMPANY_B_ID=$(PGPASSWORD=odoo psql -h localhost -U odoo -d realestate -t -c \
+    COMPANY_B_ID=$(docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate -t -c \
         "SELECT id FROM res_company WHERE name = 'Test Company B';" | xargs)
 fi
 
@@ -176,7 +181,7 @@ log_info "Company B ID: $COMPANY_B_ID"
 log_info "Creating Owner A for Company A..."
 
 # Check if owner@example.com belongs to Company A
-OWNER_A_EXISTS=$(PGPASSWORD=odoo psql -h localhost -U odoo -d realestate -t -c \
+OWNER_A_EXISTS=$(docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate -t -c \
     "SELECT COUNT(*) FROM res_users WHERE login = 'owner@example.com' AND company_id = $COMPANY_A_ID;" | xargs)
 
 if [ "$OWNER_A_EXISTS" == "0" ]; then
@@ -187,8 +192,8 @@ fi
 OWNER_A_LOGIN=$(curl -s -X POST "$API_BASE/users/login" \
     -H "Content-Type: application/json" \
     -d '{
-        "login": "owner@example.com",
-        "password": "owner123"
+        "login": "'"$TEST_USER_OWNER"'",
+        "password": "'"$TEST_PASSWORD_OWNER"'"
     }')
 
 OWNER_A_JWT=$(echo "$OWNER_A_LOGIN" | jq -r '.access_token // empty')
@@ -211,7 +216,7 @@ COMPANY_A_ID=$OWNER_A_COMPANY
 log_info "Creating Owner B for Company B..."
 
 # Create partner for Owner B
-PGPASSWORD=odoo psql -h localhost -U odoo -d realestate <<EOF
+docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF
     -- Create partner
     INSERT INTO res_partner (name, email, company_id, create_date, write_date, is_company)
     VALUES ('MT Test Owner B', 'mt_test_owner_b@example.com', $COMPANY_B_ID, NOW(), NOW(), FALSE)
@@ -348,7 +353,7 @@ log_info "Generating invite token for User A..."
 RAW_TOKEN_A="invite-token-a-$(date +%s)"
 TOKEN_HASH_A=$(echo -n "$RAW_TOKEN_A" | sha256sum | awk '{print $1}')
 
-PGPASSWORD=odoo psql -h localhost -U odoo -d realestate <<EOF
+docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF
     UPDATE thedevkitchen_password_token
     SET token = '$TOKEN_HASH_A'
     WHERE user_id = $USER_A_ID

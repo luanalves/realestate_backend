@@ -19,6 +19,11 @@
 
 set -e
 
+# Load environment variables
+if [ -f "../18.0/.env" ]; then
+    source ../18.0/.env
+fi
+
 # Configuration
 BASE_URL="${BASE_URL:-http://localhost:8069}"
 API_BASE="${BASE_URL}/api/v1"
@@ -89,7 +94,7 @@ assert_sql_result() {
     local expected=$2
     local description=$3
     
-    local result=$(PGPASSWORD=odoo psql -h localhost -U odoo -d realestate -t -c "$query" | xargs)
+    local result=$(docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate -t -c "$query" | xargs)
     
     if [ "$result" == "$expected" ]; then
         echo -e "  ${GREEN}✓${NC} SQL assertion passed: $description (got: $result)"
@@ -104,7 +109,7 @@ cleanup_test_data() {
     log_info "Cleaning up test data..."
     
     # SQL cleanup script
-    PGPASSWORD=odoo psql -h localhost -U odoo -d realestate <<EOF
+    docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF
         -- Delete test tenants
         DELETE FROM real_estate_tenant WHERE email LIKE 'portal_test_%@example.com';
         
@@ -146,7 +151,6 @@ LOGIN_RESPONSE=$(curl -s -X POST "$API_BASE/users/login" \
         "password": "agent123"
     }')
 
-JWT_TOKEN=$(echo "$LOGIN_RESPONSE" | jq -r '.access_token // empty')
 SESSION_ID=$(echo "$LOGIN_RESPONSE" | jq -r '.session_id // empty')
 AGENT_COMPANY_ID=$(echo "$LOGIN_RESPONSE" | jq -r '.company_id // empty')
 
@@ -164,7 +168,7 @@ test_scenario "Portal invite missing phone returns 400"
 
 MISSING_PHONE_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/invite" \
     -H "Content-Type: application/json" \
-    -H "Authorization: Bearer $JWT_TOKEN" \
+    -H "Authorization: Bearer $BEARER_TOKEN" \
     -H "X-Session-ID: $SESSION_ID" \
     -d '{
         "name": "Portal Test Missing Phone",
@@ -186,7 +190,7 @@ test_scenario "Portal invite missing birthdate returns 400"
 
 MISSING_BIRTHDATE_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/invite" \
     -H "Content-Type: application/json" \
-    -H "Authorization: Bearer $JWT_TOKEN" \
+    -H "Authorization: Bearer $BEARER_TOKEN" \
     -H "X-Session-ID: $SESSION_ID" \
     -d '{
         "name": "Portal Test Missing Birthdate",
@@ -208,7 +212,7 @@ test_scenario "Agent invites portal tenant with all required fields"
 
 PORTAL_INVITE_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/invite" \
     -H "Content-Type: application/json" \
-    -H "Authorization: Bearer $JWT_TOKEN" \
+    -H "Authorization: Bearer $BEARER_TOKEN" \
     -H "X-Session-ID: $SESSION_ID" \
     -d '{
         "name": "Portal Test Tenant",
@@ -244,10 +248,10 @@ assert_sql_result \
     "Tenant record exists"
 
 # Check partner_id linkage
-USER_PARTNER_ID=$(PGPASSWORD=odoo psql -h localhost -U odoo -d realestate -t -c \
+USER_PARTNER_ID=$(docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate -t -c \
     "SELECT partner_id FROM res_users WHERE id = $PORTAL_USER_ID;" | xargs)
 
-TENANT_PARTNER_ID=$(PGPASSWORD=odoo psql -h localhost -U odoo -d realestate -t -c \
+TENANT_PARTNER_ID=$(docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate -t -c \
     "SELECT partner_id FROM real_estate_tenant WHERE id = $TENANT_ID;" | xargs)
 
 log_info "User partner_id: $USER_PARTNER_ID, Tenant partner_id: $TENANT_PARTNER_ID"
@@ -297,12 +301,12 @@ assert_sql_result \
 test_scenario "Verify portal user has portal group only"
 
 # Get portal group ID
-PORTAL_GROUP_ID=$(PGPASSWORD=odoo psql -h localhost -U odoo -d realestate -t -c \
+PORTAL_GROUP_ID=$(docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate -t -c \
     "SELECT id FROM res_groups WHERE category_id = (SELECT id FROM ir_module_category WHERE name = 'Technical') AND name = 'Portal';" | xargs)
 
 if [ -z "$PORTAL_GROUP_ID" ]; then
     # Fallback: get portal group by XML ID
-    PORTAL_GROUP_ID=$(PGPASSWORD=odoo psql -h localhost -U odoo -d realestate -t -c \
+    PORTAL_GROUP_ID=$(docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate -t -c \
         "SELECT res_id FROM ir_model_data WHERE model = 'res.groups' AND name = 'group_portal';" | xargs)
 fi
 
@@ -320,7 +324,7 @@ assert_sql_result \
 test_scenario "Portal invite with existing document for unlinked tenant returns 409"
 
 # First, create an unlinked tenant in database (tenant without res.users)
-PGPASSWORD=odoo psql -h localhost -U odoo -d realestate <<EOF
+docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF
     INSERT INTO res_partner (name, email, phone, company_id, create_date, write_date)
     VALUES ('Unlinked Tenant Partner', 'portal_test_unlinked@example.com', '+5511999887766', $AGENT_COMPANY_ID, NOW(), NOW())
     RETURNING id;
@@ -333,7 +337,7 @@ EOF
 # Try to invite with same document
 EXISTING_DOC_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/invite" \
     -H "Content-Type: application/json" \
-    -H "Authorization: Bearer $JWT_TOKEN" \
+    -H "Authorization: Bearer $BEARER_TOKEN" \
     -H "X-Session-ID: $SESSION_ID" \
     -d '{
         "name": "Another Portal User",
@@ -357,7 +361,7 @@ log_info "Simulating set-password flow for portal user..."
 RAW_PORTAL_TOKEN="portal-invite-token-$(date +%s)"
 PORTAL_TOKEN_HASH=$(echo -n "$RAW_PORTAL_TOKEN" | sha256sum | awk '{print $1}')
 
-PGPASSWORD=odoo psql -h localhost -U odoo -d realestate <<EOF
+docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF
     UPDATE thedevkitchen_password_token
     SET token = '$PORTAL_TOKEN_HASH'
     WHERE user_id = $PORTAL_USER_ID

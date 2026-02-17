@@ -36,6 +36,11 @@
 
 set -e
 
+# Load environment variables
+if [ -f "../18.0/.env" ]; then
+    source ../18.0/.env
+fi
+
 # Configuration
 BASE_URL="${BASE_URL:-http://localhost:8069}"
 API_BASE="${BASE_URL}/api/v1"
@@ -88,7 +93,7 @@ cleanup_test_data() {
     log_info "Cleaning up test data..."
     
     # SQL cleanup script
-    PGPASSWORD=odoo psql -h localhost -U odoo -d realestate <<EOF
+    docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF
         -- Delete test users
         DELETE FROM res_users WHERE login LIKE 'rbac_test_%@example.com';
         
@@ -123,8 +128,8 @@ log_info "Setting up authentication as Owner..."
 OWNER_LOGIN=$(curl -s -X POST "$API_BASE/users/login" \
     -H "Content-Type: application/json" \
     -d '{
-        "login": "owner@example.com",
-        "password": "owner123"
+        "login": "'"$TEST_USER_OWNER"'",
+        "password": "'"$TEST_PASSWORD_OWNER"'"
     }')
 
 OWNER_JWT=$(echo "$OWNER_LOGIN" | jq -r '.access_token // empty')
@@ -273,7 +278,7 @@ done
 log_info "Setting up authentication as Director..."
 
 # First check if director exists, if not skip these tests
-DIRECTOR_CHECK=$(PGPASSWORD=odoo psql -h localhost -U odoo -d realestate -t -c \
+DIRECTOR_CHECK=$(docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate -t -c \
     "SELECT COUNT(*) FROM res_users WHERE login = 'director@example.com';" | xargs)
 
 if [ "$DIRECTOR_CHECK" == "0" ]; then

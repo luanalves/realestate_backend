@@ -20,6 +20,11 @@
 
 set -e
 
+# Load environment variables
+if [ -f "../18.0/.env" ]; then
+    source ../18.0/.env
+fi
+
 # Configuration
 BASE_URL="${BASE_URL:-http://localhost:8069}"
 API_BASE="${BASE_URL}/api/v1"
@@ -46,6 +51,28 @@ log_error() {
 
 log_warning() {
     echo -e "${YELLOW}[WARN]${NC} $1"
+}
+
+get_oauth_token() {
+    log_info "Getting OAuth token..."
+    
+    TOKEN_RESPONSE=$(curl -s -X POST "$API_BASE/auth/token" \
+        -H "Content-Type: application/json" \
+        -d "{
+            \"client_id\": \"$OAUTH_CLIENT_ID\",
+            \"client_secret\": \"$OAUTH_CLIENT_SECRET\",
+            \"grant_type\": \"client_credentials\"
+        }")
+    
+    BEARER_TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.access_token // empty')
+    
+    if [ -z "$BEARER_TOKEN" ]; then
+        log_error "Failed to obtain OAuth token"
+        echo "Response: $TOKEN_RESPONSE"
+        exit 1
+    fi
+    
+    log_info "OAuth token obtained successfully"
 }
 
 test_scenario() {
@@ -87,7 +114,7 @@ cleanup_test_data() {
     log_info "Cleaning up test data..."
     
     # SQL cleanup script
-    PGPASSWORD=odoo psql -h localhost -U odoo -d realestate <<EOF
+    docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF
         -- Delete test users
         DELETE FROM res_users WHERE login LIKE 'invite_test_%@example.com';
         
@@ -119,23 +146,35 @@ cleanup_test_data
 # ============================================================
 log_info "Setting up authentication as Owner..."
 
+# Step 1: Get OAuth token
+get_oauth_token
+
+# Step 2: Login as owner user
 LOGIN_RESPONSE=$(curl -s -X POST "$API_BASE/users/login" \
     -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $BEARER_TOKEN" \
     -d '{
-        "login": "owner@example.com",
-        "password": "owner123"
+        "login": "'"$TEST_USER_OWNER"'",
+        "password": "'"$TEST_PASSWORD_OWNER"'"
     }')
 
-JWT_TOKEN=$(echo "$LOGIN_RESPONSE" | jq -r '.access_token // empty')
 SESSION_ID=$(echo "$LOGIN_RESPONSE" | jq -r '.session_id // empty')
-OWNER_COMPANY_ID=$(echo "$LOGIN_RESPONSE" | jq -r '.company_id // empty')
+OWNER_COMPANY_ID=$(echo "$LOGIN_RESPONSE" | jq -r '.user.default_company_id // empty')
 
-if [ -z "$JWT_TOKEN" ] || [ -z "$SESSION_ID" ]; then
-    log_error "Failed to authenticate as Owner. Please ensure owner@example.com exists with password owner123"
+if [ -z "$SESSION_ID" ]; then
+    log_error "Failed to authenticate as Owner. Please ensure $TEST_USER_OWNER exists in the database"
+    echo "Login response: $LOGIN_RESPONSE"
     exit 1
 fi
 
-log_info "Owner authentication successful (Company ID: $OWNER_COMPANY_ID)"
+if [ -z "$OWNER_COMPANY_ID" ] || [ "$OWNER_COMPANY_ID" = "null" ]; then
+    log_error "User $TEST_USER_OWNER has no linked company"
+    echo "Login response: $LOGIN_RESPONSE"
+    log_error "Fix: Run 'cd 18.0 && bash fix_user111_company.sh' to link user to a company"
+    exit 1
+fi
+
+log_info "Owner authentication successful (Company ID: $OWNER_COMPANY_ID, Session: $SESSION_ID)"
 
 # ============================================================
 # Test 1: Owner invites Manager (201 + token generated)
@@ -144,16 +183,17 @@ test_scenario "Owner invites Manager successfully"
 
 MANAGER_INVITE_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/invite" \
     -H "Content-Type: application/json" \
-    -H "Authorization: Bearer $JWT_TOKEN" \
-    -H "X-Session-ID: $SESSION_ID" \
+    -H "Authorization: Bearer $BEARER_TOKEN" \
+    -H "X-Company-ID: $OWNER_COMPANY_ID" \
     -d '{
+        "session_id": "'"$SESSION_ID"'",
         "name": "Invite Test Manager",
         "email": "invite_test_manager@example.com",
-        "document": "11122233344",
+        "document": "52998224725",
         "profile": "manager"
     }')
 
-MANAGER_INVITE_BODY=$(echo "$MANAGER_INVITE_RESPONSE" | head -n -1)
+MANAGER_INVITE_BODY=$(echo "$MANAGER_INVITE_RESPONSE" | sed '$d')
 MANAGER_INVITE_STATUS=$(echo "$MANAGER_INVITE_RESPONSE" | tail -n 1)
 
 assert_status 201 "$MANAGER_INVITE_STATUS" "Manager invite created"
@@ -173,12 +213,12 @@ log_info "Manager user created with ID: $MANAGER_USER_ID"
 # ============================================================
 log_info "Retrieving Manager's invite token from database..."
 
-MANAGER_TOKEN=$(PGPASSWORD=odoo psql -h localhost -U odoo -d realestate -t -c \
+MANAGER_TOKEN=$(docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate -t -c \
     "SELECT token FROM thedevkitchen_password_token 
      WHERE user_id = $MANAGER_USER_ID 
      AND token_type = 'invite' 
      AND status = 'pending' 
-     ORDER BY created_at DESC LIMIT 1;" | xargs)
+     ORDER BY create_date DESC LIMIT 1;" | xargs)
 
 if [ -z "$MANAGER_TOKEN" ]; then
     log_error "Failed to retrieve Manager's invite token from database"
@@ -197,7 +237,7 @@ log_info "Retrieved token hash (first 16 chars): ${MANAGER_TOKEN:0:16}..."
 log_info "Setting up Manager authentication (after creating via different flow)..."
 
 # For this test, we'll create Manager via SQL with known password for testing
-PGPASSWORD=odoo psql -h localhost -U odoo -d realestate <<EOF
+docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF
     -- Set Manager password for testing (simulating set-password flow)
     UPDATE res_users 
     SET password = crypt('manager123', gen_salt('bf')),
@@ -235,11 +275,11 @@ if [ -n "$MANAGER_JWT" ]; then
         -d '{
             "name": "Invite Test Agent",
             "email": "invite_test_agent@example.com",
-            "document": "55566677788",
+            "document": "69103252614",
             "profile": "agent"
         }')
 
-    AGENT_INVITE_BODY=$(echo "$AGENT_INVITE_RESPONSE" | head -n -1)
+    AGENT_INVITE_BODY=$(echo "$AGENT_INVITE_RESPONSE" | sed '$d')
     AGENT_INVITE_STATUS=$(echo "$AGENT_INVITE_RESPONSE" | tail -n 1)
 
     assert_status 201 "$AGENT_INVITE_STATUS" "Agent invite created by Manager"
@@ -256,12 +296,12 @@ test_scenario "Invite with duplicate email returns 409"
 
 DUPLICATE_EMAIL_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/invite" \
     -H "Content-Type: application/json" \
-    -H "Authorization: Bearer $JWT_TOKEN" \
+    -H "Authorization: Bearer $BEARER_TOKEN" \
     -H "X-Session-ID: $SESSION_ID" \
     -d '{
         "name": "Another Manager",
         "email": "invite_test_manager@example.com",
-        "document": "99988877766",
+        "document": "85551551980",
         "profile": "manager"
     }')
 
@@ -276,12 +316,12 @@ test_scenario "Invite with duplicate document returns 409"
 
 DUPLICATE_DOC_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/invite" \
     -H "Content-Type: application/json" \
-    -H "Authorization: Bearer $JWT_TOKEN" \
+    -H "Authorization: Bearer $BEARER_TOKEN" \
     -H "X-Session-ID: $SESSION_ID" \
     -d '{
         "name": "Another User",
         "email": "invite_test_another@example.com",
-        "document": "11122233344",
+        "document": "52998224725",
         "profile": "agent"
     }')
 
@@ -313,12 +353,12 @@ log_info "Simulating set-password flow (using test token)..."
 # Create a test user with known token for set-password testing
 TEST_PROSPECTOR_CREATE=$(curl -s -X POST "$API_BASE/users/invite" \
     -H "Content-Type: application/json" \
-    -H "Authorization: Bearer $JWT_TOKEN" \
+    -H "Authorization: Bearer $BEARER_TOKEN" \
     -H "X-Session-ID: $SESSION_ID" \
     -d '{
         "name": "Invite Test Prospector",
         "email": "invite_test_prospector@example.com",
-        "document": "33344455566",
+        "document": "05753626896",
         "profile": "prospector"
     }')
 
@@ -328,7 +368,7 @@ PROSPECTOR_USER_ID=$(echo "$TEST_PROSPECTOR_CREATE" | jq -r '.data.id')
 RAW_TOKEN="test-invite-token-$(date +%s)"
 TOKEN_HASH=$(echo -n "$RAW_TOKEN" | sha256sum | awk '{print $1}')
 
-PGPASSWORD=odoo psql -h localhost -U odoo -d realestate <<EOF
+docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF
     UPDATE thedevkitchen_password_token
     SET token = '$TOKEN_HASH'
     WHERE user_id = $PROSPECTOR_USER_ID
@@ -349,7 +389,7 @@ SET_PASSWORD_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/auth/set-
         \"confirm_password\": \"newpassword123\"
     }")
 
-SET_PASSWORD_BODY=$(echo "$SET_PASSWORD_RESPONSE" | head -n -1)
+SET_PASSWORD_BODY=$(echo "$SET_PASSWORD_RESPONSE" | sed '$d')
 SET_PASSWORD_STATUS=$(echo "$SET_PASSWORD_RESPONSE" | tail -n 1)
 
 assert_status 200 "$SET_PASSWORD_STATUS" "Set-password successful"
@@ -368,7 +408,7 @@ LOGIN_AFTER_PASSWORD_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/u
         "password": "newpassword123"
     }')
 
-LOGIN_AFTER_BODY=$(echo "$LOGIN_AFTER_PASSWORD_RESPONSE" | head -n -1)
+LOGIN_AFTER_BODY=$(echo "$LOGIN_AFTER_PASSWORD_RESPONSE" | sed '$d')
 LOGIN_AFTER_STATUS=$(echo "$LOGIN_AFTER_PASSWORD_RESPONSE" | tail -n 1)
 
 assert_status 200 "$LOGIN_AFTER_STATUS" "Login successful after set-password"
@@ -402,12 +442,12 @@ test_scenario "Set-password with expired token returns 410"
 # Create expired token
 EXPIRED_USER_CREATE=$(curl -s -X POST "$API_BASE/users/invite" \
     -H "Content-Type: application/json" \
-    -H "Authorization: Bearer $JWT_TOKEN" \
+    -H "Authorization: Bearer $BEARER_TOKEN" \
     -H "X-Session-ID: $SESSION_ID" \
     -d '{
         "name": "Invite Test Expired",
         "email": "invite_test_expired@example.com",
-        "document": "77788899900",
+        "document": "83625764002",
         "profile": "receptionist"
     }')
 
@@ -418,7 +458,7 @@ EXPIRED_RAW_TOKEN="expired-token-$(date +%s)"
 EXPIRED_TOKEN_HASH=$(echo -n "$EXPIRED_RAW_TOKEN" | sha256sum | awk '{print $1}')
 
 # Set token as expired in database
-PGPASSWORD=odoo psql -h localhost -U odoo -d realestate <<EOF
+docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF
     UPDATE thedevkitchen_password_token
     SET token = '$EXPIRED_TOKEN_HASH',
         expires_at = NOW() - INTERVAL '1 day'
@@ -477,11 +517,11 @@ for profile in "${ALL_PROFILES[@]}"; do
     
     PROFILE_INVITE_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/invite" \
         -H "Content-Type: application/json" \
-        -H "Authorization: Bearer $JWT_TOKEN" \
+        -H "Authorization: Bearer $BEARER_TOKEN" \
         -H "X-Session-ID: $SESSION_ID" \
         -d "$INVITE_REQUEST")
     
-    PROFILE_INVITE_BODY=$(echo "$PROFILE_INVITE_RESPONSE" | head -n -1)
+    PROFILE_INVITE_BODY=$(echo "$PROFILE_INVITE_RESPONSE" | sed '$d')
     PROFILE_INVITE_STATUS=$(echo "$PROFILE_INVITE_RESPONSE" | tail -n 1)
     
     assert_status 201 "$PROFILE_INVITE_STATUS" "$profile user invited"
@@ -491,7 +531,7 @@ for profile in "${ALL_PROFILES[@]}"; do
     PROFILE_RAW_TOKEN="login-verify-${profile}-$(date +%s)"
     PROFILE_TOKEN_HASH=$(echo -n "$PROFILE_RAW_TOKEN" | sha256sum | awk '{print $1}')
     
-    PGPASSWORD=odoo psql -h localhost -U odoo -d realestate <<EOF
+    docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF
         UPDATE thedevkitchen_password_token
         SET token = '$PROFILE_TOKEN_HASH'
         WHERE user_id = $PROFILE_USER_ID
@@ -520,7 +560,7 @@ EOF
             \"password\": \"${profile}password123\"
         }")
     
-    PROFILE_LOGIN_BODY=$(echo "$PROFILE_LOGIN_RESPONSE" | head -n -1)
+    PROFILE_LOGIN_BODY=$(echo "$PROFILE_LOGIN_RESPONSE" | sed '$d')
     PROFILE_LOGIN_STATUS=$(echo "$PROFILE_LOGIN_RESPONSE" | tail -n 1)
     
     assert_status 200 "$PROFILE_LOGIN_STATUS" "$profile login successful"
@@ -549,12 +589,12 @@ test_scenario "US6: Pending user (no password set) login returns 401"
 # Create pending user
 PENDING_INVITE_RESPONSE=$(curl -s -X POST "$API_BASE/users/invite" \
     -H "Content-Type: application/json" \
-    -H "Authorization: Bearer $JWT_TOKEN" \
+    -H "Authorization: Bearer $BEARER_TOKEN" \
     -H "X-Session-ID: $SESSION_ID" \
     -d '{
         "name": "Pending User Test",
         "email": "invite_test_pending_user@example.com",
-        "document": "90000000001",
+        "document": "19244581720",
         "profile": "agent"
     }')
 
@@ -580,12 +620,12 @@ test_scenario "US6: Inactive user login returns 403"
 # Create user and set as inactive
 INACTIVE_INVITE_RESPONSE=$(curl -s -X POST "$API_BASE/users/invite" \
     -H "Content-Type: application/json" \
-    -H "Authorization: Bearer $JWT_TOKEN" \
+    -H "Authorization: Bearer $BEARER_TOKEN" \
     -H "X-Session-ID: $SESSION_ID" \
     -d '{
         "name": "Inactive User Test",
         "email": "invite_test_inactive_user@example.com",
-        "document": "90000000002",
+        "document": "38232383401",
         "profile": "agent"
     }')
 
@@ -595,7 +635,7 @@ INACTIVE_USER_ID=$(echo "$INACTIVE_INVITE_RESPONSE" | jq -r '.data.id')
 INACTIVE_RAW_TOKEN="inactive-token-$(date +%s)"
 INACTIVE_TOKEN_HASH=$(echo -n "$INACTIVE_RAW_TOKEN" | sha256sum | awk '{print $1}')
 
-PGPASSWORD=odoo psql -h localhost -U odoo -d realestate <<EOF
+docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF
     UPDATE thedevkitchen_password_token
     SET token = '$INACTIVE_TOKEN_HASH'
     WHERE user_id = $INACTIVE_USER_ID
@@ -612,7 +652,7 @@ curl -s -X POST "$API_BASE/auth/set-password" \
     }" > /dev/null
 
 # Mark user as inactive
-PGPASSWORD=odoo psql -h localhost -U odoo -d realestate <<EOF
+docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF
     UPDATE res_users SET active = FALSE WHERE id = $INACTIVE_USER_ID;
 EOF
 

@@ -1,14 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Invite Service
-
-Handles user invitation logic including authorization matrix, profile-to-group mapping,
-dual record creation for portal profile, and email dispatch.
-
-Author: TheDevKitchen
-Date: 2026-02-16
-ADRs: ADR-004 (Naming), ADR-008 (Multi-tenancy), ADR-019 (RBAC)
-"""
 
 import logging
 from odoo import _
@@ -68,23 +58,14 @@ class InviteService:
         self.env = env
 
     def check_authorization(self, requester_user, target_profile):
-        """
-        Check if requester_user can invite target_profile.
 
-        Args:
-            requester_user: res.users record (the authenticated user)
-            target_profile: string (e.g., 'manager', 'agent', 'portal')
-
-        Returns:
-            bool: True if authorized, raises UserError otherwise
-        """
-        # Get requester's groups
-        requester_groups = requester_user.groups_id.mapped("complete_name")
+        # Get requester's group IDs
+        requester_group_ids = requester_user.groups_id.ids
 
         # Check each authorization rule
         for group_xml_id, allowed_profiles in self.INVITE_AUTHORIZATION.items():
             group = self.env.ref(group_xml_id, raise_if_not_found=False)
-            if group and group.complete_name in requester_groups:
+            if group and group.id in requester_group_ids:
                 if target_profile in allowed_profiles:
                     return True
 
@@ -99,22 +80,7 @@ class InviteService:
     def create_invited_user(
         self, name, email, document, profile, company, created_by, **extra_fields
     ):
-        """
-        Create a new res.users with the specified profile (without password).
-        Standard flow for non-portal profiles.
 
-        Args:
-            name: User full name
-            email: User email (login)
-            document: CPF (11 digits)
-            profile: Profile name (e.g., 'manager', 'agent')
-            company: thedevkitchen.estate.company record
-            created_by: res.users record (who is inviting)
-            **extra_fields: phone, mobile, etc.
-
-        Returns:
-            res.users record (new user)
-        """
         # Validate document (CPF for non-portal profiles)
         if profile != "portal":
             self._validate_cpf(document)
@@ -146,7 +112,7 @@ class InviteService:
             "name": name,
             "login": email,
             "email": email,
-            "password": False,  # No password yet
+            # No password field - user cannot login until password is set via invite link
             "signup_pending": True,  # Waiting for invite link
             "groups_id": [(6, 0, [target_group.id])],
             "estate_company_ids": [(4, company.id)] if hasattr(company, "id") else [],
@@ -182,23 +148,6 @@ class InviteService:
         created_by,
         occupation=None,
     ):
-        """
-        Create portal user with dual record: res.users + real.estate.tenant.
-        Atomic transaction ensures both records are created or neither.
-
-        Args:
-            name: User/tenant name
-            email: User email
-            document: CPF or CNPJ
-            phone: Tenant phone (required)
-            birthdate: Tenant birthdate (YYYY-MM-DD, required)
-            company_id: thedevkitchen.estate.company ID (required)
-            created_by: res.users record (who is inviting)
-            occupation: Tenant occupation (optional)
-
-        Returns:
-            tuple: (user, tenant) records
-        """
         # Validate required fields
         if not phone:
             raise ValidationError(_("Phone is required for portal profile"))
@@ -239,7 +188,7 @@ class InviteService:
             "name": name,
             "login": email,
             "email": email,
-            "password": False,
+            # No password field - user cannot login until password is set via invite link
             "signup_pending": True,
             "groups_id": [(6, 0, [portal_group.id])],
         }
@@ -274,18 +223,6 @@ class InviteService:
         return user, tenant
 
     def send_invite_email(self, user, raw_token, expires_hours, frontend_base_url):
-        """
-        Send invite email using mail.template.
-
-        Args:
-            user: res.users record
-            raw_token: Plain token string (not hashed)
-            expires_hours: Token validity in hours
-            frontend_base_url: Frontend URL for link construction
-
-        Returns:
-            bool: True if email sent/queued, False if failed
-        """
         try:
             # Get email template
             template = self.env.ref(
@@ -328,10 +265,7 @@ class InviteService:
             )
 
     def _validate_document_portal(self, document):
-        """
-        Validate CPF or CNPJ for portal profile.
-        Uses validate_docbr for CPF, custom logic for CNPJ.
-        """
+
         document_clean = "".join(filter(str.isdigit, document))
 
         if len(document_clean) == 11:
