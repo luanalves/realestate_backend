@@ -115,7 +115,7 @@
 
 ### Implementation for User Story 6
 
-- [ ] T027 [US6] Add login verification scenarios to `integration_tests/test_us9_s1_invite_flow.sh` — extend the invite flow test to verify login for all 9 profiles: create one user per profile (owner, director, manager, agent, prospector, receptionist, financial, legal, portal) via invite → set-password → verify `POST /api/v1/users/login` succeeds with `session_id` and user data. Also verify: pending user (invited but no password set) → login returns 401, inactive user → login returns 403
+- [X] T027 [US6] Add login verification scenarios to `integration_tests/test_us9_s1_invite_flow.sh` — extend the invite flow test to verify login for all 9 profiles: create one user per profile (owner, director, manager, agent, prospector, receptionist, financial, legal, portal) via invite → set-password → verify `POST /api/v1/users/login` succeeds with `session_id` and user data. Also verify: pending user (invited but no password set) → login returns 401, inactive user → login returns 403
 
 **Checkpoint**: Universal login verified for all 9 profiles
 

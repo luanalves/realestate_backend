@@ -440,6 +440,197 @@ EXPIRED_TOKEN_STATUS=$(echo "$EXPIRED_TOKEN_RESPONSE" | tail -n 1)
 assert_status 410 "$EXPIRED_TOKEN_STATUS" "Expired token rejected"
 
 # ============================================================
+# US6: Login Verification for All 9 Profiles
+# ============================================================
+log_info "Starting login verification for all 9 profiles (US6)..."
+
+# Define all 9 profiles
+declare -a ALL_PROFILES=("owner" "director" "manager" "agent" "prospector" "receptionist" "financial" "legal" "portal")
+
+# Create and verify login for each profile
+PROFILE_COUNTER=1
+for profile in "${ALL_PROFILES[@]}"; do
+    # ============================================================
+    # Test: Invite user with specific profile
+    # ============================================================
+    test_scenario "US6: Invite and login verification for profile '$profile'"
+    
+    # Build request body (portal requires extra fields)
+    if [ "$profile" == "portal" ]; then
+        INVITE_REQUEST="{
+            \"name\": \"Login Verify $profile\",
+            \"email\": \"invite_test_login_${profile}@example.com\",
+            \"document\": \"8000000000$PROFILE_COUNTER\",
+            \"profile\": \"$profile\",
+            \"phone\": \"+5511988776655\",
+            \"birthdate\": \"1990-01-01\",
+            \"occupation\": \"Test User\"
+        }"
+    else
+        INVITE_REQUEST="{
+            \"name\": \"Login Verify $profile\",
+            \"email\": \"invite_test_login_${profile}@example.com\",
+            \"document\": \"8000000000$PROFILE_COUNTER\",
+            \"profile\": \"$profile\"
+        }"
+    fi
+    
+    PROFILE_INVITE_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/invite" \
+        -H "Content-Type: application/json" \
+        -H "Authorization: Bearer $JWT_TOKEN" \
+        -H "X-Session-ID: $SESSION_ID" \
+        -d "$INVITE_REQUEST")
+    
+    PROFILE_INVITE_BODY=$(echo "$PROFILE_INVITE_RESPONSE" | head -n -1)
+    PROFILE_INVITE_STATUS=$(echo "$PROFILE_INVITE_RESPONSE" | tail -n 1)
+    
+    assert_status 201 "$PROFILE_INVITE_STATUS" "$profile user invited"
+    PROFILE_USER_ID=$(echo "$PROFILE_INVITE_BODY" | jq -r '.data.id')
+    
+    # Generate known token for set-password
+    PROFILE_RAW_TOKEN="login-verify-${profile}-$(date +%s)"
+    PROFILE_TOKEN_HASH=$(echo -n "$PROFILE_RAW_TOKEN" | sha256sum | awk '{print $1}')
+    
+    PGPASSWORD=odoo psql -h localhost -U odoo -d realestate <<EOF
+        UPDATE thedevkitchen_password_token
+        SET token = '$PROFILE_TOKEN_HASH'
+        WHERE user_id = $PROFILE_USER_ID
+        AND token_type = 'invite'
+        AND status = 'pending';
+EOF
+    
+    # Set password
+    PROFILE_SET_PASSWORD_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/auth/set-password" \
+        -H "Content-Type: application/json" \
+        -d "{
+            \"token\": \"$PROFILE_RAW_TOKEN\",
+            \"password\": \"${profile}password123\",
+            \"confirm_password\": \"${profile}password123\"
+        }")
+    
+    PROFILE_SET_PASSWORD_STATUS=$(echo "$PROFILE_SET_PASSWORD_RESPONSE" | tail -n 1)
+    
+    assert_status 200 "$PROFILE_SET_PASSWORD_STATUS" "$profile set-password successful"
+    
+    # Verify login works
+    PROFILE_LOGIN_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/login" \
+        -H "Content-Type: application/json" \
+        -d "{
+            \"login\": \"invite_test_login_${profile}@example.com\",
+            \"password\": \"${profile}password123\"
+        }")
+    
+    PROFILE_LOGIN_BODY=$(echo "$PROFILE_LOGIN_RESPONSE" | head -n -1)
+    PROFILE_LOGIN_STATUS=$(echo "$PROFILE_LOGIN_RESPONSE" | tail -n 1)
+    
+    assert_status 200 "$PROFILE_LOGIN_STATUS" "$profile login successful"
+    assert_field "$PROFILE_LOGIN_BODY" "access_token" "$profile JWT token returned"
+    assert_field "$PROFILE_LOGIN_BODY" "session_id" "$profile session ID returned"
+    assert_field "$PROFILE_LOGIN_BODY" "user.id" "$profile user data returned"
+    
+    # Verify profile matches
+    RETURNED_PROFILE=$(echo "$PROFILE_LOGIN_BODY" | jq -r '.user.profile // empty')
+    if [ "$RETURNED_PROFILE" == "$profile" ]; then
+        echo -e "  ${GREEN}✓${NC} Profile matches: $profile"
+        TESTS_PASSED=$((TESTS_PASSED + 1))
+    else
+        echo -e "  ${RED}✗${NC} Profile mismatch: expected $profile, got $RETURNED_PROFILE"
+        TESTS_FAILED=$((TESTS_FAILED + 1))
+    fi
+    
+    PROFILE_COUNTER=$((PROFILE_COUNTER + 1))
+done
+
+# ============================================================
+# Test: Pending user (invited but no password set) returns 401
+# ============================================================
+test_scenario "US6: Pending user (no password set) login returns 401"
+
+# Create pending user
+PENDING_INVITE_RESPONSE=$(curl -s -X POST "$API_BASE/users/invite" \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $JWT_TOKEN" \
+    -H "X-Session-ID: $SESSION_ID" \
+    -d '{
+        "name": "Pending User Test",
+        "email": "invite_test_pending_user@example.com",
+        "document": "90000000001",
+        "profile": "agent"
+    }')
+
+PENDING_USER_ID=$(echo "$PENDING_INVITE_RESPONSE" | jq -r '.data.id')
+
+# Try to login without setting password
+PENDING_LOGIN_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/login" \
+    -H "Content-Type: application/json" \
+    -d '{
+        "login": "invite_test_pending_user@example.com",
+        "password": "anypassword"
+    }')
+
+PENDING_LOGIN_STATUS=$(echo "$PENDING_LOGIN_RESPONSE" | tail -n 1)
+
+assert_status 401 "$PENDING_LOGIN_STATUS" "Pending user login rejected"
+
+# ============================================================
+# Test: Inactive user returns 403
+# ============================================================
+test_scenario "US6: Inactive user login returns 403"
+
+# Create user and set as inactive
+INACTIVE_INVITE_RESPONSE=$(curl -s -X POST "$API_BASE/users/invite" \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $JWT_TOKEN" \
+    -H "X-Session-ID: $SESSION_ID" \
+    -d '{
+        "name": "Inactive User Test",
+        "email": "invite_test_inactive_user@example.com",
+        "document": "90000000002",
+        "profile": "agent"
+    }')
+
+INACTIVE_USER_ID=$(echo "$INACTIVE_INVITE_RESPONSE" | jq -r '.data.id')
+
+# Set password for inactive user
+INACTIVE_RAW_TOKEN="inactive-token-$(date +%s)"
+INACTIVE_TOKEN_HASH=$(echo -n "$INACTIVE_RAW_TOKEN" | sha256sum | awk '{print $1}')
+
+PGPASSWORD=odoo psql -h localhost -U odoo -d realestate <<EOF
+    UPDATE thedevkitchen_password_token
+    SET token = '$INACTIVE_TOKEN_HASH'
+    WHERE user_id = $INACTIVE_USER_ID
+    AND token_type = 'invite'
+    AND status = 'pending';
+EOF
+
+curl -s -X POST "$API_BASE/auth/set-password" \
+    -H "Content-Type: application/json" \
+    -d "{
+        \"token\": \"$INACTIVE_RAW_TOKEN\",
+        \"password\": \"inactivepassword123\",
+        \"confirm_password\": \"inactivepassword123\"
+    }" > /dev/null
+
+# Mark user as inactive
+PGPASSWORD=odoo psql -h localhost -U odoo -d realestate <<EOF
+    UPDATE res_users SET active = FALSE WHERE id = $INACTIVE_USER_ID;
+EOF
+
+# Try to login as inactive user
+INACTIVE_LOGIN_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/login" \
+    -H "Content-Type: application/json" \
+    -d '{
+        "login": "invite_test_inactive_user@example.com",
+        "password": "inactivepassword123"
+    }')
+
+INACTIVE_LOGIN_STATUS=$(echo "$INACTIVE_LOGIN_RESPONSE" | tail -n 1)
+
+assert_status 403 "$INACTIVE_LOGIN_STATUS" "Inactive user login rejected"
+
+log_info "US6 login verification tests completed"
+
+# ============================================================
 # Test Summary
 # ============================================================
 echo ""
