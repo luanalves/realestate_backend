@@ -77,16 +77,11 @@ class InviteController(http.Controller):
 
             # Get authenticated user and company context
             # User is set by @require_session decorator (request.env = request.env(user=user))
-            _logger.info(f"[INVITE] Starting invite process for {data.get('email')}, profile={data.get('profile')}")
             current_user = request.env.user
-            _logger.info(f"[INVITE] Current user: {current_user.login}, id={current_user.id}")
             
             company_id = request.httprequest.headers.get("X-Company-ID")
             if not company_id:
-                _logger.error("[INVITE] Missing X-Company-ID header")
                 return self._error_response(400, "validation_error", "X-Company-ID header is required")
-            
-            _logger.info(f"[INVITE] Company ID from header: {company_id}")
             
             company = (
                 request.env["thedevkitchen.estate.company"]
@@ -100,19 +95,14 @@ class InviteController(http.Controller):
                 return self._error_response(
                     404, "not_found", f"Company {company_id} not found"
                 )
-            
-            _logger.info(f"[INVITE] Company loaded: id={company.id}, name={company.name}")
 
             # Initialize services
             invite_service = InviteService(request.env)
             token_service = PasswordTokenService(request.env)
-            _logger.info("[INVITE] Services initialized")
 
             # Check authorization
-            _logger.info(f"[INVITE] Checking authorization for {current_user.login} to invite {profile}")
             try:
                 invite_service.check_authorization(current_user, profile)
-                _logger.info(f"[INVITE] Authorization granted")
             except UserError as e:
                 _logger.warning(f"[INVITE] Authorization denied: {e}")
                 return self._error_response(403, "forbidden", str(e))
@@ -151,7 +141,6 @@ class InviteController(http.Controller):
                     return self._error_response(400, "validation_error", str(e))
             else:
                 # Standard user creation (non-portal)
-                _logger.info(f"[INVITE] Creating standard user: email={email}, profile={profile}")
                 try:
                     user = invite_service.create_invited_user(
                         name=data["name"],
@@ -163,10 +152,8 @@ class InviteController(http.Controller):
                         phone=data.get("phone"),
                         mobile=data.get("mobile"),
                     )
-                    _logger.info(f"[INVITE] User created successfully: id={user.id}, login={user.login}")
                     tenant = None
                 except ValidationError as e:
-                    _logger.error(f"[INVITE] Validation error creating user: {e}")
                     if "already exists" in str(e):
                         field = "cpf" if "CPF" in str(e) else "email"
                         return self._error_response(
@@ -175,29 +162,22 @@ class InviteController(http.Controller):
                     return self._error_response(400, "validation_error", str(e))
 
             # Generate invite token
-            _logger.info(f"[INVITE] Generating invite token for user {user.id}")
             raw_token, token_record = token_service.generate_token(
                 user=user, token_type="invite", company=company, created_by=current_user
             )
-            _logger.info(f"[INVITE] Token generated: token_id={token_record.id}")
 
             # Get settings for TTL and frontend URL
-            _logger.info("[INVITE] Loading email link settings")
             settings = request.env["thedevkitchen.email.link.settings"].get_settings()
-            _logger.info(f"[INVITE] Settings loaded: TTL={settings.invite_link_ttl_hours}h, frontend={settings.frontend_base_url}")
 
             # Send invite email
-            _logger.info(f"[INVITE] Sending invite email to {user.email}")
             email_sent = invite_service.send_invite_email(
                 user=user,
                 raw_token=raw_token,
                 expires_hours=settings.invite_link_ttl_hours,
                 frontend_base_url=settings.frontend_base_url,
             )
-            _logger.info(f"[INVITE] Email sent: {email_sent}")
 
             # Build response data
-            _logger.info("[INVITE] Building response data")
             response_data = {
                 "id": user.id,
                 "name": user.name,
@@ -253,11 +233,7 @@ class InviteController(http.Controller):
             )
 
         except Exception as e:
-            _logger.exception(f"[INVITE ERROR] Unexpected error in invite_user: {e}")
-            _logger.error(f"[INVITE ERROR] Error type: {type(e).__name__}")
-            _logger.error(f"[INVITE ERROR] Error details: {str(e)}")
-            import traceback
-            _logger.error(f"[INVITE ERROR] Traceback: {traceback.format_exc()}")
+            _logger.exception("[INVITE ERROR] Unexpected error in invite_user")
             return self._error_response(
                 500, "internal_error", f"An unexpected error occurred: {str(e)}"
             )
