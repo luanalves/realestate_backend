@@ -40,6 +40,7 @@ paths:
       description: |
         Creates a new `res.users` record without password and sends an invite email
         with a secure link for password creation.
+        Operates only in the active company context provided by `X-Company-ID`.
         
         **Authorization Matrix**:
         - Owner → can invite ALL 9 profiles
@@ -131,6 +132,15 @@ paths:
                 success: false
                 error: "forbidden"
                 message: "Managers cannot invite owners"
+        '404':
+          description: Company context invalid/incompatible or cross-company isolation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: "not_found"
         '409':
           description: Conflict (email or document already exists)
           content:
@@ -148,7 +158,7 @@ paths:
                     success: false
                     error: "conflict"
                     field: "document"
-                    message: "Document already registered for another tenant"
+                    message: "Document already registered in this company"
         '500':
           description: Email sending failed
           content:
@@ -204,6 +214,11 @@ paths:
                     success: false
                     error: "validation_error"
                     message: "Password and confirmation do not match"
+                invalidTokenFormat:
+                  value:
+                    success: false
+                    error: "validation_error"
+                    message: "Invalid token format"
         '404':
           description: Token not found
           content:
@@ -240,6 +255,7 @@ paths:
         Public endpoint. Always returns 200 regardless of whether email exists
         (anti-enumeration per ADR-008). If email exists and user is active,
         generates reset token and sends email. Rate limited to 3 requests/email/hour.
+        Response status and JSON shape must remain identical for existing/non-existing/inactive users.
       operationId: forgotPassword
       requestBody:
         required: true
@@ -332,7 +348,8 @@ paths:
       description: |
         Resends invite email with a new token for a user who hasn't set their
         password yet (`signup_pending=True`). Invalidates all previous tokens.
-        Only works for users in the requester's company.
+        Only works for users in the requester's active company (`X-Company-ID`).
+        Company context mismatch must return a generic 404 without disclosing resource existence.
       operationId: resendInvite
       security:
         - bearerAuth: []
@@ -411,7 +428,7 @@ components:
       required: true
       schema:
         type: integer
-      description: Company ID for multi-tenancy context
+      description: Active company ID for request scope (required by @require_company)
 
   schemas:
     InviteUserRequest:

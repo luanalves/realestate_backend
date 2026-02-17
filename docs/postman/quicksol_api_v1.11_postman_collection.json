@@ -1,0 +1,362 @@
+{
+  "info": {
+    "_postman_id": "f009a1b2-c3d4-5e6f-7g8h-9i0j1k2l3m4n",
+    "name": "Quicksol Real Estate API",
+    "description": "Complete API collection for QuickSol Real Estate Management System.\n\n## Features\n- Multi-tenancy with company isolation\n- RBAC: 9 security profiles\n- User Onboarding & Password Management (Feature 009)\n- Properties, Agents, Leads management\n- Commission tracking and performance\n- Owner & Company management\n- Complete Assignment CRUD\n\n## Authentication Flow\n1. **Get OAuth Token**: POST /api/v1/auth/token\n2. **User Login**: POST /api/v1/users/login (returns session_id)\n3. **Use Both**: Authorization header + session_id in body (POST) or X-Openerp-Session-Id header (GET)\n4. **Set tenant context**: `X-Company-ID` header on authenticated multi-tenant endpoints (invite/resend-invite)\n\n## Headers\n- `Authorization: Bearer {{access_token}}`\n- `X-Openerp-Session-Id: {{session_id}}` (REQUIRED for GET requests)\n- `X-Company-ID: {{company_id}}` (REQUIRED for invite/resend-invite)\n- `User-Agent: {{user_agent}}`\n- `Content-Type: application/json`\n\n## Important Notes (ADR-016)\n- ⚠️ **POST/PUT/PATCH**: `session_id` goes in **body JSON** (not header)\n- ⚠️ **GET requests**: `session_id` goes in **header** `X-Openerp-Session-Id`\n- ⚠️ **No JSON-RPC**: Business endpoints send JSON directly in body\n- ✅ **Variables**: Use {{...}} for all authentication values\n- ✅ **Test Scripts**: OAuth and Login endpoints auto-save tokens\n\n## Changelog v1.11\n- Added `X-Company-ID` header to authenticated onboarding requests (`invite`, `resend-invite`)\n- Clarified active-company scope for multitenancy (`X-Company-ID` defines request scope)\n- Aligned errors with spec: generic `404 not_found` for invalid/mismatched company context\n- Clarified portal invite requirement: `company_id` is required for `profile=portal`\n\n## Changelog v1.10\n- **NEW**: User Onboarding & Password Management (Feature 009)\n- POST /api/v1/users/invite - Invite users with RBAC authorization matrix (9 profiles)\n- POST /api/v1/users/{id}/resend-invite - Resend invitation email (rate limited)\n- POST /api/v1/auth/set-password - Set password from invite token (public endpoint)\n- POST /api/v1/auth/forgot-password - Request password reset (anti-enumeration, rate limited)\n- POST /api/v1/auth/reset-password - Reset password with token (invalidates all sessions)\n- Portal dual record creation: res.users + real.estate.tenant atomic creation\n- Token security: UUID v4 → SHA-256 hashing, TTL configurable (1-720h, default 24h)\n- Authorization matrix: Owner (all 9 profiles), Manager (5 operational), Agent (owner+portal)\n- Anti-enumeration pattern on forgot-password (always returns 200)\n- Rate limiting: 3 forgot-password requests/hour, 5 resend attempts/user\n\n## Previous Versions\n- v1.9: Properties endpoint with company_ids parameter and assignment scope hardening\n- v1.8: Properties endpoint with company_ids parameter\n- v1.7: Create Owner with CPF validation (validate_docbr)\n- v1.6: Assignment CRUD endpoints with pagination and filters\n- v1.5: Fixed ADR-016 compliance, Master Data endpoints\n- v1.4: Integrated Company & Owner Management (Feature 007)\n- v1.3: Complete API coverage (50+ endpoints)",
+    "version": "1.11",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Authentication",
+      "description": "OAuth 2.0 authentication endpoints. All business endpoints require a valid access token.",
+      "item": [
+        {
+          "name": "Get OAuth Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_id\": \"{{client_id}}\",\n  \"client_secret\": \"{{client_secret}}\",\n  \"grant_type\": \"client_credentials\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/token",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "token"]
+            },
+            "description": "**Authentication:** None (OAuth token generation)\n\nObtains an OAuth 2.0 access token using client credentials.\n\n**Response 200:**\n```json\n{\n  \"access_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n  \"token_type\": \"Bearer\",\n  \"expires_in\": 3600,\n  \"refresh_token\": \"def50200...\"\n}\n```"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.access_token) {",
+                  "    pm.environment.set('access_token', jsonData.access_token);",
+                  "    console.log('✅ Access token saved to environment');",
+                  "    if (jsonData.refresh_token) {",
+                  "        pm.environment.set('refresh_token', jsonData.refresh_token);",
+                  "        console.log('✅ Refresh token saved to environment');",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "User Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Company-ID",
+                "value": "{{company_id}}",
+                "description": "Active company context required by @require_company"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{user_email}}\",\n  \"password\": \"{{user_password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users", "login"]
+            },
+            "description": "**Authentication:** Bearer Token required\n\nAuthenticates user and creates a session. Returns session_id for subsequent requests.\n\n**Response 200:**\n```json\n{\n  \"result\": {\n    \"session_id\": \"abc123def456\",\n    \"user_id\": 1,\n    \"email\": \"user@example.com\"\n  }\n}\n```"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.result && jsonData.result.session_id) {",
+                  "    pm.environment.set('session_id', jsonData.result.session_id);",
+                  "    console.log('✅ Session ID saved to environment');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. User Invitation",
+      "description": "User invitation endpoints with RBAC authorization matrix.",
+      "item": [
+        {
+          "name": "Invite User (Standard Profile)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe Manager\",\n  \"email\": \"john.manager@example.com\",\n  \"document\": \"12345678901\",\n  \"profile\": \"manager\",\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/invite",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users", "invite"]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company), scoped by `X-Company-ID`\n**Fingerprint validation:** Active (IP + User-Agent)\n\n**IMPORTANT:** Business endpoints do NOT use JSON-RPC format. Send JSON directly in body with session_id field.\n\n**Authorization Matrix:**\n- Owner: Can invite all 9 profiles\n- Manager: Can invite 5 operational profiles\n- Agent: Can invite owner + portal\n- Others: 403 Forbidden\n\n**Request Body:**\n- `name` (required): Full name\n- `email` (required): Valid email, unique\n- `document` (required): CPF/CNPJ\n- `profile` (required): One of 9 profiles (owner, director, manager, agent, prospector, receptionist, financial, legal, portal)\n- `session_id` (required): Session ID from login\n\n**Required Headers:**\n- `X-Company-ID` (required): Active company scope for request\n\n**Errors (precedence):**\n- 403: Forbidden (authorization matrix violation)\n- 404: Invalid/incompatible company context or cross-company access (`not_found`)\n- 400: Validation errors\n- 409: Duplicate email or duplicate document in active company"
+          }
+        },
+        {
+          "name": "Invite User (Portal Profile)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Company-ID",
+                "value": "{{company_id}}",
+                "description": "Active company context required by @require_company"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Jane Doe Tenant\",\n  \"email\": \"jane.tenant@example.com\",\n  \"document\": \"98765432109\",\n  \"profile\": \"portal\",\n  \"phone\": \"+5511988776655\",\n  \"birthdate\": \"1985-05-15\",\n  \"occupation\": \"Software Engineer\",\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/invite",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users", "invite"]
+            },
+            "description": "**Portal Dual Record Creation**\n\nCreates both:\n1. `res.users` (portal group)\n2. `real.estate.tenant` (linked via partner_id)\n\n**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Request is scoped by `X-Company-ID`\n\n**IMPORTANT:** Business endpoints do NOT use JSON-RPC format. Send JSON directly in body with session_id field.\n\n**Additional Required Fields for Portal:**\n- `phone` (required): Tenant phone number\n- `birthdate` (required): ISO 8601 date (YYYY-MM-DD)\n- `company_id` (required): Target company for tenant record\n- `occupation` (optional): Tenant occupation\n- `session_id` (required): Session ID from login\n\n**Required Headers:**\n- `X-Company-ID` (required): Active company scope for request\n\n**Errors:**\n- 400: Missing portal required fields\n- 403: Forbidden by RBAC\n- 404: Invalid/incompatible company context or cross-company access (`not_found`)\n- 409: Duplicate document in active company"
+          }
+        },
+        {
+          "name": "Resend Invite",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Company-ID",
+                "value": "{{company_id}}",
+                "description": "Active company context required by @require_company"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/:user_id/resend-invite",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users", ":user_id", "resend-invite"],
+              "variable": [
+                {
+                  "key": "user_id",
+                  "value": "123",
+                  "description": "User ID to resend invite"
+                }
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Scoped by `X-Company-ID`; only same active company is allowed\n**Rate Limiting:** Max 5 resends per user (configurable)\n\n**IMPORTANT:** Business endpoints do NOT use JSON-RPC format. Send JSON directly in body with session_id field.\n\n**Behavior:**\n- Invalidates previous pending invite token\n- Generates new token with fresh TTL\n- Sends new invite email\n- Returns 429 if max resends exceeded\n- Returns 404 if user not found, invalid company context, or cross-company\n- Returns 400 if user already active\n\n**Request Body:**\n- `session_id` (required): Session ID from login\n\n**Required Headers:**\n- `X-Company-ID` (required): Active company scope for request\n\n**Error precedence:** 403 (authz) → 404 (isolation/context) → 400 (validation)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Password Management",
+      "description": "Public password management endpoints (set, forgot, reset).",
+      "item": [
+        {
+          "name": "Set Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"<paste-token-from-email>\",\n  \"password\": \"MySecurePassword123\",\n  \"confirm_password\": \"MySecurePassword123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/set-password",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "set-password"]
+            },
+            "description": "**Authentication:** None (public endpoint)\n**Token Source:** Invite email\n\n**IMPORTANT:** This is a PUBLIC endpoint. No OAuth token or session required.\n\n**Request Body:**\n- `token` (required): Raw token from invite email (UUID format)\n- `password` (required): New password (min 8 chars)\n- `confirm_password` (required): Must match password\n\n**Errors:**\n- 400: Validation error (password rules or token format)\n- 404: Token not found\n- 410: Token expired or already used"
+          }
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john.manager@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/forgot-password",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "forgot-password"]
+            },
+            "description": "**Authentication:** None (public endpoint)\n**Anti-Enumeration Pattern (ADR-008):** Always returns 200\n\n**IMPORTANT:** This endpoint ALWAYS returns 200 OK with same response, regardless of whether email exists or not. This prevents user enumeration attacks.\n\n**Request Body:**\n- `email` (required): Email address to send reset link\n\n**Behavior (if email exists and user is active):**\n1. Invalidates previous pending reset tokens\n2. Generates new reset token (type='reset')\n3. Sends reset email with token link\n4. Rate limiting check (3 requests/hour)\n\n**Behavior (if email doesn't exist or user inactive):**\n1. Returns same 200 response\n2. No email sent\n3. No database changes\n\n**Response 200 (always):**\n```json\n{\n  \"message\": \"If the email exists, a password reset link has been sent.\"\n}\n```\n\n**Rate Limiting:**\n- 429: If more than 3 requests in 1 hour from same IP\n\n**Security Features:**\n- Anti-enumeration (identical response for all cases)\n- Rate limiting per IP\n- Token expiry (default 24h)\n- Previous tokens invalidated"
+          }
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"<paste-token-from-email>\",\n  \"password\": \"MyNewSecurePassword123\",\n  \"confirm_password\": \"MyNewSecurePassword123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/reset-password",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "reset-password"]
+            },
+            "description": "**Authentication:** None (public endpoint)\n**Token Source:** Reset password email\n\n**IMPORTANT:** This is a PUBLIC endpoint. No OAuth token or session required.\n\n**Request Body:**\n- `token` (required): Raw token from reset email (UUID format)\n- `password` (required): New password (min 8 chars)\n- `confirm_password` (required): Must match password\n\n**Token Validation:**\n- Token must exist and match SHA-256 hash\n- Token must have type='reset'\n- Token status must be 'pending'\n- Token must not be expired (TTL check)\n\n**Password Requirements:**\n- Minimum 8 characters\n- Must match confirm_password\n\n**Side Effects:**\n- Password updated\n- Token marked as 'used'\n- **ALL active sessions invalidated** (is_active=false in api_session table)\n- User must login again after reset\n\n**Response 200:**\n```json\n{\n  \"message\": \"Password reset successfully. Please log in with your new password.\",\n  \"links\": {\n    \"login\": \"/api/v1/users/login\"\n  }\n}\n```\n\n**Errors:**\n- 400: Password validation failed\n- 410: Token expired, used, or invalid\n\n**Security Note:** All previous sessions are invalidated to prevent unauthorized access after password reset."
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8069",
+      "type": "string"
+    },
+    {
+      "key": "client_id",
+      "value": "",
+      "type": "string",
+      "description": "OAuth 2.0 client ID"
+    },
+    {
+      "key": "client_secret",
+      "value": "",
+      "type": "string",
+      "description": "OAuth 2.0 client secret"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string",
+      "description": "OAuth 2.0 access token from /api/v1/auth/token"
+    },
+    {
+      "key": "refresh_token",
+      "value": "",
+      "type": "string",
+      "description": "OAuth 2.0 refresh token"
+    },
+    {
+      "key": "session_id",
+      "value": "",
+      "type": "string",
+      "description": "Session ID from /api/v1/users/login"
+    },
+    {
+      "key": "company_id",
+      "value": "1",
+      "type": "string",
+      "description": "Active company ID for endpoints protected by @require_company"
+    },
+    {
+      "key": "user_agent",
+      "value": "PostmanRuntime/7.26.8",
+      "type": "string",
+      "description": "Required for session fingerprint validation"
+    },
+    {
+      "key": "user_email",
+      "value": "admin@example.com",
+      "type": "string",
+      "description": "User email for login"
+    },
+    {
+      "key": "user_password",
+      "value": "admin",
+      "type": "string",
+      "description": "User password for login"
+    }
+  ]
+}
