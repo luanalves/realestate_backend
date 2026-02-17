@@ -1,9 +1,9 @@
 {
-    'name': 'TheDevKitchen User Onboarding',
-    'version': '18.0.1.0.0',
-    'category': 'Human Resources',
-    'summary': 'User Onboarding & Password Management for RBAC Profiles',
-    'description': """
+    "name": "TheDevKitchen User Onboarding",
+    "version": "18.0.1.0.0",
+    "category": "Human Resources",
+    "summary": "User Onboarding & Password Management for RBAC Profiles",
+    "description": """
 User Onboarding & Password Management
 ======================================
 
@@ -34,29 +34,29 @@ Technical Details:
 * ADR-008 compliant (anti-enumeration on forgot-password)
 * ADR-015 compliant (soft delete on tokens)
     """,
-    'author': 'TheDevKitchen',
-    'website': 'https://www.thedevkitchen.com',
-    'license': 'LGPL-3',
-    'depends': [
-        'mail',
-        'thedevkitchen_apigateway',
-        'quicksol_estate',
+    "author": "TheDevKitchen",
+    "website": "https://www.thedevkitchen.com",
+    "license": "LGPL-3",
+    "depends": [
+        "mail",
+        "thedevkitchen_apigateway",
+        "quicksol_estate",
     ],
-    'external_dependencies': {
-        'python': [
-            'validate_docbr',
-            'email_validator',
+    "external_dependencies": {
+        "python": [
+            "validate_docbr",
+            "email_validator",
         ],
     },
-    'data': [
-        'security/ir.model.access.csv',
-        'security/record_rules.xml',
-        'data/default_settings.xml',
-        'data/email_templates.xml',
-        'views/email_link_settings_views.xml',
-        'views/menu.xml',
+    "data": [
+        "security/ir.model.access.csv",
+        "security/record_rules.xml",
+        "data/default_settings.xml",
+        "data/email_templates.xml",
+        "views/email_link_settings_views.xml",
+        "views/menu.xml",
     ],
-    'installable': True,
-    'application': False,
-    'auto_install': False,
+    "installable": True,
+    "application": False,
+    "auto_install": False,
 }

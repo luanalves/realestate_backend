@@ -14,10 +14,10 @@ from odoo import models, fields
 
 
 class ResUsers(models.Model):
-    _inherit = 'res.users'
-    
+    _inherit = "res.users"
+
     signup_pending = fields.Boolean(
-        string='Signup Pending',
+        string="Signup Pending",
         default=False,
-        help='Indicates user is waiting to create their password via invite link'
+        help="Indicates user is waiting to create their password via invite link",
     )
