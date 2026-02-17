@@ -316,14 +316,22 @@ class InviteController(http.Controller):
     @require_company
     def resend_invite(self, user_id, **kwargs):
         try:
-            # Get session context
-            session_data = getattr(request, "session_data", {})
-            requester_id = session_data.get("user_id")
-            company_id = session_data.get("company_id")
+            # Context validated by decorators:
+            # - @require_session sets request.env user
+            # - @require_company enforces company access
+            requester = request.env.user
+            company_id = request.httprequest.headers.get("X-Company-ID")
 
-            if not requester_id or not company_id:
+            if not requester or not requester.id or not company_id:
                 return self._error_response(
                     401, "ERR_UNAUTHORIZED", "Missing session context"
+                )
+
+            try:
+                company_id = int(company_id)
+            except (TypeError, ValueError):
+                return self._error_response(
+                    400, "validation_error", "Invalid X-Company-ID header"
                 )
 
             # Get user record
@@ -355,9 +363,6 @@ class InviteController(http.Controller):
                     },
                 )
 
-            # Get requester
-            requester = request.env["res.users"].sudo().browse(requester_id)
-
             # Check authorization using InviteService
             invite_service = InviteService(request.env)
 
@@ -371,17 +376,20 @@ class InviteController(http.Controller):
 
             # Invalidate previous invite tokens
             token_service = PasswordTokenService(request.env)
-            token_service.invalidate_previous_tokens(user, "invite")
+            token_service.invalidate_previous_tokens(user.id, "invite")
 
             # Generate new token
             settings = (
                 request.env["thedevkitchen.email.link.settings"].sudo().get_settings()
             )
+            company = (
+                request.env["thedevkitchen.estate.company"].sudo().browse(company_id)
+            )
             raw_token, token_record = token_service.generate_token(
                 user=user,
                 token_type="invite",
-                ttl_hours=settings.invite_link_ttl_hours,
-                company_id=company_id,
+                company=company,
+                created_by=requester,
             )
 
             # Resend invite email
