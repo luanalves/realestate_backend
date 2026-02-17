@@ -14,27 +14,6 @@ class AuthController(http.Controller):
 
     @http.route('/api/v1/auth/token', type='http', auth='none', methods=['POST'], csrf=False)
     def token(self, **kwargs):
-        """
-        OAuth 2.0 Token Endpoint (Client Credentials Grant)
-        
-        POST /api/v1/auth/token
-        Content-Type: application/json OR application/x-www-form-urlencoded
-        
-        JSON Body:
-        {
-            "grant_type": "client_credentials",
-            "client_id": "xxx",
-            "client_secret": "yyy"
-        }
-        
-        Returns:
-        {
-            "access_token": "eyJ...",
-            "token_type": "Bearer",
-            "expires_in": 3600,
-            "refresh_token": "xxx"
-        }
-        """
         try:
             _logger.info("=== OAuth Token Request Started ===")
             _logger.info(f"Content-Type: {request.httprequest.content_type}")
@@ -129,21 +108,6 @@ class AuthController(http.Controller):
 
     @http.route('/api/v1/auth/revoke', type='http', auth='none', methods=['POST'], csrf=False)
     def revoke(self, **kwargs):
-        """
-        OAuth 2.0 Token Revocation Endpoint (RFC 7009)
-        
-        POST /api/v1/auth/revoke
-        
-        Option 1 - Token in Body:
-        Content-Type: application/json
-        {
-            "token": "xxx",
-            "token_type_hint": "access_token" (optional)
-        }
-        
-        Option 2 - Token in Header:
-        Authorization: Bearer xxx
-        """
         try:
             # Accept both JSON and form data
             data = kwargs
@@ -183,28 +147,6 @@ class AuthController(http.Controller):
 
     @http.route('/api/v1/auth/refresh', type='http', auth='none', methods=['POST'], csrf=False)
     def refresh(self, **kwargs):
-        """
-        OAuth 2.0 Token Refresh Endpoint
-        
-        POST /api/v1/auth/refresh
-        Content-Type: application/json OR application/x-www-form-urlencoded
-        
-        JSON Body:
-        {
-            "refresh_token": "xxx" (required),
-            "grant_type": "refresh_token" (optional, default),
-            "client_id": "xxx" (optional),
-            "client_secret": "yyy" (optional)
-        }
-        
-        Returns:
-        {
-            "access_token": "eyJ...",
-            "token_type": "Bearer",
-            "expires_in": 3600,
-            "refresh_token": "xxx" (same as before)
-        }
-        """
         try:
             # Accept both JSON and form data
             data = kwargs
@@ -273,7 +215,6 @@ class AuthController(http.Controller):
             return self._error_response('server_error', str(e))
 
     def _generate_access_token(self, application):
-        """Generate JWT access token"""
         import secrets
         
         # Get JWT secret from environment variable
