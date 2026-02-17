@@ -1,20 +1,29 @@
 Regras rápidas do repositório (Copilot):
 
 - Endpoints expostos com `@http.route` que exigem autenticação devem manter ambos os decoradores `@require_jwt` e `@require_session` antes da definição da função.
-- `require_jwt` valida o token JWT; `require_session` garante a identificação/estado do usuário na aplicação (sessão). Esses conceitos são distintos — não substitua `require_session` por lógica genérica de OAuth ou por tratamento só de token.
-- Se um endpoint for intencionalmente público, adicione o comentário `# public endpoint` logo acima do `@http.route`.
+- `require_jwt` valida o token JWT; `require_session` garante a identificação/estado do usuário na aplicação (sessão). Esses conceitos são distintos — não substitua `@require_session` por lógica genérica de OAuth ou por tratamento só de token.
+- Se um endpoint for intencionalmente público, adicione o comentário `# public endpoint` logo acima do `@http.route` e use `auth='none'`.
+- **Public Endpoints** (unauthenticated): Use for password reset, set password, health checks, or any operation that must work without authentication. Always include `# public endpoint` comment for documentation and security audits.
+- **Authenticated Endpoints** (require user session): Use triple decorators `@require_jwt` + `@require_session` + `@require_company` for endpoints accessing company-specific data.
 - Exemplos curtos: aceitável
 
 ```py
+# Authenticated endpoint (company-specific data)
 @http.route('/api/v1/agents', type='http', auth='none', methods=['GET'], csrf=False, cors='*')
 @require_jwt
 @require_session
 @require_company
 def list_agents(self, **kwargs):
     ...
+
+# public endpoint
+@http.route('/api/v1/auth/forgot-password', type='http', auth='none', methods=['POST'], csrf=False, cors='*')
+def forgot_password(self, **kwargs):
+    # Always return 200 (anti-enumeration pattern)
+    ...
 ```
 
-- Exemplos não aceitáveis: remover `@require_session` ou substituí-lo por handling genérico de OAuth sem justificativa clara.
+- Exemplos não aceitáveis: remover `@require_session` ou substituí-lo por handling genérico de OAuth sem justificativa clara. Usar `auth='public'` sem comentário `# public endpoint`.
 
 Nota: este arquivo é lido automaticamente pelo GitHub Copilot e agentes compatíveis. Para reforçar a proteção, combine estas instruções com verificações automáticas (CI) e regras de proteção de branch (`CODEOWNERS`, checks obrigatórios).
 # Copilot Instructions
@@ -118,3 +127,29 @@ This project uses specialized instruction files that are automatically applied b
 </instruction>
 
 When the user is working on these file types, always consult the corresponding instruction file for specific guidelines.
+
+## Key Modules
+
+### thedevkitchen_user_onboarding (Feature 009)
+
+User onboarding and password management module implementing token-based authentication flows for 9 RBAC profiles.
+
+**Key Patterns**:
+- **Public Endpoints**: set-password, forgot-password, reset-password use `# public endpoint` marker
+- **Authenticated Endpoints**: invite, resend-invite use triple decorators (@require_jwt + @require_session + @require_company)
+- **Token Security**: UUID v4 → SHA-256 hashing, raw token sent once in email only
+- **Anti-Enumeration**: forgot-password always returns 200, never reveals user existence
+- **Authorization Matrix**: Owner→all 9 profiles, Manager→5 operational, Agent→owner+portal
+- **Portal Dual Record**: Atomic res.users + real.estate.tenant via partner_id linkage
+- **Session Invalidation**: api_session.is_active=False after password reset
+- **Email Templates**: mail.template with context variables (Portuguese pt_BR)
+- **Configuration**: Singleton thedevkitchen.email.link.settings with TTL validation (1-720h)
+
+**API Endpoints**:
+- POST /api/v1/users/invite (authenticated, authorization matrix enforced)
+- POST /api/v1/users/{id}/resend-invite (authenticated)
+- POST /api/v1/auth/set-password (public)
+- POST /api/v1/auth/forgot-password (public, anti-enumeration)
+- POST /api/v1/auth/reset-password (public)
+
+**Reference**: See constitution v1.3.0 for security patterns and `.specify/memory/constitution.md` section on Feature 009.

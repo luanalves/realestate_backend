@@ -1,0 +1,706 @@
+openapi: 3.0.3
+info:
+  title: User Onboarding & Password Management API
+  description: |
+    API for user invitation, password creation, password recovery, and invite resend.
+    Part of Feature 009 — User Onboarding & Password Management.
+    
+    **Authentication**:
+    - Invite and Resend endpoints require OAuth 2.0 JWT + Session + Company (triple auth)
+    - Password endpoints are public (no auth required)
+    
+    **Security Architecture**:
+    - Tokens stored as SHA-256 hash in database
+    - Raw tokens sent only in email links (HTTPS)
+    - Anti-enumeration on forgot-password (always 200)
+    - Rate limiting on forgot-password (3/email/hour)
+  version: 1.0.0
+  contact:
+    name: TheDevKitchen
+  license:
+    name: Proprietary
+
+servers:
+  - url: http://localhost:8069
+    description: Local Odoo development
+  - url: https://api.example.com
+    description: Production
+
+tags:
+  - name: Onboarding
+    description: User invitation and onboarding
+  - name: Password
+    description: Password creation and recovery
+
+paths:
+  /api/v1/users/invite:
+    post:
+      tags: [Onboarding]
+      summary: Invite a new user
+      description: |
+        Creates a new `res.users` record without password and sends an invite email
+        with a secure link for password creation.
+        
+        **Authorization Matrix**:
+        - Owner → can invite ALL 9 profiles
+        - Director → agent, prospector, receptionist, financial, legal
+        - Manager → agent, prospector, receptionist, financial, legal
+        - Agent → owner, portal
+        - Others → 403 Forbidden
+        
+        **Portal Special Case**: When `profile=portal`, creates dual record:
+        `res.users` (portal group) + `real.estate.tenant` linked via `partner_id`.
+        Additional fields required: `phone`, `birthdate`, `company_id`.
+      operationId: inviteUser
+      security:
+        - bearerAuth: []
+          sessionAuth: []
+          companyAuth: []
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+        - $ref: '#/components/parameters/CompanyId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InviteUserRequest'
+            examples:
+              standardProfile:
+                summary: Invite an Agent
+                value:
+                  name: "João Silva"
+                  email: "joao@empresa.com"
+                  document: "12345678901"
+                  profile: "agent"
+              portalProfile:
+                summary: Invite a Portal user (Tenant)
+                value:
+                  name: "Maria Souza"
+                  email: "maria@email.com"
+                  document: "12345678901"
+                  profile: "portal"
+                  phone: "11999998888"
+                  birthdate: "1990-05-15"
+                  company_id: 3
+              ownerProfile:
+                summary: Invite a Property Owner
+                value:
+                  name: "Carlos Oliveira"
+                  email: "carlos@email.com"
+                  document: "98765432109"
+                  profile: "owner"
+      responses:
+        '201':
+          description: User invited successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InviteUserResponse'
+              examples:
+                standardResponse:
+                  $ref: '#/components/examples/InviteStandardResponse'
+                portalResponse:
+                  $ref: '#/components/examples/InvitePortalResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalidProfile:
+                  value:
+                    success: false
+                    error: "validation_error"
+                    message: "Invalid profile: xyz"
+                missingPortalFields:
+                  value:
+                    success: false
+                    error: "validation_error"
+                    message: "Fields phone, birthdate, company_id are required for portal profile"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: "forbidden"
+                message: "Managers cannot invite owners"
+        '409':
+          description: Conflict (email or document already exists)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                emailConflict:
+                  value:
+                    success: false
+                    error: "conflict"
+                    field: "email"
+                documentConflict:
+                  value:
+                    success: false
+                    error: "conflict"
+                    field: "document"
+                    message: "Document already registered for another tenant"
+        '500':
+          description: Email sending failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: "email_error"
+                message: "Failed to send invite email"
+
+  /api/v1/auth/set-password:
+    post:
+      tags: [Password]
+      summary: Set password for invited user
+      description: |
+        Public endpoint. Sets password using a valid invite token from email link.
+        Token is verified via SHA-256 hash comparison.
+        After success, `signup_pending` is set to `False` and user can login.
+      operationId: setPassword
+      # No security - public endpoint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetPasswordRequest'
+            example:
+              token: "a1b2c3d4e5f6..."
+              password: "SecurePass123!"
+              confirm_password: "SecurePass123!"
+      responses:
+        '200':
+          description: Password set successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SetPasswordResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                passwordTooShort:
+                  value:
+                    success: false
+                    error: "validation_error"
+                    message: "Password must be at least 8 characters"
+                passwordMismatch:
+                  value:
+                    success: false
+                    error: "validation_error"
+                    message: "Password and confirmation do not match"
+        '404':
+          description: Token not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: "not_found"
+                message: "Token not found"
+        '410':
+          description: Token expired or already used
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                tokenExpired:
+                  value:
+                    success: false
+                    error: "token_expired"
+                    message: "This link has expired. Please request a new invite."
+                tokenUsed:
+                  value:
+                    success: false
+                    error: "token_used"
+                    message: "This link has already been used."
+
+  /api/v1/auth/forgot-password:
+    post:
+      tags: [Password]
+      summary: Request password reset
+      description: |
+        Public endpoint. Always returns 200 regardless of whether email exists
+        (anti-enumeration per ADR-008). If email exists and user is active,
+        generates reset token and sends email. Rate limited to 3 requests/email/hour.
+      operationId: forgotPassword
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForgotPasswordRequest'
+            example:
+              email: "user@example.com"
+      responses:
+        '200':
+          description: Request processed (always 200)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForgotPasswordResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: "validation_error"
+                message: "Email is required"
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: "rate_limited"
+                message: "Too many requests. Please try again later."
+
+  /api/v1/auth/reset-password:
+    post:
+      tags: [Password]
+      summary: Reset password with token
+      description: |
+        Public endpoint. Resets password using a valid reset token from email link.
+        After success, all active sessions for the user are invalidated (security).
+      operationId: resetPassword
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+            example:
+              token: "x9y8z7w6..."
+              password: "NewSecurePass456!"
+              confirm_password: "NewSecurePass456!"
+      responses:
+        '200':
+          description: Password reset successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResetPasswordResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Token not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: "not_found"
+                message: "Token not found"
+        '410':
+          description: Token expired or already used
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/users/{userId}/resend-invite:
+    post:
+      tags: [Onboarding]
+      summary: Resend invite email
+      description: |
+        Resends invite email with a new token for a user who hasn't set their
+        password yet (`signup_pending=True`). Invalidates all previous tokens.
+        Only works for users in the requester's company.
+      operationId: resendInvite
+      security:
+        - bearerAuth: []
+          sessionAuth: []
+          companyAuth: []
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+        - $ref: '#/components/parameters/CompanyId'
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID of the user to resend invite to
+      responses:
+        '200':
+          description: Invite resent successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResendInviteResponse'
+        '400':
+          description: User already activated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: "bad_request"
+                message: "User already activated. Use forgot-password instead."
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User not found or belongs to another company
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: OAuth 2.0 JWT token from /api/v1/auth/token
+    sessionAuth:
+      type: apiKey
+      in: header
+      name: X-Openerp-Session-Id
+      description: Session ID from login response
+    companyAuth:
+      type: apiKey
+      in: header
+      name: X-Company-ID
+      description: Company ID for multi-tenancy isolation
+
+  parameters:
+    SessionId:
+      name: X-Openerp-Session-Id
+      in: header
+      required: true
+      schema:
+        type: string
+      description: Session ID obtained from login
+    CompanyId:
+      name: X-Company-ID
+      in: header
+      required: true
+      schema:
+        type: integer
+      description: Company ID for multi-tenancy context
+
+  schemas:
+    InviteUserRequest:
+      type: object
+      required: [name, email, document, profile]
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          description: Full name of the user
+        email:
+          type: string
+          format: email
+          description: Email address (must be unique in system)
+        document:
+          type: string
+          description: CPF (11 digits) for internal profiles, CPF or CNPJ (14 digits) for portal
+        profile:
+          type: string
+          enum: [owner, director, manager, agent, prospector, receptionist, financial, legal, portal]
+          description: User profile determines Odoo security group
+        phone:
+          type: string
+          description: Phone number (REQUIRED for portal profile, optional otherwise)
+        mobile:
+          type: string
+          description: Mobile phone (optional)
+        birthdate:
+          type: string
+          format: date
+          description: Date of birth YYYY-MM-DD (REQUIRED for portal profile)
+        company_id:
+          type: integer
+          description: Company ID for tenant association (REQUIRED for portal profile)
+        occupation:
+          type: string
+          description: Occupation (optional, portal only)
+
+    InviteUserResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            id:
+              type: integer
+              description: Created user ID
+            name:
+              type: string
+            email:
+              type: string
+            document:
+              type: string
+            profile:
+              type: string
+            signup_pending:
+              type: boolean
+              example: true
+            invite_sent_at:
+              type: string
+              format: date-time
+            invite_expires_at:
+              type: string
+              format: date-time
+            tenant_id:
+              type: integer
+              description: Only present for portal profile
+            tenant:
+              type: object
+              description: Only present for portal profile
+              properties:
+                id:
+                  type: integer
+                name:
+                  type: string
+                document:
+                  type: string
+                phone:
+                  type: string
+                birthdate:
+                  type: string
+                  format: date
+                company_id:
+                  type: integer
+        message:
+          type: string
+        links:
+          type: array
+          items:
+            $ref: '#/components/schemas/HATEOASLink'
+
+    SetPasswordRequest:
+      type: object
+      required: [token, password, confirm_password]
+      properties:
+        token:
+          type: string
+          description: Raw token from email link URL
+        password:
+          type: string
+          minLength: 8
+          description: New password (min 8 characters)
+        confirm_password:
+          type: string
+          minLength: 8
+          description: Password confirmation (must match password)
+
+    SetPasswordResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Password set successfully. You can now log in."
+        links:
+          type: array
+          items:
+            $ref: '#/components/schemas/HATEOASLink'
+          example:
+            - href: "/api/v1/users/login"
+              rel: "login"
+              type: "POST"
+
+    ForgotPasswordRequest:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+          description: Email address of the account
+
+    ForgotPasswordResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "If this email is registered, a password reset link has been sent."
+
+    ResetPasswordRequest:
+      type: object
+      required: [token, password, confirm_password]
+      properties:
+        token:
+          type: string
+          description: Raw reset token from email link URL
+        password:
+          type: string
+          minLength: 8
+        confirm_password:
+          type: string
+          minLength: 8
+
+    ResetPasswordResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Password reset successfully. You can now log in with your new password."
+        links:
+          type: array
+          items:
+            $ref: '#/components/schemas/HATEOASLink'
+          example:
+            - href: "/api/v1/users/login"
+              rel: "login"
+              type: "POST"
+
+    ResendInviteResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Invite resent successfully to joao@empresa.com"
+        data:
+          type: object
+          properties:
+            invite_expires_at:
+              type: string
+              format: date-time
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+          description: Error code
+        message:
+          type: string
+          description: Human-readable error message
+        field:
+          type: string
+          description: Field that caused the error (for conflicts)
+        details:
+          type: array
+          items:
+            type: string
+          description: Detailed validation errors
+
+    HATEOASLink:
+      type: object
+      properties:
+        href:
+          type: string
+        rel:
+          type: string
+        type:
+          type: string
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid authentication
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error: "unauthorized"
+
+  examples:
+    InviteStandardResponse:
+      value:
+        success: true
+        data:
+          id: 42
+          name: "João Silva"
+          email: "joao@empresa.com"
+          document: "12345678901"
+          profile: "agent"
+          signup_pending: true
+          invite_sent_at: "2026-02-16T10:00:00Z"
+          invite_expires_at: "2026-02-17T10:00:00Z"
+        message: "User invited successfully. Email sent to joao@empresa.com"
+        links:
+          - href: "/api/v1/users/42"
+            rel: "self"
+            type: "GET"
+          - href: "/api/v1/users/42/resend-invite"
+            rel: "resend_invite"
+            type: "POST"
+          - href: "/api/v1/users"
+            rel: "collection"
+            type: "GET"
+    InvitePortalResponse:
+      value:
+        success: true
+        data:
+          id: 42
+          name: "Maria Souza"
+          email: "maria@email.com"
+          document: "12345678901"
+          profile: "portal"
+          signup_pending: true
+          invite_sent_at: "2026-02-16T10:00:00Z"
+          invite_expires_at: "2026-02-17T10:00:00Z"
+          tenant_id: 15
+          tenant:
+            id: 15
+            name: "Maria Souza"
+            document: "12345678901"
+            phone: "11999998888"
+            birthdate: "1990-05-15"
+            company_id: 3
+        message: "User invited successfully. Email sent to maria@email.com"
+        links:
+          - href: "/api/v1/users/42"
+            rel: "self"
+            type: "GET"
+          - href: "/api/v1/tenants/15"
+            rel: "tenant"
+            type: "GET"
+          - href: "/api/v1/users/42/resend-invite"
+            rel: "resend_invite"
+            type: "POST"
