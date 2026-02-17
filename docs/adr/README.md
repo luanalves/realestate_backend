@@ -21,6 +21,14 @@ Este diretório contém as decisões arquiteturais do projeto Real Estate Manage
 | [ADR-013](./ADR-013-commission-calculation-rule-management.md) | **Real Estate Commission Calculation and Rule Management** | **Proposed** | **2026-01-12** |
 | [ADR-014](./ADR-014-odoo-many2many-agent-property-relationship.md) | **Odoo ORM Many2many Relationship Patterns for Agent-Property Assignment** | **Accepted** | **2026-01-12** |
 | [ADR-015](./ADR-015-soft-delete-logical-deletion-odoo-models.md) | **Soft-Delete (Logical Deletion) Strategies for Odoo Models with Referential Integrity** | **Accepted** | **2026-01-12** |
+| [ADR-016](./ADR-016-postman-collection-standards.md) | **Postman Collection Standards** | **Accepted** | **2026-01-15** |
+| [ADR-017](./ADR-017-session-hijacking-prevention-jwt-fingerprint.md) | **Session Hijacking Prevention with JWT Fingerprint** | **Accepted** | **2026-01-20** |
+| [ADR-018](./ADR-018-input-validation-schema-validation-rest-apis.md) | **Input Validation and Schema Validation for REST APIs** | **Accepted** | **2026-01-25** |
+| [ADR-019](./ADR-019-rbac-perfis-acesso-multi-tenancy.md) | **RBAC - Perfis de Acesso e Multi-Tenancy** | **Accepted** | **2026-02-01** |
+| [ADR-020](./ADR-020-observer-pattern-odoo-event-driven-architecture.md) | **Observer Pattern for Odoo Event-Driven Architecture** | **Accepted** | **2026-02-05** |
+| [ADR-021](./ADR-021-async-messaging-rabbitmq-celery.md) | **Async Messaging with RabbitMQ and Celery** | **Accepted** | **2026-02-10** |
+| [ADR-022](./ADR-022-code-quality-linting-static-analysis.md) | **Code Quality - Linting and Static Analysis** | **Accepted** | **2026-02-12** |
+| [ADR-023](./ADR-023-mailhog-email-testing-development.md) | **MailHog para Testes de Email em Desenvolvimento** | **Accepted** | **2026-02-17** |
 
 ## Como usar as ADRs
 
