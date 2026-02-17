@@ -271,7 +271,7 @@ if [ -n "$MANAGER_JWT" ]; then
     AGENT_INVITE_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/invite" \
         -H "Content-Type: application/json" \
         -H "Authorization: Bearer $MANAGER_JWT" \
-        -H "X-Session-ID: $MANAGER_SESSION" \
+        -H "X-Openerp-Session-Id: $MANAGER_SESSION" \
         -d '{
             "name": "Invite Test Agent",
             "email": "invite_test_agent@example.com",
@@ -297,7 +297,8 @@ test_scenario "Invite with duplicate email returns 409"
 DUPLICATE_EMAIL_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/invite" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Session-ID: $SESSION_ID" \
+    -H "X-Openerp-Session-Id: $SESSION_ID" \
+    -H "X-Company-ID: $OWNER_COMPANY_ID" \
     -d '{
         "name": "Another Manager",
         "email": "invite_test_manager@example.com",
@@ -317,7 +318,8 @@ test_scenario "Invite with duplicate document returns 409"
 DUPLICATE_DOC_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/invite" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Session-ID: $SESSION_ID" \
+    -H "X-Openerp-Session-Id: $SESSION_ID" \
+    -H "X-Company-ID: $OWNER_COMPANY_ID" \
     -d '{
         "name": "Another User",
         "email": "invite_test_another@example.com",
@@ -351,10 +353,11 @@ assert_status 401 "$LOGIN_BEFORE_STATUS" "Login fails for user without password"
 log_info "Simulating set-password flow (using test token)..."
 
 # Create a test user with known token for set-password testing
-TEST_PROSPECTOR_CREATE=$(curl -s -X POST "$API_BASE/users/invite" \
+TEST_PROSPECTOR_CREATE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/invite" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Session-ID: $SESSION_ID" \
+    -H "X-Openerp-Session-Id: $SESSION_ID" \
+    -H "X-Company-ID: $OWNER_COMPANY_ID" \
     -d '{
         "name": "Invite Test Prospector",
         "email": "invite_test_prospector@example.com",
@@ -362,11 +365,43 @@ TEST_PROSPECTOR_CREATE=$(curl -s -X POST "$API_BASE/users/invite" \
         "profile": "prospector"
     }')
 
-PROSPECTOR_USER_ID=$(echo "$TEST_PROSPECTOR_CREATE" | jq -r '.data.id')
+TEST_PROSPECTOR_BODY=$(echo "$TEST_PROSPECTOR_CREATE" | sed '$d')
+TEST_PROSPECTOR_STATUS=$(echo "$TEST_PROSPECTOR_CREATE" | tail -n 1)
+PROSPECTOR_USER_ID=$(echo "$TEST_PROSPECTOR_BODY" | jq -r '.data.id')
 
-# Generate a known raw token and update database with its hash
-RAW_TOKEN="test-invite-token-$(date +%s)"
-TOKEN_HASH=$(echo -n "$RAW_TOKEN" | sha256sum | awk '{print $1}')
+# If invite failed due to session expiry, re-authenticate
+if [ "$TEST_PROSPECTOR_STATUS" != "201" ]; then
+    log_info "Re-authenticating due to session expiry..."
+    get_oauth_token
+    LOGIN_RESPONSE=$(curl -s -X POST "$API_BASE/users/login" \
+        -H "Content-Type: application/json" \
+        -H "Authorization: Bearer $BEARER_TOKEN" \
+        -d "{
+            \"login\": \"$TEST_USER_OWNER\",
+            \"password\": \"$TEST_PASSWORD_OWNER\"
+        }")
+    SESSION_ID=$(echo "$LOGIN_RESPONSE" | jq -r '.session_id')
+    OWNER_COMPANY_ID=$(echo "$LOGIN_RESPONSE" | jq -r '.user.default_company_id')
+    
+    # Retry invite
+    TEST_PROSPECTOR_CREATE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/invite" \
+        -H "Content-Type: application/json" \
+        -H "Authorization: Bearer $BEARER_TOKEN" \
+        -H "X-Openerp-Session-Id: $SESSION_ID" \
+        -H "X-Company-ID: $OWNER_COMPANY_ID" \
+        -d '{
+            "name": "Invite Test Prospector",
+            "email": "invite_test_prospector@example.com",
+            "document": "05753626896",
+            "profile": "prospector"
+        }')
+    TEST_PROSPECTOR_BODY=$(echo "$TEST_PROSPECTOR_CREATE" | sed '$d')
+    PROSPECTOR_USER_ID=$(echo "$TEST_PROSPECTOR_BODY" | jq -r '.data.id')
+fi
+
+# Generate a known raw token (UUID format) and calculate its SHA-256 hash using Python
+RAW_TOKEN=$(python3 -c "import uuid; print(uuid.uuid4().hex)")
+TOKEN_HASH=$(python3 -c "import hashlib; print(hashlib.sha256('$RAW_TOKEN'.encode()).hexdigest())")
 
 docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF
     UPDATE thedevkitchen_password_token
@@ -443,7 +478,7 @@ test_scenario "Set-password with expired token returns 410"
 EXPIRED_USER_CREATE=$(curl -s -X POST "$API_BASE/users/invite" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Session-ID: $SESSION_ID" \
+    -H "X-Openerp-Session-Id: $SESSION_ID" \
     -d '{
         "name": "Invite Test Expired",
         "email": "invite_test_expired@example.com",
@@ -484,6 +519,20 @@ assert_status 410 "$EXPIRED_TOKEN_STATUS" "Expired token rejected"
 # ============================================================
 log_info "Starting login verification for all 9 profiles (US6)..."
 
+# Re-authenticate to ensure valid session for profile tests
+log_info "Re-authenticating for profile verification tests..."
+get_oauth_token
+LOGIN_RESPONSE=$(curl -s -X POST "$API_BASE/users/login" \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $BEARER_TOKEN" \
+    -d "{
+        \"login\": \"$TEST_USER_OWNER\",
+        \"password\": \"$TEST_PASSWORD_OWNER\"
+    }")
+SESSION_ID=$(echo "$LOGIN_RESPONSE" | jq -r '.session_id')
+OWNER_COMPANY_ID=$(echo "$LOGIN_RESPONSE" | jq -r '.user.default_company_id')
+log_info "Session refreshed for profile tests"
+
 # Define all 9 profiles
 declare -a ALL_PROFILES=("owner" "director" "manager" "agent" "prospector" "receptionist" "financial" "legal" "portal")
 
@@ -518,7 +567,8 @@ for profile in "${ALL_PROFILES[@]}"; do
     PROFILE_INVITE_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/invite" \
         -H "Content-Type: application/json" \
         -H "Authorization: Bearer $BEARER_TOKEN" \
-        -H "X-Session-ID: $SESSION_ID" \
+        -H "X-Openerp-Session-Id: $SESSION_ID" \
+        -H "X-Company-ID: $OWNER_COMPANY_ID" \
         -d "$INVITE_REQUEST")
     
     PROFILE_INVITE_BODY=$(echo "$PROFILE_INVITE_RESPONSE" | sed '$d')
@@ -527,9 +577,9 @@ for profile in "${ALL_PROFILES[@]}"; do
     assert_status 201 "$PROFILE_INVITE_STATUS" "$profile user invited"
     PROFILE_USER_ID=$(echo "$PROFILE_INVITE_BODY" | jq -r '.data.id')
     
-    # Generate known token for set-password
-    PROFILE_RAW_TOKEN="login-verify-${profile}-$(date +%s)"
-    PROFILE_TOKEN_HASH=$(echo -n "$PROFILE_RAW_TOKEN" | sha256sum | awk '{print $1}')
+    # Generate known token for set-password (using Python for correct hash)
+    PROFILE_RAW_TOKEN=$(python3 -c "import uuid; print(uuid.uuid4().hex)")
+    PROFILE_TOKEN_HASH=$(python3 -c "import hashlib; print(hashlib.sha256('$PROFILE_RAW_TOKEN'.encode()).hexdigest())")
     
     docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF
         UPDATE thedevkitchen_password_token
@@ -590,7 +640,7 @@ test_scenario "US6: Pending user (no password set) login returns 401"
 PENDING_INVITE_RESPONSE=$(curl -s -X POST "$API_BASE/users/invite" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Session-ID: $SESSION_ID" \
+    -H "X-Openerp-Session-Id: $SESSION_ID" \
     -d '{
         "name": "Pending User Test",
         "email": "invite_test_pending_user@example.com",
@@ -621,7 +671,7 @@ test_scenario "US6: Inactive user login returns 403"
 INACTIVE_INVITE_RESPONSE=$(curl -s -X POST "$API_BASE/users/invite" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Session-ID: $SESSION_ID" \
+    -H "X-Openerp-Session-Id: $SESSION_ID" \
     -d '{
         "name": "Inactive User Test",
         "email": "invite_test_inactive_user@example.com",
