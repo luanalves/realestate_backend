@@ -2,13 +2,107 @@
   "info": {
     "_postman_id": "f009a1b2-c3d4-5e6f-7g8h-9i0j1k2l3m4n",
     "name": "Feature 009 - User Onboarding & Password Management",
-    "description": "## Feature 009: User Onboarding & Password Management\n\n### Overview\nToken-based authentication flows for 9 RBAC profiles with email invitation system, password management, and portal dual record creation.\n\n### Key Features\n- ✉️ **User Invitation**: Owner/Manager/Agent can invite users with authorization matrix\n- 🔑 **Password Management**: Set-password, forgot-password, reset-password flows\n- 👥 **Portal Dual Record**: Atomic creation of res.users + real.estate.tenant\n- 🔒 **Token Security**: UUID v4 → SHA-256 hashing, raw token sent once\n- 🚫 **Anti-Enumeration**: forgot-password always returns 200\n- 🏢 **Multi-tenancy**: Company isolation on all authenticated endpoints\n\n### Authorization Matrix\n- **Owner**: Can invite all 9 profiles\n- **Manager**: Can invite 5 operational profiles (agent, prospector, receptionist, financial, legal)\n- **Director**: Inherits Manager permissions\n- **Agent**: Can invite owner + portal\n- **Other profiles**: Cannot invite (403)\n\n### Authentication Flow\n1. **Get OAuth Token**: POST /api/v1/auth/token (from main collection)\n2. **User Login**: POST /api/v1/users/login (from main collection, returns session_id)\n3. **Invite User**: POST /api/v1/users/invite (authenticated)\n4. **Set Password**: POST /api/v1/auth/set-password (public, uses token from email)\n5. **Login**: Use main collection login endpoint\n\n### Headers (Authenticated Endpoints)\n- `Authorization: Bearer {{access_token}}`\n- `X-Session-ID: {{session_id}}` (in header for authenticated)\n- `User-Agent: {{user_agent}}`\n- `Content-Type: application/json`\n\n### Headers (Public Endpoints)\n- `Content-Type: application/json`\n\n### Security Patterns\n- **Token Lifecycle**: pending → used/expired\n- **Session Invalidation**: After password reset\n- **Rate Limiting**: 3 requests/hour for forgot-password\n- **TTL Configuration**: 24h default (configurable 1-720h)\n\n### ADRs\n- ADR-003: Testing Standards\n- ADR-008: Anti-Enumeration Pattern\n- ADR-011: Security Requirements\n- ADR-016: Postman Collection Standards\n- ADR-017: Multi-tenancy\n\n### Version History\n- **v1.0** (2026-02-17): Initial release with 5 endpoints",
+    "description": "## Feature 009: User Onboarding & Password Management\n\n### Overview\nToken-based authentication flows for 9 RBAC profiles with email invitation system, password management, and portal dual record creation.\n\n### Key Features\n- ✉️ **User Invitation**: Owner/Manager/Agent can invite users with authorization matrix\n- 🔑 **Password Management**: Set-password, forgot-password, reset-password flows\n- 👥 **Portal Dual Record**: Atomic creation of res.users + real.estate.tenant\n- 🔒 **Token Security**: UUID v4 → SHA-256 hashing, raw token sent once\n- 🚫 **Anti-Enumeration**: forgot-password always returns 200\n- 🏢 **Multi-tenancy**: Company isolation on all authenticated endpoints\n\n### Authorization Matrix\n- **Owner**: Can invite all 9 profiles\n- **Manager**: Can invite 5 operational profiles (agent, prospector, receptionist, financial, legal)\n- **Director**: Inherits Manager permissions\n- **Agent**: Can invite owner + portal\n- **Other profiles**: Cannot invite (403)\n\n### Authentication Flow\n1. **Get OAuth Token**: POST /api/v1/auth/token (use folder 1. Authentication)\n2. **User Login**: POST /api/v1/users/login (use folder 1. Authentication)\n3. **Invite User**: POST /api/v1/users/invite (authenticated)\n4. **Set Password**: POST /api/v1/auth/set-password (public, uses token from email)\n5. **Login**: Use main collection login endpoint\n\n### Important Notes (ADR-016)\n- ⚠️ **POST/PUT/PATCH**: `session_id` goes in **body JSON** (not header)\n- ⚠️ **GET requests**: `session_id` goes in **header** `X-Openerp-Session-Id`\n- ⚠️ **No JSON-RPC**: Business endpoints send JSON directly in body\n- ✅ **Variables**: Use {{...}} for all authentication values\n- ✅ **Test Scripts**: OAuth and Login endpoints auto-save tokens\n\n### Security Patterns\n- **Token Lifecycle**: pending → used/expired\n- **Session Invalidation**: After password reset\n- **Rate Limiting**: 3 requests/hour for forgot-password\n- **TTL Configuration**: 24h default (configurable 1-720h)\n\n### ADRs\n- ADR-003: Testing Standards\n- ADR-008: Anti-Enumeration Pattern\n- ADR-011: Security Requirements\n- ADR-016: Postman Collection Standards\n- ADR-017: Multi-tenancy\n\n### Version History\n- **v1.0** (2026-02-17): Initial release with 5 endpoints",
     "version": "1.0",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
     {
-      "name": "1. User Invitation",
+      "name": "1. Authentication",
+      "description": "OAuth 2.0 authentication endpoints. All business endpoints require a valid access token.",
+      "item": [
+        {
+          "name": "Get OAuth Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_id\": \"{{client_id}}\",\n  \"client_secret\": \"{{client_secret}}\",\n  \"grant_type\": \"client_credentials\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/token",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "token"]
+            },
+            "description": "**Authentication:** None (OAuth token generation)\n\nObtains an OAuth 2.0 access token using client credentials.\n\n**Response 200:**\n```json\n{\n  \"access_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n  \"token_type\": \"Bearer\",\n  \"expires_in\": 3600,\n  \"refresh_token\": \"def50200...\"\n}\n```"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.access_token) {",
+                  "    pm.environment.set('access_token', jsonData.access_token);",
+                  "    console.log('✅ Access token saved to environment');",
+                  "    if (jsonData.refresh_token) {",
+                  "        pm.environment.set('refresh_token', jsonData.refresh_token);",
+                  "        console.log('✅ Refresh token saved to environment');",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "User Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{user_email}}\",\n  \"password\": \"{{user_password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users", "login"]
+            },
+            "description": "**Authentication:** Bearer Token required\n\nAuthenticates user and creates a session. Returns session_id for subsequent requests.\n\n**Response 200:**\n```json\n{\n  \"result\": {\n    \"session_id\": \"abc123def456\",\n    \"user_id\": 1,\n    \"email\": \"user@example.com\"\n  }\n}\n```"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.result && jsonData.result.session_id) {",
+                  "    pm.environment.set('session_id', jsonData.result.session_id);",
+                  "    console.log('✅ Session ID saved to environment');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. User Invitation",
       "description": "User invitation endpoints with RBAC authorization matrix.",
       "item": [
         {
@@ -26,11 +120,6 @@
                 "description": "OAuth 2.0 Bearer token"
               },
               {
-                "key": "X-Session-ID",
-                "value": "{{session_id}}",
-                "description": "Session ID for fingerprint validation (REQUIRED)"
-              },
-              {
                 "key": "User-Agent",
                 "value": "{{user_agent}}",
                 "description": "Required for session fingerprint validation"
@@ -38,14 +127,14 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"John Doe Manager\",\n  \"email\": \"john.manager@example.com\",\n  \"document\": \"12345678901\",\n  \"profile\": \"manager\"\n}"
+              "raw": "{\n  \"name\": \"John Doe Manager\",\n  \"email\": \"john.manager@example.com\",\n  \"document\": \"12345678901\",\n  \"profile\": \"manager\",\n  \"session_id\": \"{{session_id}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/users/invite",
               "host": ["{{base_url}}"],
               "path": ["api", "v1", "users", "invite"]
             },
-            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent)\n\n**Authorization Matrix:**\n- Owner: Can invite all 9 profiles\n- Manager: Can invite 5 operational profiles\n- Agent: Can invite owner + portal\n- Others: 403 Forbidden\n\n**Request Body:**\n- `name` (required): Full name\n- `email` (required): Valid email, unique\n- `document` (required): CPF/CNPJ, unique\n- `profile` (required): One of 9 profiles (owner, director, manager, agent, prospector, receptionist, financial, legal, portal)\n\n**Response 201:**\n```json\n{\n  \"data\": {\n    \"id\": 123,\n    \"name\": \"John Doe Manager\",\n    \"email\": \"john.manager@example.com\",\n    \"profile\": \"manager\",\n    \"invite_expires_at\": \"2026-02-18T10:00:00Z\",\n    \"status\": \"pending\"\n  },\n  \"links\": {\n    \"self\": \"/api/v1/users/123\",\n    \"resend_invite\": \"/api/v1/users/123/resend-invite\"\n  }\n}\n```\n\n**Errors:**\n- 400: Invalid request (missing fields, invalid profile)\n- 403: Forbidden (authorization matrix violation)\n- 409: Duplicate email or document"
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent)\n\n**IMPORTANT:** Business endpoints do NOT use JSON-RPC format. Send JSON directly in body with session_id field.\n\n**Authorization Matrix:**\n- Owner: Can invite all 9 profiles\n- Manager: Can invite 5 operational profiles\n- Agent: Can invite owner + portal\n- Others: 403 Forbidden\n\n**Request Body:**\n- `name` (required): Full name\n- `email` (required): Valid email, unique\n- `document` (required): CPF/CNPJ, unique\n- `profile` (required): One of 9 profiles (owner, director, manager, agent, prospector, receptionist, financial, legal, portal)\n- `session_id` (required): Session ID from login\n\n**Response 201:**\n```json\n{\n  \"data\": {\n    \"id\": 123,\n    \"name\": \"John Doe Manager\",\n    \"email\": \"john.manager@example.com\",\n    \"profile\": \"manager\",\n    \"invite_expires_at\": \"2026-02-18T10:00:00Z\",\n    \"status\": \"pending\"\n  },\n  \"links\": {\n    \"self\": \"/api/v1/users/123\",\n    \"resend_invite\": \"/api/v1/users/123/resend-invite\"\n  }\n}\n```\n\n**Errors:**\n- 400: Invalid request (missing fields, invalid profile)\n- 403: Forbidden (authorization matrix violation)\n- 409: Duplicate email or document"
           }
         },
         {
@@ -63,11 +152,6 @@
                 "description": "OAuth 2.0 Bearer token"
               },
               {
-                "key": "X-Session-ID",
-                "value": "{{session_id}}",
-                "description": "Session ID for fingerprint validation (REQUIRED)"
-              },
-              {
                 "key": "User-Agent",
                 "value": "{{user_agent}}",
                 "description": "Required for session fingerprint validation"
@@ -75,14 +159,14 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Jane Doe Tenant\",\n  \"email\": \"jane.tenant@example.com\",\n  \"document\": \"98765432109\",\n  \"profile\": \"portal\",\n  \"phone\": \"+5511988776655\",\n  \"birthdate\": \"1985-05-15\",\n  \"occupation\": \"Software Engineer\"\n}"
+              "raw": "{\n  \"name\": \"Jane Doe Tenant\",\n  \"email\": \"jane.tenant@example.com\",\n  \"document\": \"98765432109\",\n  \"profile\": \"portal\",\n  \"phone\": \"+5511988776655\",\n  \"birthdate\": \"1985-05-15\",\n  \"occupation\": \"Software Engineer\",\n  \"session_id\": \"{{session_id}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/users/invite",
               "host": ["{{base_url}}"],
               "path": ["api", "v1", "users", "invite"]
             },
-            "description": "**Portal Dual Record Creation**\n\nCreates both:\n1. `res.users` (portal group)\n2. `real.estate.tenant` (linked via partner_id)\n\n**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Tenant belongs to inviter's company\n\n**Additional Required Fields for Portal:**\n- `phone` (required): Tenant phone number\n- `birthdate` (required): ISO 8601 date (YYYY-MM-DD)\n- `occupation` (optional): Tenant occupation\n- `company_id` (optional): Defaults to inviter's company\n\n**Response 201:**\n```json\n{\n  \"data\": {\n    \"id\": 456,\n    \"name\": \"Jane Doe Tenant\",\n    \"email\": \"jane.tenant@example.com\",\n    \"profile\": \"portal\",\n    \"tenant_id\": 789,\n    \"invite_expires_at\": \"2026-02-18T10:00:00Z\"\n  },\n  \"links\": {\n    \"self\": \"/api/v1/users/456\",\n    \"resend_invite\": \"/api/v1/users/456/resend-invite\",\n    \"tenant\": \"/api/v1/tenants/789\"\n  }\n}\n```\n\n**Errors:**\n- 400: Missing phone/birthdate\n- 409: Duplicate document (existing tenant without user account)"
+            "description": "**Portal Dual Record Creation**\n\nCreates both:\n1. `res.users` (portal group)\n2. `real.estate.tenant` (linked via partner_id)\n\n**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Tenant belongs to inviter's company\n\n**IMPORTANT:** Business endpoints do NOT use JSON-RPC format. Send JSON directly in body with session_id field.\n\n**Additional Required Fields for Portal:**\n- `phone` (required): Tenant phone number\n- `birthdate` (required): ISO 8601 date (YYYY-MM-DD)\n- `occupation` (optional): Tenant occupation\n- `company_id` (optional): Defaults to inviter's company\n- `session_id` (required): Session ID from login\n\n**Response 201:**\n```json\n{\n  \"data\": {\n    \"id\": 456,\n    \"name\": \"Jane Doe Tenant\",\n    \"email\": \"jane.tenant@example.com\",\n    \"profile\": \"portal\",\n    \"tenant_id\": 789,\n    \"invite_expires_at\": \"2026-02-18T10:00:00Z\"\n  },\n  \"links\": {\n    \"self\": \"/api/v1/users/456\",\n    \"resend_invite\": \"/api/v1/users/456/resend-invite\",\n    \"tenant\": \"/api/v1/tenants/789\"\n  }\n}\n```\n\n**Errors:**\n- 400: Missing phone/birthdate\n- 409: Duplicate document (existing tenant without user account)"
           }
         },
         {
@@ -100,11 +184,6 @@
                 "description": "OAuth 2.0 Bearer token"
               },
               {
-                "key": "X-Session-ID",
-                "value": "{{session_id}}",
-                "description": "Session ID for fingerprint validation (REQUIRED)"
-              },
-              {
                 "key": "User-Agent",
                 "value": "{{user_agent}}",
                 "description": "Required for session fingerprint validation"
@@ -112,7 +191,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": ""
+              "raw": "{\n  \"session_id\": \"{{session_id}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/users/:user_id/resend-invite",
@@ -126,7 +205,7 @@
                 }
               ]
             },
-            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Can only resend for users in same company\n**Rate Limiting:** Max 5 resends per user (configurable)\n\n**Behavior:**\n- Invalidates previous pending invite token\n- Generates new token with fresh TTL\n- Sends new invite email\n- Returns 429 if max resends exceeded\n- Returns 404 if user not found or cross-company\n- Returns 400 if user already active\n\n**Response 200:**\n```json\n{\n  \"data\": {\n    \"user_id\": 123,\n    \"email\": \"john.manager@example.com\",\n    \"invite_expires_at\": \"2026-02-18T12:00:00Z\",\n    \"resend_count\": 2,\n    \"max_resends\": 5\n  },\n  \"message\": \"Invitation email sent successfully\"\n}\n```"
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Can only resend for users in same company\n**Rate Limiting:** Max 5 resends per user (configurable)\n\n**IMPORTANT:** Business endpoints do NOT use JSON-RPC format. Send JSON directly in body with session_id field.\n\n**Behavior:**\n- Invalidates previous pending invite token\n- Generates new token with fresh TTL\n- Sends new invite email\n- Returns 429 if max resends exceeded\n- Returns 404 if user not found or cross-company\n- Returns 400 if user already active\n\n**Request Body:**\n- `session_id` (required): Session ID from login\n\n**Response 200:**\n```json\n{\n  \"data\": {\n    \"user_id\": 123,\n    \"email\": \"john.manager@example.com\",\n    \"invite_expires_at\": \"2026-02-18T12:00:00Z\",\n    \"resend_count\": 2,\n    \"max_resends\": 5\n  },\n  \"message\": \"Invitation email sent successfully\"\n}\n```"
           }
         }
       ]
@@ -211,10 +290,28 @@
       "type": "string"
     },
     {
+      "key": "client_id",
+      "value": "",
+      "type": "string",
+      "description": "OAuth 2.0 client ID"
+    },
+    {
+      "key": "client_secret",
+      "value": "",
+      "type": "string",
+      "description": "OAuth 2.0 client secret"
+    },
+    {
       "key": "access_token",
       "value": "",
       "type": "string",
       "description": "OAuth 2.0 access token from /api/v1/auth/token"
+    },
+    {
+      "key": "refresh_token",
+      "value": "",
+      "type": "string",
+      "description": "OAuth 2.0 refresh token"
     },
     {
       "key": "session_id",
@@ -227,6 +324,18 @@
       "value": "PostmanRuntime/7.26.8",
       "type": "string",
       "description": "Required for session fingerprint validation"
+    },
+    {
+      "key": "user_email",
+      "value": "admin@example.com",
+      "type": "string",
+      "description": "User email for login"
+    },
+    {
+      "key": "user_password",
+      "value": "admin",
+      "type": "string",
+      "description": "User password for login"
     }
   ]
 }
