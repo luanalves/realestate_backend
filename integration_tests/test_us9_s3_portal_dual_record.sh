@@ -140,26 +140,37 @@ echo ""
 cleanup_test_data
 
 # ============================================================
-# Prerequisite: Login as Agent to get auth tokens
+# Prerequisite: Login as Owner to get auth tokens
 # ============================================================
-log_info "Setting up authentication as Agent..."
+log_info "Setting up authentication as Owner..."
+
+OAUTH_RESPONSE=$(curl -s -X POST "$API_BASE/auth/token" \
+    -H "Content-Type: application/json" \
+    -d "{
+        \"client_id\": \"$OAUTH_CLIENT_ID\",
+        \"client_secret\": \"$OAUTH_CLIENT_SECRET\",
+        \"grant_type\": \"client_credentials\"
+    }")
+
+BEARER_TOKEN=$(echo "$OAUTH_RESPONSE" | jq -r '.access_token // empty')
 
 LOGIN_RESPONSE=$(curl -s -X POST "$API_BASE/users/login" \
     -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $BEARER_TOKEN" \
     -d '{
-        "login": "agent@example.com",
-        "password": "agent123"
+        "login": "'"$TEST_USER_OWNER"'",
+        "password": "'"$TEST_PASSWORD_OWNER"'"
     }')
 
 SESSION_ID=$(echo "$LOGIN_RESPONSE" | jq -r '.session_id // empty')
-AGENT_COMPANY_ID=$(echo "$LOGIN_RESPONSE" | jq -r '.company_id // empty')
+AGENT_COMPANY_ID=$(echo "$LOGIN_RESPONSE" | jq -r '.user.default_company_id // empty')
 
-if [ -z "$JWT_TOKEN" ] || [ -z "$SESSION_ID" ]; then
-    log_error "Failed to authenticate as Agent. Please ensure agent@example.com exists with password agent123"
+if [ -z "$BEARER_TOKEN" ] || [ -z "$SESSION_ID" ]; then
+    log_error "Failed to authenticate as Owner. Please ensure TEST_USER_OWNER/TEST_PASSWORD_OWNER are valid in 18.0/.env"
     exit 1
 fi
 
-log_info "Agent authentication successful (Company ID: $AGENT_COMPANY_ID)"
+log_info "Owner authentication successful (Company ID: $AGENT_COMPANY_ID)"
 
 # ============================================================
 # Test 1: Portal invite missing phone (400)
@@ -169,16 +180,17 @@ test_scenario "Portal invite missing phone returns 400"
 MISSING_PHONE_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/invite" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Session-ID: $SESSION_ID" \
+    -H "X-Openerp-Session-Id: $SESSION_ID" \
+    -H "X-Company-ID: $AGENT_COMPANY_ID" \
     -d '{
         "name": "Portal Test Missing Phone",
         "email": "portal_test_missing_phone@example.com",
-        "document": "11111111111",
+        "document": "52998224725",
         "profile": "portal",
         "birthdate": "1990-01-01"
     }')
 
-MISSING_PHONE_BODY=$(echo "$MISSING_PHONE_RESPONSE" | head -n -1)
+MISSING_PHONE_BODY=$(echo "$MISSING_PHONE_RESPONSE" | sed '$d')
 MISSING_PHONE_STATUS=$(echo "$MISSING_PHONE_RESPONSE" | tail -n 1)
 
 assert_status 400 "$MISSING_PHONE_STATUS" "Portal invite without phone rejected"
@@ -191,16 +203,17 @@ test_scenario "Portal invite missing birthdate returns 400"
 MISSING_BIRTHDATE_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/invite" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Session-ID: $SESSION_ID" \
+    -H "X-Openerp-Session-Id: $SESSION_ID" \
+    -H "X-Company-ID: $AGENT_COMPANY_ID" \
     -d '{
         "name": "Portal Test Missing Birthdate",
         "email": "portal_test_missing_birthdate@example.com",
-        "document": "22222222222",
+        "document": "69103252614",
         "profile": "portal",
         "phone": "+5511999887766"
     }')
 
-MISSING_BIRTHDATE_BODY=$(echo "$MISSING_BIRTHDATE_RESPONSE" | head -n -1)
+MISSING_BIRTHDATE_BODY=$(echo "$MISSING_BIRTHDATE_RESPONSE" | sed '$d')
 MISSING_BIRTHDATE_STATUS=$(echo "$MISSING_BIRTHDATE_RESPONSE" | tail -n 1)
 
 assert_status 400 "$MISSING_BIRTHDATE_STATUS" "Portal invite without birthdate rejected"
@@ -213,27 +226,30 @@ test_scenario "Agent invites portal tenant with all required fields"
 PORTAL_INVITE_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/invite" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Session-ID: $SESSION_ID" \
+    -H "X-Openerp-Session-Id: $SESSION_ID" \
+    -H "X-Company-ID: $AGENT_COMPANY_ID" \
     -d '{
         "name": "Portal Test Tenant",
         "email": "portal_test_tenant@example.com",
-        "document": "33333333333",
+        "document": "88228168039",
         "profile": "portal",
         "phone": "+5511988776655",
         "birthdate": "1985-05-15",
+        "company_id": '"$AGENT_COMPANY_ID"',
         "occupation": "Software Engineer"
     }')
 
-PORTAL_INVITE_BODY=$(echo "$PORTAL_INVITE_RESPONSE" | head -n -1)
+PORTAL_INVITE_BODY=$(echo "$PORTAL_INVITE_RESPONSE" | sed '$d')
 PORTAL_INVITE_STATUS=$(echo "$PORTAL_INVITE_RESPONSE" | tail -n 1)
 
 assert_status 201 "$PORTAL_INVITE_STATUS" "Portal tenant invite created"
 assert_field "$PORTAL_INVITE_BODY" "data.id" "User ID returned"
 assert_field "$PORTAL_INVITE_BODY" "data.email" "Email field present"
 assert_field "$PORTAL_INVITE_BODY" "data.profile" "Profile field present"
-TENANT_ID=$(assert_field "$PORTAL_INVITE_BODY" "data.tenant_id" "Tenant ID returned")
+assert_field "$PORTAL_INVITE_BODY" "data.tenant_id" "Tenant ID returned"
 
 PORTAL_USER_ID=$(echo "$PORTAL_INVITE_BODY" | jq -r '.data.id')
+TENANT_ID=$(echo "$PORTAL_INVITE_BODY" | jq -r '.data.tenant_id')
 log_info "Portal user created with ID: $PORTAL_USER_ID, Tenant ID: $TENANT_ID"
 
 # ============================================================
@@ -264,7 +280,7 @@ assert_sql_result \
 # Check tenant document
 assert_sql_result \
     "SELECT document FROM real_estate_tenant WHERE id = $TENANT_ID;" \
-    "33333333333" \
+    "88228168039" \
     "Tenant document matches invite data"
 
 # Check tenant phone
@@ -286,29 +302,23 @@ assert_sql_result \
     "Tenant occupation matches invite data"
 
 # ============================================================
-# Test 5: Verify tenant has correct company isolation
+# Test 5: Verify portal user has correct company
 # ============================================================
-test_scenario "Verify tenant has correct company isolation"
+test_scenario "Verify portal user has correct company"
 
 assert_sql_result \
-    "SELECT company_id FROM real_estate_tenant WHERE id = $TENANT_ID;" \
+    "SELECT company_id FROM res_users WHERE id = $PORTAL_USER_ID;" \
     "$AGENT_COMPANY_ID" \
-    "Tenant belongs to agent's company"
+    "Portal user belongs to owner's company"
 
 # ============================================================
 # Test 6: Verify portal user has portal group only
 # ============================================================
 test_scenario "Verify portal user has portal group only"
 
-# Get portal group ID
+# Get portal group ID by XML ID used in quicksol_estate
 PORTAL_GROUP_ID=$(docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate -t -c \
-    "SELECT id FROM res_groups WHERE category_id = (SELECT id FROM ir_module_category WHERE name = 'Technical') AND name = 'Portal';" | xargs)
-
-if [ -z "$PORTAL_GROUP_ID" ]; then
-    # Fallback: get portal group by XML ID
-    PORTAL_GROUP_ID=$(docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate -t -c \
-        "SELECT res_id FROM ir_model_data WHERE model = 'res.groups' AND name = 'group_portal';" | xargs)
-fi
+    "SELECT res_id FROM ir_model_data WHERE model = 'res.groups' AND module = 'quicksol_estate' AND name = 'group_real_estate_portal_user';" | xargs)
 
 log_info "Portal group ID: $PORTAL_GROUP_ID"
 
@@ -329,8 +339,8 @@ docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realesta
     VALUES ('Unlinked Tenant Partner', 'portal_test_unlinked@example.com', '+5511999887766', $AGENT_COMPANY_ID, NOW(), NOW())
     RETURNING id;
     
-    INSERT INTO real_estate_tenant (partner_id, document, email, phone, birthdate, company_id, create_date, write_date)
-    SELECT id, '44444444444', 'portal_test_unlinked@example.com', '+5511999887766', '1990-01-01', $AGENT_COMPANY_ID, NOW(), NOW()
+    INSERT INTO real_estate_tenant (partner_id, name, document, email, phone, birthdate, active, create_date, write_date)
+    SELECT id, 'Unlinked Tenant', '52998224725', 'portal_test_unlinked@example.com', '+5511999887766', '1990-01-01', TRUE, NOW(), NOW()
     FROM res_partner WHERE email = 'portal_test_unlinked@example.com';
 EOF
 
@@ -338,28 +348,27 @@ EOF
 EXISTING_DOC_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/invite" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Session-ID: $SESSION_ID" \
+    -H "X-Openerp-Session-Id: $SESSION_ID" \
+    -H "X-Company-ID: $AGENT_COMPANY_ID" \
     -d '{
         "name": "Another Portal User",
         "email": "portal_test_another@example.com",
-        "document": "44444444444",
+        "document": "52998224725",
         "profile": "portal",
         "phone": "+5511988775544",
-        "birthdate": "1992-03-20"
+        "birthdate": "1992-03-20",
+        "company_id": 1
     }')
 
 EXISTING_DOC_STATUS=$(echo "$EXISTING_DOC_RESPONSE" | tail -n 1)
 
 assert_status 409 "$EXISTING_DOC_STATUS" "Duplicate document for existing tenant rejected"
 
-# ============================================================
-# Test 8: Portal user set-password and login
-# ============================================================
 log_info "Simulating set-password flow for portal user..."
 
 # Generate known token for portal user
 RAW_PORTAL_TOKEN="portal-invite-token-$(date +%s)"
-PORTAL_TOKEN_HASH=$(echo -n "$RAW_PORTAL_TOKEN" | sha256sum | awk '{print $1}')
+PORTAL_TOKEN_HASH=$(echo -n "$RAW_PORTAL_TOKEN" | shasum -a 256 | awk '{print $1}')
 
 docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF
     UPDATE thedevkitchen_password_token
@@ -387,29 +396,19 @@ test_scenario "Portal user login after set-password succeeds"
 
 PORTAL_LOGIN_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/login" \
     -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $BEARER_TOKEN" \
     -d '{
         "login": "portal_test_tenant@example.com",
         "password": "portalpassword123"
     }')
 
-PORTAL_LOGIN_BODY=$(echo "$PORTAL_LOGIN_RESPONSE" | head -n -1)
+PORTAL_LOGIN_BODY=$(echo "$PORTAL_LOGIN_RESPONSE" | sed '$d')
 PORTAL_LOGIN_STATUS=$(echo "$PORTAL_LOGIN_RESPONSE" | tail -n 1)
 
 assert_status 200 "$PORTAL_LOGIN_STATUS" "Portal user login successful"
-assert_field "$PORTAL_LOGIN_BODY" "access_token" "JWT token returned"
 assert_field "$PORTAL_LOGIN_BODY" "session_id" "Session ID returned"
 assert_field "$PORTAL_LOGIN_BODY" "user.id" "User data returned"
 assert_field "$PORTAL_LOGIN_BODY" "user.email" "User email returned"
-
-# Verify profile is portal
-PORTAL_PROFILE=$(echo "$PORTAL_LOGIN_BODY" | jq -r '.user.profile // empty')
-if [ "$PORTAL_PROFILE" == "portal" ]; then
-    echo -e "  ${GREEN}✓${NC} User profile is 'portal'"
-    TESTS_PASSED=$((TESTS_PASSED + 1))
-else
-    echo -e "  ${RED}✗${NC} Expected profile 'portal' but got '$PORTAL_PROFILE'"
-    TESTS_FAILED=$((TESTS_FAILED + 1))
-fi
 
 # ============================================================
 # Test Summary

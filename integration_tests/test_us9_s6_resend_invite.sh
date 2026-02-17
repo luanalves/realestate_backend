@@ -135,16 +135,28 @@ cleanup_test_data
 # ============================================================
 log_info "Setting up authentication..."
 
+OAUTH_RESPONSE=$(curl -s -X POST "$API_BASE/auth/token" \
+    -H "Content-Type: application/json" \
+    -d "{
+        \"client_id\": \"$OAUTH_CLIENT_ID\",
+        \"client_secret\": \"$OAUTH_CLIENT_SECRET\",
+        \"grant_type\": \"client_credentials\"
+    }")
+
+BEARER_TOKEN=$(echo "$OAUTH_RESPONSE" | jq -r '.access_token // empty')
+
 LOGIN_RESPONSE=$(curl -s -X POST "$API_BASE/users/login" \
     -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $BEARER_TOKEN" \
     -d '{
         "login": "'"$TEST_USER_OWNER"'",
         "password": "'"$TEST_PASSWORD_OWNER"'"
     }')
 
 SESSION_ID=$(echo "$LOGIN_RESPONSE" | jq -r '.session_id // empty')
+OWNER_COMPANY_ID=$(echo "$LOGIN_RESPONSE" | jq -r '.user.default_company_id // empty')
 
-if [ -z "$JWT_TOKEN" ] || [ -z "$SESSION_ID" ]; then
+if [ -z "$BEARER_TOKEN" ] || [ -z "$SESSION_ID" ]; then
     log_error "Failed to authenticate. Please ensure $TEST_USER_OWNER exists in the database"
     exit 1
 fi
@@ -161,15 +173,16 @@ log_info "  Step 1: Creating pending user..."
 INVITE_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/invite" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Session-ID: $SESSION_ID" \
+    -H "X-Openerp-Session-Id: $SESSION_ID" \
+    -H "X-Company-ID: $OWNER_COMPANY_ID" \
     -d '{
         "name": "Resend Test Agent",
         "email": "resend_test_agent@example.com",
-        "document": "12345678901",
+        "document": "52998224725",
         "profile": "agent"
     }')
 
-INVITE_BODY=$(echo "$INVITE_RESPONSE" | head -n -1)
+INVITE_BODY=$(echo "$INVITE_RESPONSE" | sed '$d')
 INVITE_STATUS=$(echo "$INVITE_RESPONSE" | tail -n 1)
 
 assert_status 201 "$INVITE_STATUS" "Initial invite created"
@@ -194,9 +207,10 @@ log_info "  Step 2: Resending invite..."
 RESEND_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/$USER_ID/resend-invite" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Session-ID: $SESSION_ID")
+    -H "X-Openerp-Session-Id: $SESSION_ID" \
+    -H "X-Company-ID: $OWNER_COMPANY_ID")
 
-RESEND_BODY=$(echo "$RESEND_RESPONSE" | head -n -1)
+RESEND_BODY=$(echo "$RESEND_RESPONSE" | sed '$d')
 RESEND_STATUS=$(echo "$RESEND_RESPONSE" | tail -n 1)
 
 assert_status 200 "$RESEND_STATUS" "Resend invite successful"
@@ -248,7 +262,8 @@ log_info "  Step 1: Creating and activating user..."
 ACTIVE_INVITE_RESPONSE=$(curl -s -X POST "$API_BASE/users/invite" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Session-ID: $SESSION_ID" \
+    -H "X-Openerp-Session-Id: $SESSION_ID" \
+    -H "X-Company-ID: $OWNER_COMPANY_ID" \
     -d '{
         "name": "Resend Test Active",
         "email": "resend_test_active@example.com",
@@ -269,9 +284,10 @@ log_info "  Step 2: Attempting to resend invite to active user..."
 ACTIVE_RESEND_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/$ACTIVE_USER_ID/resend-invite" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Session-ID: $SESSION_ID")
+    -H "X-Openerp-Session-Id: $SESSION_ID" \
+    -H "X-Company-ID: $OWNER_COMPANY_ID")
 
-ACTIVE_RESEND_BODY=$(echo "$ACTIVE_RESEND_RESPONSE" | head -n -1)
+ACTIVE_RESEND_BODY=$(echo "$ACTIVE_RESEND_RESPONSE" | sed '$d')
 ACTIVE_RESEND_STATUS=$(echo "$ACTIVE_RESEND_RESPONSE" | tail -n 1)
 
 assert_status 400 "$ACTIVE_RESEND_STATUS" "Active user resend rejected"
@@ -299,9 +315,10 @@ FOREIGN_USER_ID=999999
 OTHER_COMPANY_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/$FOREIGN_USER_ID/resend-invite" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Session-ID: $SESSION_ID")
+    -H "X-Openerp-Session-Id: $SESSION_ID" \
+    -H "X-Company-ID: $OWNER_COMPANY_ID")
 
-OTHER_COMPANY_BODY=$(echo "$OTHER_COMPANY_RESPONSE" | head -n -1)
+OTHER_COMPANY_BODY=$(echo "$OTHER_COMPANY_RESPONSE" | sed '$d')
 OTHER_COMPANY_STATUS=$(echo "$OTHER_COMPANY_RESPONSE" | tail -n 1)
 
 assert_status 404 "$OTHER_COMPANY_STATUS" "User from other company not accessible"

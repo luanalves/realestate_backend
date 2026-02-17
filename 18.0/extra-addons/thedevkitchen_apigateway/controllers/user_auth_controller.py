@@ -77,7 +77,7 @@ class UserAuthController(http.Controller):
 
             # Invalidar sessões antigas do usuário
             try:
-                old_sessions = request.env['thedevkitchen.api.session'].search([
+                old_sessions = request.env['thedevkitchen.api.session'].sudo().search([
                     ('user_id', '=', user.id),
                     ('is_active', '=', True),
                 ])
@@ -92,7 +92,7 @@ class UserAuthController(http.Controller):
                 raise
 
             try:
-                api_session_record = request.env['thedevkitchen.api.session'].create({
+                api_session_record = request.env['thedevkitchen.api.session'].sudo().create({
                     'session_id': session_id,
                     'user_id': user.id,
                     'ip_address': ip_address,

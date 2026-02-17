@@ -1,14 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Email Link Settings Model (Singleton)
-
-Configurable settings for email link validity and rate limiting.
-Single record accessed by all email link operations.
-
-Author: TheDevKitchen
-Date: 2026-02-16
-ADRs: ADR-004 (Naming)
-"""
 
 from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError
@@ -83,11 +73,8 @@ class EmailLinkSettings(models.Model):
 
     @api.model
     def get_settings(self):
-        """
-        Returns the single settings record, creating default if needed.
-        This is the recommended way to access settings.
-        """
-        settings = self.search([], limit=1)
+        settings_model = self.sudo()
+        settings = settings_model.search([], limit=1)
         if not settings:
-            settings = self.create({"name": "Email Link Configuration"})
+            settings = settings_model.create({"name": "Email Link Configuration"})
         return settings

@@ -172,16 +172,22 @@ class InviteService:
             .sudo()
             .search([("document", "=", document)], limit=1)
         )
-        if existing_tenant and not existing_tenant.user_id:
-            raise ValidationError(
-                _(
-                    "Document already registered for another tenant. "
-                    "Please link the existing tenant to a user account manually."
-                )
+        if existing_tenant:
+            linked_user = (
+                self.env["res.users"]
+                .sudo()
+                .search([("partner_id", "=", existing_tenant.partner_id.id)], limit=1)
             )
+            if not linked_user:
+                raise ValidationError(
+                    _(
+                        "Document already registered for another tenant. "
+                        "Please link the existing tenant to a user account manually."
+                    )
+                )
 
         # Get portal group
-        portal_group = self.env.ref("base.group_portal")
+        portal_group = self.env.ref("quicksol_estate.group_real_estate_portal_user")
 
         # Step 1: Create res.users with portal group
         user_vals = {
@@ -207,7 +213,6 @@ class InviteService:
             "birthdate": birthdate,
             "partner_id": user.partner_id.id,  # Link to auto-created partner
             "company_ids": [(4, company_id)],
-            "user_id": user.id,  # Back-reference to res.users
         }
 
         if occupation:

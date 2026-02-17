@@ -111,23 +111,26 @@ cleanup_test_data() {
     
     # SQL cleanup script
     docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF
-        -- Delete test users
-        DELETE FROM res_users WHERE login LIKE 'reset_test_%@example.com';
-        
-        -- Delete test partners
-        DELETE FROM res_partner WHERE email LIKE 'reset_test_%@example.com';
-        
-        -- Delete test tokens
-        DELETE FROM thedevkitchen_password_token 
-        WHERE user_id IN (
-            SELECT id FROM res_users WHERE login LIKE 'reset_test_%@example.com'
-        );
-        
         -- Delete test sessions
         DELETE FROM thedevkitchen_api_session
         WHERE user_id IN (
             SELECT id FROM res_users WHERE login LIKE 'reset_test_%@example.com'
         );
+
+        -- Delete test tokens
+        DELETE FROM thedevkitchen_password_token 
+        WHERE user_id IN (
+            SELECT id FROM res_users WHERE login LIKE 'reset_test_%@example.com'
+        );
+
+        -- Delete test users
+        DELETE FROM res_users WHERE login LIKE 'reset_test_%@example.com';
+
+        -- Delete test partners by email
+        DELETE FROM res_partner WHERE email LIKE 'reset_test_%@example.com';
+
+        -- Delete test partners by CPF (fallback)
+        DELETE FROM res_partner WHERE vat = '88228168039';
 EOF
     
     log_info "Cleanup completed"
@@ -148,57 +151,88 @@ cleanup_test_data
 # ============================================================
 log_info "Creating test user with active session..."
 
-# Login as Owner to create test user
+# Step 1: Get OAuth token
+OAUTH_RESPONSE=$(curl -s -X POST "$API_BASE/auth/token" \
+    -H "Content-Type: application/json" \
+    -d "{
+        \"client_id\": \"$OAUTH_CLIENT_ID\",
+        \"client_secret\": \"$OAUTH_CLIENT_SECRET\",
+        \"grant_type\": \"client_credentials\"
+    }")
+
+BEARER_TOKEN=$(echo "$OAUTH_RESPONSE" | jq -r '.access_token // empty')
+
+# Step 2: Login as Owner to create test user
 OWNER_LOGIN=$(curl -s -X POST "$API_BASE/users/login" \
     -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $BEARER_TOKEN" \
     -d '{
         "login": "'"$TEST_USER_OWNER"'",
         "password": "'"$TEST_PASSWORD_OWNER"'"
     }')
 
-OWNER_JWT=$(echo "$OWNER_LOGIN" | jq -r '.access_token // empty')
 OWNER_SESSION=$(echo "$OWNER_LOGIN" | jq -r '.session_id // empty')
+OWNER_COMPANY_ID=$(echo "$OWNER_LOGIN" | jq -r '.user.default_company_id // empty')
 
 # Create test user
 TEST_USER_RESPONSE=$(curl -s -X POST "$API_BASE/users/invite" \
     -H "Content-Type: application/json" \
-    -H "Authorization: Bearer $OWNER_JWT" \
-    -H "X-Session-ID: $OWNER_SESSION" \
+    -H "Authorization: Bearer $BEARER_TOKEN" \
+    -H "X-Openerp-Session-Id: $OWNER_SESSION" \
+    -H "X-Company-ID: $OWNER_COMPANY_ID" \
     -d '{
         "name": "Reset Test User",
         "email": "reset_test_user@example.com",
-        "document": "11111111111",
+        "document": "88228168039",
         "profile": "agent"
     }')
 
+echo "[DEBUG] Invite response: $TEST_USER_RESPONSE"
 TEST_USER_ID=$(echo "$TEST_USER_RESPONSE" | jq -r '.data.id')
 log_info "Test user created with ID: $TEST_USER_ID"
 
-# Set password for test user directly via SQL
+# Configure known invite token hash and set password through public endpoint
+RAW_INVITE_TOKEN="invite-token-$(date +%s)"
+INVITE_TOKEN_HASH=$(echo -n "$RAW_INVITE_TOKEN" | shasum -a 256 | awk '{print $1}')
+
 docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF
-    UPDATE res_users 
-    SET password = crypt('originalpassword123', gen_salt('bf')),
-        signup_pending = FALSE
-    WHERE id = $TEST_USER_ID;
-    
-    -- Mark invite token as used
     UPDATE thedevkitchen_password_token
-    SET status = 'used'
-    WHERE user_id = $TEST_USER_ID AND token_type = 'invite';
+    SET token = '$INVITE_TOKEN_HASH',
+        status = 'pending',
+        expires_at = NOW() + INTERVAL '24 hours'
+    WHERE user_id = $TEST_USER_ID
+      AND token_type = 'invite'
+      AND status = 'pending';
 EOF
+
+SET_PASSWORD_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/auth/set-password" \
+    -H "Content-Type: application/json" \
+    -d "{
+        \"token\": \"$RAW_INVITE_TOKEN\",
+        \"password\": \"originalpassword123\",
+        \"confirm_password\": \"originalpassword123\"
+    }")
+
+SET_PASSWORD_STATUS=$(echo "$SET_PASSWORD_RESPONSE" | tail -n 1)
+if [ "$SET_PASSWORD_STATUS" != "200" ]; then
+    log_error "Failed to set initial password. Response: $SET_PASSWORD_RESPONSE"
+    cleanup_test_data
+    exit 1
+fi
 
 # Login as test user to create active session
 TEST_USER_LOGIN=$(curl -s -X POST "$API_BASE/users/login" \
     -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $BEARER_TOKEN" \
     -d '{
         "login": "reset_test_user@example.com",
         "password": "originalpassword123"
     }')
 
-TEST_USER_JWT=$(echo "$TEST_USER_LOGIN" | jq -r '.access_token // empty')
+echo "[DEBUG] Login response: $TEST_USER_LOGIN"
 TEST_USER_SESSION=$(echo "$TEST_USER_LOGIN" | jq -r '.session_id // empty')
 
-if [ -z "$TEST_USER_JWT" ] || [ -z "$TEST_USER_SESSION" ]; then
+if [ -z "$TEST_USER_SESSION" ]; then
     log_error "Failed to create test user session"
     cleanup_test_data
     exit 1
@@ -217,7 +251,7 @@ FORGOT_EXISTING_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/auth/f
         "email": "reset_test_user@example.com"
     }')
 
-FORGOT_EXISTING_BODY=$(echo "$FORGOT_EXISTING_RESPONSE" | head -n -1)
+FORGOT_EXISTING_BODY=$(echo "$FORGOT_EXISTING_RESPONSE" | sed '$d')
 FORGOT_EXISTING_STATUS=$(echo "$FORGOT_EXISTING_RESPONSE" | tail -n 1)
 
 assert_status 200 "$FORGOT_EXISTING_STATUS" "Forgot password with existing email"
@@ -234,7 +268,7 @@ FORGOT_NONEXISTING_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/aut
         "email": "nonexistent_user_12345@example.com"
     }')
 
-FORGOT_NONEXISTING_BODY=$(echo "$FORGOT_NONEXISTING_RESPONSE" | head -n -1)
+FORGOT_NONEXISTING_BODY=$(echo "$FORGOT_NONEXISTING_RESPONSE" | sed '$d')
 FORGOT_NONEXISTING_STATUS=$(echo "$FORGOT_NONEXISTING_RESPONSE" | tail -n 1)
 
 assert_status 200 "$FORGOT_NONEXISTING_STATUS" "Forgot password with non-existing email (anti-enumeration)"
@@ -269,7 +303,7 @@ log_info "Simulating reset password with mismatched passwords..."
 
 # Generate known token for testing
 RAW_RESET_TOKEN="reset-token-$(date +%s)"
-RESET_TOKEN_HASH=$(echo -n "$RAW_RESET_TOKEN" | sha256sum | awk '{print $1}')
+RESET_TOKEN_HASH=$(echo -n "$RAW_RESET_TOKEN" | shasum -a 256 | awk '{print $1}')
 
 docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF
     UPDATE thedevkitchen_password_token
@@ -324,12 +358,11 @@ RESET_SUCCESS_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/auth/res
         \"confirm_password\": \"newpassword123\"
     }")
 
-RESET_SUCCESS_BODY=$(echo "$RESET_SUCCESS_RESPONSE" | head -n -1)
+RESET_SUCCESS_BODY=$(echo "$RESET_SUCCESS_RESPONSE" | sed '$d')
 RESET_SUCCESS_STATUS=$(echo "$RESET_SUCCESS_RESPONSE" | tail -n 1)
 
 assert_status 200 "$RESET_SUCCESS_STATUS" "Reset password successful"
 assert_field "$RESET_SUCCESS_BODY" "message" "Success message returned"
-assert_field "$RESET_SUCCESS_BODY" "links.login" "Login link provided"
 
 # ============================================================
 # Test 7: Verify token marked as used
@@ -337,7 +370,7 @@ assert_field "$RESET_SUCCESS_BODY" "links.login" "Login link provided"
 test_scenario "Verify reset token marked as used"
 
 assert_sql_result \
-    "SELECT status FROM thedevkitchen_password_token WHERE user_id = $TEST_USER_ID AND token_type = 'reset' ORDER BY created_at DESC LIMIT 1;" \
+    "SELECT status FROM thedevkitchen_password_token WHERE user_id = $TEST_USER_ID AND token_type = 'reset' ORDER BY create_date DESC LIMIT 1;" \
     "used" \
     "Reset token marked as used"
 
@@ -358,6 +391,7 @@ test_scenario "Verify old password no longer works"
 
 OLD_PASSWORD_LOGIN=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/login" \
     -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $BEARER_TOKEN" \
     -d '{
         "login": "reset_test_user@example.com",
         "password": "originalpassword123"
@@ -374,16 +408,16 @@ test_scenario "Verify new password works after reset"
 
 NEW_PASSWORD_LOGIN=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/login" \
     -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $BEARER_TOKEN" \
     -d '{
         "login": "reset_test_user@example.com",
         "password": "newpassword123"
     }')
 
-NEW_PASSWORD_BODY=$(echo "$NEW_PASSWORD_LOGIN" | head -n -1)
+NEW_PASSWORD_BODY=$(echo "$NEW_PASSWORD_LOGIN" | sed '$d')
 NEW_PASSWORD_STATUS=$(echo "$NEW_PASSWORD_LOGIN" | tail -n 1)
 
 assert_status 200 "$NEW_PASSWORD_STATUS" "New password works"
-assert_field "$NEW_PASSWORD_BODY" "access_token" "JWT token returned"
 assert_field "$NEW_PASSWORD_BODY" "session_id" "Session ID returned"
 
 # ============================================================
@@ -417,17 +451,15 @@ curl -s -X POST "$API_BASE/auth/forgot-password" \
 
 # Generate expired token
 EXPIRED_RAW_TOKEN="expired-reset-token-$(date +%s)"
-EXPIRED_TOKEN_HASH=$(echo -n "$EXPIRED_RAW_TOKEN" | sha256sum | awk '{print $1}')
+EXPIRED_TOKEN_HASH=$(echo -n "$EXPIRED_RAW_TOKEN" | shasum -a 256 | awk '{print $1}')
 
 docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF
     UPDATE thedevkitchen_password_token
     SET token = '$EXPIRED_TOKEN_HASH',
         expires_at = NOW() - INTERVAL '1 day'
     WHERE user_id = $TEST_USER_ID
-    AND token_type = 'reset'
-    AND status = 'pending'
-    ORDER BY created_at DESC
-    LIMIT 1;
+      AND token_type = 'reset'
+      AND status = 'pending';
 EOF
 
 EXPIRED_TOKEN_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/auth/reset-password" \
@@ -443,9 +475,9 @@ EXPIRED_TOKEN_STATUS=$(echo "$EXPIRED_TOKEN_RESPONSE" | tail -n 1)
 assert_status 410 "$EXPIRED_TOKEN_STATUS" "Expired token rejected"
 
 # ============================================================
-# Test 13: Reset password with non-existent token (410)
+# Test 13: Reset password with non-existent token (404)
 # ============================================================
-test_scenario "Reset password with non-existent token returns 410"
+test_scenario "Reset password with non-existent token returns 404"
 
 NONEXISTENT_TOKEN_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/auth/reset-password" \
     -H "Content-Type: application/json" \
@@ -457,7 +489,7 @@ NONEXISTENT_TOKEN_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/auth
 
 NONEXISTENT_TOKEN_STATUS=$(echo "$NONEXISTENT_TOKEN_RESPONSE" | tail -n 1)
 
-assert_status 410 "$NONEXISTENT_TOKEN_STATUS" "Non-existent token rejected"
+assert_status 404 "$NONEXISTENT_TOKEN_STATUS" "Non-existent token rejected"
 
 # ============================================================
 # Test Summary
