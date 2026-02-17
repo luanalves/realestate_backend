@@ -35,10 +35,24 @@ Implementar o fluxo completo de onboarding de usuários e gestão de senhas para
 - **R**: Todos os perfis usam `POST /api/v1/users/invite`. Campos faltantes nos controllers existentes devem ser obrigatórios no endpoint. Perfis que não estão adequados devem ser adaptados (Owner, Tenant).
 
 **Q5: Document duplicado — tenant existente sem `res.users`**
-- **R**: Se já existe um `real.estate.tenant` com o mesmo `document` (CPF/CNPJ) mas sem `res.users` vinculado, o endpoint deve retornar **409 Conflict** com `{"error": "conflict", "field": "document", "message": "Document already registered for another tenant"}`. O administrador deve resolver o vínculo manualmente (ex: via menu Odoo ou endpoint de edição do tenant).
+- **R**: A regra de conflito de `document` para `profile=portal` é **por empresa ativa** (`X-Company-ID`):
+  - Se já existe `real.estate.tenant` com mesmo `document` na **mesma empresa ativa** (com ou sem `res.users` vinculado), retornar **409 Conflict** com `{"error": "conflict", "field": "document", "message": "Document already registered in this company"}`.
+  - Se o mesmo `document` existir apenas em **outra empresa**, o invite **é permitido** na empresa ativa (não há unicidade global entre empresas).
+  - Quando o conflito ocorrer por tenant sem `res.users` na mesma empresa, a resolução é operacional: o administrador deve vincular/corrigir manualmente (menu Odoo ou endpoint de edição de tenant).
 
 **Q6: Declaração explícita de out-of-scope**
 - **R**: Declarar explicitamente fora do escopo: self-registration (usuário cria própria conta), social login (Google/Facebook), 2FA/MFA, política de expiração de senha, histórico de senhas (impedir reutilização).
+
+### Session 2026-02-17 (Release Gate Decisions)
+
+- **Escopo multiempresa**: endpoints autenticados operam somente no contexto da empresa ativa enviada em `X-Company-ID`; usuários multiempresa não operam em escopo agregado nesta feature.
+- **Isolamento cross-company**: acesso a recurso de outra empresa responde **404 genérico** (sem identificar recurso/empresa).
+- **Precedência de erro**: `AuthZ (403)` → `Isolamento (404)` → `Validação (400)`.
+- **Anti-enumeration (forgot-password)**: manter paridade entre emails existentes e não existentes com **mesmo status**, **mesmo shape JSON** e **tempo de resposta aproximado**.
+- **Race condition de tokens**: em emissões concorrentes para mesmo usuário/tipo, **último token vence**; anteriores devem ser invalidados.
+- **Observabilidade**: registrar somente eventos de erro/negação com contexto técnico mínimo, sem dados sensíveis.
+- **Performance**: sem meta numérica fixa de latência neste ciclo; requisito é monitorar e evitar regressões relevantes no mesmo ambiente.
+- **Rastreabilidade**: manter vínculo explícito `FR` ↔ `AC` ↔ `TEST` para release gate.
 
 ---
 
@@ -69,8 +83,11 @@ Os seguintes itens estão **explicitamente fora do escopo** desta feature e NÃO
 
 **Acceptance Criteria**:
 - [ ] Given Owner/Manager/Agent autenticado, when cria usuário via `POST /api/v1/users/invite` com campos obrigatórios, then usuário é criado como `res.users` SEM senha (bloqueado para login) e email de convite é enviado
+- [ ] Given usuário com múltiplas empresas vinculadas, when envia invite com `X-Company-ID`, then operação usa somente a empresa ativa do header (sem escopo agregado)
+- [ ] Given `X-Company-ID` ausente, inválido ou não vinculado ao usuário autenticado, when tenta invite, then resposta é 404 genérico (sem exposição de contexto)
 - [ ] Given `profile=portal`, when Agent convida tenant, then cria simultaneamente `res.users` (grupo portal) + `real.estate.tenant` vinculado via `partner_id`
 - [ ] Given `profile=portal`, when campos obrigatórios de tenant (`document`, `phone`, `birthdate`, `company_id`) faltando, then retorna erro 400 com campos faltantes
+- [ ] Given `profile=portal`, when `document` já existe na mesma empresa ativa, then retorna 409 Conflict; when existe apenas em outra empresa, then criação é permitida
 - [ ] Given `profile=owner`, when Agent convida property owner, then cria `res.users` com grupo `group_real_estate_owner` (mesmo padrão do `owner_api.py` mas sem senha)
 - [ ] Given email de convite enviado, when usuário clica no link, then é redirecionado para página/endpoint de criação de senha
 - [ ] Given link de convite válido, when usuário define senha (min 8 chars), then senha é salva e usuário pode fazer login
@@ -164,6 +181,7 @@ Os seguintes itens estão **explicitamente fora do escopo** desta feature e NÃO
 - [ ] Given usuário sem senha definida, when `POST /api/v1/users/{id}/resend-invite`, then novo token é gerado, anteriores são invalidados e novo email é enviado
 - [ ] Given usuário já com senha definida, when tenta reenviar convite, then recebe erro 400 (usuário já ativo, usar forgot password)
 - [ ] Given usuário de outra empresa, when tenta reenviar convite, then recebe erro 404 (isolamento multi-tenancy)
+- [ ] Given requisição com múltiplas violações (ex.: perfil sem permissão + empresa incorreta + payload inválido), then a resposta segue precedência AuthZ(403) → Isolamento(404) → Validação(400)
 
 **Test Coverage** (per ADR-003):
 
@@ -243,6 +261,11 @@ Os seguintes itens estão **explicitamente fora do escopo** desta feature e NÃO
 - FR1.11: **Caso especial — Perfil `portal` (tenant)**: Quando o invite é para `profile=portal`, o endpoint deve criar simultaneamente: (a) `res.users` com grupo portal; (b) `real.estate.tenant` com `name`, `document`, `email`, `phone`, `birthdate`, `company_ids`. O campo `partner_id` do `real.estate.tenant` deve ser vinculado ao `res.partner` do `res.users` criado, garantindo a ligação entre entidade de negócio e acesso ao sistema. Para este perfil, os campos `document` (CPF/CNPJ), `phone`, `birthdate` e `company_id` são **obrigatórios** no request body.
 - FR1.12: **Caso especial — Perfil `owner`**: Property Owner já possui cadastro existente (`owner_api.py`), mas falta o fluxo de convite com senha. O endpoint de invite cria `res.users` com grupo `group_real_estate_owner` seguindo o mesmo padrão, mas com `password=False` e envio de email para criação de senha em vez de definir senha no ato do cadastro.
 - FR1.13: Para perfis que NÃO são `portal`, o campo `document` no request body corresponde ao CPF (validação via `validate_docbr`). Para perfil `portal`, o campo `document` aceita CPF ou CNPJ (validação via `validators.validate_document()`).
+- FR1.14: O endpoint opera exclusivamente na empresa ativa recebida em `X-Company-ID`; ausência, invalidez ou falta de vínculo do header resulta em 404 genérico.
+- FR1.15: Para `profile=portal`, os campos `document`, `phone`, `birthdate` e `company_id` são obrigatórios **somente** no `POST /api/v1/users/invite` (não aplicável a endpoints de senha/reenvio).
+- FR1.16: Conflito de `document` para `portal` é avaliado por empresa ativa: duplicado na mesma empresa retorna 409; duplicado em outra empresa não bloqueia criação.
+- FR1.17: Se existir tenant na mesma empresa com mesmo `document` e sem `res.users`, retornar 409 com mensagem explícita de conflito e exigir resolução manual de vínculo.
+- FR1.18: A matriz RBAC é avaliada antes das validações de payload; perfis não autorizados retornam 403 independentemente de outros problemas na requisição.
 
 **FR2: Criação de Senha (Set Password)**
 - FR2.1: `POST /api/v1/auth/set-password` define senha para token de convite válido
@@ -254,6 +277,7 @@ Os seguintes itens estão **explicitamente fora do escopo** desta feature e NÃO
 - FR2.7: Token inexistente retorna 404
 - FR2.8: Após definir senha, campo `signup_pending` é setado como `False`
 - FR2.9: Endpoint é público (`# public endpoint`) — não requer `@require_jwt` nem `@require_session`
+- FR2.10: Cenários de token devem cobrir, sem ambiguidade: inexistente (404), expirado (410), já usado (410), inválido/malformado (400).
 
 **FR3: Esqueci Minha Senha (Forgot Password)**
 - FR3.1: `POST /api/v1/auth/forgot-password` aceita `email` e SEMPRE retorna 200 (anti-enumeration, ADR-008)
@@ -262,6 +286,8 @@ Os seguintes itens estão **explicitamente fora do escopo** desta feature e NÃO
 - FR3.4: Tokens anteriores do mesmo usuário são invalidados ao gerar novo
 - FR3.5: Endpoint é público (`# public endpoint`)
 - FR3.6: Rate limit de 3 solicitações por email por hora (proteção contra abuso)
+- FR3.7: A resposta anti-enumeration deve manter paridade entre casos (email existente, inexistente, usuário inativo): mesmo status HTTP, mesmo shape JSON e sem identificação do motivo no payload.
+- FR3.8: Para emissões concorrentes de token de reset para o mesmo usuário, somente o token mais recente permanece válido.
 
 **FR4: Redefinição de Senha (Reset Password)**
 - FR4.1: `POST /api/v1/auth/reset-password` redefine senha com token válido
@@ -271,6 +297,7 @@ Os seguintes itens estão **explicitamente fora do escopo** desta feature e NÃO
 - FR4.5: Token já utilizado retorna 410 Gone
 - FR4.6: Endpoint é público (`# public endpoint`)
 - FR4.7: Todas as sessões ativas do usuário são invalidadas após reset (segurança)
+- FR4.8: Em reset concorrente, apenas o primeiro consumo válido do token mais recente é aceito; demais tentativas devem falhar como token usado/inválido conforme estado.
 
 **FR5: Reenvio de Convite**
 - FR5.1: `POST /api/v1/users/{id}/resend-invite` reenvia email com novo token
@@ -278,6 +305,8 @@ Os seguintes itens estão **explicitamente fora do escopo** desta feature e NÃO
 - FR5.3: Tokens anteriores são invalidados
 - FR5.4: Requer `@require_jwt` + `@require_session` + `@require_company`
 - FR5.5: Isolamento multi-tenancy — só pode reenviar para usuários da própria empresa
+- FR5.6: Usuários multiempresa só podem reenviar no contexto da empresa ativa (`X-Company-ID`), sem escopo agregado.
+- FR5.7: Se o alvo estiver fora da empresa ativa, retornar 404 genérico (sem exposição de existência).
 
 **FR6: Configuração Dinâmica de Validade dos Links por Email**
 - FR6.1: Modelo `thedevkitchen.email.link.settings` com campos configuráveis
@@ -293,6 +322,11 @@ Os seguintes itens estão **explicitamente fora do escopo** desta feature e NÃO
 - FR7.3: Templates utilizam `ir.mail_server` para envio (SMTP configurável)
 - FR7.4: Idioma padrão: Português (pt_BR)
 - FR7.5: Link no email aponta para o frontend headless (URL base configurável)
+
+**FR8: Regras Transversais de Erro, Isolamento e Rastreabilidade**
+- FR8.1: Precedência obrigatória de erro para endpoints autenticados: autorização (403) antes de isolamento (404), e isolamento antes de validação de payload (400).
+- FR8.2: Respostas de isolamento cross-company devem ser genéricas (`{"error":"not_found"}`), sem revelar ID, empresa, ou existência de recurso.
+- FR8.3: Cada requisito funcional deve possuir vínculo de rastreabilidade com ao menos um critério de aceitação e um caso de teste nomeado (`FRx.y` ↔ `AC` ↔ `test_*`).
 
 ---
 
@@ -517,6 +551,13 @@ def get_settings(self):
 | Agent | owner (dono de imóvel), portal (inquilino) |
 | Others | Nenhum (403 Forbidden) |
 
+**Regras Operacionais de Isolamento**:
+- O escopo de execução é sempre a empresa ativa em `X-Company-ID`.
+- Usuário com múltiplas empresas vinculadas não obtém escopo global; cada requisição é isolada por empresa ativa.
+- Se `X-Company-ID` estiver ausente, inválido ou não vinculado ao usuário, retornar `404 {"error":"not_found"}`.
+- Acesso a recursos de outra empresa retorna `404 {"error":"not_found"}` (LGPD/anti-enumeration operacional).
+- Ordem de avaliação de erro no endpoint: `403 (AuthZ)` → `404 (Isolamento)` → `400 (Validação)`.
+
 **Error Responses**:
 | Code | Condition | Response |
 |------|-----------|----------|
@@ -525,8 +566,9 @@ def get_settings(self):
 | 400 | Missing portal-required fields | `{"error": "validation_error", "message": "Fields phone, birthdate, company_id are required for portal profile"}` |
 | 401 | Missing/invalid JWT (ADR-011) | `{"error": "unauthorized"}` |
 | 403 | Insufficient permissions (ADR-019) | `{"error": "forbidden", "message": "Managers cannot invite owners"}` |
+| 404 | Company context inválido/incompatível | `{"error": "not_found"}` |
 | 409 | Email already exists | `{"error": "conflict", "field": "email"}` |
-| 409 | Document already exists | `{"error": "conflict", "field": "document"}` |
+| 409 | Document already exists in active company | `{"error": "conflict", "field": "document", "message": "Document already registered in this company"}` |
 
 > **Nota sobre falha de email (NFR5)**: Se o envio do email falhar após a criação bem-sucedida do usuário, a API retorna **201** (usuário criado) com campo adicional `"email_status": "failed"` no response. O erro de email é logado mas **não bloqueia** a criação do usuário. O administrador pode usar resend-invite para reenviar.
 
@@ -670,7 +712,7 @@ def get_settings(self):
 | 400 | User already has password | `{"error": "bad_request", "message": "User already activated. Use forgot-password instead."}` |
 | 401 | Missing/invalid auth | `{"error": "unauthorized"}` |
 | 403 | Insufficient permissions | `{"error": "forbidden"}` |
-| 404 | User not found or other company | `{"error": "not_found"}` |
+| 404 | User not found, company context inválido ou other company | `{"error": "not_found"}` |
 
 ---
 
@@ -687,12 +729,18 @@ def get_settings(self):
 - Multi-tenant isolation at database level (company_id)
 - RBAC enforcement per user profile
 - Audit logging de todas as operações de token (criação, uso, expiração)
+- Logging de isolamento/autorização somente em nível de erro, com `correlation_id`, `requester_id`, `active_company_id`, `endpoint` e `reason_code` (sem payload sensível)
+- Respostas de erro cross-company não devem revelar existência de recurso, nome de empresa ou identificadores internos
 
 **NFR2: Performance**
-- API response time: < 200ms para operações de token
+- Sem meta numérica fixa de latência neste ciclo; operações de token devem ser monitoradas e não podem apresentar regressão relevante no mesmo ambiente de execução
 - Envio de email: assíncrono (não bloqueia resposta da API)
 - Database indexes nos campos `token`, `user_id`, `expires_at`
 - Cron job para limpeza de tokens expirados (diário)
+
+**NFR7: Traceability**
+- Requisitos, critérios de aceitação e testes devem manter mapeamento explícito no padrão `FRx.y` ↔ `AC` ↔ `test_*`
+- Mudanças de comportamento de erro/isolamento exigem atualização conjunta de `spec.md`, testes E2E e coleção Postman
 
 **NFR3: Quality** (per ADR-022, Constitution v1.2.0)
 - Code must pass: `ruff check` + `black` (per constitution linting standards)
