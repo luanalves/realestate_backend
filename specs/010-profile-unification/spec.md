@@ -16,10 +16,13 @@ Unificar todos os 9 perfis RBAC do sistema (ADR-019) em um modelo normalizado `t
 2. **Tabela unificada `thedevkitchen.estate.profile`** — dados cadastrais comuns a todos os perfis com constraint composta `UNIQUE(document, company_id, profile_type_id)` permitindo a mesma pessoa em múltiplas empresas e/ou com múltiplos perfis
 3. **Extensão de negócio `real.estate.agent`** — mantida como modelo separado referenciando `profile_id`, preservando domínio complexo (comissões, assignments, CRECI, dados bancários, métricas)
 4. **Endpoint unificado `POST /api/v1/profiles`** — substituindo endpoints separados de tenant e eliminando dispersão
-5. **Migração de dados** — `real.estate.tenant` → `thedevkitchen.estate.profile` com preservação de FKs (leases, sales)
-6. **Fluxo two-step** — criar perfil (dados cadastrais) → convidar para acesso ao sistema (Feature 009)
+5. **Fluxo two-step** — criar perfil (dados cadastrais) → convidar para acesso ao sistema (Feature 009)
+
+> **Nota**: Estamos em ambiente de desenvolvimento — não há necessidade de migração de dados legados. Tabelas antigas (`real.estate.tenant`) serão removidas diretamente e dados de teste serão recriados.
 
 **Motivação**: O modelo atual apresenta inconsistência estrutural (2 tabelas vs 7 grupos-only), constraint global no tenant que bloqueia multi-tenancy (`UNIQUE(document)` em vez de compound unique), e duplicação de dados no fluxo de convite (Feature 009).
+
+> **Ambiente**: Desenvolvimento — sem dados de produção a preservar. Tabelas legadas serão removidas diretamente.
 
 ---
 
@@ -34,13 +37,19 @@ Unificar todos os 9 perfis RBAC do sistema (ADR-019) em um modelo normalizado `t
 - **R**: **Não (Opção A)**. `real.estate.agent` possui domínio de negócio rico (comissões, assignments, CRECI, dados bancários, métricas de performance — 611 LOC) que não pertence a um "perfil genérico". O modelo Agent é mantido como **extensão de negócio** com uma FK `profile_id → thedevkitchen.estate.profile`. Os campos cadastrais comuns (name, document, email, phone, company_id) migram para `thedevkitchen.estate.profile`; campos de domínio específico (creci, bank_*, commission_*, assignment_ids) permanecem em `real.estate.agent`.
 
 **D3: Tenant será absorvido na tabela unificada?**
-- **R**: **Sim**. `real.estate.tenant` é simples (35 LOC, campos: name, document, phone, email, occupation, birthdate, partner_id, company_ids, leases). Todos os campos migram para `thedevkitchen.estate.profile` com `profile_type = 'portal'`. O campo `leases` passa a usar FK reversa apontando para profile_id. A tabela `real_estate_tenant` será deprecated e removida após migração.
+- **R**: **Sim**. `real.estate.tenant` é simples (35 LOC, campos: name, document, phone, email, occupation, birthdate, partner_id, company_ids, leases). Todos os campos migram para `thedevkitchen.estate.profile` com `profile_type = 'portal'`. O campo `leases` passa a usar FK reversa apontando para profile_id. A tabela `real_estate_tenant` será **removida diretamente** (ambiente dev, sem dados legados).
 
 **D4: Endpoint único vs múltiplos?**
-- **R**: **Endpoint único `POST /api/v1/profiles`** com `profile_type` no body. GET/PUT/DELETE seguem o padrão REST (`/api/v1/profiles/{id}`). Endpoints do tenant (`/api/v1/tenants/*`) serão deprecated com redirect 301 para `/api/v1/profiles/*`.
+- **R**: **Endpoint único `POST /api/v1/profiles`** com `profile_type` e `company_id` no body. GET/PUT/DELETE seguem o padrão REST (`/api/v1/profiles/{id}`). Endpoints antigos do tenant (`/api/v1/tenants/*`) serão removidos.
 
 **D5: O `company_id` no perfil é Many2one ou Many2many?**
-- **R**: **Many2one** para a constraint composta funcionar. Um perfil pertence a uma empresa. Para a mesma pessoa atuar em 2 empresas, são 2 registros de perfil distintos (um por empresa). Isso segue o modelo já correto do Agent (`company_id Many2one`). A M2M `company_ids` do Tenant é migrada: cada relação M2M vira um registro de perfil separado.
+- **R**: **Many2one** para a constraint composta funcionar. Um perfil pertence a uma empresa. Para a mesma pessoa atuar em 2 empresas, são 2 registros de perfil distintos (um por empresa). Isso segue o modelo já correto do Agent (`company_id Many2one`).
+
+**D5.1: `company_id` vem do header ou do body?**
+- **R**: **Do body**. O `company_id` é enviado no body do `POST /api/v1/profiles` (não via `X-Company-ID` header) porque o usuário pode estar vinculado a múltiplas imobiliárias e a aplicação precisa saber explicitamente para qual empresa o perfil está sendo criado. Mesmo padrão usado no `TENANT_CREATE_SCHEMA` que já exige `company_id` no body.
+
+**D5.2: `GET /api/v1/profiles` filtra por `company_ids` query param?**
+- **R**: **Sim**. Segue o mesmo padrão de `GET /api/v1/properties?company_ids=63,64` — parâmetro obrigatório, aceita uma ou mais IDs separadas por vírgula, com validação de acesso multi-tenancy (`user.estate_company_ids`).
 
 **D6: Profile type como Selection ou tabela lookup?**
 - **R**: **Tabela lookup** (`thedevkitchen.profile.type`) conforme KB-09 §2.1 — "Use lookup/ref tables for enums > 5 values". São 9 tipos; a lookup permite extensão futura sem migração, referência ao `group_xml_id` do Odoo, e auditoria via soft delete.
@@ -51,6 +60,18 @@ Unificar todos os 9 perfis RBAC do sistema (ADR-019) em um modelo normalizado `t
 **D8: O que acontece com os controllers de Agent existentes?**
 - **R**: Mantidos. Os 18 endpoints de `agent_api.py` (1,462 LOC) continuam operando sobre `real.estate.agent`. Na criação de Agent, o controller passa a criar automaticamente um `thedevkitchen.estate.profile` (profile_type='agent') e vincular via `profile_id`. Isso é transparente para os consumers atuais da API.
 
+**D9: `birthdate` e `document` são obrigatórios para todos os perfis?**
+- **R**: **Sim**. Ambos os campos são obrigatórios para todos os 9 tipos de perfil, sem distinção.
+
+**D10: Campos de auditoria — `write_date` ou `updated_at`?**
+- **R**: Campos de auditoria são `created_at` (Datetime) e `updated_at` (Datetime). **Não usar** `create_date`/`write_date` do Odoo — usar campos explícitos com nomes padronizados do projeto.
+
+**D11: Validação de CPF/CNPJ — nova implementação ou reutilizar?**
+- **R**: **Reutilizar** as funções definidas na constitution (`utils/validators.py`): `validate_document()`, `normalize_document()`, `is_cpf()`, `is_cnpj()`. Essas funções são referenciadas por `schema.py` e `tenant_api.py` e devem ser implementadas se ainda não existirem (atualmente `validators.py` tem `validate_cnpj` mas falta `validate_document`/`normalize_document`). **Não usar** `validate_docbr` diretamente nos controllers — centralizar via `utils/validators.py`.
+
+**D12: Migração de dados legados é necessária?**
+- **R**: **Não**. Estamos em ambiente de desenvolvimento. Tabelas antigas (`real.estate.tenant`) serão removidas diretamente. Dados de teste serão recriados. Sem necessidade de scripts de migração, rollback ou validação pós-migração.
+
 ---
 
 ## Out of Scope
@@ -59,7 +80,7 @@ Unificar todos os 9 perfis RBAC do sistema (ADR-019) em um modelo normalizado `t
 |------|--------|
 | **Customização de perfis por empresa** | ADR-019 Fase 2 (pós-lançamento) |
 | **Unificação do controller de Agent** | Agent tem domínio complexo; controller dedicado é justificado |
-| **Remoção imediata de `real.estate.tenant`** | Deprecated nesta feature; remoção em release futura após validação |
+| **Migração de dados legados** | Ambiente dev — tabelas antigas removidas diretamente, dados de teste recriados |
 | **UI/Views para perfis** | Headless architecture; views apenas para admin (Technical menu) |
 | **Migração de campos de Agent para profile** | Agent mantém seus campos; profile possui apenas dados comuns |
 | **Self-registration de perfis** | Todos os perfis são criados por usuários autorizados |
@@ -75,9 +96,9 @@ Unificar todos os 9 perfis RBAC do sistema (ADR-019) em um modelo normalizado `t
 **So that** o registro exista no sistema antes de convidar para acesso
 
 **Acceptance Criteria**:
-- [ ] AC1.1: Given Owner autenticado, when `POST /api/v1/profiles` com `profile_type`, `name`, `document`, `email`, then perfil é criado em `thedevkitchen.estate.profile` vinculado à empresa ativa (`X-Company-ID`)
+- [ ] AC1.1: Given Owner autenticado, when `POST /api/v1/profiles` com `profile_type`, `company_id`, `name`, `document`, `birthdate`, `email`, then perfil é criado em `thedevkitchen.estate.profile` vinculado à empresa informada no body
 - [ ] AC1.2: Given `profile_type='agent'`, when perfil criado, then `real.estate.agent` é criado automaticamente com `profile_id` referenciando o perfil
-- [ ] AC1.3: Given `profile_type='portal'`, when perfil criado, then campos `occupation` e `birthdate` são aceitos (opcionais)
+- [ ] AC1.3: Given `profile_type='portal'`, when perfil criado, then campo `occupation` é aceito (opcional)
 - [ ] AC1.4: Given `document` + `company_id` + `profile_type_id` já existentes, when tentativa de criar duplicata, then 409 Conflict
 - [ ] AC1.5: Given `document` existente em outra empresa, when cria perfil na empresa ativa, then perfil é criado normalmente (isolamento multi-tenancy)
 - [ ] AC1.6: Given RBAC inválido (ex: Agent criando Director), when `POST /api/v1/profiles`, then 403 Forbidden
@@ -87,18 +108,20 @@ Unificar todos os 9 perfis RBAC do sistema (ADR-019) em um modelo normalizado `t
 
 | ID | Requirement | Priority |
 |----|-------------|----------|
-| FR1.1 | Endpoint `POST /api/v1/profiles` aceita `profile_type`, `name`, `document`, `email`, `phone` (obrigatórios) e campos opcionais por tipo | P1 |
-| FR1.2 | `profile_type` deve existir na tabela `thedevkitchen.profile.type` com `is_active=True` | P1 |
+| FR1.1 | Endpoint `POST /api/v1/profiles` aceita `profile_type`, `company_id`, `name`, `document`, `birthdate`, `email`, `phone` (todos obrigatórios) e campos opcionais por tipo | P1 |
+| FR1.2 | `profile_type` é FK para `thedevkitchen.profile.type`, deve existir com `is_active=True` | P1 |
 | FR1.3 | Constraint composta `UNIQUE(document, company_id, profile_type_id)` previne duplicatas por empresa/tipo | P1 |
 | FR1.4 | Quando `profile_type='agent'`, criar simultaneamente `thedevkitchen.estate.profile` + `real.estate.agent` (transação atômica) | P1 |
-| FR1.5 | Quando `profile_type='portal'`, aceitar campos opcionais: `occupation`, `birthdate` | P1 |
-| FR1.6 | O `company_id` é obtido de `X-Company-ID` header — nunca do body | P1 |
-| FR1.7 | Validação de CPF/CNPJ via `validate_docbr` antes de persistir | P1 |
+| FR1.5 | Quando `profile_type='portal'`, aceitar campo opcional: `occupation` | P1 |
+| FR1.6 | O `company_id` é enviado no body do POST (não via header) — usuário pode pertencer a múltiplas empresas | P1 |
+| FR1.7 | Validação de CPF/CNPJ via `utils/validators.py` (`validate_document()`, `normalize_document()`) — centralizado, conforme constitution | P1 |
 | FR1.8 | Normalização de documento (remover máscara) em `document_normalized` computed field | P2 |
 | FR1.9 | HATEOAS links no response: `self`, `invite` (Feature 009), `company` | P1 |
 | FR1.10 | Autorização segue matriz RBAC de ADR-019 (mesma de Feature 009) | P1 |
-| FR1.11 | Perfil criado com `active=True` e timestamps de auditoria (`create_date`, `write_date`) | P1 |
+| FR1.11 | Perfil criado com `active=True` e timestamps de auditoria (`created_at`, `updated_at` — Datetime) | P1 |
 | FR1.12 | Cross-company access retorna 404 genérico (anti-enumeration, FR precedence: AuthZ→Isolation→Validation) | P1 |
+| FR1.13 | `company_id` validado contra `user.estate_company_ids` — usuário só pode criar perfil em empresa autorizada | P1 |
+| FR1.14 | `document` e `birthdate` são obrigatórios para **todos** os 9 tipos de perfil | P1 |
 
 **Test Coverage** (per ADR-003):
 
@@ -129,34 +152,38 @@ Unificar todos os 9 perfis RBAC do sistema (ADR-019) em um modelo normalizado `t
 **So that** eu possa gerenciar os cadastros existentes
 
 **Acceptance Criteria**:
-- [ ] AC2.1: Given Owner autenticado, when `GET /api/v1/profiles`, then retorna todos os perfis da empresa ativa
-- [ ] AC2.2: Given query param `?profile_type=agent`, when `GET /api/v1/profiles`, then retorna somente perfis do tipo agent
-- [ ] AC2.3: Given `GET /api/v1/profiles/{id}`, when perfil existe na empresa ativa, then retorna detalhes completos
-- [ ] AC2.4: Given `GET /api/v1/profiles/{id}`, when perfil pertence a outra empresa, then 404
+- [ ] AC2.1: Given Owner autenticado, when `GET /api/v1/profiles?company_ids=63`, then retorna todos os perfis das empresas informadas
+- [ ] AC2.2: Given query param `?profile_type=agent&company_ids=63`, when `GET /api/v1/profiles`, then retorna somente perfis do tipo agent
+- [ ] AC2.3: Given `GET /api/v1/profiles/{id}`, when perfil existe em empresa autorizada, then retorna detalhes completos
+- [ ] AC2.4: Given `GET /api/v1/profiles/{id}`, when perfil pertence a empresa não autorizada, then 404
 - [ ] AC2.5: Given perfil com `profile_type='agent'`, when `GET /api/v1/profiles/{id}`, then response inclui link HATEOAS para agent extension (`/api/v1/agents/{agent_id}`)
+- [ ] AC2.6: Given `company_ids` com empresa não autorizada, when `GET /api/v1/profiles`, then 403
 
 **Functional Requirements**:
 
 | ID | Requirement | Priority |
 |----|-------------|----------|
-| FR2.1 | `GET /api/v1/profiles` retorna lista paginada com filtros `profile_type`, `document`, `name`, `active` | P1 |
+| FR2.1 | `GET /api/v1/profiles?company_ids=63,64` retorna lista paginada com filtros `profile_type`, `document`, `name`, `active` | P1 |
 | FR2.2 | `GET /api/v1/profiles/{id}` retorna detalhes do perfil com HATEOAS links | P1 |
 | FR2.3 | Filtro por `profile_type` aceita código da lookup table (ex: `agent`, `portal`, `manager`) | P1 |
 | FR2.4 | Paginação via `offset` + `limit` (padrão: offset=0, limit=20, max=100) | P2 |
 | FR2.5 | Ordenação via `order_by` (padrão: `name asc`) | P2 |
-| FR2.6 | Escopo sempre limitado à empresa ativa (`X-Company-ID`) | P1 |
+| FR2.6 | `company_ids` é parâmetro obrigatório (query param, comma-separated) — mesmo padrão de `/api/v1/properties` | P1 |
 | FR2.7 | RBAC: Owner vê todos; Manager vê operacionais; Agent vê owner+portal + próprio | P1 |
+| FR2.8 | Validação de `company_ids` contra `user.estate_company_ids` — 403 se empresa não autorizada | P1 |
 
 **Test Coverage**:
 
 | Type | Test ID | Description | FR |
 |------|---------|-------------|-----|
-| E2E | T2.1 | List profiles retorna perfis da empresa ativa | FR2.1 |
+| E2E | T2.1 | List profiles com company_ids retorna perfis das empresas informadas | FR2.1, FR2.6 |
 | E2E | T2.2 | Filter por profile_type funciona | FR2.3 |
 | E2E | T2.3 | Get profile detail com HATEOAS links | FR2.2 |
 | E2E | T2.4 | Cross-company profile → 404 | FR2.6 |
 | E2E | T2.5 | Agent-type profile includes agent extension link | FR2.2 |
 | E2E | T2.6 | Pagination offset+limit | FR2.4 |
+| E2E | T2.7 | company_ids com empresa não autorizada → 403 | FR2.8 |
+| E2E | T2.8 | company_ids ausente → 400 | FR2.6 |
 
 ---
 
@@ -226,75 +253,36 @@ Unificar todos os 9 perfis RBAC do sistema (ADR-019) em um modelo normalizado `t
 
 ---
 
-### User Story 5: Migração e Compatibilidade (Priority: P1) 🎯 MVP
-
-**As a** DevOps/Developer
-**I want to** migrar dados de `real.estate.tenant` para `thedevkitchen.estate.profile`
-**So that** a transição seja transparente e sem perda de dados
-
-**Acceptance Criteria**:
-- [ ] AC5.1: Given tenants existentes, when migration roda, then cada tenant vira um `thedevkitchen.estate.profile` com `profile_type='portal'`
-- [ ] AC5.2: Given tenant com M2M `company_ids` (N empresas), when migração, then N registros de perfil são criados (1 por empresa)
-- [ ] AC5.3: Given `real.estate.lease` com FK `tenant_id`, when migração, then FK atualizada para `profile_id`
-- [ ] AC5.4: Given endpoints antigos (`/api/v1/tenants/*`), when requisição, then redirect 301 para `/api/v1/profiles/*`
-- [ ] AC5.5: Given `real.estate.agent` existentes, when migration roda, then `thedevkitchen.estate.profile` criado para cada agent e `profile_id` FK preenchida
-
-**Functional Requirements**:
-
-| ID | Requirement | Priority |
-|----|-------------|----------|
-| FR5.1 | Migration script idempotente (pode rodar múltiplas vezes sem efeito colateral) — KB-09 §11 | P1 |
-| FR5.2 | Tenant M2M → N registros de profile (1 per company) com dados clonados | P1 |
-| FR5.3 | FKs em `real.estate.lease` e `real.estate.sale` redirecionadas para `profile_id` | P1 |
-| FR5.4 | Agent existentes ganham `profile_id` FK para novo profile criado na migração | P1 |
-| FR5.5 | Redirect 301 nos endpoints deprecated (`/api/v1/tenants/*`) | P2 |
-| FR5.6 | Rollback plan: migration reversível com script dedicado | P1 |
-| FR5.7 | Data validation pós-migração: contagem de registros, integridade de FKs, constraint check | P1 |
-
-**Test Coverage**:
-
-| Type | Test ID | Description | FR |
-|------|---------|-------------|-----|
-| Integration | T5.1 | Migration creates profile for each tenant | FR5.2 |
-| Integration | T5.2 | Tenant with 3 companies → 3 profiles | FR5.2 |
-| Integration | T5.3 | Lease FK updated to profile_id | FR5.3 |
-| Integration | T5.4 | Agent gets profile_id FK | FR5.4 |
-| Integration | T5.5 | Migration is idempotent (run twice, same result) | FR5.1 |
-| Integration | T5.6 | Data counts match pre/post migration | FR5.7 |
-| E2E | T5.7 | GET /api/v1/tenants/{id} → 301 → /api/v1/profiles/{id} | FR5.5 |
-
----
-
-### User Story 6: Integração com Feature 009 — Invite Flow (Priority: P1) 🎯 MVP
+### User Story 5: Integração com Feature 009 — Invite Flow (Priority: P1) 🎯 MVP
 
 **As a** Owner autenticado
 **I want to** convidar um perfil existente para ter acesso ao sistema
 **So that** o fluxo dois-passos funcione (create profile → invite for access)
 
 **Acceptance Criteria**:
-- [ ] AC6.1: Given perfil criado sem `res.users`, when `POST /api/v1/users/invite` com `profile_id`, then `res.users` é criado e email de convite enviado
-- [ ] AC6.2: Given perfil já com `res.users` vinculado, when tenta invite, then 409 Conflict ("Profile already has system access")
-- [ ] AC6.3: Given invite com `profile_id`, when dados cadastrais (name, email) são obtidos do perfil, then invite não exige re-envio de dados
-- [ ] AC6.4: Given `profile_type` do perfil, when `res.users` é criado, then grupo de segurança correto é atribuído automaticamente via `group_xml_id` da lookup
+- [ ] AC5.1: Given perfil criado sem `res.users`, when `POST /api/v1/users/invite` com `profile_id`, then `res.users` é criado e email de convite enviado
+- [ ] AC5.2: Given perfil já com `res.users` vinculado, when tenta invite, then 409 Conflict ("Profile already has system access")
+- [ ] AC5.3: Given invite com `profile_id`, when dados cadastrais (name, email) são obtidos do perfil, then invite não exige re-envio de dados
+- [ ] AC5.4: Given `profile_type` do perfil, when `res.users` é criado, then grupo de segurança correto é atribuído automaticamente via `group_xml_id` da lookup
 
 **Functional Requirements**:
 
 | ID | Requirement | Priority |
 |----|-------------|----------|
-| FR6.1 | `POST /api/v1/users/invite` aceita `profile_id` como identificador — name, email, document lidos do perfil | P1 |
-| FR6.2 | Se perfil já possui `user_id` (via partner_id), retornar 409 | P1 |
-| FR6.3 | Grupo de segurança determinado por `profile_type.group_xml_id`, não por campo `profile` no body | P1 |
-| FR6.4 | Após invite aceito (set-password), `profile.user_id` é preenchido | P1 |
-| FR6.5 | `company_id` do perfil é herdado para o contexto do invite | P1 |
+| FR5.1 | `POST /api/v1/users/invite` aceita `profile_id` como identificador — name, email, document lidos do perfil | P1 |
+| FR5.2 | Se perfil já possui `user_id` (via partner_id), retornar 409 | P1 |
+| FR5.3 | Grupo de segurança determinado por `profile_type.group_xml_id`, não por campo `profile` no body | P1 |
+| FR5.4 | Após invite aceito (set-password), `profile.user_id` é preenchido | P1 |
+| FR5.5 | `company_id` do perfil é herdado para o contexto do invite | P1 |
 
 **Test Coverage**:
 
 | Type | Test ID | Description | FR |
 |------|---------|-------------|-----|
-| E2E | T6.1 | Invite via profile_id → user created, email sent | FR6.1 |
-| E2E | T6.2 | Profile already has user → 409 | FR6.2 |
-| E2E | T6.3 | Correct security group assigned from profile_type | FR6.3 |
-| E2E | T6.4 | After set-password, profile.user_id populated | FR6.4 |
+| E2E | T5.1 | Invite via profile_id → user created, email sent | FR5.1 |
+| E2E | T5.2 | Profile already has user → 409 | FR5.2 |
+| E2E | T5.3 | Correct security group assigned from profile_type | FR5.3 |
+| E2E | T5.4 | After set-password, profile.user_id populated | FR5.4 |
 
 ---
 
@@ -313,8 +301,8 @@ Unificar todos os 9 perfis RBAC do sistema (ADR-019) em um modelo normalizado `t
 │ group_xml_id: Char(100) NOT NULL    │
 │ level: Selection (admin/oper/ext)   │
 │ is_active: Boolean DEFAULT TRUE     │
-│ create_date: Datetime (audit)       │
-│ write_date: Datetime (audit)        │
+│ created_at: Datetime (audit)        │
+│ updated_at: Datetime (audit)        │
 └──────────────┬──────────────────────┘
                │ 1
                │
@@ -339,8 +327,8 @@ Unificar todos os 9 perfis RBAC do sistema (ADR-019) em um modelo normalizado `t
 │ active: Boolean DEFAULT TRUE        │        ┌──────────────────────────────┐
 │ deactivation_date: Datetime         │        │   real.estate.agent          │
 │ deactivation_reason: Text           │        │   (Business Extension)       │
-│ create_date: Datetime (audit)       │        ├──────────────────────────────┤
-│ write_date: Datetime (audit)        │   1  1 │ profile_id: FK → profile     │
+│ created_at: Datetime (audit)        │        ├──────────────────────────────┤
+│ updated_at: Datetime (audit)        │   1  1 │ profile_id: FK → profile     │
 │                                     │◄───────│ creci, creci_normalized      │
 │ UNIQUE(document, company_id,        │        │ bank_name, bank_branch, ...  │
 │        profile_type_id)             │        │ commission_rule_ids          │
@@ -366,8 +354,8 @@ Unificar todos os 9 perfis RBAC do sistema (ADR-019) em um modelo normalizado `t
 | `group_xml_id` | Char(100) | ✅ | — | NOT NULL | Odoo group XML ID: `quicksol_estate.group_real_estate_owner`, etc. |
 | `level` | Selection | ✅ | — | `[('admin','Admin'),('operational','Operational'),('external','External')]` | ADR-019 level classification |
 | `is_active` | Boolean | ✅ | `True` | — | Soft delete for lookup (KB-09 §9) |
-| `create_date` | Datetime | auto | auto | — | Audit (ADR-004) |
-| `write_date` | Datetime | auto | auto | — | Audit (ADR-004) |
+| `created_at` | Datetime | auto | `now()` | — | Audit timestamp |
+| `updated_at` | Datetime | auto | `now()` | — | Audit timestamp |
 
 #### SQL Constraints
 
@@ -405,7 +393,7 @@ _sql_constraints = [
 |-------|------|----------|---------|-------------|-------------|
 | `id` | Integer | auto | auto | PK | Surrogate primary key |
 | `profile_type_id` | Many2one(`thedevkitchen.profile.type`) | ✅ | — | FK, `ondelete='restrict'`, index | Profile type reference |
-| `company_id` | Many2one(`thedevkitchen.estate.company`) | ✅ | from `X-Company-ID` | FK, `ondelete='restrict'`, index | Company this profile belongs to |
+| `company_id` | Many2one(`thedevkitchen.estate.company`) | ✅ | — | FK, `ondelete='restrict'`, index | Company this profile belongs to (from request body) |
 | `partner_id` | Many2one(`res.partner`) | ❌ | auto-created | FK, `ondelete='restrict'` | Odoo partner (bridge to `res.users`) |
 | `name` | Char(200) | ✅ | — | NOT NULL | Full legal name |
 | `document` | Char(20) | ✅ | — | NOT NULL, index | CPF or CNPJ (with formatting) |
@@ -414,14 +402,14 @@ _sql_constraints = [
 | `phone` | Char(20) | ❌ | — | — | Phone number |
 | `mobile` | Char(20) | ❌ | — | — | Mobile phone |
 | `occupation` | Char(100) | ❌ | — | — | Occupation (relevant for portal/tenant) |
-| `birthdate` | Date | ❌ | — | — | Date of birth |
+| `birthdate` | Date | ✅ | — | NOT NULL | Date of birth (required for all profile types) |
 | `hire_date` | Date | ❌ | — | — | Hire date (relevant for internal profiles) |
 | `profile_picture` | Binary | ❌ | — | — | Profile picture |
 | `active` | Boolean | ✅ | `True` | — | Soft delete (ADR-015) |
 | `deactivation_date` | Datetime | ❌ | — | — | When deactivated |
 | `deactivation_reason` | Text | ❌ | — | — | Why deactivated |
-| `create_date` | Datetime | auto | auto | — | Audit timestamp |
-| `write_date` | Datetime | auto | auto | — | Audit timestamp |
+| `created_at` | Datetime | auto | `now()` | — | Audit timestamp |
+| `updated_at` | Datetime | auto | `now()` | — | Audit timestamp |
 
 #### SQL Constraints
 
@@ -455,37 +443,30 @@ WHERE active = true;
 #### Python Constraints
 
 ```python
+from ..utils import validators
+
 @api.constrains('document')
 def _check_document(self):
-    """Validate CPF/CNPJ format and checksum"""
-    from validate_docbr import CPF, CNPJ
+    """Validate CPF/CNPJ using centralized validators (constitution)"""
     for record in self:
-        doc_clean = ''.join(filter(str.isdigit, record.document))
-        if len(doc_clean) == 11:
-            if not CPF().validate(doc_clean):
-                raise ValidationError('CPF inválido: %s' % record.document)
-        elif len(doc_clean) == 14:
-            if not CNPJ().validate(doc_clean):
-                raise ValidationError('CNPJ inválido: %s' % record.document)
-        else:
-            raise ValidationError('Documento deve ter 11 (CPF) ou 14 (CNPJ) dígitos')
+        normalized = validators.normalize_document(record.document)
+        if not validators.validate_document(normalized):
+            raise ValidationError('Documento deve ser um CPF ou CNPJ válido: %s' % record.document)
 
 @api.depends('document')
 def _compute_document_normalized(self):
-    """Strip formatting, keep only digits"""
+    """Strip formatting via centralized normalize_document()"""
     for record in self:
         if record.document:
-            record.document_normalized = ''.join(filter(str.isdigit, record.document))
+            record.document_normalized = validators.normalize_document(record.document)
         else:
             record.document_normalized = False
 
 @api.constrains('email')
 def _check_email(self):
-    """Validate email format"""
-    import re
-    pattern = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+    """Validate email format via centralized validator"""
     for record in self:
-        if record.email and not pattern.match(record.email):
+        if record.email and not validators.validate_email_format(record.email):
             raise ValidationError('Email inválido: %s' % record.email)
 ```
 
@@ -554,8 +535,10 @@ Existing constraint `UNIQUE(cpf, company_id)` can coexist with profile's `UNIQUE
 ```json
 {
   "profile_type": "agent",
+  "company_id": 63,
   "name": "João Silva",
   "document": "123.456.789-01",
+  "birthdate": "1985-03-20",
   "email": "joao@example.com",
   "phone": "+55 (11) 99999-0001"
 }
@@ -566,14 +549,16 @@ Existing constraint `UNIQUE(cpf, company_id)` can coexist with profile's `UNIQUE
 {
   "id": 42,
   "profile_type": {
+    "id": 4,
     "code": "agent",
     "name": "Corretor"
   },
   "name": "João Silva",
   "document": "123.456.789-01",
+  "birthdate": "1985-03-20",
   "email": "joao@example.com",
   "phone": "+55 (11) 99999-0001",
-  "company_id": 1,
+  "company_id": 63,
   "has_system_access": false,
   "agent_extension_id": 15,
   "created_at": "2026-02-18T10:30:00Z",
@@ -581,7 +566,7 @@ Existing constraint `UNIQUE(cpf, company_id)` can coexist with profile's `UNIQUE
     "self": {"href": "/api/v1/profiles/42"},
     "invite": {"href": "/api/v1/users/invite", "method": "POST"},
     "agent": {"href": "/api/v1/agents/15"},
-    "company": {"href": "/api/v1/companies/1"}
+    "company": {"href": "/api/v1/companies/63"}
   }
 }
 ```
@@ -592,12 +577,13 @@ Existing constraint `UNIQUE(cpf, company_id)` can coexist with profile's `UNIQUE
 ```json
 {
   "profile_type": "portal",
+  "company_id": 63,
   "name": "Maria Oliveira",
   "document": "987.654.321-00",
+  "birthdate": "1990-05-15",
   "email": "maria@example.com",
   "phone": "+55 (11) 98888-0002",
-  "occupation": "Engenheira",
-  "birthdate": "1990-05-15"
+  "occupation": "Engenheira"
 }
 ```
 
@@ -606,27 +592,28 @@ Existing constraint `UNIQUE(cpf, company_id)` can coexist with profile's `UNIQUE
 {
   "id": 43,
   "profile_type": {
+    "id": 9,
     "code": "portal",
     "name": "Portal (Inquilino/Comprador)"
   },
   "name": "Maria Oliveira",
   "document": "987.654.321-00",
+  "birthdate": "1990-05-15",
   "email": "maria@example.com",
   "phone": "+55 (11) 98888-0002",
   "occupation": "Engenheira",
-  "birthdate": "1990-05-15",
-  "company_id": 1,
+  "company_id": 63,
   "has_system_access": false,
   "created_at": "2026-02-18T10:35:00Z",
   "_links": {
     "self": {"href": "/api/v1/profiles/43"},
     "invite": {"href": "/api/v1/users/invite", "method": "POST"},
-    "company": {"href": "/api/v1/companies/1"}
+    "company": {"href": "/api/v1/companies/63"}
   }
 }
 ```
 
-#### GET /api/v1/profiles?profile_type=agent&limit=20&offset=0
+#### GET /api/v1/profiles?company_ids=63&profile_type=agent&limit=20&offset=0
 
 **Response (200)**:
 ```json
@@ -649,8 +636,8 @@ Existing constraint `UNIQUE(cpf, company_id)` can coexist with profile's `UNIQUE
     }
   ],
   "_links": {
-    "self": {"href": "/api/v1/profiles?profile_type=agent&limit=20&offset=0"},
-    "next": {"href": "/api/v1/profiles?profile_type=agent&limit=20&offset=20"}
+    "self": {"href": "/api/v1/profiles?company_ids=63&profile_type=agent&limit=20&offset=0"},
+    "next": {"href": "/api/v1/profiles?company_ids=63&profile_type=agent&limit=20&offset=20"}
   }
 }
 ```
@@ -659,8 +646,8 @@ Existing constraint `UNIQUE(cpf, company_id)` can coexist with profile's `UNIQUE
 
 | Status | Scenario | Body |
 |--------|----------|------|
-| 400 | Invalid CPF, missing required field, invalid profile_type | `{"error": "validation_error", "field": "document", "message": "CPF inválido"}` |
-| 403 | RBAC violation (Agent creating Director) | `{"error": "forbidden", "message": "Insufficient permissions for this profile type"}` |
+| 400 | Invalid CPF, missing required field, invalid profile_type, missing company_ids | `{"error": "validation_error", "field": "document", "message": "CPF inválido"}` |
+| 403 | RBAC violation (Agent creating Director) or unauthorized company_id | `{"error": "forbidden", "message": "Insufficient permissions for this profile type"}` |
 | 404 | Cross-company or nonexistent | `{"error": "not_found", "message": "Profile not found"}` |
 | 409 | Duplicate document+company+type | `{"error": "conflict", "field": "document", "message": "Document already registered for this profile type in this company"}` |
 
@@ -680,108 +667,32 @@ Follows ADR-019 hierarchy. Same matrix as Feature 009 invite flow:
 
 ---
 
-## Migration Plan
+## Cleanup Plan (Dev Environment)
 
-### Phase 1: Schema Creation (Non-breaking)
+> **Nota**: Este é um ambiente de desenvolvimento sem dados legados de produção.
+> Não há necessidade de migrações idempotentes — a data será recriada do zero.
 
-1. Create `thedevkitchen.profile.type` model + seed data (9 records)
+### Phase 1: Schema Creation
+
+1. Create `thedevkitchen.profile.type` model + seed data (9 records via `data/profile_type_data.xml`)
 2. Create `thedevkitchen.estate.profile` model with compound unique constraint
 3. Add `profile_id` FK to `real.estate.agent` (nullable initially)
+4. Add `validate_document()` and `normalize_document()` to `utils/validators.py` if missing
 
-### Phase 2: Data Migration (Idempotent — KB-09 §11)
-
-```python
-def migrate(cr, version):
-    """
-    Idempotent migration: tenant → profile, agent → profile.
-    Safe to run multiple times.
-    """
-    # Step 1: Get profile_type IDs
-    cr.execute("SELECT id FROM thedevkitchen_profile_type WHERE code = 'portal'")
-    portal_type_id = cr.fetchone()[0]
-    
-    cr.execute("SELECT id FROM thedevkitchen_profile_type WHERE code = 'agent'")
-    agent_type_id = cr.fetchone()[0]
-    
-    # Step 2: Migrate tenants (M2M → N profiles)
-    cr.execute("""
-        INSERT INTO thedevkitchen_estate_profile 
-            (profile_type_id, company_id, partner_id, name, document, email, phone,
-             occupation, birthdate, active, create_date, write_date)
-        SELECT 
-            %(portal_type)s, rel.company_id, t.partner_id, t.name, t.document, 
-            t.email, t.phone, t.occupation, t.birthdate, t.active, 
-            t.create_date, t.write_date
-        FROM real_estate_tenant t
-        JOIN thedevkitchen_company_tenant_rel rel ON rel.tenant_id = t.id
-        WHERE NOT EXISTS (
-            SELECT 1 FROM thedevkitchen_estate_profile p
-            WHERE p.document = t.document 
-              AND p.company_id = rel.company_id
-              AND p.profile_type_id = %(portal_type)s
-        )
-    """, {'portal_type': portal_type_id})
-    
-    # Step 3: Migrate agents → profiles
-    cr.execute("""
-        INSERT INTO thedevkitchen_estate_profile
-            (profile_type_id, company_id, partner_id, name, document, email, phone,
-             hire_date, active, create_date, write_date)
-        SELECT
-            %(agent_type)s, a.company_id, NULL, a.name, a.cpf, a.email, a.phone,
-            a.hire_date, a.active, a.create_date, a.write_date
-        FROM real_estate_agent a
-        WHERE NOT EXISTS (
-            SELECT 1 FROM thedevkitchen_estate_profile p
-            WHERE p.document = a.cpf
-              AND p.company_id = a.company_id
-              AND p.profile_type_id = %(agent_type)s
-        )
-    """, {'agent_type': agent_type_id})
-    
-    # Step 4: Link agents to their new profiles
-    cr.execute("""
-        UPDATE real_estate_agent a
-        SET profile_id = (
-            SELECT p.id FROM thedevkitchen_estate_profile p
-            WHERE p.document = a.cpf
-              AND p.company_id = a.company_id
-              AND p.profile_type_id = %(agent_type)s
-            LIMIT 1
-        )
-        WHERE a.profile_id IS NULL
-    """, {'agent_type': agent_type_id})
-    
-    # Step 5: Update lease FK (tenant_id → profile_id)
-    # This requires adding profile_id column to real_estate_lease first
-    cr.execute("""
-        UPDATE real_estate_lease l
-        SET profile_id = (
-            SELECT p.id FROM thedevkitchen_estate_profile p
-            JOIN real_estate_tenant t ON t.document = p.document
-            WHERE t.id = l.tenant_id
-              AND p.profile_type_id = %(portal_type)s
-              AND p.company_id = l.company_id
-            LIMIT 1
-        )
-        WHERE l.profile_id IS NULL AND l.tenant_id IS NOT NULL
-    """, {'portal_type': portal_type_id})
-```
-
-### Phase 3: Controller Migration
+### Phase 2: Controller Creation
 
 1. Create `profile_api.py` in `quicksol_estate/controllers/` with 6 endpoints
-2. Add 301 redirects from `/api/v1/tenants/*` to `/api/v1/profiles/*`
-3. Modify `agent_api.py` creation endpoint to auto-create profile alongside agent
-4. Modify Feature 009 `invite_controller.py` to accept `profile_id`
+2. Modify `agent_api.py` creation endpoint to auto-create profile alongside agent
+3. Modify Feature 009 `invite_controller.py` to accept `profile_id`
 
-### Phase 4: Deprecation & Cleanup (Future Release)
+### Phase 3: Cleanup (Direct Removal)
 
-1. Mark `real.estate.tenant` model as `_deprecated = True`
-2. Remove deprecated `company_ids` M2M from agent
-3. Convert agent common fields to `related` fields pointing to profile
-4. Remove `/api/v1/tenants/*` redirect endpoints
-5. Drop `real_estate_tenant` table
+1. Remove `real.estate.tenant` model and related files
+2. Remove `tenant_api.py` controller
+3. Remove deprecated `company_ids` M2M from agent
+4. Convert agent common fields (`name`, `document`, `email`, `phone`) to `related` fields pointing to profile
+5. Update `real.estate.lease` FK: `tenant_id` → `profile_id`
+6. Drop `real_estate_tenant` and `thedevkitchen_company_tenant_rel` tables
 
 ---
 
@@ -790,12 +701,11 @@ def migrate(cr, version):
 | ID | Requirement | Target |
 |----|-------------|--------|
 | NFR1 | Profile CRUD response time | < 200ms p95 |
-| NFR2 | Migration script handles 10k+ records | < 30s |
-| NFR3 | Compound unique constraint enforced at DB level | PostgreSQL constraint |
-| NFR4 | Profile lookup by document+company | < 50ms (indexed) |
-| NFR5 | Migration is idempotent (KB-09 §11) | Run N times, same result |
-| NFR6 | Backward compatibility for agent API consumers | 0 breaking changes |
-| NFR7 | Tenant API deprecated with 301 redirects | Minimum 1 release cycle |
+| NFR2 | Compound unique constraint enforced at DB level | PostgreSQL constraint |
+| NFR3 | Profile lookup by document+company | < 50ms (indexed) |
+| NFR4 | Backward compatibility for agent API consumers | 0 breaking changes |
+| NFR5 | Validation via centralized `utils/validators.py` | No direct `validate_docbr` in controllers |
+| NFR6 | Audit fields use `created_at`/`updated_at` (Datetime) | Consistent with project convention |
 
 ---
 
@@ -834,15 +744,15 @@ O sistema possui 9 perfis RBAC (ADR-019) com implementação inconsistente:
 **Negativas:**
 - Migração de dados complexa (tenant M2M → N profiles, agent FK backfill)
 - FKs em lease/sale precisam ser redirecionadas
-- Período de deprecação do tenant API (301 redirects)
 - Agent mantém campos duplicados temporariamente (Phase 1 → Phase 2 sync)
+
+> **Nota**: Riscos de migração de dados não se aplicam — ambiente de desenvolvimento, remoção direta.
 
 ### Riscos Aceitos
 
 | Risco | Mitigação |
 |-------|-----------|
-| Migração pode falhar em produção | Script idempotente + rollback script + validation queries |
-| FKs orphanadas durante migração | Transação atômica; validação pós-migração |
+
 | Agent sync desincronizar | Constraint + trigger no Phase 2; testes de sync |
 | Performance com tabela maior | Partial index em `active=true`; compound index já coberto pela constraint |
 
@@ -853,7 +763,6 @@ O sistema possui 9 perfis RBAC (ADR-019) com implementação inconsistente:
 | Category | Count | Focus |
 |----------|-------|-------|
 | Unit (Python) | ~15 | Constraints, validations, authorization matrix, sync logic |
-| Integration (Migration) | ~7 | Data migration correctness, idempotency, FK integrity |
 | E2E (Shell/Curl) | ~25 | All API endpoints, RBAC, multi-tenancy, pagination, HATEOAS |
 | E2E (Cypress) | ~3 | Profile type admin view (if applicable) |
 
@@ -869,8 +778,7 @@ O sistema possui 9 perfis RBAC (ADR-019) com implementação inconsistente:
 | FR2.1-2.7 | AC2.1-2.5 | T2.1-T2.6 |
 | FR3.1-3.5 | AC3.1-3.4 | T3.1-T3.5 |
 | FR4.1-4.4 | AC4.1-4.4 | T4.1-T4.4 |
-| FR5.1-5.7 | AC5.1-5.5 | T5.1-T5.7 |
-| FR6.1-6.5 | AC6.1-6.4 | T6.1-T6.4 |
+| FR5.1-5.5 | AC5.1-5.4 | T5.1-T5.4 |
 
 ---
 
