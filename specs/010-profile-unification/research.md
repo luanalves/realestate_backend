@@ -119,7 +119,7 @@
 | File | Line(s) | Records | Impact |
 |------|---------|---------|--------|
 | `ir.model.access.csv` | 7,20,39,52,72,92,108 | 7 ACL rows for `model_real_estate_tenant` | **Remove** + add `model_thedevkitchen_estate_profile` |
-| `record_rules.xml` | — | No tenant-specific record rules | — (company isolation was done in controller, not via record rules) |
+| `record_rules.xml` | ~488 | 1 rule (`rule_tenant_multi_company`) — user+manager only | **Insufficient** — profile needs 6+ rules like other models |
 
 ### 2.4 Views
 
@@ -311,9 +311,17 @@ Profile ACLs should mirror these with additional rows for `model_thedevkitchen_p
 
 ### 5.2 Record Rules
 
-**Current tenant isolation**: Done entirely in controller code (not via `ir.rule`). This is inconsistent with agent/property/lease which all have record rules.
+**Current tenant isolation**: Has only 1 record rule (`rule_tenant_multi_company`) covering `group_real_estate_user` + `group_real_estate_manager`. Missing rules for: owner, agent, receptionist, portal, financial, legal. By comparison, property has 8 rules, lease has 7, sale has 6, agent has 4.
 
-**Profile must have record rules**: `[('company_id', 'in', user.estate_company_ids.ids)]` — consistent with `rule_owner_agents`, `rule_owner_properties`, etc.
+**Profile must have comprehensive record rules** matching the coverage of other models:
+- Owner: `[('company_id', 'in', user.estate_company_ids.ids)]` — full CRUD
+- Manager: `[('company_id', 'in', user.estate_company_ids.ids)]` — full CRUD
+- Agent: `[('company_id', 'in', user.estate_company_ids.ids)]` — read only
+- Receptionist: `[('company_id', 'in', user.estate_company_ids.ids)]` — read/write/create
+- Portal: `[('partner_id', '=', user.partner_id.id)]` — read own record only
+- Multi-company: `[('company_id', 'in', user.estate_company_ids.ids)]` — user+manager groups
+
+**Also impacted**: `rule_portal_own_leases` (line ~455) uses `('tenant_id.partner_id', '=', user.partner_id.id)` — must change to `('profile_id.partner_id', '=', user.partner_id.id)`.
 
 ### 5.3 Auth Decorators
 
@@ -421,7 +429,7 @@ Recommended insertion point in `__manifest__.py`:
 | `utils/validators.py` | Add `validate_document()`, `normalize_document()`, `is_cpf()`, `is_cnpj()` | Low — additive |
 | `utils/__init__.py` | No change (already exports validators) | None |
 | `security/ir.model.access.csv` | Remove tenant ACLs + add profile/profile_type ACLs | Medium |
-| `security/record_rules.xml` | Add profile company isolation rule | Low |
+| `security/record_rules.xml` | Remove `rule_tenant_multi_company`, add 6+ profile rules (owner/manager/agent/receptionist/portal/multi-company) + update `rule_portal_own_leases` (`tenant_id` → `profile_id`) | Medium |
 | `__manifest__.py` | Add `profile_type_data.xml`, remove `tenant_views.xml`, add `profile_type_views.xml` | Low |
 
 ### 8.3 Removed Files
