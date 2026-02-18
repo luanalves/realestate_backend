@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- 
+            Profile Type Seed Data
+            
+            Following ADR-024 (Profile Unification) and ADR-019 (9 RBAC profiles).
+            These records must NEVER be updated after initial installation (noupdate="1").
+            
+            Hierarchy:
+            - Admin level: owner, director, manager
+            - Operational level: agent, prospector, receptionist, financial, legal
+            - External level: portal (tenant/buyer)
+        -->
+        
+        <!-- ===== Admin Level ===== -->
+        <record id="profile_type_owner" model="thedevkitchen.profile.type">
+            <field name="code">owner</field>
+            <field name="name">Proprietário</field>
+            <field name="group_xml_id">quicksol_estate.group_real_estate_owner</field>
+            <field name="level">admin</field>
+        </record>
+        
+        <record id="profile_type_director" model="thedevkitchen.profile.type">
+            <field name="code">director</field>
+            <field name="name">Diretor</field>
+            <field name="group_xml_id">quicksol_estate.group_real_estate_director</field>
+            <field name="level">admin</field>
+        </record>
+        
+        <record id="profile_type_manager" model="thedevkitchen.profile.type">
+            <field name="code">manager</field>
+            <field name="name">Gerente</field>
+            <field name="group_xml_id">quicksol_estate.group_real_estate_manager</field>
+            <field name="level">admin</field>
+        </record>
+        
+        <!-- ===== Operational Level ===== -->
+        <record id="profile_type_agent" model="thedevkitchen.profile.type">
+            <field name="code">agent</field>
+            <field name="name">Corretor</field>
+            <field name="group_xml_id">quicksol_estate.group_real_estate_agent</field>
+            <field name="level">operational</field>
+        </record>
+        
+        <record id="profile_type_prospector" model="thedevkitchen.profile.type">
+            <field name="code">prospector</field>
+            <field name="name">Captador</field>
+            <field name="group_xml_id">quicksol_estate.group_real_estate_prospector</field>
+            <field name="level">operational</field>
+        </record>
+        
+        <record id="profile_type_receptionist" model="thedevkitchen.profile.type">
+            <field name="code">receptionist</field>
+            <field name="name">Atendente</field>
+            <field name="group_xml_id">quicksol_estate.group_real_estate_receptionist</field>
+            <field name="level">operational</field>
+        </record>
+        
+        <record id="profile_type_financial" model="thedevkitchen.profile.type">
+            <field name="code">financial</field>
+            <field name="name">Financeiro</field>
+            <field name="group_xml_id">quicksol_estate.group_real_estate_financial</field>
+            <field name="level">operational</field>
+        </record>
+        
+        <record id="profile_type_legal" model="thedevkitchen.profile.type">
+            <field name="code">legal</field>
+            <field name="name">Jurídico</field>
+            <field name="group_xml_id">quicksol_estate.group_real_estate_legal</field>
+            <field name="level">operational</field>
+        </record>
+        
+        <!-- ===== External Level ===== -->
+        <record id="profile_type_portal" model="thedevkitchen.profile.type">
+            <field name="code">portal</field>
+            <field name="name">Portal (Inquilino/Comprador)</field>
+            <field name="group_xml_id">quicksol_estate.group_real_estate_portal_user</field>
+            <field name="level">external</field>
+        </record>
+    </data>
+</odoo>

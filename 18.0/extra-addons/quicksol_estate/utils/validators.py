@@ -236,3 +236,155 @@ def format_phone(phone):
         return f"({phone_clean[:2]}) {phone_clean[2:6]}-{phone_clean[6:]}"
     
     return phone  # Return original if invalid length
+
+
+def normalize_document(document):
+    """
+    Strip all non-digit characters from a document string (CPF or CNPJ).
+    
+    Args:
+        document (str): CPF/CNPJ with or without formatting
+        
+    Returns:
+        str: Digits-only string
+        
+    Example:
+        >>> normalize_document('123.456.789-01')
+        '12345678901'
+        >>> normalize_document('12.345.678/0001-95')
+        '12345678000195'
+        >>> normalize_document('')
+        ''
+    """
+    if not document:
+        return ''
+    
+    return re.sub(r'[^0-9]', '', document)
+
+
+def is_cpf(document):
+    """
+    Validate Brazilian CPF with checksum verification.
+    
+    Args:
+        document (str): CPF string (digits only, 11 characters)
+        
+    Returns:
+        bool: True if valid CPF, False otherwise
+        
+    Example:
+        >>> is_cpf('12345678901')  # Valid structure (assuming correct checksum)
+        True
+        >>> is_cpf('11111111111')  # All same digits
+        False
+        >>> is_cpf('123')  # Wrong length
+        False
+    
+    Note:
+        Must be called with normalized document (digits only).
+        Use normalize_document() first if needed.
+    """
+    if not document:
+        return False
+    
+    # Must have exactly 11 digits
+    if len(document) != 11:
+        return False
+    
+    # Cannot be all same digits
+    if document == document[0] * 11:
+        return False
+    
+    # Calculate first check digit
+    sum_first = sum(int(document[i]) * (10 - i) for i in range(9))
+    first_digit = (sum_first * 10) % 11
+    if first_digit == 10:
+        first_digit = 0
+    
+    if int(document[9]) != first_digit:
+        return False
+    
+    # Calculate second check digit
+    sum_second = sum(int(document[i]) * (11 - i) for i in range(10))
+    second_digit = (sum_second * 10) % 11
+    if second_digit == 10:
+        second_digit = 0
+    
+    if int(document[10]) != second_digit:
+        return False
+    
+    return True
+
+
+def is_cnpj(document):
+    """
+    Validate Brazilian CNPJ with checksum verification.
+    
+    Delegates to existing validate_cnpj() after format check.
+    
+    Args:
+        document (str): CNPJ string (digits only, 14 characters)
+        
+    Returns:
+        bool: True if valid CNPJ, False otherwise
+        
+    Example:
+        >>> is_cnpj('11222333000181')  # Valid structure
+        True
+        >>> is_cnpj('00000000000000')  # All zeros
+        False
+        >>> is_cnpj('123')  # Wrong length
+        False
+    
+    Note:
+        Must be called with normalized document (digits only).
+        Use normalize_document() first if needed.
+    """
+    if not document:
+        return False
+    
+    # Must have exactly 14 digits
+    if len(document) != 14:
+        return False
+    
+    # Delegate to existing validate_cnpj which handles checksum
+    return validate_cnpj(document)
+
+
+def validate_document(document):
+    """
+    Validate a document as CPF (11 digits) or CNPJ (14 digits).
+    
+    Dispatches to is_cpf() or is_cnpj() based on length.
+    
+    Args:
+        document (str): Document string (digits only, call normalize_document first)
+        
+    Returns:
+        bool: True if valid CPF or CNPJ, False otherwise
+        
+    Example:
+        >>> validate_document('12345678901')  # CPF
+        True
+        >>> validate_document('12345678000195')  # CNPJ
+        True
+        >>> validate_document('123')  # Invalid length
+        False
+    
+    Note:
+        This function expects a normalized document (digits only).
+        If you have formatted input, call normalize_document() first:
+        
+        >>> doc = normalize_document('123.456.789-01')
+        >>> validate_document(doc)
+        True
+    """
+    if not document:
+        return False
+    
+    if len(document) == 11:
+        return is_cpf(document)
+    elif len(document) == 14:
+        return is_cnpj(document)
+    
+    return False

@@ -157,3 +157,15 @@ access_user_lease_renewal_history,User: Lease Renewal History (Read),model_real_
 access_system_admin_lease_renewal_history,System Admin: Lease Renewal History,model_real_estate_lease_renewal_history,base.group_system,1,1,1,1
 access_owner_lease_renewal_history,Owner: Lease Renewal History,model_real_estate_lease_renewal_history,group_real_estate_owner,1,1,1,0
 access_manager_lease_renewal_history,Manager: Lease Renewal History,model_real_estate_lease_renewal_history,group_real_estate_manager,1,1,1,0
+access_profile_owner,Owner: Profiles,model_thedevkitchen_estate_profile,group_real_estate_owner,1,1,1,1
+access_profile_manager,Manager: Profiles,model_thedevkitchen_estate_profile,group_real_estate_manager,1,1,1,0
+access_profile_receptionist,Receptionist: Profiles,model_thedevkitchen_estate_profile,group_real_estate_receptionist,1,1,1,0
+access_profile_agent,Agent: Profiles (Read),model_thedevkitchen_estate_profile,group_real_estate_agent,1,0,0,0
+access_profile_system_admin,System Admin: Profiles,model_thedevkitchen_estate_profile,base.group_system,1,1,1,1
+access_profile_company_manager,Director: Profiles,model_thedevkitchen_estate_profile,group_real_estate_director,1,1,1,1
+access_profile_user,User: Profiles,model_thedevkitchen_estate_profile,group_real_estate_user,1,1,1,0
+access_profile_portal,Portal: Profiles (Read Own),model_thedevkitchen_estate_profile,group_real_estate_portal_user,1,0,0,0
+access_profile_type_user,User: Profile Types (Read),model_thedevkitchen_profile_type,group_real_estate_user,1,0,0,0
+access_profile_type_owner,Owner: Profile Types (Read),model_thedevkitchen_profile_type,group_real_estate_owner,1,0,0,0
+access_profile_type_system_admin,System Admin: Profile Types,model_thedevkitchen_profile_type,base.group_system,1,1,1,1
+access_profile_type_portal,Portal: Profile Types (Read),model_thedevkitchen_profile_type,group_real_estate_portal_user,1,0,0,0

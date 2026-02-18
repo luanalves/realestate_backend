@@ -62,6 +62,7 @@ Property Form Sections:
         'security/ir.model.access.csv',
         
         # Data files (sequences and master data)
+        'data/profile_type_data.xml',  # Feature 010: Profile type lookup table (9 RBAC types)
         'data/location_types.xml',
         'data/states.xml',
         'data/property_data.xml',

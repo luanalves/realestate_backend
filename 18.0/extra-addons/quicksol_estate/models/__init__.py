@@ -32,4 +32,6 @@ from . import sale
 from . import tenant
 from . import lease_renewal_history  # Feature 008: Lease renewal audit trail
 from . import company
+from . import profile_type  # Feature 010: Profile type lookup table
+from . import profile  # Feature 010: Unified profile model
 from . import res_users

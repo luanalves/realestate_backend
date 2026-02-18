@@ -146,6 +146,56 @@ class SchemaValidator:
         }
     }
 
+    # ===== PROFILE SCHEMAS (Feature 010) =====
+    
+    # Profile creation schema (FR1.1)
+    PROFILE_CREATE_SCHEMA = {
+        'required': ['name', 'company_id', 'document', 'email', 'birthdate', 'profile_type'],
+        'optional': ['phone', 'mobile', 'occupation', 'hire_date'],
+        'types': {
+            'name': str,
+            'company_id': int,
+            'document': str,
+            'email': str,
+            'birthdate': str,
+            'profile_type': str,
+            'phone': str,
+            'mobile': str,
+            'occupation': str,
+            'hire_date': str,
+        },
+        'constraints': {
+            'name': lambda v: len(v.strip()) > 0,
+            'company_id': lambda v: isinstance(v, int) and v > 0,
+            'document': lambda v: validators.validate_document(
+                validators.normalize_document(v)
+            ) if v else False,
+            'email': lambda v: '@' in v and '.' in v.split('@')[-1] if v else False,
+            'birthdate': lambda v: len(v.strip()) > 0,
+            'profile_type': lambda v: len(v.strip()) > 0,
+        }
+    }
+
+    # Profile update schema (FR3.1)
+    PROFILE_UPDATE_SCHEMA = {
+        'required': [],
+        'optional': ['name', 'phone', 'mobile', 'email', 'occupation', 'birthdate', 'hire_date'],
+        'types': {
+            'name': str,
+            'phone': str,
+            'mobile': str,
+            'email': str,
+            'occupation': str,
+            'birthdate': str,
+            'hire_date': str,
+        },
+        'constraints': {
+            'name': lambda v: len(v.strip()) > 0 if v else True,
+            'email': lambda v: '@' in v and '.' in v.split('@')[-1] if v else True,
+        }
+    }
+
+
     # Lease creation schema (FR-009, FR-010, FR-011)
     LEASE_CREATE_SCHEMA = {
         'required': ['property_id', 'tenant_id', 'start_date', 'end_date', 'rent_amount'],

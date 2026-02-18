@@ -573,5 +573,88 @@
             <field name="perm_unlink" eval="False"/>
         </record>
         
+        <!-- ===== PROFILE UNIFICATION (Feature 010) - PROFILE RULES ===== -->
+        
+        <!-- Owner: Full access to profiles in their companies -->
+        <record id="rule_owner_profiles" model="ir.rule">
+            <field name="name">Owner: Company Profiles</field>
+            <field name="model_id" ref="model_thedevkitchen_estate_profile"/>
+            <field name="domain_force">[('company_id', 'in', user.estate_company_ids.ids)]</field>
+            <field name="groups" eval="[(4, ref('group_real_estate_owner'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+        
+        <!-- Manager: Manage profiles in their companies -->
+        <record id="rule_manager_all_company_profiles" model="ir.rule">
+            <field name="name">Manager: Company Profiles</field>
+            <field name="model_id" ref="model_thedevkitchen_estate_profile"/>
+            <field name="domain_force">[('company_id', 'in', user.estate_company_ids.ids)]</field>
+            <field name="groups" eval="[(4, ref('group_real_estate_manager'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+        
+        <!-- Agent: Read only profiles in their companies -->
+        <record id="rule_agent_company_profiles" model="ir.rule">
+            <field name="name">Agent: Company Profiles (Read Only)</field>
+            <field name="model_id" ref="model_thedevkitchen_estate_profile"/>
+            <field name="domain_force">[('company_id', 'in', user.estate_company_ids.ids)]</field>
+            <field name="groups" eval="[(4, ref('group_real_estate_agent'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+        
+        <!-- Receptionist: Manage profiles in their companies -->
+        <record id="rule_receptionist_company_profiles" model="ir.rule">
+            <field name="name">Receptionist: Company Profiles</field>
+            <field name="model_id" ref="model_thedevkitchen_estate_profile"/>
+            <field name="domain_force">[('company_id', 'in', user.estate_company_ids.ids)]</field>
+            <field name="groups" eval="[(4, ref('group_real_estate_receptionist'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+        
+        <!-- Portal: View own profile only -->
+        <record id="rule_portal_own_profile" model="ir.rule">
+            <field name="name">Portal: Own Profile Only</field>
+            <field name="model_id" ref="model_thedevkitchen_estate_profile"/>
+            <field name="domain_force">[('partner_id', '=', user.partner_id.id)]</field>
+            <field name="groups" eval="[(4, ref('group_real_estate_portal_user'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+        
+        <!-- Multi-company: Base isolation for User + Manager groups -->
+        <record id="rule_profile_multi_company" model="ir.rule">
+            <field name="name">Profile: Multi-Company Isolation</field>
+            <field name="model_id" ref="model_thedevkitchen_estate_profile"/>
+            <field name="domain_force">[('company_id', 'in', user.estate_company_ids.ids)]</field>
+            <field name="groups" eval="[(4, ref('group_real_estate_user')), (4, ref('group_real_estate_manager'))]"/>
+        </record>
+        
+        <!-- ===== PROFILE TYPE RULES ===== -->
+        
+        <!-- Global read access to profile types for all authenticated users -->
+        <record id="rule_profile_type_global_read" model="ir.rule">
+            <field name="name">Profile Type: Global Read Access</field>
+            <field name="model_id" ref="model_thedevkitchen_profile_type"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+        
     </data>
 </odoo>
