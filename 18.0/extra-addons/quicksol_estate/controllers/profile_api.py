@@ -205,7 +205,7 @@ class ProfileApiController(http.Controller):
             # Serialize response with HATEOAS (FR1.9)
             response_data = self._serialize_profile(profile)
             
-            return success_response(response_data, status=201)
+            return success_response(response_data, status_code=201)
             
         except ValidationError as e:
             _logger.warning(f'Validation error creating profile: {str(e)}')
