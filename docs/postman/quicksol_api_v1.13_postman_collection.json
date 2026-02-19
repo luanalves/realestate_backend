@@ -2,8 +2,8 @@
   "info": {
     "_postman_id": "b7e3f1a2-8c4d-4e5f-9a6b-1c2d3e4f5a6b",
     "name": "Quicksol Real Estate API",
-    "description": "Complete API collection for QuickSol Real Estate Management System.\n\n## Features\n- Multi-tenancy with company isolation\n- RBAC: 9 security profiles\n- Profile Unification (Feature 010)\n- User Onboarding & Password Management (Feature 009)\n- Properties, Agents, Leads management\n- Commission tracking and performance\n- Owner & Company management\n- Complete Assignment CRUD\n\n## Authentication Flow\n1. **Get OAuth Token**: POST /api/v1/auth/token\n2. **User Login**: POST /api/v1/users/login (returns session_id)\n3. **Use Both**: Authorization header + X-Openerp-Session-Id header (GET) or session_id in body (POST type=json)\n4. **Set tenant context**: `X-Company-ID` header on authenticated multi-tenant endpoints\n\n## Headers\n- `Authorization: Bearer {{access_token}}`\n- `X-Openerp-Session-Id: {{session_id}}` (REQUIRED for GET)\n- `X-Company-ID: {{company_id}}` (REQUIRED for invite/resend-invite)\n- `User-Agent: {{user_agent}}`\n- `Content-Type: application/json`\n\n## Important Notes (ADR-016)\n- ⚠️ **POST/PUT/PATCH**: `session_id` goes in **body JSON** (not header)\n- ⚠️ **GET requests**: `session_id` goes in **header** `X-Openerp-Session-Id`\n- ⚠️ **No JSON-RPC**: Business endpoints send JSON directly in body\n- ✅ **Variables**: Use {{...}} for all authentication values\n- ✅ **Test Scripts**: OAuth and Login endpoints auto-save tokens\n\n## ⚠️ Known Limitations\n- **Owner CRUD (Feature 007)**: GET/PUT/DELETE /api/v1/owners/{id} documented but NOT IMPLEMENTED in code\n  - Returns 404 HTML page (Odoo error page)\n  - OpenAPI spec available: docs/openapi/007-company-owner.yaml\n  - POST /api/v1/owners (create) and company link/unlink endpoints ARE working\n\n## Changelog v1.12\n- **NEW**: Profile Unification (Feature 010) - ADR-024\n- POST /api/v1/profiles - Create unified profile (9 RBAC types)\n- GET /api/v1/profiles - List profiles with pagination and filters\n- GET /api/v1/profiles/{id} - Get profile detail\n- PUT /api/v1/profiles/{id} - Update profile (immutable fields enforced)\n- DELETE /api/v1/profiles/{id} - Soft delete profile\n- GET /api/v1/profile-types - List available profile types\n- Compound unique constraint: (document, company_id, profile_type_id)\n- RBAC Authorization Matrix: Owner (9), Manager (5), Agent (2)\n- Agent auto-creates extension (611 LOC business logic preserved)\n- Multi-tenancy: Same document allowed across companies\n- Integration with Feature 009: invite references profile_id\n- **DOCS**: Updated Owner API OpenAPI spec with GET/PUT/DELETE endpoints (not yet implemented)\n\n## Changelog v1.11\n- Added `X-Company-ID` header to authenticated onboarding requests (`invite`, `resend-invite`)\n- Clarified active-company scope for multitenancy\n\n## Changelog v1.10\n- **NEW**: User Onboarding & Password Management (Feature 009)\n- POST /api/v1/users/invite - Invite users with RBAC authorization matrix\n- POST /api/v1/users/{id}/resend-invite - Resend invitation email\n- POST /api/v1/auth/set-password - Set password from invite token\n- POST /api/v1/auth/forgot-password - Request password reset\n- POST /api/v1/auth/reset-password - Reset password with token\n- Portal dual record creation: res.users + real.estate.tenant\n- Token security: UUID v4 → SHA-256 hashing\n- Anti-enumeration pattern on forgot-password\n\n## Previous Versions\n- v1.9: Properties endpoint with company_ids parameter and assignment scope hardening\n- v1.8: Properties endpoint with company_ids parameter\n- v1.7: Create Owner with CPF validation (validate_docbr)\n- v1.6: Assignment CRUD endpoints with pagination and filters\n- v1.5: Fixed ADR-016 compliance, Master Data endpoints\n- v1.4: Integrated Company & Owner Management (Feature 007)\n- v1.3: Complete API coverage (50+ endpoints)",
-    "version": "1.12",
+    "description": "Complete API collection for QuickSol Real Estate Management System.\n\n## Features\n- Multi-tenancy with company isolation\n- RBAC: 9 security profiles\n- Profile Unification (Feature 010)\n- User Onboarding & Password Management (Feature 009)\n- Properties, Agents, Leads management\n- Commission tracking and performance\n- Owner & Company management\n- Complete Assignment CRUD\n\n## Authentication Flow\n1. **Get OAuth Token**: POST /api/v1/auth/token\n2. **User Login**: POST /api/v1/users/login (returns session_id)\n3. **Use Both**: Authorization header + X-Openerp-Session-Id header (GET) or session_id in body (POST type=json)\n4. **Set tenant context**: `X-Company-ID` header on authenticated multi-tenant endpoints\n\n## Headers\n- `Authorization: Bearer {{access_token}}`\n- `X-Openerp-Session-Id: {{session_id}}` (REQUIRED for GET)\n- `X-Company-ID: {{company_id}}` (REQUIRED for invite/resend-invite)\n- `User-Agent: {{user_agent}}`\n- `Content-Type: application/json`\n\n## Important Notes (ADR-016)\n- ⚠️ **POST/PUT/PATCH**: `session_id` goes in **body JSON** (not header)\n- ⚠️ **GET requests**: `session_id` goes in **header** `X-Openerp-Session-Id`\n- ⚠️ **No JSON-RPC**: Business endpoints send JSON directly in body\n- ✅ **Variables**: Use {{...}} for all authentication values\n- ✅ **Test Scripts**: OAuth and Login endpoints auto-save tokens\n\n## ⚠️ Known Limitations\n- **Owner CRUD (Feature 007)**: GET/PUT/DELETE /api/v1/owners/{id} documented but NOT IMPLEMENTED in code\n  - Returns 404 HTML page (Odoo error page)\n  - OpenAPI spec available: docs/openapi/007-company-owner.yaml\n  - POST /api/v1/owners (create) and company link/unlink endpoints ARE working\n\n## Changelog v1.13\n- **FIX**: ADR-016 compliance - moved session_id from header to body JSON for all POST/PUT/PATCH endpoints\n- **FIX**: Removed X-Openerp-Session-Id header from POST/PUT/PATCH (header only for GET/DELETE)\n- Session placement rules enforced: GET/DELETE → header, POST/PUT/PATCH → body\n\n## Changelog v1.12\n- **NEW**: Profile Unification (Feature 010) - ADR-024\n- POST /api/v1/profiles - Create unified profile (9 RBAC types)\n- GET /api/v1/profiles - List profiles with pagination and filters\n- GET /api/v1/profiles/{id} - Get profile detail\n- PUT /api/v1/profiles/{id} - Update profile (immutable fields enforced)\n- DELETE /api/v1/profiles/{id} - Soft delete profile\n- GET /api/v1/profile-types - List available profile types\n- Compound unique constraint: (document, company_id, profile_type_id)\n- RBAC Authorization Matrix: Owner (9), Manager (5), Agent (2)\n- Agent auto-creates extension (611 LOC business logic preserved)\n- Multi-tenancy: Same document allowed across companies\n- Integration with Feature 009: invite references profile_id\n- **DOCS**: Updated Owner API OpenAPI spec with GET/PUT/DELETE endpoints (not yet implemented)\n\n## Changelog v1.11\n- Added `X-Company-ID` header to authenticated onboarding requests (`invite`, `resend-invite`)\n- Clarified active-company scope for multitenancy\n\n## Changelog v1.10\n- **NEW**: User Onboarding & Password Management (Feature 009)\n- POST /api/v1/users/invite - Invite users with RBAC authorization matrix\n- POST /api/v1/users/{id}/resend-invite - Resend invitation email\n- POST /api/v1/auth/set-password - Set password from invite token\n- POST /api/v1/auth/forgot-password - Request password reset\n- POST /api/v1/auth/reset-password - Reset password with token\n- Portal dual record creation: res.users + real.estate.tenant\n- Token security: UUID v4 → SHA-256 hashing\n- Anti-enumeration pattern on forgot-password\n\n## Previous Versions\n- v1.9: Properties endpoint with company_ids parameter and assignment scope hardening\n- v1.8: Properties endpoint with company_ids parameter\n- v1.7: Create Owner with CPF validation (validate_docbr)\n- v1.6: Assignment CRUD endpoints with pagination and filters\n- v1.5: Fixed ADR-016 compliance, Master Data endpoints\n- v1.4: Integrated Company & Owner Management (Feature 007)\n- v1.3: Complete API coverage (50+ endpoints)",
+    "version": "1.13",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -453,16 +453,11 @@
                 "key": "User-Agent",
                 "value": "{{user_agent}}",
                 "description": "Required for session fingerprint validation"
-              },
-              {
-                "key": "X-Openerp-Session-Id",
-                "value": "{{session_id}}",
-                "description": "Session ID for fingerprint validation"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{}"
+              "raw": "{\n  \"session_id\": \"{{session_id}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/users/logout",
@@ -496,16 +491,11 @@
                 "key": "User-Agent",
                 "value": "{{user_agent}}",
                 "description": "Required for session fingerprint validation"
-              },
-              {
-                "key": "X-Openerp-Session-Id",
-                "value": "{{session_id}}",
-                "description": "Session ID for fingerprint validation"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{}"
+              "raw": "{\n  \"session_id\": \"{{session_id}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/me",
@@ -538,16 +528,11 @@
                 "key": "User-Agent",
                 "value": "{{user_agent}}",
                 "description": "Required for session fingerprint validation"
-              },
-              {
-                "key": "X-Openerp-Session-Id",
-                "value": "{{session_id}}",
-                "description": "Session ID for fingerprint validation"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Updated Name\",\n  \"phone\": \"+55 11 99999-0000\"\n}"
+              "raw": "{\n  \"name\": \"Updated Name\",\n  \"phone\": \"+55 11 99999-0000\",\n  \"session_id\": \"{{session_id}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/users/profile",
@@ -581,16 +566,11 @@
                 "key": "User-Agent",
                 "value": "{{user_agent}}",
                 "description": "Required for session fingerprint validation"
-              },
-              {
-                "key": "X-Openerp-Session-Id",
-                "value": "{{session_id}}",
-                "description": "Session ID for fingerprint validation"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"old_password\": \"current_password\",\n  \"new_password\": \"new_secure_password\"\n}"
+              "raw": "{\n  \"old_password\": \"current_password\",\n  \"new_password\": \"new_secure_password\",\n  \"session_id\": \"{{session_id}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/users/change-password",
@@ -761,16 +741,11 @@
                 "key": "User-Agent",
                 "value": "{{user_agent}}",
                 "description": "Required for session fingerprint validation"
-              },
-              {
-                "key": "X-Openerp-Session-Id",
-                "value": "{{session_id}}",
-                "description": "Session ID for fingerprint validation"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Apartamento Centro - 3 quartos\",\n  \"property_type_id\": 1,\n  \"address\": \"Rua das Flores, 123\",\n  \"city\": \"São Paulo\",\n  \"price\": 450000.00,\n  \"bedrooms\": 3,\n  \"bathrooms\": 2,\n  \"area\": 120.5,\n  \"description\": \"Apartamento reformado em excelente localização\"\n}"
+              "raw": "{\n  \"name\": \"Apartamento Centro - 3 quartos\",\n  \"property_type_id\": 1,\n  \"address\": \"Rua das Flores, 123\",\n  \"city\": \"São Paulo\",\n  \"price\": 450000.0,\n  \"bedrooms\": 3,\n  \"bathrooms\": 2,\n  \"area\": 120.5,\n  \"description\": \"Apartamento reformado em excelente localização\",\n  \"session_id\": \"{{session_id}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/properties",
@@ -842,16 +817,11 @@
                 "key": "User-Agent",
                 "value": "{{user_agent}}",
                 "description": "Required for session fingerprint validation"
-              },
-              {
-                "key": "X-Openerp-Session-Id",
-                "value": "{{session_id}}",
-                "description": "Session ID for fingerprint validation"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"price\": 480000.00,\n  \"state\": \"available\"\n}"
+              "raw": "{\n  \"price\": 480000.0,\n  \"state\": \"available\",\n  \"session_id\": \"{{session_id}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/properties/{{property_id}}",
@@ -998,16 +968,11 @@
                 "key": "User-Agent",
                 "value": "{{user_agent}}",
                 "description": "Required for session fingerprint validation"
-              },
-              {
-                "key": "X-Openerp-Session-Id",
-                "value": "{{session_id}}",
-                "description": "Session ID for fingerprint validation"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"João Silva\",\n  \"cpf\": \"123.456.789-09\",\n  \"company_id\": {{company_id}},\n  \"email\": \"joao.silva.agent@example.com\",\n  \"phone\": \"+55 11 98765-4321\",\n  \"mobile\": \"+55 11 91234-5678\",\n  \"creci\": \"CRECI-SP 12345\",\n  \"hire_date\": \"2026-02-13\",\n  \"bank_name\": \"Banco do Brasil\",\n  \"bank_account\": \"12345-6\",\n  \"pix_key\": \"joao.silva@email.com\"\n}"
+              "raw": "{\n  \"name\": \"João Silva\",\n  \"cpf\": \"123.456.789-09\",\n  \"company_id\": {{company_id}},\n  \"email\": \"joao.silva.agent@example.com\",\n  \"phone\": \"+55 11 98765-4321\",\n  \"mobile\": \"+55 11 91234-5678\",\n  \"creci\": \"CRECI-SP 12345\",\n  \"hire_date\": \"2026-02-13\",\n  \"bank_name\": \"Banco do Brasil\",\n  \"bank_account\": \"12345-6\",\n  \"pix_key\": \"joao.silva@email.com\",\n  \"session_id\": \"{{session_id}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/agents",
@@ -1079,16 +1044,11 @@
                 "key": "User-Agent",
                 "value": "{{user_agent}}",
                 "description": "Required for session fingerprint validation"
-              },
-              {
-                "key": "X-Openerp-Session-Id",
-                "value": "{{session_id}}",
-                "description": "Session ID for fingerprint validation"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"phone\": \"+55 11 99999-0000\",\n  \"creci\": \"F654321\"\n}"
+              "raw": "{\n  \"phone\": \"+55 11 99999-0000\",\n  \"creci\": \"F654321\",\n  \"session_id\": \"{{session_id}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/agents/{{agent_id}}",
@@ -1122,16 +1082,11 @@
                 "key": "User-Agent",
                 "value": "{{user_agent}}",
                 "description": "Required for session fingerprint validation"
-              },
-              {
-                "key": "X-Openerp-Session-Id",
-                "value": "{{session_id}}",
-                "description": "Session ID for fingerprint validation"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{}"
+              "raw": "{\n  \"session_id\": \"{{session_id}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/agents/{{agent_id}}/deactivate",
@@ -1166,16 +1121,11 @@
                 "key": "User-Agent",
                 "value": "{{user_agent}}",
                 "description": "Required for session fingerprint validation"
-              },
-              {
-                "key": "X-Openerp-Session-Id",
-                "value": "{{session_id}}",
-                "description": "Session ID for fingerprint validation"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{}"
+              "raw": "{\n  \"session_id\": \"{{session_id}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/agents/{{agent_id}}/reactivate",
@@ -1281,16 +1231,11 @@
                 "key": "User-Agent",
                 "value": "{{user_agent}}",
                 "description": "Required for session fingerprint validation"
-              },
-              {
-                "key": "X-Openerp-Session-Id",
-                "value": "{{session_id}}",
-                "description": "Session ID for fingerprint validation"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"agent_id\": {{agent_id}},\n  \"property_id\": {{property_id}},\n  \"company_id\": {{company_id}},\n  \"responsibility_type\": \"primary\",\n  \"commission_percentage\": 6.0\n}"
+              "raw": "{\n  \"agent_id\": {{agent_id}},\n  \"property_id\": {{property_id}},\n  \"company_id\": {{company_id}},\n  \"responsibility_type\": \"primary\",\n  \"commission_percentage\": 6.0,\n  \"session_id\": \"{{session_id}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/assignments",
@@ -1434,16 +1379,11 @@
                 "key": "User-Agent",
                 "value": "{{user_agent}}",
                 "description": "Required for session fingerprint validation"
-              },
-              {
-                "key": "X-Openerp-Session-Id",
-                "value": "{{session_id}}",
-                "description": "Session ID for fingerprint validation"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"responsibility_type\": \"secondary\",\n  \"commission_percentage\": 4.0,\n  \"notes\": \"Assisting primary agent\"\n}"
+              "raw": "{\n  \"responsibility_type\": \"secondary\",\n  \"commission_percentage\": 4.0,\n  \"notes\": \"Assisting primary agent\",\n  \"session_id\": \"{{session_id}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/assignments/{{assignment_id}}",
@@ -1577,16 +1517,11 @@
                 "key": "User-Agent",
                 "value": "{{user_agent}}",
                 "description": "Required for session fingerprint validation"
-              },
-              {
-                "key": "X-Openerp-Session-Id",
-                "value": "{{session_id}}",
-                "description": "Session ID for fingerprint validation"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"transaction_type\": \"sale\",\n  \"structure_type\": \"percentage\",\n  \"valid_from\": \"2026-02-14\",\n  \"percentage\": 5.0,\n  \"min_value\": 100000,\n  \"max_value\": 500000\n}"
+              "raw": "{\n  \"transaction_type\": \"sale\",\n  \"structure_type\": \"percentage\",\n  \"valid_from\": \"2026-02-14\",\n  \"percentage\": 5.0,\n  \"min_value\": 100000,\n  \"max_value\": 500000,\n  \"session_id\": \"{{session_id}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/agents/{{agent_id}}/commission-rules",
@@ -1621,16 +1556,11 @@
                 "key": "User-Agent",
                 "value": "{{user_agent}}",
                 "description": "Required for session fingerprint validation"
-              },
-              {
-                "key": "X-Openerp-Session-Id",
-                "value": "{{session_id}}",
-                "description": "Session ID for fingerprint validation"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"percentage\": 6.0,\n  \"active\": true\n}"
+              "raw": "{\n  \"percentage\": 6.0,\n  \"active\": true,\n  \"session_id\": \"{{session_id}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/commission-rules/{{rule_id}}",
@@ -1664,16 +1594,11 @@
                 "key": "User-Agent",
                 "value": "{{user_agent}}",
                 "description": "Required for session fingerprint validation"
-              },
-              {
-                "key": "X-Openerp-Session-Id",
-                "value": "{{session_id}}",
-                "description": "Session ID for fingerprint validation"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"agent_id\": {{agent_id}},\n  \"company_id\": {{company_id}},\n  \"transaction_type\": \"sale\",\n  \"transaction_amount\": 850000.00,\n  \"transaction_reference\": \"VENDA-2024-001\"\n}"
+              "raw": "{\n  \"agent_id\": {{agent_id}},\n  \"company_id\": {{company_id}},\n  \"transaction_type\": \"sale\",\n  \"transaction_amount\": 850000.00,\n  \"transaction_reference\": \"VENDA-2024-001\",\n  \"session_id\": \"{{session_id}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/commission-transactions",
@@ -1946,16 +1871,11 @@
                 "key": "User-Agent",
                 "value": "{{user_agent}}",
                 "description": "Required for session fingerprint validation"
-              },
-              {
-                "key": "X-Openerp-Session-Id",
-                "value": "{{session_id}}",
-                "description": "Session ID for fingerprint validation"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"João Silva - Apartamento Centro\",\n  \"phone\": \"+55 11 98765-4321\",\n  \"email\": \"joao.silva@example.com\",\n  \"budget_min\": 200000.00,\n  \"budget_max\": 350000.00,\n  \"bedrooms_needed\": 2,\n  \"location_preference\": \"Centro, Jardins\",\n  \"first_contact_date\": \"2026-02-03\",\n  \"expected_closing_date\": \"2026-03-15\"\n}"
+              "raw": "{\n  \"name\": \"João Silva - Apartamento Centro\",\n  \"phone\": \"+55 11 98765-4321\",\n  \"email\": \"joao.silva@example.com\",\n  \"budget_min\": 200000.0,\n  \"budget_max\": 350000.0,\n  \"bedrooms_needed\": 2,\n  \"location_preference\": \"Centro, Jardins\",\n  \"first_contact_date\": \"2026-02-03\",\n  \"expected_closing_date\": \"2026-03-15\",\n  \"session_id\": \"{{session_id}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/leads",
@@ -2027,16 +1947,11 @@
                 "key": "User-Agent",
                 "value": "{{user_agent}}",
                 "description": "Required for session fingerprint validation"
-              },
-              {
-                "key": "X-Openerp-Session-Id",
-                "value": "{{session_id}}",
-                "description": "Session ID for fingerprint validation"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"state\": \"contacted\",\n  \"budget_max\": 400000.00\n}"
+              "raw": "{\n  \"state\": \"contacted\",\n  \"budget_max\": 400000.0,\n  \"session_id\": \"{{session_id}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/leads/{{lead_id}}",
@@ -2115,16 +2030,11 @@
                 "key": "User-Agent",
                 "value": "{{user_agent}}",
                 "description": "Required for session fingerprint validation"
-              },
-              {
-                "key": "X-Openerp-Session-Id",
-                "value": "{{session_id}}",
-                "description": "Session ID for fingerprint validation"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"property_id\": {{property_id}}\n}"
+              "raw": "{\n  \"property_id\": {{property_id}},\n  \"session_id\": \"{{session_id}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/leads/{{lead_id}}/convert",
@@ -2159,16 +2069,11 @@
                 "key": "User-Agent",
                 "value": "{{user_agent}}",
                 "description": "Required for session fingerprint validation"
-              },
-              {
-                "key": "X-Openerp-Session-Id",
-                "value": "{{session_id}}",
-                "description": "Session ID for fingerprint validation"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"reason\": \"Client re-engaged after budget increase\"\n}"
+              "raw": "{\n  \"reason\": \"Client re-engaged after budget increase\",\n  \"session_id\": \"{{session_id}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/leads/{{lead_id}}/reopen",
@@ -2362,16 +2267,11 @@
                 "key": "User-Agent",
                 "value": "{{user_agent}}",
                 "description": "Required for session fingerprint validation"
-              },
-              {
-                "key": "X-Openerp-Session-Id",
-                "value": "{{session_id}}",
-                "description": "Session ID for fingerprint validation"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"body\": \"Called client - interested in 3-bedroom condos downtown. Budget confirmed at R$400k.\",\n  \"activity_type\": \"call\"\n}"
+              "raw": "{\n  \"body\": \"Called client - interested in 3-bedroom condos downtown. Budget confirmed at R$400k.\",\n  \"activity_type\": \"call\",\n  \"session_id\": \"{{session_id}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/leads/{{lead_id}}/activities",
@@ -2406,16 +2306,11 @@
                 "key": "User-Agent",
                 "value": "{{user_agent}}",
                 "description": "Required for session fingerprint validation"
-              },
-              {
-                "key": "X-Openerp-Session-Id",
-                "value": "{{session_id}}",
-                "description": "Session ID for fingerprint validation"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"summary\": \"Follow-up call regarding budget increase\",\n  \"activity_type_id\": 1,\n  \"date_deadline\": \"2026-02-10\",\n  \"note\": \"Client requested callback after 2pm\"\n}"
+              "raw": "{\n  \"summary\": \"Follow-up call regarding budget increase\",\n  \"activity_type_id\": 1,\n  \"date_deadline\": \"2026-02-10\",\n  \"note\": \"Client requested callback after 2pm\",\n  \"session_id\": \"{{session_id}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/leads/{{lead_id}}/schedule-activity",
@@ -2510,16 +2405,11 @@
                 "key": "User-Agent",
                 "value": "{{user_agent}}",
                 "description": "Required for session fingerprint validation"
-              },
-              {
-                "key": "X-Openerp-Session-Id",
-                "value": "{{session_id}}",
-                "description": "Session ID for fingerprint validation"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"High-value Centro leads\",\n  \"filter_domain\": {\n    \"budget_min\": 300000,\n    \"budget_max\": 500000,\n    \"bedrooms\": 3,\n    \"location\": \"Centro\",\n    \"state\": \"qualified\"\n  },\n  \"is_shared\": false\n}"
+              "raw": "{\n  \"name\": \"High-value Centro leads\",\n  \"filter_domain\": {\n    \"budget_min\": 300000,\n    \"budget_max\": 500000,\n    \"bedrooms\": 3,\n    \"location\": \"Centro\",\n    \"state\": \"qualified\"\n  },\n  \"is_shared\": false,\n  \"session_id\": \"{{session_id}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/leads/filters",
@@ -2618,7 +2508,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"João Silva\",\n  \"email\": \"joao.silva@example.com\",\n  \"password\": \"senha_segura_123\",\n  \"cpf\": \"123.456.789-09\",\n  \"phone\": \"11987654321\",\n  \"mobile\": \"11987654321\"\n}"
+              "raw": "{\n  \"name\": \"João Silva\",\n  \"email\": \"joao.silva@example.com\",\n  \"password\": \"senha_segura_123\",\n  \"cpf\": \"123.456.789-09\",\n  \"phone\": \"11987654321\",\n  \"mobile\": \"11987654321\",\n  \"session_id\": \"{{session_id}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/owners",
@@ -2690,16 +2580,11 @@
                 "key": "User-Agent",
                 "value": "{{user_agent}}",
                 "description": "Required for session fingerprint validation"
-              },
-              {
-                "key": "X-Openerp-Session-Id",
-                "value": "{{session_id}}",
-                "description": "Session ID for fingerprint validation"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"João Silva Updated\",\n  \"phone\": \"11999888777\",\n  \"mobile\": \"11999888777\"\n}"
+              "raw": "{\n  \"name\": \"João Silva Updated\",\n  \"phone\": \"11999888777\",\n  \"mobile\": \"11999888777\",\n  \"session_id\": \"{{session_id}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/owners/{{owner_id}}",
@@ -2772,16 +2657,11 @@
                 "key": "User-Agent",
                 "value": "{{user_agent}}",
                 "description": "Required for session fingerprint validation"
-              },
-              {
-                "key": "X-Openerp-Session-Id",
-                "value": "{{session_id}}",
-                "description": "Session ID for fingerprint validation"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"company_id\": {{company_id}}\n}"
+              "raw": "{\n  \"company_id\": {{company_id}},\n  \"session_id\": \"{{session_id}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/owners/{{owner_id}}/companies",
@@ -2940,16 +2820,11 @@
                 "key": "User-Agent",
                 "value": "{{user_agent}}",
                 "description": "Required for session fingerprint validation"
-              },
-              {
-                "key": "X-Openerp-Session-Id",
-                "value": "{{session_id}}",
-                "description": "Session ID for fingerprint validation"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"QuickSol Imóveis\",\n  \"legal_name\": \"QuickSol Negócios Imobiliários LTDA\",\n  \"cnpj\": \"12.345.678/0001-95\",\n  \"creci\": \"CRECI/SP 123456\",\n  \"email\": \"contato@quicksol.com.br\",\n  \"phone\": \"11912345678\",\n  \"mobile\": \"11987654321\",\n  \"website\": \"https://quicksol.com.br\",\n  \"street\": \"Av. Paulista, 1000\",\n  \"street2\": \"15º andar\",\n  \"city\": \"São Paulo\",\n  \"state_id\": 1,\n  \"zip_code\": \"01310-100\",\n  \"description\": \"Empresa imobiliária especializada em imóveis de alto padrão\"\n}"
+              "raw": "{\n  \"name\": \"QuickSol Imóveis\",\n  \"legal_name\": \"QuickSol Negócios Imobiliários LTDA\",\n  \"cnpj\": \"12.345.678/0001-95\",\n  \"creci\": \"CRECI/SP 123456\",\n  \"email\": \"contato@quicksol.com.br\",\n  \"phone\": \"11912345678\",\n  \"mobile\": \"11987654321\",\n  \"website\": \"https://quicksol.com.br\",\n  \"street\": \"Av. Paulista, 1000\",\n  \"street2\": \"15º andar\",\n  \"city\": \"São Paulo\",\n  \"state_id\": 1,\n  \"zip_code\": \"01310-100\",\n  \"description\": \"Empresa imobiliária especializada em imóveis de alto padrão\",\n  \"session_id\": \"{{session_id}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/companies",
@@ -3021,16 +2896,11 @@
                 "key": "User-Agent",
                 "value": "{{user_agent}}",
                 "description": "Required for session fingerprint validation"
-              },
-              {
-                "key": "X-Openerp-Session-Id",
-                "value": "{{session_id}}",
-                "description": "Session ID for fingerprint validation"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"phone\": \"11999888777\",\n  \"website\": \"https://quicksol.com.br\",\n  \"description\": \"Empresa imobiliária especializada em imóveis comerciais e residenciais\"\n}"
+              "raw": "{\n  \"phone\": \"11999888777\",\n  \"website\": \"https://quicksol.com.br\",\n  \"description\": \"Empresa imobiliária especializada em imóveis comerciais e residenciais\",\n  \"session_id\": \"{{session_id}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/companies/{{company_id}}",
@@ -3489,16 +3359,11 @@
                 "key": "User-Agent",
                 "value": "{{user_agent}}",
                 "description": "Required for session fingerprint validation"
-              },
-              {
-                "key": "X-Openerp-Session-Id",
-                "value": "{{session_id}}",
-                "description": "Session ID for fingerprint validation"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Maria Santos\",\n  \"phone\": \"(11) 98765-4321\",\n  \"email\": \"maria@example.com\",\n  \"occupation\": \"Lawyer\",\n  \"birthdate\": \"1985-03-20\"\n}"
+              "raw": "{\n  \"name\": \"Maria Santos\",\n  \"phone\": \"(11) 98765-4321\",\n  \"email\": \"maria@example.com\",\n  \"occupation\": \"Lawyer\",\n  \"birthdate\": \"1985-03-20\",\n  \"session_id\": \"{{session_id}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/tenants",
@@ -3572,16 +3437,11 @@
                 "key": "User-Agent",
                 "value": "{{user_agent}}",
                 "description": "Required for session fingerprint validation"
-              },
-              {
-                "key": "X-Openerp-Session-Id",
-                "value": "{{session_id}}",
-                "description": "Session ID for fingerprint validation"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"phone\": \"(11) 91234-5678\",\n  \"email\": \"maria.new@example.com\"\n}"
+              "raw": "{\n  \"phone\": \"(11) 91234-5678\",\n  \"email\": \"maria.new@example.com\",\n  \"session_id\": \"{{session_id}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/tenants/{{tenant_id}}",
@@ -3806,16 +3666,11 @@
                 "key": "User-Agent",
                 "value": "{{user_agent}}",
                 "description": "Required for session fingerprint validation"
-              },
-              {
-                "key": "X-Openerp-Session-Id",
-                "value": "{{session_id}}",
-                "description": "Session ID for fingerprint validation"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"property_id\": 1,\n  \"tenant_id\": 1,\n  \"start_date\": \"2026-02-01\",\n  \"end_date\": \"2027-02-01\",\n  \"rent_amount\": 3000.0,\n  \"status\": \"draft\"\n}"
+              "raw": "{\n  \"property_id\": 1,\n  \"tenant_id\": 1,\n  \"start_date\": \"2026-02-01\",\n  \"end_date\": \"2027-02-01\",\n  \"rent_amount\": 3000.0,\n  \"status\": \"draft\",\n  \"session_id\": \"{{session_id}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/leases",
@@ -3889,16 +3744,11 @@
                 "key": "User-Agent",
                 "value": "{{user_agent}}",
                 "description": "Required for session fingerprint validation"
-              },
-              {
-                "key": "X-Openerp-Session-Id",
-                "value": "{{session_id}}",
-                "description": "Session ID for fingerprint validation"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"rent_amount\": 2800.0,\n  \"status\": \"active\"\n}"
+              "raw": "{\n  \"rent_amount\": 2800.0,\n  \"status\": \"active\",\n  \"session_id\": \"{{session_id}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/leases/{{lease_id}}",
@@ -3973,16 +3823,11 @@
                 "key": "User-Agent",
                 "value": "{{user_agent}}",
                 "description": "Required for session fingerprint validation"
-              },
-              {
-                "key": "X-Openerp-Session-Id",
-                "value": "{{session_id}}",
-                "description": "Session ID for fingerprint validation"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"new_end_date\": \"2028-02-01\",\n  \"new_rent_amount\": 3200.0,\n  \"reason\": \"Annual renewal with adjustment\"\n}"
+              "raw": "{\n  \"new_end_date\": \"2028-02-01\",\n  \"new_rent_amount\": 3200.0,\n  \"reason\": \"Annual renewal with adjustment\",\n  \"session_id\": \"{{session_id}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/leases/{{lease_id}}/renew",
@@ -4018,16 +3863,11 @@
                 "key": "User-Agent",
                 "value": "{{user_agent}}",
                 "description": "Required for session fingerprint validation"
-              },
-              {
-                "key": "X-Openerp-Session-Id",
-                "value": "{{session_id}}",
-                "description": "Session ID for fingerprint validation"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"termination_date\": \"2026-09-30\",\n  \"reason\": \"Early termination by tenant\",\n  \"penalty_amount\": 5000.0\n}"
+              "raw": "{\n  \"termination_date\": \"2026-09-30\",\n  \"reason\": \"Early termination by tenant\",\n  \"penalty_amount\": 5000.0,\n  \"session_id\": \"{{session_id}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/leases/{{lease_id}}/terminate",
@@ -4168,16 +4008,11 @@
                 "key": "User-Agent",
                 "value": "{{user_agent}}",
                 "description": "Required for session fingerprint validation"
-              },
-              {
-                "key": "X-Openerp-Session-Id",
-                "value": "{{session_id}}",
-                "description": "Session ID for fingerprint validation"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"property_id\": 1,\n  \"company_id\": 63,\n  \"buyer_name\": \"Carlos Souza\",\n  \"sale_date\": \"2026-02-10\",\n  \"sale_price\": 450000.0,\n  \"buyer_phone\": \"(11) 99888-7766\",\n  \"buyer_email\": \"carlos@example.com\",\n  \"agent_id\": 1\n}"
+              "raw": "{\n  \"property_id\": 1,\n  \"company_id\": 63,\n  \"buyer_name\": \"Carlos Souza\",\n  \"sale_date\": \"2026-02-10\",\n  \"sale_price\": 450000.0,\n  \"buyer_phone\": \"(11) 99888-7766\",\n  \"buyer_email\": \"carlos@example.com\",\n  \"agent_id\": 1,\n  \"session_id\": \"{{session_id}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/sales",
@@ -4251,16 +4086,11 @@
                 "key": "User-Agent",
                 "value": "{{user_agent}}",
                 "description": "Required for session fingerprint validation"
-              },
-              {
-                "key": "X-Openerp-Session-Id",
-                "value": "{{session_id}}",
-                "description": "Session ID for fingerprint validation"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"sale_price\": 460000.0,\n  \"buyer_email\": \"carlos.new@example.com\"\n}"
+              "raw": "{\n  \"sale_price\": 460000.0,\n  \"buyer_email\": \"carlos.new@example.com\",\n  \"session_id\": \"{{session_id}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/sales/{{sale_id}}",
@@ -4295,16 +4125,11 @@
                 "key": "User-Agent",
                 "value": "{{user_agent}}",
                 "description": "Required for session fingerprint validation"
-              },
-              {
-                "key": "X-Openerp-Session-Id",
-                "value": "{{session_id}}",
-                "description": "Session ID for fingerprint validation"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"reason\": \"Buyer withdrew from deal\"\n}"
+              "raw": "{\n  \"reason\": \"Buyer withdrew from deal\",\n  \"session_id\": \"{{session_id}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/sales/{{sale_id}}/cancel",
@@ -4346,16 +4171,11 @@
                 "key": "User-Agent",
                 "value": "{{user_agent}}",
                 "description": "Required for session fingerprint validation"
-              },
-              {
-                "key": "X-Openerp-Session-Id",
-                "value": "{{session_id}}",
-                "description": "Session ID for fingerprint validation"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"João Silva\",\n  \"company_id\": {{company_id}},\n  \"document\": \"12345678901\",\n  \"email\": \"joao.silva@example.com\",\n  \"phone\": \"+5511999998888\",\n  \"birthdate\": \"1990-01-01\",\n  \"profile_type\": \"agent\"\n}"
+              "raw": "{\n  \"name\": \"João Silva\",\n  \"company_id\": {{company_id}},\n  \"document\": \"12345678901\",\n  \"email\": \"joao.silva@example.com\",\n  \"phone\": \"+5511999998888\",\n  \"birthdate\": \"1990-01-01\",\n  \"profile_type\": \"agent\",\n  \"session_id\": \"{{session_id}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/profiles",
@@ -4504,16 +4324,11 @@
                 "key": "User-Agent",
                 "value": "{{user_agent}}",
                 "description": "Required for session fingerprint validation"
-              },
-              {
-                "key": "X-Openerp-Session-Id",
-                "value": "{{session_id}}",
-                "description": "Session ID for fingerprint validation"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"João Silva Updated\",\n  \"email\": \"joao.updated@example.com\",\n  \"phone\": \"+5511988887777\"\n}"
+              "raw": "{\n  \"name\": \"João Silva Updated\",\n  \"email\": \"joao.updated@example.com\",\n  \"phone\": \"+5511988887777\",\n  \"session_id\": \"{{session_id}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/profiles/:profile_id?company_ids={{company_id}}",
