@@ -48,7 +48,7 @@ class RealEstateCompany(models.Model):
     # Statistics (computed fields)
     property_count = fields.Integer(string='Properties Count', compute='_compute_counts')
     agent_count = fields.Integer(string='Agents Count', compute='_compute_counts')
-    tenant_count = fields.Integer(string='Tenants Count', compute='_compute_counts')
+    profile_count = fields.Integer(string='Profiles Count', compute='_compute_counts')
     lease_count = fields.Integer(string='Active Leases', compute='_compute_counts')
     sale_count = fields.Integer(string='Sales Count', compute='_compute_counts')
     owner_count = fields.Integer(string='Owners Count', compute='_compute_owner_count')  # T039
@@ -56,7 +56,7 @@ class RealEstateCompany(models.Model):
     # Relationships (Many2many com tabelas intermediárias)
     property_ids = fields.Many2many('real.estate.property', 'thedevkitchen_company_property_rel', 'company_id', 'property_id', string='Properties')
     agent_ids = fields.Many2many('real.estate.agent', 'thedevkitchen_company_agent_rel', 'company_id', 'agent_id', string='Agents')
-    tenant_ids = fields.Many2many('real.estate.tenant', 'thedevkitchen_company_tenant_rel', 'company_id', 'tenant_id', string='Tenants')
+    profile_ids = fields.One2many('thedevkitchen.estate.profile', 'company_id', string='Profiles')
     lease_ids = fields.Many2many('real.estate.lease', 'thedevkitchen_company_lease_rel', 'company_id', 'lease_id', string='Leases')
     sale_ids = fields.Many2many('real.estate.sale', 'thedevkitchen_company_sale_rel', 'company_id', 'sale_id', string='Sales')
 
@@ -65,12 +65,12 @@ class RealEstateCompany(models.Model):
         for record in self:
             record.display_name = record.legal_name or record.name
 
-    @api.depends('property_ids', 'agent_ids', 'tenant_ids', 'lease_ids', 'sale_ids')
+    @api.depends('property_ids', 'agent_ids', 'profile_ids', 'lease_ids', 'sale_ids')
     def _compute_counts(self):
         for record in self:
             record.property_count = len(record.property_ids)
             record.agent_count = len(record.agent_ids)
-            record.tenant_count = len(record.tenant_ids)
+            record.profile_count = len(record.profile_ids)
             record.lease_count = len(record.lease_ids)
             record.sale_count = len(record.sale_ids)
 
@@ -187,16 +187,16 @@ class RealEstateCompany(models.Model):
             }
         }
 
-    def action_view_tenants(self):
-        """Action to view company tenants"""
+    def action_view_profiles(self):
+        """Action to view company profiles"""
         self.ensure_one()
         return {
-            'name': f'Tenants - {self.name}',
+            'name': f'Profiles - {self.name}',
             'type': 'ir.actions.act_window',
-            'res_model': 'real.estate.tenant',
+            'res_model': 'thedevkitchen.estate.profile',
             'view_mode': 'list,form',
-            'domain': [('company_ids', 'in', self.id)],
-            'context': {'default_company_ids': [(6, 0, [self.id])]}
+            'domain': [('company_id', '=', self.id)],
+            'context': {'default_company_id': self.id}
         }
 
     def action_view_leases(self):

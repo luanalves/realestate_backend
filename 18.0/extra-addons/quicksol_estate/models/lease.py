@@ -12,7 +12,7 @@ class Lease(models.Model):
 
     name = fields.Char(string='Lease Reference', compute='_compute_name', store=True)
     property_id = fields.Many2one('real.estate.property', string='Property', required=True)
-    tenant_id = fields.Many2one('real.estate.tenant', string='Tenant', required=True)
+    profile_id = fields.Many2one('thedevkitchen.estate.profile', string='Profile', required=True, ondelete='restrict')
     company_ids = fields.Many2many('thedevkitchen.estate.company', 'thedevkitchen_company_lease_rel', 'lease_id', 'company_id', string='Real Estate Companies')
     start_date = fields.Date(string='Start Date', required=True)
     end_date = fields.Date(string='End Date', required=True)
@@ -34,11 +34,11 @@ class Lease(models.Model):
         string='Renewal History',
     )
 
-    @api.depends('property_id', 'tenant_id', 'start_date')
+    @api.depends('property_id', 'profile_id', 'start_date')
     def _compute_name(self):
         for record in self:
-            if record.property_id and record.tenant_id and record.start_date:
-                record.name = f"{record.property_id.name} - {record.tenant_id.name} ({record.start_date})"
+            if record.property_id and record.profile_id and record.start_date:
+                record.name = f"{record.property_id.name} - {record.profile_id.name} ({record.start_date})"
             else:
                 record.name = "New Lease"
 

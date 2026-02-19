@@ -4,7 +4,6 @@ access_owner_property,Owner: Properties,model_real_estate_property,group_real_es
 access_owner_agent,Owner: Agents,model_real_estate_agent,group_real_estate_owner,1,1,1,1
 access_owner_lease,Owner: Leases,model_real_estate_lease,group_real_estate_owner,1,1,1,1
 access_owner_sale,Owner: Sales,model_real_estate_sale,group_real_estate_owner,1,1,1,1
-access_owner_tenant,Owner: Tenants,model_real_estate_tenant,group_real_estate_owner,1,1,1,1
 access_owner_lead,Owner: Leads,model_real_estate_lead,group_real_estate_owner,1,1,1,1
 access_owner_commission_rule,Owner: Commission Rules,model_real_estate_commission_rule,group_real_estate_owner,1,1,1,1
 access_owner_commission_transaction,Owner: Commission Transactions,model_real_estate_commission_transaction,group_real_estate_owner,1,1,1,1
@@ -17,7 +16,6 @@ access_director_commission_transaction,Director: Commission Transactions,model_r
 access_director_sale,Director: Sales,model_real_estate_sale,group_real_estate_director,1,1,1,1
 access_receptionist_property,Receptionist: Properties (Read),model_real_estate_property,group_real_estate_receptionist,1,0,0,0
 access_receptionist_lease,Receptionist: Leases,model_real_estate_lease,group_real_estate_receptionist,1,1,1,1
-access_receptionist_tenant,Receptionist: Tenants,model_real_estate_tenant,group_real_estate_receptionist,1,1,1,0
 access_receptionist_property_key,Receptionist: Property Keys,model_real_estate_property_key,group_real_estate_receptionist,1,1,1,1
 access_financial_commission_rule,Financial: Commission Rules,model_real_estate_commission_rule,group_real_estate_financial,1,1,1,1
 access_financial_commission_transaction,Financial: Commission Transactions,model_real_estate_commission_transaction,group_real_estate_financial,1,1,1,1
@@ -36,7 +34,6 @@ access_manager_property,Manager: Properties,model_real_estate_property,group_rea
 access_manager_agent,Manager: Agents,model_real_estate_agent,group_real_estate_manager,1,1,1,1
 access_manager_lease,Manager: Leases,model_real_estate_lease,group_real_estate_manager,1,1,1,1
 access_manager_sale,Manager: Sales,model_real_estate_sale,group_real_estate_manager,1,1,1,1
-access_manager_tenant,Manager: Tenants,model_real_estate_tenant,group_real_estate_manager,1,1,1,1
 access_manager_assignment,Manager: Assignments,model_real_estate_agent_property_assignment,group_real_estate_manager,1,1,1,1
 access_manager_lead,Manager: Leads,model_real_estate_lead,group_real_estate_manager,1,1,1,0
 access_manager_commission_rule,Manager: Commission Rules,model_real_estate_commission_rule,group_real_estate_manager,1,1,1,0
@@ -49,7 +46,6 @@ access_system_admin_property,System Admin: Properties,model_real_estate_property
 access_system_admin_agent,System Admin: Agents,model_real_estate_agent,base.group_system,1,1,1,1
 access_system_admin_lease,System Admin: Leases,model_real_estate_lease,base.group_system,1,1,1,1
 access_system_admin_sale,System Admin: Sales,model_real_estate_sale,base.group_system,1,1,1,1
-access_system_admin_tenant,System Admin: Tenants,model_real_estate_tenant,base.group_system,1,1,1,1
 access_system_admin_property_type,System Admin: Property Types,model_real_estate_property_type,base.group_system,1,1,1,1
 access_system_admin_state,System Admin: States,model_real_estate_state,base.group_system,1,1,1,1
 access_system_admin_location_type,System Admin: Location Types,model_real_estate_location_type,base.group_system,1,1,1,1
@@ -69,7 +65,6 @@ access_company_manager_property,Company Manager: Properties,model_real_estate_pr
 access_company_manager_agent,Company Manager: Agents,model_real_estate_agent,group_real_estate_manager,1,1,1,1
 access_company_manager_lease,Company Manager: Leases,model_real_estate_lease,group_real_estate_manager,1,1,1,1
 access_company_manager_sale,Company Manager: Sales,model_real_estate_sale,group_real_estate_manager,1,1,1,1
-access_company_manager_tenant,Company Manager: Tenants,model_real_estate_tenant,group_real_estate_manager,1,1,1,1
 access_company_manager_property_type,Company Manager: Property Types,model_real_estate_property_type,group_real_estate_manager,1,1,1,1
 access_company_manager_state,Company Manager: States,model_real_estate_state,group_real_estate_manager,1,1,1,1
 access_company_manager_location_type,Company Manager: Location Types,model_real_estate_location_type,group_real_estate_manager,1,1,1,1
@@ -89,7 +84,6 @@ access_company_user_property,Company User: Properties,model_real_estate_property
 access_company_user_agent,Company User: Agents,model_real_estate_agent,group_real_estate_user,1,1,0,0
 access_company_user_lease,Company User: Leases,model_real_estate_lease,group_real_estate_user,1,1,1,0
 access_company_user_sale,Company User: Sales,model_real_estate_sale,group_real_estate_user,1,1,1,0
-access_company_user_tenant,Company User: Tenants,model_real_estate_tenant,group_real_estate_user,1,1,1,0
 access_company_user_property_type,Company User: Property Types,model_real_estate_property_type,group_real_estate_user,1,0,0,0
 access_company_user_state,Company User: States,model_real_estate_state,group_real_estate_user,1,0,0,0
 access_company_user_location_type,Company User: Location Types,model_real_estate_location_type,group_real_estate_user,1,0,0,0
@@ -105,7 +99,6 @@ access_company_user_property_key,Company User: Property Keys,model_real_estate_p
 access_company_user_property_commission,Company User: Property Commissions,model_real_estate_property_commission,group_real_estate_user,1,1,1,0
 access_company_user_property_tag,Company User: Property Tags,model_real_estate_property_tag,group_real_estate_user,1,0,0,0
 access_agent_estate_company,Agent: Estate Companies,model_thedevkitchen_estate_company,group_real_estate_agent,1,0,0,0
-access_agent_tenant,Agent: Tenants,model_real_estate_tenant,group_real_estate_agent,1,0,0,0
 access_agent_property_type,Agent: Property Types,model_real_estate_property_type,group_real_estate_agent,1,0,0,0
 access_agent_state,Agent: States,model_real_estate_state,group_real_estate_agent,1,0,0,0
 access_agent_location_type,Agent: Location Types,model_real_estate_location_type,group_real_estate_agent,1,0,0,0

@@ -72,7 +72,7 @@ class LeaseApiController(http.Controller):
         """Serialize a lease record to dict with HATEOAS links."""
         relations = {
             'property': f'/api/v1/properties/{lease.property_id.id}' if lease.property_id else None,
-            'tenant': f'/api/v1/tenants/{lease.tenant_id.id}' if lease.tenant_id else None,
+            'profile': f'/api/v1/profiles/{lease.profile_id.id}' if lease.profile_id else None,
         }
         # Action links based on status
         if lease.status == 'active':
@@ -87,16 +87,16 @@ class LeaseApiController(http.Controller):
         # Add absolute related resource links
         if lease.property_id:
             links['property'] = f'/api/v1/properties/{lease.property_id.id}'
-        if lease.tenant_id:
-            links['tenant'] = f'/api/v1/tenants/{lease.tenant_id.id}'
+        if lease.profile_id:
+            links['profile'] = f'/api/v1/profiles/{lease.profile_id.id}'
 
         return {
             'id': lease.id,
             'name': lease.name,
             'property_id': lease.property_id.id,
             'property_name': lease.property_id.name if lease.property_id else None,
-            'tenant_id': lease.tenant_id.id,
-            'tenant_name': lease.tenant_id.name if lease.tenant_id else None,
+            'profile_id': lease.profile_id.id,
+            'profile_name': lease.profile_id.name if lease.profile_id else None,
             'start_date': str(lease.start_date) if lease.start_date else None,
             'end_date': str(lease.end_date) if lease.end_date else None,
             'rent_amount': lease.rent_amount,
@@ -152,9 +152,9 @@ class LeaseApiController(http.Controller):
                     domain.append(('property_id', '=', int(kwargs['property_id'])))
                 except ValueError:
                     pass
-            if kwargs.get('tenant_id'):
+            if kwargs.get('profile_id'):
                 try:
-                    domain.append(('tenant_id', '=', int(kwargs['tenant_id'])))
+                    domain.append(('profile_id', '=', int(kwargs['profile_id'])))
                 except ValueError:
                     pass
             if kwargs.get('status'):
@@ -233,13 +233,13 @@ class LeaseApiController(http.Controller):
                 )
                 return request.make_json_response(resp, status=code)
 
-            # Validate tenant exists and belongs to company (FR-012)
-            tenant = request.env['real.estate.tenant'].sudo().browse(data['tenant_id'])
-            if not tenant.exists() or not tenant.active:
-                return error_response(404, 'Tenant not found')
+            # Validate profile exists and belongs to company (FR-012)
+            profile = request.env['thedevkitchen.estate.profile'].sudo().browse(data['profile_id'])
+            if not profile.exists() or not profile.is_active:
+                return error_response(404, 'Profile not found')
             if company_ids is not None:
-                if not any(cid in company_ids for cid in tenant.company_ids.ids):
-                    return error_response(404, 'Tenant not found')
+                if profile.company_id.id not in company_ids:
+                    return error_response(404, 'Profile not found')
 
             # Date validation (end > start) — FR-010
             try:
@@ -255,7 +255,7 @@ class LeaseApiController(http.Controller):
             # Prepare vals
             lease_vals = {
                 'property_id': data['property_id'],
-                'tenant_id': data['tenant_id'],
+                'profile_id': data['profile_id'],
                 'start_date': data['start_date'],
                 'end_date': data['end_date'],
                 'rent_amount': data['rent_amount'],

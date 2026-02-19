@@ -104,48 +104,6 @@ class SchemaValidator:
         }
     }
 
-    # ===== Feature 008: Tenant, Lease & Sale schemas =====
-
-    # Tenant creation schema (FR-001, FR-002)
-    TENANT_CREATE_SCHEMA = {
-        'required': ['name', 'company_id', 'document', 'phone', 'email', 'birthdate'],
-        'optional': ['occupation'],
-        'types': {
-            'name': str,
-            'company_id': int,
-            'document': str,
-            'phone': str,
-            'email': str,
-            'birthdate': str,
-            'occupation': str,
-        },
-        'constraints': {
-            'name': lambda v: len(v.strip()) > 0,
-            'company_id': lambda v: isinstance(v, int),
-            'document': lambda v: validators.validate_document(v) if v else False,
-            'phone': lambda v: len(v.strip()) > 0,
-            'email': lambda v: '@' in v and '.' in v.split('@')[-1] if v else False,
-            'birthdate': lambda v: len(v.strip()) > 0,
-        }
-    }
-
-    # Tenant update schema (FR-004)
-    TENANT_UPDATE_SCHEMA = {
-        'required': [],
-        'optional': ['name', 'phone', 'email', 'occupation', 'birthdate'],
-        'types': {
-            'name': str,
-            'phone': str,
-            'email': str,
-            'occupation': str,
-            'birthdate': str,
-        },
-        'constraints': {
-            'name': lambda v: len(v.strip()) > 0 if v else True,
-            'email': lambda v: '@' in v and '.' in v.split('@')[-1] if v else True,
-        }
-    }
-
     # ===== PROFILE SCHEMAS (Feature 010) =====
     
     # Profile creation schema (FR1.1)
@@ -198,11 +156,11 @@ class SchemaValidator:
 
     # Lease creation schema (FR-009, FR-010, FR-011)
     LEASE_CREATE_SCHEMA = {
-        'required': ['property_id', 'tenant_id', 'start_date', 'end_date', 'rent_amount'],
+        'required': ['property_id', 'profile_id', 'start_date', 'end_date', 'rent_amount'],
         'optional': ['status'],
         'types': {
             'property_id': int,
-            'tenant_id': int,
+            'profile_id': int,
             'start_date': str,
             'end_date': str,
             'rent_amount': (int, float),
@@ -210,7 +168,7 @@ class SchemaValidator:
         },
         'constraints': {
             'property_id': lambda v: v > 0,
-            'tenant_id': lambda v: v > 0,
+            'profile_id': lambda v: v > 0,
             'rent_amount': lambda v: v > 0,
             'status': lambda v: v in ('draft', 'active') if v else True,
         }

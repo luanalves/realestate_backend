@@ -214,7 +214,7 @@ class Property(models.Model):
         tracking=True,
         help='Agent who originally prospected/registered this property. Earns commission split when another agent completes the sale.'
     )
-    tenant_id = fields.Many2one('real.estate.tenant', string='Current Tenant')
+    profile_id = fields.Many2one('thedevkitchen.estate.profile', string='Current Profile', ondelete='set null')
     sale_id = fields.Many2one('real.estate.sale', string='Sale')
     lease_id = fields.Many2one('real.estate.lease', string='Lease')
     
