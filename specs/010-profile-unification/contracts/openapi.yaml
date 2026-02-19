@@ -1,0 +1,730 @@
+openapi: 3.0.3
+info:
+  title: Profile Unification API
+  description: |
+    Unified profile management for all 9 RBAC types in the real estate system.
+    Part of Feature 010 — Profile Unification (ADR-024).
+    
+    **Key Features**:
+    - Single unified table for all 9 profile types
+    - Compound unique constraint: (document, company_id, profile_type_id)
+    - RBAC Authorization Matrix: Owner (9/9), Manager (5/9), Agent (2/9)
+    - Agent auto-creates extension (611 LOC business logic preserved)
+    - Multi-tenancy: Same document allowed across different companies
+    - Integration with Feature 009: invite references profile_id
+    
+    **Authentication**:
+    - All endpoints require OAuth 2.0 JWT + Session + Company (triple auth)
+    - GET requests: session_id via X-Openerp-Session-Id header
+    - POST/PUT/DELETE: session_id in body JSON
+    
+    **Profile Types**:
+    1. owner - Proprietário (dono da imobiliária)
+    2. director - Diretor
+    3. manager - Gerente
+    4. agent - Corretor (auto-creates real.estate.agent extension)
+    5. prospector - Captador
+    6. receptionist - Atendente
+    7. financial - Financeiro
+    8. legal - Jurídico
+    9. portal - Portal Cliente (inquilino/proprietário de imóvel)
+    
+  version: 1.0.0
+  contact:
+    name: TheDevKitchen
+  license:
+    name: Proprietary
+
+servers:
+  - url: http://localhost:8069
+    description: Local Odoo development
+  - url: https://api.example.com
+    description: Production
+
+tags:
+  - name: Profiles
+    description: Unified profile management for all RBAC types
+  - name: Profile Types
+    description: Profile type lookup data
+
+security:
+  - OAuth2: []
+  - SessionAuth: []
+  - CompanyContext: []
+
+paths:
+  /api/v1/profiles:
+    post:
+      tags: [Profiles]
+      summary: Create a new profile
+      description: |
+        Creates a unified profile record for any of the 9 RBAC types.
+        
+        **Authorization Matrix (ADR-024)**:
+        - **Owner**: Can create all 9 types
+        - **Manager**: Can create 5 types (agent, prospector, receptionist, financial, legal)
+        - **Agent**: Can create 2 types (owner=property owner, portal=tenant)
+        - **Others**: 403 Forbidden
+        
+        **Special Behavior**:
+        - If `profile_type='agent'`, auto-creates `real.estate.agent` extension with 611 LOC business logic
+        - If `profile_type='portal'`, requires `occupation` field
+        - Compound unique constraint: Same document allowed if different (company_id, profile_type_id)
+        
+        **Multi-tenancy**: Company isolation active (@require_company)
+      operationId: createProfile
+      security:
+        - OAuth2: []
+          SessionAuth: []
+          CompanyContext: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - company_id
+                - document
+                - email
+                - profile_type
+              properties:
+                name:
+                  type: string
+                  description: Full name
+                  example: João Silva
+                company_id:
+                  type: integer
+                  description: Company ID (must match user's company)
+                  example: 1
+                document:
+                  type: string
+                  description: CPF (11 digits) or CNPJ (14 digits)
+                  pattern: '^\d{11}|\d{14}$'
+                  example: "12345678901"
+                email:
+                  type: string
+                  format: email
+                  description: Valid email address
+                  example: joao.silva@example.com
+                phone:
+                  type: string
+                  description: Phone number
+                  example: "+5511999998888"
+                mobile:
+                  type: string
+                  description: Mobile number
+                  example: "+5511988887777"
+                birthdate:
+                  type: string
+                  format: date
+                  description: Date of birth (ISO 8601)
+                  example: "1990-01-01"
+                profile_type:
+                  type: string
+                  enum: [owner, director, manager, agent, prospector, receptionist, financial, legal, portal]
+                  description: Profile type code
+                  example: agent
+                occupation:
+                  type: string
+                  description: Occupation (required for portal type)
+                  example: "Engenheiro de Software"
+                hire_date:
+                  type: string
+                  format: date
+                  description: Hire date (for agent type)
+                  example: "2025-01-15"
+            examples:
+              agent:
+                summary: Create Agent Profile
+                value:
+                  name: João Silva
+                  company_id: 1
+                  document: "12345678901"
+                  email: joao.silva@example.com
+                  phone: "+5511999998888"
+                  birthdate: "1990-01-01"
+                  profile_type: agent
+                  hire_date: "2025-01-15"
+              portal:
+                summary: Create Portal Profile (Tenant)
+                value:
+                  name: Maria Santos
+                  company_id: 1
+                  document: "98765432109"
+                  email: maria.santos@example.com
+                  phone: "+5511988776655"
+                  birthdate: "1985-05-15"
+                  profile_type: portal
+                  occupation: "Arquiteta"
+      responses:
+        '201':
+          description: Profile created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileResponse'
+        '400':
+          description: Validation error (missing fields, invalid CPF, invalid email)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden (authorization matrix violation)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict (duplicate document in same company + profile_type)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    get:
+      tags: [Profiles]
+      summary: List profiles
+      description: |
+        Retrieves a paginated list of profiles with optional filters.
+        
+        **Multi-tenancy**: Company isolation enforced via required `company_ids` parameter
+        
+        **IMPORTANT**: For GET requests, session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in body.
+      operationId: listProfiles
+      security:
+        - OAuth2: []
+          SessionAuth: []
+          CompanyContext: []
+      parameters:
+        - name: company_ids
+          in: query
+          required: true
+          description: Comma-separated company IDs (multi-tenancy enforcement)
+          schema:
+            type: string
+            example: "1,2"
+        - name: profile_type
+          in: query
+          required: false
+          description: Filter by profile type code
+          schema:
+            type: string
+            enum: [owner, director, manager, agent, prospector, receptionist, financial, legal, portal]
+            example: agent
+        - name: document
+          in: query
+          required: false
+          description: Filter by document (exact match)
+          schema:
+            type: string
+            example: "12345678901"
+        - name: name
+          in: query
+          required: false
+          description: Search by name (case-insensitive partial match)
+          schema:
+            type: string
+            example: "Silva"
+        - name: active
+          in: query
+          required: false
+          description: Filter by active status
+          schema:
+            type: boolean
+            example: true
+        - name: limit
+          in: query
+          required: false
+          description: Max results per page (default 20, max 100)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+            example: 20
+        - name: offset
+          in: query
+          required: false
+          description: Pagination offset (default 0)
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+            example: 0
+      responses:
+        '200':
+          description: List of profiles
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileListResponse'
+        '400':
+          description: Missing required parameter (company_ids)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/profiles/{profile_id}:
+    get:
+      tags: [Profiles]
+      summary: Get profile details
+      description: |
+        Retrieves detailed information about a specific profile.
+        
+        **Multi-tenancy**: Returns 404 for cross-company access (anti-enumeration)
+        
+        **IMPORTANT**: For GET requests, session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in body.
+      operationId: getProfile
+      security:
+        - OAuth2: []
+          SessionAuth: []
+          CompanyContext: []
+      parameters:
+        - name: profile_id
+          in: path
+          required: true
+          description: Profile ID to retrieve
+          schema:
+            type: integer
+            example: 42
+        - name: company_ids
+          in: query
+          required: true
+          description: Company ID for multi-tenancy enforcement
+          schema:
+            type: string
+            example: "1"
+      responses:
+        '200':
+          description: Profile details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileDetailResponse'
+        '404':
+          description: Profile not found or cross-company access
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    put:
+      tags: [Profiles]
+      summary: Update profile
+      description: |
+        Updates a profile's mutable fields.
+        
+        **Updatable Fields**: name, email, phone, mobile, birthdate, occupation, hire_date
+        
+        **Immutable Fields** (400 error if attempted):
+        - profile_type - Cannot change profile type
+        - company_id - Cannot transfer to another company
+        - document - Cannot change document
+        
+        **Special Behavior**:
+        - If profile_type='agent', changes sync to real.estate.agent extension
+        - Updated timestamp automatically updated
+      operationId: updateProfile
+      security:
+        - OAuth2: []
+          SessionAuth: []
+          CompanyContext: []
+      parameters:
+        - name: profile_id
+          in: path
+          required: true
+          description: Profile ID to update
+          schema:
+            type: integer
+            example: 42
+        - name: company_ids
+          in: query
+          required: true
+          description: Company ID for multi-tenancy enforcement
+          schema:
+            type: string
+            example: "1"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: Full name
+                  example: "João Silva Updated"
+                email:
+                  type: string
+                  format: email
+                  description: Email address
+                  example: "joao.updated@example.com"
+                phone:
+                  type: string
+                  description: Phone number
+                  example: "+5511988887777"
+                mobile:
+                  type: string
+                  description: Mobile number
+                  example: "+5511977776666"
+                birthdate:
+                  type: string
+                  format: date
+                  description: Date of birth
+                  example: "1990-01-01"
+                occupation:
+                  type: string
+                  description: Occupation (portal type)
+                  example: "Arquiteto Sênior"
+                hire_date:
+                  type: string
+                  format: date
+                  description: Hire date (agent type)
+                  example: "2025-02-01"
+      responses:
+        '200':
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileResponse'
+        '400':
+          description: Validation error or attempt to modify immutable field
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Profile not found or cross-company access
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict (duplicate email in company)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    delete:
+      tags: [Profiles]
+      summary: Soft delete profile
+      description: |
+        Performs a SOFT DELETE by setting active=false. Profile data is preserved.
+        
+        **Behavior**:
+        - Sets active=false
+        - Sets deactivation_date to current timestamp
+        - Stores deactivation_reason if provided
+        - Cascades to agent extension if profile_type='agent'
+        - Linked res.users also deactivated if exists
+      operationId: deleteProfile
+      security:
+        - OAuth2: []
+          SessionAuth: []
+          CompanyContext: []
+      parameters:
+        - name: profile_id
+          in: path
+          required: true
+          description: Profile ID to soft delete
+          schema:
+            type: integer
+            example: 42
+        - name: company_ids
+          in: query
+          required: true
+          description: Company ID for multi-tenancy enforcement
+          schema:
+            type: string
+            example: "1"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                deactivation_reason:
+                  type: string
+                  description: Optional reason for deactivation
+                  example: "Employee resignation"
+      responses:
+        '200':
+          description: Profile deactivated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Profile deactivated successfully"
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        example: 42
+                      active:
+                        type: boolean
+                        example: false
+                      deactivation_date:
+                        type: string
+                        format: date-time
+                        example: "2026-02-19T12:00:00Z"
+                      deactivation_reason:
+                        type: string
+                        example: "Employee resignation"
+        '400':
+          description: Profile already inactive
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Profile not found or cross-company access
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/profile-types:
+    get:
+      tags: [Profile Types]
+      summary: List profile types
+      description: |
+        Returns the list of 9 available profile types.
+        
+        **Note**: This endpoint does NOT require @require_company decorator as profile types are global configuration.
+        
+        **IMPORTANT**: For GET requests, session_id MUST be sent via header 'X-Openerp-Session-Id'.
+      operationId: listProfileTypes
+      security:
+        - OAuth2: []
+          SessionAuth: []
+      responses:
+        '200':
+          description: List of profile types
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProfileType'
+              example:
+                - code: owner
+                  name: Proprietário
+                  description: Dono da imobiliária
+                  is_active: true
+                - code: director
+                  name: Diretor
+                  description: Diretor executivo
+                  is_active: true
+                - code: manager
+                  name: Gerente
+                  description: Gerente operacional
+                  is_active: true
+                - code: agent
+                  name: Corretor
+                  description: Corretor de imóveis
+                  is_active: true
+                - code: prospector
+                  name: Captador
+                  description: Captador de imóveis
+                  is_active: true
+                - code: receptionist
+                  name: Atendente
+                  description: Atendente administrativo
+                  is_active: true
+                - code: financial
+                  name: Financeiro
+                  description: Analista financeiro
+                  is_active: true
+                - code: legal
+                  name: Jurídico
+                  description: Analista jurídico
+                  is_active: true
+                - code: portal
+                  name: Portal Cliente
+                  description: Cliente (proprietário de imóvel ou inquilino)
+                  is_active: true
+
+components:
+  securitySchemes:
+    OAuth2:
+      type: oauth2
+      description: OAuth 2.0 client credentials flow
+      flows:
+        clientCredentials:
+          tokenUrl: /api/v1/auth/token
+          scopes: {}
+    SessionAuth:
+      type: apiKey
+      in: header
+      name: X-Openerp-Session-Id
+      description: Session ID from user login
+    CompanyContext:
+      type: apiKey
+      in: header
+      name: X-Company-ID
+      description: Active company context (for multi-tenant endpoints)
+
+  schemas:
+    ProfileResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 42
+        name:
+          type: string
+          example: "João Silva"
+        document:
+          type: string
+          example: "12345678901"
+        email:
+          type: string
+          example: "joao.silva@example.com"
+        phone:
+          type: string
+          example: "+5511999998888"
+        mobile:
+          type: string
+          nullable: true
+          example: null
+        birthdate:
+          type: string
+          format: date
+          example: "1990-01-01"
+        profile_type:
+          type: string
+          example: "agent"
+        profile_type_name:
+          type: string
+          example: "Corretor"
+        company_id:
+          type: integer
+          example: 1
+        company_name:
+          type: string
+          example: "QuickSol Imóveis"
+        partner_id:
+          type: integer
+          example: 123
+        active:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-02-19T10:00:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-02-19T10:30:00Z"
+        _links:
+          type: object
+          properties:
+            self:
+              type: string
+              example: "/api/v1/profiles/42"
+            update:
+              type: string
+              example: "/api/v1/profiles/42"
+            delete:
+              type: string
+              example: "/api/v1/profiles/42"
+            agent:
+              type: string
+              nullable: true
+              example: "/api/v1/agents/15"
+
+    ProfileDetailResponse:
+      allOf:
+        - $ref: '#/components/schemas/ProfileResponse'
+        - type: object
+          properties:
+            occupation:
+              type: string
+              nullable: true
+              example: "Engenheiro de Software"
+            hire_date:
+              type: string
+              format: date
+              nullable: true
+              example: "2025-01-15"
+
+    ProfileListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProfileResponse'
+        count:
+          type: integer
+          example: 1
+        limit:
+          type: integer
+          example: 20
+        offset:
+          type: integer
+          example: 0
+        _links:
+          type: object
+          properties:
+            self:
+              type: string
+              example: "/api/v1/profiles?company_ids=1&limit=20&offset=0"
+            next:
+              type: string
+              nullable: true
+              example: null
+            prev:
+              type: string
+              nullable: true
+              example: null
+
+    ProfileType:
+      type: object
+      properties:
+        code:
+          type: string
+          enum: [owner, director, manager, agent, prospector, receptionist, financial, legal, portal]
+          example: "agent"
+        name:
+          type: string
+          example: "Corretor"
+        description:
+          type: string
+          example: "Corretor de imóveis"
+        is_active:
+          type: boolean
+          example: true
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "validation_error"
+        message:
+          type: string
+          example: "Invalid CPF format"
+        details:
+          type: object
+          nullable: true
+          example:
+            field: document
+            value: "123"
