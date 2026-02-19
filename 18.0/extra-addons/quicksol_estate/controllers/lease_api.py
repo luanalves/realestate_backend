@@ -1,19 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Lease API Controller — Feature 008
 
-Provides 7 REST endpoints for lease lifecycle management:
-  GET    /api/v1/leases              — Paginated list with filters
-  POST   /api/v1/leases              — Create lease with validation
-  GET    /api/v1/leases/<id>         — Detail with property+tenant info
-  PUT    /api/v1/leases/<id>         — Update (non-terminated only)
-  DELETE /api/v1/leases/<id>         — Soft archive (ADR-015)
-  POST   /api/v1/leases/<id>/renew   — In-place renewal with audit
-  POST   /api/v1/leases/<id>/terminate — Early termination
-
-Reference: owner_api.py, company_api.py patterns
-FRs covered: FR-009..FR-020, FR-030..FR-034, FR-037
-"""
 import json
 import logging
 from datetime import datetime
