@@ -78,8 +78,13 @@ class InviteService:
         )
 
     def create_invited_user(
-        self, name, email, document, profile, company, created_by, **extra_fields
+        self, name, email, document, profile, company, created_by, profile_id=None, profile_record=None, **extra_fields
     ):
+        """
+        Create invited user for operational/admin profiles.
+        
+        T13 (Feature 010): If profile_id is provided, link user to existing profile via partner_id.
+        """
 
         # Validate document (CPF for non-portal profiles)
         if profile != "portal":
@@ -100,12 +105,15 @@ class InviteService:
             if existing_cpf:
                 raise ValidationError(_("CPF already exists: {}").format(document))
 
-        # Get target group
-        group_xml_id = self.PROFILE_TO_GROUP.get(profile)
-        if not group_xml_id:
-            raise ValidationError(_("Invalid profile: {}").format(profile))
-
-        target_group = self.env.ref(group_xml_id)
+        # Get target group (T13: from profile_record if provided, else from mapping)
+        if profile_record and profile_record.profile_type_id:
+            group_xml_id = profile_record.profile_type_id.group_xml_id
+            target_group = self.env.ref(group_xml_id)
+        else:
+            group_xml_id = self.PROFILE_TO_GROUP.get(profile)
+            if not group_xml_id:
+                raise ValidationError(_("Invalid profile: {}").format(profile))
+            target_group = self.env.ref(group_xml_id)
 
         # Prepare user data
         user_vals = {
@@ -130,6 +138,13 @@ class InviteService:
 
         # Create user
         new_user = self.env["res.users"].sudo().create(user_vals)
+        
+        # T13: Link profile to user via partner_id
+        if profile_id and profile_record:
+            profile_record.sudo().write({
+                'partner_id': new_user.partner_id.id
+            })
+            _logger.info(f"Linked profile {profile_id} to user {new_user.id} via partner_id {new_user.partner_id.id}")
 
         _logger.info(
             f"User invited: {email} (profile: {profile}) by {created_by.login}"
@@ -147,7 +162,15 @@ class InviteService:
         company_id,
         created_by,
         occupation=None,
+        profile_id=None,
+        profile_record=None,
     ):
+        """
+        Create portal user (for tenant/buyer access).
+        
+        T13 (Feature 010): If profile_id is provided, skip tenant creation and link 
+        existing profile to user via partner_id.
+        """
         # Validate required fields
         if not phone:
             raise ValidationError(_("Phone is required for portal profile"))
@@ -166,25 +189,28 @@ class InviteService:
         if existing_email:
             raise ValidationError(_("Email already exists: {}").format(email))
 
-        # Check if document exists in tenant table without linked user (409 conflict)
-        existing_tenant = (
-            self.env["real.estate.tenant"]
-            .sudo()
-            .search([("document", "=", document)], limit=1)
-        )
-        if existing_tenant:
-            linked_user = (
-                self.env["res.users"]
+        # T13: Skip tenant existence check when profile_id is provided (unified profile flow)
+        tenant = None
+        if not profile_id:
+            # Legacy flow: Check if document exists in tenant table without linked user (409 conflict)
+            existing_tenant = (
+                self.env["real.estate.tenant"]
                 .sudo()
-                .search([("partner_id", "=", existing_tenant.partner_id.id)], limit=1)
+                .search([("document", "=", document)], limit=1)
             )
-            if not linked_user:
-                raise ValidationError(
-                    _(
-                        "Document already registered for another tenant. "
-                        "Please link the existing tenant to a user account manually."
-                    )
+            if existing_tenant:
+                linked_user = (
+                    self.env["res.users"]
+                    .sudo()
+                    .search([("partner_id", "=", existing_tenant.partner_id.id)], limit=1)
                 )
+                if not linked_user:
+                    raise ValidationError(
+                        _(
+                            "Document already registered for another tenant. "
+                            "Please link the existing tenant to a user account manually."
+                        )
+                    )
 
         # Get portal group
         portal_group = self.env.ref("quicksol_estate.group_real_estate_portal_user")
@@ -201,29 +227,41 @@ class InviteService:
 
         user = self.env["res.users"].sudo().create(user_vals)
 
-        # Step 2: Create real.estate.tenant linked via partner_id
-        # Note: res.users.create() automatically creates res.partner
-        company = self.env["thedevkitchen.estate.company"].sudo().browse(company_id)
+        # T13: Two flows - unified profile OR legacy tenant creation
+        if profile_id and profile_record:
+            # Unified profile flow: Link profile to user via partner_id
+            profile_record.sudo().write({
+                'partner_id': user.partner_id.id
+            })
+            _logger.info(
+                f"Portal user created and linked to profile {profile_id}: {email} "
+                f"by {created_by.login}"
+            )
+            tenant = None  # No tenant created in unified flow
+        else:
+            # Legacy flow: Create real.estate.tenant linked via partner_id
+            # Note: res.users.create() automatically creates res.partner
+            company = self.env["thedevkitchen.estate.company"].sudo().browse(company_id)
 
-        tenant_vals = {
-            "name": name,
-            "email": email,
-            "document": document,
-            "phone": phone,
-            "birthdate": birthdate,
-            "partner_id": user.partner_id.id,  # Link to auto-created partner
-            "company_ids": [(4, company_id)],
-        }
+            tenant_vals = {
+                "name": name,
+                "email": email,
+                "document": document,
+                "phone": phone,
+                "birthdate": birthdate,
+                "partner_id": user.partner_id.id,  # Link to auto-created partner
+                "company_ids": [(4, company_id)],
+            }
 
-        if occupation:
-            tenant_vals["occupation"] = occupation
+            if occupation:
+                tenant_vals["occupation"] = occupation
 
-        tenant = self.env["real.estate.tenant"].sudo().create(tenant_vals)
+            tenant = self.env["real.estate.tenant"].sudo().create(tenant_vals)
 
-        _logger.info(
-            f"Portal user + tenant created: {email} (tenant_id: {tenant.id}) "
-            f"by {created_by.login}"
-        )
+            _logger.info(
+                f"Portal user + tenant created: {email} (tenant_id: {tenant.id}) "
+                f"by {created_by.login}"
+            )
 
         return user, tenant
 

@@ -184,6 +184,40 @@ class AgentApiController(http.Controller):
                 return error_response(403, error)
             agent_vals['company_id'] = company_id
             
+            # T12 (Feature 010): Auto-create unified profile for agent
+            # Lookup profile_type='agent'
+            ProfileType = request.env['thedevkitchen.profile.type']
+            profile_type = ProfileType.sudo().search([
+                ('code', '=', 'agent'),
+                ('is_active', '=', True)
+            ], limit=1)
+            
+            if not profile_type:
+                _logger.error('Profile type "agent" not found in database')
+                return error_response(500, 'Profile type configuration error')
+            
+            # Create profile record with agent's cadastral data
+            Profile = request.env['thedevkitchen.estate.profile']
+            profile_vals = {
+                'name': data['name'],
+                'company_id': company_id,
+                'profile_type_id': profile_type.id,
+                'document': data['cpf'],  # cpf → document
+                'email': data['email'],
+                'phone': data.get('phone'),
+                'mobile': data.get('mobile'),
+                'hire_date': data.get('hire_date'),
+                'birthdate': data.get('birthdate', '1990-01-01'),  # Default if not provided
+                'created_at': datetime.now(),
+                'updated_at': datetime.now(),
+            }
+            
+            # Create profile (atomic transaction with agent creation)
+            profile = Profile.sudo().create(profile_vals)
+            
+            # Link profile to agent
+            agent_vals['profile_id'] = profile.id
+            
             # Create agent
             Agent = request.env['real.estate.agent']
             agent = Agent.sudo().create(agent_vals)
@@ -204,12 +238,17 @@ class AgentApiController(http.Controller):
                 'hire_date': agent.hire_date.isoformat() if agent.hire_date else None,
                 'company_id': agent.company_id.id if agent.company_id else None,
                 'company_name': agent.company_id.name if agent.company_id else None,
+                'profile_id': agent.profile_id.id if agent.profile_id else None,  # T12: Include profile link
                 '_links': {
                     'self': f'/api/v1/agents/{agent.id}',
                     'properties': f'/api/v1/agents/{agent.id}/properties',
                     'deactivate': f'/api/v1/agents/{agent.id}/deactivate',
                 }
             }
+            
+            # Add profile link if profile exists (T12)
+            if agent.profile_id:
+                agent_data['_links']['profile'] = f'/api/v1/profiles/{agent.profile_id.id}'
             
             return Response(
                 json.dumps({'success': True, 'data': agent_data}),

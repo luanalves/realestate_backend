@@ -37,15 +37,66 @@ class InviteController(http.Controller):
                     400, "validation_error", "Invalid JSON in request body"
                 )
 
-            # Validate required base fields
-            required_fields = ["name", "email", "document", "profile"]
-            missing_fields = [f for f in required_fields if not data.get(f)]
-            if missing_fields:
+            # T13 (Feature 010): Support optional profile_id for unified profile flow
+            profile_id = data.get("profile_id")
+            profile_record = None
+            
+            if profile_id:
+                # Load profile record
+                ProfileModel = request.env["thedevkitchen.estate.profile"]
+                profile_record = ProfileModel.sudo().browse(int(profile_id))
+                
+                if not profile_record.exists():
+                    return self._error_response(
+                        404, "not_found", f"Profile {profile_id} not found"
+                    )
+                
+                # Check if profile already has a user (via partner_id)
+                if profile_record.partner_id:
+                    existing_user = (
+                        request.env["res.users"]
+                        .sudo()
+                        .search([("partner_id", "=", profile_record.partner_id.id)], limit=1)
+                    )
+                    if existing_user:
+                        return self._error_response(
+                            409,
+                            "conflict",
+                            f"Profile {profile_id} already has a linked user account",
+                            {"user_id": existing_user.id},
+                        )
+                
+                # Extract data from profile
+                data.setdefault("name", profile_record.name)
+                data.setdefault("email", profile_record.email)
+                data.setdefault("document", profile_record.document)
+                data.setdefault("phone", profile_record.phone)
+                data.setdefault("mobile", profile_record.mobile)
+                data.setdefault("birthdate", profile_record.birthdate.strftime("%Y-%m-%d") if profile_record.birthdate else None)
+                data.setdefault("company_id", profile_record.company_id.id)
+                
+                # Derive profile from profile_type
+                profile = profile_record.profile_type_id.code
+                data["profile"] = profile
+            else:
+                # Legacy flow: validate required fields
+                required_fields = ["name", "email", "document", "profile"]
+                missing_fields = [f for f in required_fields if not data.get(f)]
+                if missing_fields:
+                    return self._error_response(
+                        400,
+                        "validation_error",
+                        f"Missing required fields: {', '.join(missing_fields)}",
+                        {"missing_fields": missing_fields},
+                    )
+                profile = data["profile"]
+
+            # Validate required base fields (either from profile or from body)
+            if not data.get("name") or not data.get("email") or not data.get("document"):
                 return self._error_response(
                     400,
                     "validation_error",
-                    f"Missing required fields: {', '.join(missing_fields)}",
-                    {"missing_fields": missing_fields},
+                    "Missing required user data (name, email, document)",
                 )
 
             # Validate email format
@@ -120,7 +171,7 @@ class InviteController(http.Controller):
                         {"missing_fields": missing_portal},
                     )
 
-                # Create portal user + tenant
+                # Create portal user (T13: + optional tenant if no profile_id)
                 try:
                     user, tenant = invite_service.create_portal_user(
                         name=data["name"],
@@ -131,6 +182,8 @@ class InviteController(http.Controller):
                         company_id=data["company_id"],
                         created_by=current_user,
                         occupation=data.get("occupation"),
+                        profile_id=profile_id,  # T13: Pass profile_id
+                        profile_record=profile_record,  # T13: Pass profile for partner linkage
                     )
                 except ValidationError as e:
                     if "already exists" in str(e) or "already registered" in str(e):
@@ -151,6 +204,8 @@ class InviteController(http.Controller):
                         created_by=current_user,
                         phone=data.get("phone"),
                         mobile=data.get("mobile"),
+                        profile_id=profile_id,  # T13: Pass profile_id
+                        profile_record=profile_record,  # T13: Pass profile for partner linkage
                     )
                     tenant = None
                 except ValidationError as e:
@@ -196,6 +251,10 @@ class InviteController(http.Controller):
                     else None
                 ),
             }
+            
+            # T13: Add profile_id if provided
+            if profile_id:
+                response_data["profile_id"] = profile_id
 
             # Add tenant data for portal
             if profile == "portal" and tenant:
@@ -224,6 +283,10 @@ class InviteController(http.Controller):
 
             if tenant:
                 links["tenant"] = f"/api/v1/tenants/{tenant.id}"
+            
+            # T13: Add profile link if profile_id provided
+            if profile_id:
+                links["profile"] = f"/api/v1/profiles/{profile_id}"
 
             return self._success_response(
                 201,
