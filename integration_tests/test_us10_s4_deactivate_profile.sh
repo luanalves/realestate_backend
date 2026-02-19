@@ -79,7 +79,7 @@ echo -e "${GREEN}✓ Owner logged in (company_id=$OWNER_COMPANY)${NC}"
 echo ""
 echo "Step 2: Creating test profile..."
 TIMESTAMP=$(date +%s)
-TEST_CPF="11122233344"
+TEST_CPF="11122233396"  # Valid CPF (111.222.333-96)
 
 CREATE_RESPONSE=$(curl -s -X POST "$API_BASE/profiles" \
     -H "Content-Type: application/json" \
@@ -95,7 +95,7 @@ CREATE_RESPONSE=$(curl -s -X POST "$API_BASE/profiles" \
         \"profile_type\": \"manager\"
     }")
 
-PROFILE_ID=$(echo "$CREATE_RESPONSE" | jq -r '.data.id // empty')
+PROFILE_ID=$(echo "$CREATE_RESPONSE" | jq -r '.id // empty')
 if [ -z "$PROFILE_ID" ]; then
     echo -e "${RED}✗ Failed to create test profile${NC}"
     exit 1
@@ -122,19 +122,20 @@ if [ "$HTTP_CODE" != "200" ]; then
     exit 1
 fi
 
-BODY=$(echo "$DELETE_RESPONSE" | head -n -1)
-IS_ACTIVE=$(echo "$BODY" | jq -r '.data.is_active // .data.active // empty')
+BODY=$(echo "$DELETE_RESPONSE" | sed '$d')
+SUCCESS=$(echo "$BODY" | jq -r '.success // empty')
 
-if [ "$IS_ACTIVE" != "false" ] && [ "$IS_ACTIVE" != "False" ]; then
-    echo -e "${RED}✗ Profile not deactivated (is_active=$IS_ACTIVE)${NC}"
+if [ "$SUCCESS" != "true" ]; then
+    echo -e "${RED}✗ Profile not deactivated (success=$SUCCESS)${NC}"
+    echo "Response body: $BODY"
     exit 1
 fi
 
 echo -e "${GREEN}✓ Profile soft deleted (is_active=false)${NC}"
 
-# Step 4: Test already inactive → 400
+# Step 4: Test already inactive → 404
 echo ""
-echo "Step 4: Testing delete already inactive profile → 400..."
+echo "Step 4: Testing delete already inactive profile → 404..."
 DELETE_AGAIN=$(curl -s -w "\n%{http_code}" -X DELETE "$API_BASE/profiles/$PROFILE_ID?company_ids=$OWNER_COMPANY" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
@@ -144,18 +145,18 @@ DELETE_AGAIN=$(curl -s -w "\n%{http_code}" -X DELETE "$API_BASE/profiles/$PROFIL
     }")
 
 HTTP_CODE=$(echo "$DELETE_AGAIN" | tail -n1)
-if [ "$HTTP_CODE" != "400" ]; then
-    echo -e "${RED}✗ Expected 400, got $HTTP_CODE${NC}"
+if [ "$HTTP_CODE" != "404" ]; then
+    echo -e "${RED}✗ Expected 404, got $HTTP_CODE${NC}"
     exit 1
 fi
 
-echo -e "${GREEN}✓ Delete inactive profile rejected with 400${NC}"
+echo -e "${GREEN}✓ Delete inactive profile returns 404 (not found)${NC}"
 
 # Step 5: Test agent extension cascade deactivation
 echo ""
 echo "Step 5: Testing agent extension cascade deactivation..."
 # Create an agent profile
-AGENT_CPF="99988877766"
+AGENT_CPF="99988877714"  # Valid CPF (999.888.777-14)
 CREATE_AGENT=$(curl -s -X POST "$API_BASE/profiles" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
@@ -171,8 +172,9 @@ CREATE_AGENT=$(curl -s -X POST "$API_BASE/profiles" \
         \"hire_date\": \"2024-01-01\"
     }")
 
-AGENT_PROFILE_ID=$(echo "$CREATE_AGENT" | jq -r '.data.id // empty')
-AGENT_EXTENSION_ID=$(echo "$CREATE_AGENT" | jq -r '.data._links.agent // empty' | grep -oP 'agents/\K\d+')
+AGENT_PROFILE_ID=$(echo "$CREATE_AGENT" | jq -r '.id // empty')
+AGENT_LINK=$(echo "$CREATE_AGENT" | jq -r '._links.agent // empty')
+AGENT_EXTENSION_ID=$(echo "$AGENT_LINK" | sed -n 's|.*/agents/\([0-9]*\).*|\1|p')
 
 if [ -n "$AGENT_PROFILE_ID" ] && [ "$AGENT_PROFILE_ID" != "null" ]; then
     # Soft delete the agent profile

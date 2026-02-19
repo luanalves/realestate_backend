@@ -101,17 +101,17 @@ FILTER_RESPONSE=$(curl -s -X GET "$API_BASE/profiles?company_ids=$OWNER_COMPANY&
     -H "Authorization: Bearer $BEARER_TOKEN" \
     -H "X-Openerp-Session-Id: $OWNER_SESSION")
 
-FILTERED_ITEMS=$(echo "$FILTER_RESPONSE" | jq -r '.items // []')
-if [ "$FILTERED_ITEMS" = "[]" ]; then
+FILTERED_COUNT=$(echo "$FILTER_RESPONSE" | jq -r '.count // 0')
+if [ "$FILTERED_COUNT" -eq 0 ]; then
     echo -e "${YELLOW}⊘ No agent profiles found (expected if none created)${NC}"
 else
-    echo -e "${GREEN}✓ Filtered agent profiles${NC}"
+    echo -e "${GREEN}✓ Filtered agent profiles (count=$FILTERED_COUNT)${NC}"
 fi
 
 # Step 4: Get profile detail
 echo ""
 echo "Step 4: Getting profile detail..."
-FIRST_ID=$(echo "$LIST_RESPONSE" | jq -r '.items[0].id // empty')
+FIRST_ID=$(echo "$LIST_RESPONSE" | jq -r '.data[0].id // empty')
 if [ -z "$FIRST_ID" ]; then
     echo -e "${RED}✗ No profile ID found${NC}"
     exit 1
@@ -121,8 +121,8 @@ DETAIL_RESPONSE=$(curl -s -X GET "$API_BASE/profiles/$FIRST_ID?company_ids=$OWNE
     -H "Authorization: Bearer $BEARER_TOKEN" \
     -H "X-Openerp-Session-Id: $OWNER_SESSION")
 
-DETAIL_ID=$(echo "$DETAIL_RESPONSE" | jq -r '.data.id // empty')
-HATEOAS_LINKS=$(echo "$DETAIL_RESPONSE" | jq -r '.data._links // empty')
+DETAIL_ID=$(echo "$DETAIL_RESPONSE" | jq -r '.id // empty')
+HATEOAS_LINKS=$(echo "$DETAIL_RESPONSE" | jq -r '._links // empty')
 
 if [ -z "$DETAIL_ID" ] || [ "$HATEOAS_LINKS" = "null" ]; then
     echo -e "${RED}✗ Failed to get profile detail or HATEOAS links${NC}"
@@ -134,17 +134,17 @@ echo -e "${GREEN}✓ Profile detail retrieved with HATEOAS links${NC}"
 # Step 5: Test pagination
 echo ""
 echo "Step 5: Testing pagination..."
-PAGE_RESPONSE=$(curl -s -X GET "$API_BASE/profiles?company_ids=$OWNER_COMPANY&page=1&page_size=2" \
+PAGE_RESPONSE=$(curl -s -X GET "$API_BASE/profiles?company_ids=$OWNER_COMPANY&limit=2&offset=0" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
     -H "X-Openerp-Session-Id: $OWNER_SESSION")
 
-PAGE_SIZE=$(echo "$PAGE_RESPONSE" | jq -r '.items | length')
-if [ "$PAGE_SIZE" -gt 2 ]; then
-    echo -e "${RED}✗ Page size not respected${NC}"
+PAGE_COUNT=$(echo "$PAGE_RESPONSE" | jq -r '.count // 0')
+if [ "$PAGE_COUNT" -gt 2 ]; then
+    echo -e "${RED}✗ Limit not respected (got $PAGE_COUNT items)${NC}"
     exit 1
 fi
 
-echo -e "${GREEN}✓ Pagination works (page_size respected)${NC}"
+echo -e "${GREEN}✓ Pagination works (limit=$PAGE_COUNT, offset=0)${NC}"
 
 # Step 6: Test missing company_ids → 400
 echo ""
@@ -164,13 +164,13 @@ echo -e "${GREEN}✓ Missing company_ids rejected with 400${NC}"
 # Step 7: Test agent extension link
 echo ""
 echo "Step 7: Checking agent profile includes agent extension link..."
-AGENT_ID=$(echo "$FILTER_RESPONSE" | jq -r '.items[0].id // empty')
+AGENT_ID=$(echo "$FILTER_RESPONSE" | jq -r '.data[0].id // empty')
 if [ -n "$AGENT_ID" ] && [ "$AGENT_ID" != "null" ]; then
     AGENT_DETAIL=$(curl -s -X GET "$API_BASE/profiles/$AGENT_ID?company_ids=$OWNER_COMPANY" \
         -H "Authorization: Bearer $BEARER_TOKEN" \
         -H "X-Openerp-Session-Id: $OWNER_SESSION")
     
-    AGENT_LINK=$(echo "$AGENT_DETAIL" | jq -r '.data._links.agent // empty')
+    AGENT_LINK=$(echo "$AGENT_DETAIL" | jq -r '._links.agent // empty')
     if [ -n "$AGENT_LINK" ] && [ "$AGENT_LINK" != "null" ]; then
         echo -e "${GREEN}✓ Agent profile includes agent extension link${NC}"
     else

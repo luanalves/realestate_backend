@@ -1,18 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Profile API Controller (Feature 010 - T11)
-
-REST endpoints for unified profile management (9 RBAC types).
-Follows triple decorator pattern (ADR-011), HATEOAS, RBAC authorization matrix.
-
-Endpoints:
-- POST   /api/v1/profiles          - Create profile
-- GET    /api/v1/profiles          - List profiles (paginated)
-- GET    /api/v1/profiles/<id>     - Get profile detail
-- PUT    /api/v1/profiles/<id>     - Update profile
-- DELETE /api/v1/profiles/<id>     - Soft delete profile
-- GET    /api/v1/profile-types     - List profile types
-"""
 
 import json
 import logging
@@ -78,6 +64,7 @@ class ProfileApiController(http.Controller):
             'profile_type_name': profile.profile_type_id.name if profile.profile_type_id else None,
             'company_id': profile.company_id.id if profile.company_id else None,
             'company_name': profile.company_id.name if profile.company_id else None,
+            'partner_id': profile.partner_id.id if profile.partner_id else None,  # Add partner_id for testing
             'active': profile.active,
             'created_at': profile.created_at.isoformat() if profile.created_at else None,
             'updated_at': profile.updated_at.isoformat() if profile.updated_at else None,
@@ -108,15 +95,7 @@ class ProfileApiController(http.Controller):
     @require_session
     @require_company
     def create_profile(self, **kwargs):
-        """
-        Create a new profile (US1, FR1.1)
-        
-        Body: name, company_id, document, email, birthdate, profile_type, 
-              phone*, mobile*, occupation*, hire_date*
-        
-        RBAC: Owner→all 9, Manager→5 operational, Agent→owner+portal
-        Auto-creates agent extension if profile_type='agent'
-        """
+
         try:
             user = request.env.user
             
@@ -189,6 +168,7 @@ class ProfileApiController(http.Controller):
             # If profile_type='agent', auto-create agent extension (FR1.4)
             if profile_type_code == 'agent':
                 Agent = request.env['real.estate.agent']
+                from datetime import date
                 agent_vals = {
                     'profile_id': profile.id,
                     'name': profile.name,
@@ -197,7 +177,7 @@ class ProfileApiController(http.Controller):
                     'phone': profile.phone,
                     'mobile': profile.mobile,
                     'company_id': company_id,
-                    'hire_date': profile.hire_date,
+                    'hire_date': profile.hire_date or date.today(),  # Default to today if not provided
                 }
                 agent = Agent.sudo().create(agent_vals)
                 _logger.info(f'Auto-created agent {agent.id} for profile {profile.id}')
@@ -222,18 +202,7 @@ class ProfileApiController(http.Controller):
     @require_session
     @require_company
     def list_profiles(self, **kwargs):
-        """
-        List profiles with filtering and pagination (US2, FR2.1)
-        
-        Query params:
-        - company_ids: Required, comma-separated (D5.2)
-        - profile_type*: Filter by type code
-        - document*: Filter by document
-        - name*: Search by name (ilike)
-        - active*: 'true', 'false', or omit for all
-        - limit: Max 100, default 20
-        - offset: Default 0
-        """
+
         try:
             user = request.env.user
             
@@ -339,11 +308,7 @@ class ProfileApiController(http.Controller):
     @require_session
     @require_company
     def get_profile(self, profile_id, **kwargs):
-        """
-        Get profile detail by ID (US2, FR2.6)
-        
-        Returns 404 if profile not found or cross-company access (anti-enumeration)
-        """
+
         try:
             user = request.env.user
             
@@ -372,12 +337,7 @@ class ProfileApiController(http.Controller):
     @require_session
     @require_company
     def update_profile(self, profile_id, **kwargs):
-        """
-        Update profile (US3, FR3.1)
-        
-        Immutable fields: profile_type, company_id, document
-        Syncs changes to agent extension if profile_type='agent'
-        """
+
         try:
             user = request.env.user
             
@@ -456,12 +416,7 @@ class ProfileApiController(http.Controller):
     @require_session
     @require_company
     def delete_profile(self, profile_id, **kwargs):
-        """
-        Soft delete profile (US4, FR4.1)
-        
-        Sets active=False, deactivation_date, deactivation_reason.
-        Cascades to agent extension and linked res.users (FR4.2).
-        """
+
         try:
             user = request.env.user
             
@@ -530,12 +485,7 @@ class ProfileApiController(http.Controller):
     @require_jwt
     @require_session
     def list_profile_types(self, **kwargs):
-        """
-        List all active profile types (FR1.11)
-        
-        No @require_company decorator — profile types are global.
-        Returns seed data from profile_type_data.xml.
-        """
+
         try:
             ProfileType = request.env['thedevkitchen.profile.type']
             types = ProfileType.sudo().search([('is_active', '=', True)], order='name asc')

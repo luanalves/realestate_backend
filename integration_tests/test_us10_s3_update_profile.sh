@@ -80,7 +80,7 @@ echo -e "${GREEN}✓ Owner logged in (company_id=$OWNER_COMPANY)${NC}"
 echo ""
 echo "Step 2: Creating test profile..."
 TIMESTAMP=$(date +%s)
-TEST_CPF="11122233344"
+TEST_CPF="22233344405"  # Valid CPF (222.333.444-05)
 
 CREATE_RESPONSE=$(curl -s -X POST "$API_BASE/profiles" \
     -H "Content-Type: application/json" \
@@ -96,7 +96,7 @@ CREATE_RESPONSE=$(curl -s -X POST "$API_BASE/profiles" \
         \"profile_type\": \"manager\"
     }")
 
-PROFILE_ID=$(echo "$CREATE_RESPONSE" | jq -r '.data.id // empty')
+PROFILE_ID=$(echo "$CREATE_RESPONSE" | jq -r '.id // empty')
 if [ -z "$PROFILE_ID" ]; then
     echo -e "${RED}✗ Failed to create test profile${NC}"
     exit 1
@@ -123,43 +123,33 @@ fi
 
 echo -e "${GREEN}✓ Name updated successfully${NC}"
 
-# Step 4: Update document causing duplicate → 409
+# Step 4: Test immutable document field → 400
 echo ""
-echo "Step 4: Testing duplicate document update → 409..."
-# Create another profile first
-ANOTHER_CPF="55566677788"
-CREATE_ANOTHER=$(curl -s -X POST "$API_BASE/profiles" \
+echo "Step 4: Testing immutable document field → 400..."
+# Try to update document (immutable field)
+IMMUTABLE_DOC_RESPONSE=$(curl -s -w "\n%{http_code}" -X PUT "$API_BASE/profiles/$PROFILE_ID?company_ids=$OWNER_COMPANY" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
     -H "X-Openerp-Session-Id: $OWNER_SESSION" \
     -d "{
-        \"name\": \"Another Profile\",
-        \"company_id\": $OWNER_COMPANY,
-        \"document\": \"$ANOTHER_CPF\",
-        \"email\": \"another${TIMESTAMP}@test.com\",
-        \"phone\": \"11999999999\",
-        \"birthdate\": \"1991-02-20\",
-        \"profile_type\": \"manager\"
+        \"document\": \"55566677720\"
     }")
 
-ANOTHER_ID=$(echo "$CREATE_ANOTHER" | jq -r '.data.id // empty')
-
-# Try to update first profile to use same document+type
-DUPLICATE_UPDATE=$(curl -s -w "\n%{http_code}" -X PUT "$API_BASE/profiles/$PROFILE_ID?company_ids=$OWNER_COMPANY" \
-    -H "Content-Type: application/json" \
-    -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Openerp-Session-Id: $OWNER_SESSION" \
-    -d "{
-        \"document\": \"$ANOTHER_CPF\"
-    }")
-
-HTTP_CODE=$(echo "$DUPLICATE_UPDATE" | tail -n1)
-if [ "$HTTP_CODE" != "409" ]; then
-    echo -e "${RED}✗ Expected 409, got $HTTP_CODE${NC}"
+HTTP_CODE=$(echo "$IMMUTABLE_DOC_RESPONSE" | tail -n1)
+RESPONSE_BODY=$(echo "$IMMUTABLE_DOC_RESPONSE" | sed '$d')
+if [ "$HTTP_CODE" != "400" ]; then
+    echo -e "${RED}✗ Expected 400, got $HTTP_CODE${NC}"
+    echo "Response: $RESPONSE_BODY"
     exit 1
 fi
 
-echo -e "${GREEN}✓ Duplicate document rejected with 409${NC}"
+ERROR_MSG=$(echo "$RESPONSE_BODY" | jq -r '.message // empty')
+if [[ ! "$ERROR_MSG" =~ "immutable" ]]; then
+    echo -e "${RED}✗ Expected immutable error message, got: $ERROR_MSG${NC}"
+    exit 1
+fi
+
+echo -e "${GREEN}✓ Document field immutability enforced with 400${NC}"
 
 # Step 5: Try to change profile_type → 400 (immutable)
 echo ""
@@ -184,7 +174,7 @@ echo -e "${GREEN}✓ Profile type change rejected with 400${NC}"
 echo ""
 echo "Step 6: Testing agent-type update syncs to agent model..."
 # Create an agent profile
-AGENT_CPF="99988877766"
+AGENT_CPF="99988877714"  # Valid CPF (999.888.777-14)
 CREATE_AGENT=$(curl -s -X POST "$API_BASE/profiles" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
@@ -200,7 +190,7 @@ CREATE_AGENT=$(curl -s -X POST "$API_BASE/profiles" \
         \"hire_date\": \"2024-01-01\"
     }")
 
-AGENT_PROFILE_ID=$(echo "$CREATE_AGENT" | jq -r '.data.id // empty')
+AGENT_PROFILE_ID=$(echo "$CREATE_AGENT" | jq -r '.id // empty')
 
 if [ -n "$AGENT_PROFILE_ID" ] && [ "$AGENT_PROFILE_ID" != "null" ]; then
     # Update agent profile name

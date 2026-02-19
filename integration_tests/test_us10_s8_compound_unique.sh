@@ -106,7 +106,7 @@ echo -e "${GREEN}✓ Owner logged in (company_id=$OWNER_COMPANY)${NC}"
 echo ""
 echo "Step 2: Testing same document + company, different profile_type..."
 TIMESTAMP=$(date +%s)
-TEST_CPF="99988877766"
+TEST_CPF="99988877714"  # Valid CPF (999.888.777-14)
 EMAIL_MANAGER="constraint_manager${TIMESTAMP}@test.com"
 EMAIL_AGENT="constraint_agent${TIMESTAMP}@test.com"
 
@@ -119,8 +119,8 @@ if [ "$HTTP_CODE_MGR" != "200" ] && [ "$HTTP_CODE_MGR" != "201" ]; then
     exit 1
 fi
 
-BODY_MGR=$(echo "$RESULT_MGR" | head -n -1)
-PROFILE_MGR_ID=$(echo "$BODY_MGR" | jq -r '.data.id // empty')
+BODY_MGR=$(echo "$RESULT_MGR" | sed '$d')
+PROFILE_MGR_ID=$(echo "$BODY_MGR" | jq -r '.id // empty')
 
 # Create agent profile with same document
 RESULT_AGENT=$(create_profile "$OWNER_SESSION" "$OWNER_COMPANY" "$TEST_CPF" "agent" "$EMAIL_AGENT")
@@ -131,8 +131,8 @@ if [ "$HTTP_CODE_AGENT" != "200" ] && [ "$HTTP_CODE_AGENT" != "201" ]; then
     exit 1
 fi
 
-BODY_AGENT=$(echo "$RESULT_AGENT" | head -n -1)
-PROFILE_AGENT_ID=$(echo "$BODY_AGENT" | jq -r '.data.id // empty')
+BODY_AGENT=$(echo "$RESULT_AGENT" | sed '$d')
+PROFILE_AGENT_ID=$(echo "$BODY_AGENT" | jq -r '.id // empty')
 
 echo -e "${GREEN}✓ Same document + different type allowed (manager=$PROFILE_MGR_ID, agent=$PROFILE_AGENT_ID)${NC}"
 
@@ -164,52 +164,52 @@ for i in {1..5}; do
     http_code=$(echo "$result" | tail -n1)
     
     if [ "$http_code" == "200" ] || [ "$http_code" == "201" ]; then
-        body=$(echo "$result" | head -n -1)
-        profile_id=$(echo "$body" | jq -r '.data.id // empty')
+        body=$(echo "$result" | sed '$d')
+        profile_id=$(echo "$body" | jq -r '.id // empty')
         CREATED_IDS+=("$profile_id")
     fi
 done
 
 echo -e "${GREEN}✓ Created ${#CREATED_IDS[@]} profiles for pagination test${NC}"
 
-# Step 5: Test pagination - page 1, page_size 2
+# Step 5: Test pagination - limit 2, offset 0
 echo ""
-echo "Step 5: Testing pagination (page=1, page_size=2)..."
-PAGE1=$(curl -s -X GET "$API_BASE/profiles?company_ids=$OWNER_COMPANY&page=1&page_size=2" \
+echo "Step 5: Testing pagination (limit=2, offset=0)..."
+PAGE1=$(curl -s -X GET "$API_BASE/profiles?company_ids=$OWNER_COMPANY&limit=2&offset=0" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
     -H "X-Openerp-Session-Id: $OWNER_SESSION")
 
-PAGE1_ITEMS=$(echo "$PAGE1" | jq -r '.data.items // empty')
-PAGE1_COUNT=$(echo "$PAGE1" | jq -r '.data.items | length')
+PAGE1_ITEMS=$(echo "$PAGE1" | jq -r '.data // empty')
+PAGE1_COUNT=$(echo "$PAGE1" | jq -r '.data | length')
 
 if [ "$PAGE1_COUNT" != "2" ]; then
     echo -e "${RED}✗ Page 1 should return 2 items, got $PAGE1_COUNT${NC}"
     exit 1
 fi
 
-echo -e "${GREEN}✓ Pagination page 1 returns 2 items${NC}"
+echo -e "${GREEN}✓ Pagination first page returns 2 items${NC}"
 
-# Step 6: Test pagination - page 2
+# Step 6: Test pagination - limit 2, offset 2
 echo ""
-echo "Step 6: Testing pagination (page=2, page_size=2)..."
-PAGE2=$(curl -s -X GET "$API_BASE/profiles?company_ids=$OWNER_COMPANY&page=2&page_size=2" \
+echo "Step 6: Testing pagination (limit=2, offset=2)..."
+PAGE2=$(curl -s -X GET "$API_BASE/profiles?company_ids=$OWNER_COMPANY&limit=2&offset=2" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
     -H "X-Openerp-Session-Id: $OWNER_SESSION")
 
-PAGE2_ITEMS=$(echo "$PAGE2" | jq -r '.data.items // empty')
-PAGE2_COUNT=$(echo "$PAGE2" | jq -r '.data.items | length')
+PAGE2_ITEMS=$(echo "$PAGE2" | jq -r '.data // empty')
+PAGE2_COUNT=$(echo "$PAGE2" | jq -r '.data | length')
 
 if [ "$PAGE2_COUNT" -lt 1 ]; then
     echo -e "${RED}✗ Page 2 should return at least 1 item, got $PAGE2_COUNT${NC}"
     exit 1
 fi
 
-echo -e "${GREEN}✓ Pagination page 2 returns $PAGE2_COUNT items${NC}"
+echo -e "${GREEN}✓ Pagination second page returns $PAGE2_COUNT items${NC}"
 
-# Step 7: Verify total_count field
+# Step 7: Verify total count field
 echo ""
-echo "Step 7: Verifying total_count field..."
-TOTAL_COUNT=$(echo "$PAGE1" | jq -r '.data.total_count // .data.total // empty')
+echo "Step 7: Verifying total count field..."
+TOTAL_COUNT=$(echo "$PAGE1" | jq -r '.total // empty')
 
 if [ -z "$TOTAL_COUNT" ]; then
     echo -e "${YELLOW}⊘ total_count field not returned (add to API response)${NC}"
@@ -220,7 +220,7 @@ fi
 # Step 8: Verify HATEOAS links structure
 echo ""
 echo "Step 8: Verifying HATEOAS links structure..."
-FIRST_PROFILE=$(echo "$PAGE1" | jq -r '.data.items[0] // empty')
+FIRST_PROFILE=$(echo "$PAGE1" | jq -r '.data[0] // empty')
 
 if [ -z "$FIRST_PROFILE" ]; then
     echo -e "${RED}✗ No profile returned to verify HATEOAS${NC}"
@@ -237,8 +237,8 @@ fi
 # Step 9: Test pagination next/prev links
 echo ""
 echo "Step 9: Testing pagination next/prev links..."
-NEXT_LINK=$(echo "$PAGE1" | jq -r '._links.next // .data._links.next // empty')
-PREV_LINK=$(echo "$PAGE1" | jq -r '._links.prev // .data._links.prev // empty')
+NEXT_LINK=$(echo "$PAGE1" | jq -r '._links.next // empty')
+PREV_LINK=$(echo "$PAGE1" | jq -r '._links.prev // empty')
 
 if [ -n "$NEXT_LINK" ] && [ "$NEXT_LINK" != "null" ]; then
     echo -e "${GREEN}✓ Next link present: $NEXT_LINK${NC}"
@@ -255,12 +255,12 @@ fi
 # Step 10: Test filter by profile_type with pagination
 echo ""
 echo "Step 10: Testing filter by profile_type with pagination..."
-FILTER_RESULT=$(curl -s -X GET "$API_BASE/profiles?company_ids=$OWNER_COMPANY&profile_type=manager&page=1&page_size=3" \
+FILTER_RESULT=$(curl -s -X GET "$API_BASE/profiles?company_ids=$OWNER_COMPANY&profile_type=manager&limit=3&offset=0" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
     -H "X-Openerp-Session-Id: $OWNER_SESSION")
 
-FILTER_ITEMS=$(echo "$FILTER_RESULT" | jq -r '.data.items // empty')
-FILTER_COUNT=$(echo "$FILTER_RESULT" | jq -r '.data.items | length')
+FILTER_ITEMS=$(echo "$FILTER_RESULT" | jq -r '.data // empty')
+FILTER_COUNT=$(echo "$FILTER_RESULT" | jq -r '.data | length')
 
 if [ "$FILTER_COUNT" -lt 1 ]; then
     echo -e "${RED}✗ Filter should return at least 1 manager, got $FILTER_COUNT${NC}"
@@ -268,7 +268,7 @@ if [ "$FILTER_COUNT" -lt 1 ]; then
 fi
 
 # Verify all returned items are managers
-WRONG_TYPE=$(echo "$FILTER_RESULT" | jq -r '.data.items[] | select(.profile_type != "manager") | .id' | head -n1)
+WRONG_TYPE=$(echo "$FILTER_RESULT" | jq -r '.data[] | select(.profile_type != "manager") | .id' | head -n1)
 if [ -n "$WRONG_TYPE" ]; then
     echo -e "${RED}✗ Filter returned non-manager profile${NC}"
     exit 1
