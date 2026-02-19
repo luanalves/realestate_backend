@@ -26,8 +26,8 @@
                             <button name="action_view_agents" type="object" class="oe_stat_button" icon="fa-users">
                                 <field name="agent_count" widget="statinfo" string="Agents"/>
                             </button>
-                            <button name="action_view_tenants" type="object" class="oe_stat_button" icon="fa-user">
-                                <field name="tenant_count" widget="statinfo" string="Tenants"/>
+                            <button name="action_view_profiles" type="object" class="oe_stat_button" icon="fa-user">
+                                <field name="profile_count" widget="statinfo" string="Profiles"/>
                             </button>
                             <button name="action_view_leases" type="object" class="oe_stat_button" icon="fa-file-text">
                                 <field name="lease_count" widget="statinfo" string="Leases"/>

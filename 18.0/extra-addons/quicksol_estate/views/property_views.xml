@@ -193,7 +193,7 @@
                                     <field name="accepts_financing"/>
                                 </group>
                                 <group string="Relationships">
-                                    <field name="tenant_id"/>
+                                    <field name="profile_id"/>
                                     <field name="sale_id"/>
                                     <field name="lease_id"/>
                                 </group>
