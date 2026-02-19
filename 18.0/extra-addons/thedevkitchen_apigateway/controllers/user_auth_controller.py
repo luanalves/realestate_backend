@@ -344,5 +344,10 @@ class UserAuthController(http.Controller):
                 user.company_id.id
                 if user.company_id
                 else (user.estate_company_ids[0].id if user.estate_company_ids else None)
+            ),
+            'main_estate_company_id': (
+                user.main_estate_company_id.id
+                if hasattr(user, 'main_estate_company_id') and user.main_estate_company_id
+                else None
             )
         }
