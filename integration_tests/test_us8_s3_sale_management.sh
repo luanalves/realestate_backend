@@ -1,6 +1,14 @@
 #!/usr/bin/env bash
+# ==============================================================================# ⚠️  SUPERSEDED BY FEATURE 010 - Profile Unification
 # ==============================================================================
-# Integration Test: US8-S3 - Sale Management (T020)
+# This test is superseded by Feature 010 profile-based tests.
+# Sale operations now use profile_id instead of tenant_id.
+# This file is kept for historical reference only.
+# 
+# See: Feature 010 - Profile Unification
+# ==============================================================================
+#
+# ==============================================================================# Integration Test: US8-S3 - Sale Management (T020)
 # ==============================================================================
 # Feature 008: Tenant, Lease & Sale API Endpoints
 # User Story 3: Sale registration, cancellation, property status side-effects

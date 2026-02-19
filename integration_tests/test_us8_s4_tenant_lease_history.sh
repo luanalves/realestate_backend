@@ -1,6 +1,15 @@
 #!/usr/bin/env bash
+# ==============================================================================# ⚠️  SUPERSEDED BY FEATURE 010 - Profile Unification
 # ==============================================================================
-# Integration Test: US8-S4 - Tenant Lease History (T022)
+# This test is superseded by Feature 010 profile-based tests.
+# Tenant model replaced by unified profile system.
+# This file is kept for historical reference only.
+# 
+# See: Feature 010 - Profile Unification
+# Profile types include 'portal' for tenant-like external users.
+# ==============================================================================
+#
+# ==============================================================================# Integration Test: US8-S4 - Tenant Lease History (T022)
 # ==============================================================================
 # Feature 008: Tenant, Lease & Sale API Endpoints
 # User Story 4: Consolidated lease history per tenant

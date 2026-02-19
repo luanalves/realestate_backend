@@ -1,5 +1,16 @@
 #!/usr/bin/env bash
 # ==============================================================================
+# ⚠️  SUPERSEDED BY FEATURE 010 - Profile Unification
+# ==============================================================================
+# This test is superseded by test_us10_* (profile-based tests).
+# Tenant management has been replaced with unified profile management.
+# This file is kept for historical reference only.
+# 
+# See: Feature 010 - Profile Unification (specs/010-profile-unification/)
+# Replacement tests: test_us10_s1_create_profile.sh through test_us10_s8_compound_unique.sh
+# ==============================================================================
+#
+# ==============================================================================
 # Integration Test: US8-S1 - Tenant CRUD Operations (T010)
 # ==============================================================================
 # Feature 008: Tenant, Lease & Sale API Endpoints

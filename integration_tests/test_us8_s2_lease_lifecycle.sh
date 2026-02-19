@@ -1,6 +1,15 @@
 #!/usr/bin/env bash
+# ==============================================================================# ⚠️  SUPERSEDED BY FEATURE 010 - Profile Unification
 # ==============================================================================
-# Integration Test: US8-S2 - Lease Lifecycle Management (T016)
+# This test is superseded by Feature 010 profile-based tests.
+# Lease operations now use profile_id instead of tenant_id.
+# This file is kept for historical reference only.
+# 
+# See: Feature 010 - Profile Unification
+# Lease migration: lease.tenant_id → lease.profile_id (Phase 3)
+# ==============================================================================
+#
+# ==============================================================================# Integration Test: US8-S2 - Lease Lifecycle Management (T016)
 # ==============================================================================
 # Feature 008: Tenant, Lease & Sale API Endpoints
 # User Story 2: Lease lifecycle with CRUD, renew, terminate

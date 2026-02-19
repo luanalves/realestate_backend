@@ -1,5 +1,15 @@
 #!/usr/bin/env bash
 # ==============================================================================
+# ⚠️  SUPERSEDED BY FEATURE 010 - Profile Unification
+# ==============================================================================
+# This test is superseded by Feature 010 profile soft delete test.
+# Profile soft delete with deactivation_reason replaces tenant archival.
+# This file is kept for historical reference only.
+# 
+# See: test_us10_s4_deactivate_profile.sh
+# ==============================================================================
+#
+# ==============================================================================
 # Integration Test: US8-S5 - Soft Delete & Record Recovery (T025)
 # ==============================================================================
 # Feature 008: Tenant, Lease & Sale API Endpoints

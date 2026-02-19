@@ -1,5 +1,15 @@
 #!/usr/bin/env bash
 # ==============================================================================
+# ⚠️  SUPERSEDED BY FEATURE 010 - Profile Unification
+# ==============================================================================
+# This test is superseded by Feature 010 RBAC and multi-tenancy tests.
+# Profile RBAC matrix and isolation tests provide equivalent coverage.
+# This file is kept for historical reference only.
+# 
+# See: test_us10_s6_rbac_matrix.sh, test_us10_s7_multitenancy.sh
+# ==============================================================================
+#
+# ==============================================================================
 # Integration Test: US8-S6 — Cross-Company Isolation & Agent RBAC (CHK022/CHK027)
 # ==============================================================================
 # Feature 008: Tenant, Lease & Sale API Endpoints

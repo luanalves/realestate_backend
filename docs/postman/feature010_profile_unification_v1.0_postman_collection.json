@@ -1,0 +1,492 @@
+{
+  "info": {
+    "_postman_id": "010a1b2c-3d4e-5f6g-7h8i-9j0k1l2m3n4o",
+    "name": "Feature 010 - Profile Unification API",
+    "description": "Complete API collection for Feature 010: Profile Unification.\n\n## Feature 010: Profile Unification\n\nUnified user profile management system supporting 9 profile types:\n- **Administrative**: owner, manager, administrator\n- **Operational**: agent, receptionist, prospector, legal, financial\n- **External**: portal\n\n## Key Features\n- Compound unique constraint: (document, company_id, profile_type)\n- Agent extension auto-creation for profile_type=agent\n- Profile ↔ Agent bidirectional sync\n- Soft delete with deactivation_reason\n- Multi-tenancy with company isolation\n- RBAC authorization matrix\n- Feature 009 integration (profile_id in invites)\n\n## Authentication Flow\n1. **Get OAuth Token**: POST /api/v1/auth/token\n2. **User Login**: POST /api/v1/users/login (returns session_id)\n3. **Use Both**: Authorization header + X-Session-ID header (for all profile endpoints)\n\n## Headers (All Profile Endpoints)\n- `Authorization: Bearer {{access_token}}`\n- `X-Session-ID: {{session_id}}` (REQUIRED)\n- `User-Agent: {{user_agent}}`\n- `Content-Type: application/json`\n\n## Query Parameters\n- `company_ids` (REQUIRED for all GET/PUT/DELETE): Comma-separated company IDs\n- `profile_type` (OPTIONAL for list): Filter by profile type\n- `page` (OPTIONAL, default=1): Page number for pagination\n- `page_size` (OPTIONAL, default=10): Items per page\n\n## Important Notes (ADR-016)\n- ⚠️ **All profile endpoints require `company_ids` parameter** for multi-tenancy isolation\n- ⚠️ **session_id goes in X-Session-ID header** (not body) per ADR-011\n- ✅ **HATEOAS links** in responses (_links.self, _links.agent)\n- ✅ **Pagination metadata** (page, page_size, total_count, _links.next/prev)\n- ✅ **Compound Unique**: Same document allowed in different companies OR different profile_types\n\n## RBAC Authorization Matrix\n- **Owner**: Can create all 9 profile types\n- **Manager**: Can create 5 operational types (agent, receptionist, prospector, legal, financial)\n- **Agent**: Can create owner + portal\n\n## Changelog v1.0\n- POST /api/v1/profiles - Create profile with auto agent extension\n- GET /api/v1/profiles - List profiles with filtering and pagination\n- GET /api/v1/profiles/{id} - Get profile detail with HATEOAS links\n- PUT /api/v1/profiles/{id} - Update profile (syncs to agent if applicable)\n- DELETE /api/v1/profiles/{id} - Soft delete profile with reason\n- GET /api/v1/profile-types - List available profile types\n- Feature 009 integration: invite endpoint accepts profile_id\n\n## Supersedes\nThis collection supersedes `test_us8_*` shell tests (tenant management), replacing tenant-based flows with unified profile management.",
+    "version": "1.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "0. Authentication (Prerequisite)",
+      "description": "OAuth 2.0 and session authentication required before using profile endpoints.",
+      "item": [
+        {
+          "name": "Get OAuth Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_id\": \"{{client_id}}\",\n  \"client_secret\": \"{{client_secret}}\",\n  \"grant_type\": \"client_credentials\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/token",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "token"]
+            },
+            "description": "Obtains OAuth 2.0 access token using client credentials.\n\n**Response 200:**\n```json\n{\n  \"access_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n  \"token_type\": \"Bearer\",\n  \"expires_in\": 3600\n}\n```"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.access_token) {",
+                  "    pm.environment.set('access_token', jsonData.access_token);",
+                  "    console.log('✅ Access token saved to environment');",
+                  "    if (jsonData.refresh_token) {",
+                  "        pm.environment.set('refresh_token', jsonData.refresh_token);",
+                  "        console.log('✅ Refresh token saved to environment');",
+                  "    }",
+                  "} else {",
+                  "    console.error('❌ Failed to extract access_token');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "User Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"login\": \"{{user_email}}\",\n  \"password\": \"{{user_password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users", "login"]
+            },
+            "description": "Authenticates user and creates session.\n\n**Response 200:**\n```json\n{\n  \"session_id\": \"abc123def456\",\n  \"user\": {\n    \"id\": 1,\n    \"login\": \"owner@example.com\",\n    \"default_company_id\": 1\n  }\n}\n```"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.session_id) {",
+                  "    pm.environment.set('session_id', jsonData.session_id);",
+                  "    pm.environment.set('company_id', jsonData.user.default_company_id);",
+                  "    console.log('✅ Session ID and Company ID saved');",
+                  "} else {",
+                  "    console.error('❌ Failed to extract session_id');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "1. Profile Management",
+      "description": "CRUD operations for unified profile management (Feature 010).",
+      "item": [
+        {
+          "name": "Create Profile (Manager)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "X-Session-ID",
+                "value": "{{session_id}}",
+                "description": "Session ID (REQUIRED per ADR-011)"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe Manager\",\n  \"company_id\": {{company_id}},\n  \"document\": \"12345678901\",\n  \"email\": \"john.manager@example.com\",\n  \"phone\": \"+5511999998888\",\n  \"birthdate\": \"1985-06-15\",\n  \"profile_type\": \"manager\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/profiles",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "profiles"]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Authorization:** Owner (all 9 types), Manager (5 operational), Agent (owner+portal)\n**Multi-tenancy:** Company isolation active\n\nCreates a new profile.\n\n**Required Fields:**\n- `name` (string): Full name\n- `company_id` (integer): Target company ID\n- `document` (string): CPF/CNPJ (11 or 14 digits)\n- `email` (string): Valid email, unique per company\n- `phone` (string): Phone number\n- `birthdate` (string): ISO 8601 date (YYYY-MM-DD)\n- `profile_type` (string): One of 9 types\n\n**Profile Types:**\n- Administrative: owner, manager, administrator\n- Operational: agent, receptionist, prospector, legal, financial\n- External: portal\n\n**Additional Fields for Agent:**\n- `hire_date` (string): ISO 8601 date (YYYY-MM-DD)\n- `CRECI_number` (string, optional): CRECI registration\n\n**Response 201:**\n```json\n{\n  \"data\": {\n    \"id\": 123,\n    \"name\": \"John Doe Manager\",\n    \"document\": \"12345678901\",\n    \"profile_type\": \"manager\",\n    \"is_active\": true,\n    \"_links\": {\n      \"self\": \"/api/v1/profiles/123\"\n    }\n  }\n}\n```\n\n**Errors:**\n- 400: Validation error (invalid CPF, missing fields)\n- 403: Forbidden by RBAC authorization matrix\n- 409: Duplicate (document, company_id, profile_type)"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.data && jsonData.data.id) {",
+                  "    pm.environment.set('profile_id', jsonData.data.id);",
+                  "    console.log('✅ Profile ID saved:', jsonData.data.id);",
+                  "} else {",
+                  "    console.error('❌ Failed to extract profile ID');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Profile (Agent with Extension)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "X-Session-ID",
+                "value": "{{session_id}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Jane Smith Agent\",\n  \"company_id\": {{company_id}},\n  \"document\": \"98765432109\",\n  \"email\": \"jane.agent@example.com\",\n  \"phone\": \"+5511988887777\",\n  \"birthdate\": \"1990-03-20\",\n  \"profile_type\": \"agent\",\n  \"hire_date\": \"2024-01-15\",\n  \"CRECI_number\": \"F-123456\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/profiles",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "profiles"]
+            },
+            "description": "**Agent Extension Auto-Creation**\n\nWhen `profile_type=agent`, automatically creates:\n1. Profile record in `real.estate.profile`\n2. Agent extension in `real.estate.agent` (linked via profile_id)\n\n**Required Fields for Agent:**\n- All standard profile fields\n- `hire_date` (required): Agent hire date\n- `CRECI_number` (optional): Real estate license number\n\n**Response 201:**\n```json\n{\n  \"data\": {\n    \"id\": 124,\n    \"name\": \"Jane Smith Agent\",\n    \"profile_type\": \"agent\",\n    \"hire_date\": \"2024-01-15\",\n    \"_links\": {\n      \"self\": \"/api/v1/profiles/124\",\n      \"agent\": \"/api/v1/agents/45\"\n    }\n  }\n}\n```"
+          }
+        },
+        {
+          "name": "List Profiles",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "X-Session-ID",
+                "value": "{{session_id}}",
+                "description": "REQUIRED for GET requests"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/profiles?company_ids={{company_id}}&profile_type=manager&page=1&page_size=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "profiles"],
+              "query": [
+                {
+                  "key": "company_ids",
+                  "value": "{{company_id}}",
+                  "description": "REQUIRED: Comma-separated company IDs"
+                },
+                {
+                  "key": "profile_type",
+                  "value": "manager",
+                  "description": "OPTIONAL: Filter by profile type"
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "OPTIONAL: Page number (default=1)"
+                },
+                {
+                  "key": "page_size",
+                  "value": "10",
+                  "description": "OPTIONAL: Items per page (default=10)"
+                }
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** `company_ids` parameter REQUIRED\n\nLists profiles with filtering and pagination.\n\n**Query Parameters:**\n- `company_ids` (REQUIRED): Comma-separated company IDs (e.g., \"1,2,3\")\n- `profile_type` (OPTIONAL): Filter by one of 9 profile types\n- `page` (OPTIONAL, default=1): Page number\n- `page_size` (OPTIONAL, default=10): Items per page\n\n**Response 200:**\n```json\n{\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": 123,\n        \"name\": \"John Doe\",\n        \"profile_type\": \"manager\",\n        \"company_id\": 1,\n        \"is_active\": true,\n        \"_links\": {\n          \"self\": \"/api/v1/profiles/123\"\n        }\n      }\n    ],\n    \"page\": 1,\n    \"page_size\": 10,\n    \"total_count\": 42,\n    \"_links\": {\n      \"next\": \"/api/v1/profiles?company_ids=1&page=2&page_size=10\",\n      \"prev\": null\n    }\n  }\n}\n```\n\n**Errors:**\n- 400: Missing company_ids parameter\n- 403: Unauthorized company access"
+          }
+        },
+        {
+          "name": "Get Profile Detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "X-Session-ID",
+                "value": "{{session_id}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/profiles/{{profile_id}}?company_ids={{company_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "profiles", "{{profile_id}}"],
+              "query": [
+                {
+                  "key": "company_ids",
+                  "value": "{{company_id}}",
+                  "description": "REQUIRED for multi-tenancy"
+                }
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** `company_ids` parameter REQUIRED\n\nRetrieves complete profile details with HATEOAS links.\n\n**Response 200:**\n```json\n{\n  \"data\": {\n    \"id\": 123,\n    \"name\": \"John Doe Manager\",\n    \"document\": \"12345678901\",\n    \"email\": \"john.manager@example.com\",\n    \"phone\": \"+5511999998888\",\n    \"birthdate\": \"1985-06-15\",\n    \"profile_type\": \"manager\",\n    \"company_id\": 1,\n    \"is_active\": true,\n    \"user_id\": 45,\n    \"deactivation_reason\": null,\n    \"deactivation_date\": null,\n    \"_links\": {\n      \"self\": \"/api/v1/profiles/123\",\n      \"company\": \"/api/v1/companies/1\",\n      \"user\": \"/api/v1/users/45\"\n    }\n  }\n}\n```\n\n**Errors:**\n- 400: Missing company_ids\n- 403: Unauthorized company access\n- 404: Profile not found or cross-company access blocked"
+          }
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "X-Session-ID",
+                "value": "{{session_id}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe Manager (Updated)\",\n  \"phone\": \"+5511988887777\",\n  \"email\": \"john.updated@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/profiles/{{profile_id}}?company_ids={{company_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "profiles", "{{profile_id}}"],
+              "query": [
+                {
+                  "key": "company_ids",
+                  "value": "{{company_id}}",
+                  "description": "REQUIRED for multi-tenancy"
+                }
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** `company_ids` parameter REQUIRED\n**Agent Sync:** If profile_type=agent, changes sync to real.estate.agent\n\nUpdates profile fields.\n\n**Mutable Fields:**\n- `name`, `email`, `phone`, `address`\n- `birthdate`, `notes`\n- Agent-specific: `hire_date`, `CRECI_number`\n\n**Immutable Fields:**\n- `profile_type` (cannot be changed after creation)\n- `document` (can only change if doesn't violate compound unique)\n- `company_id` (cannot transfer profiles between companies)\n\n**Response 200:**\n```json\n{\n  \"data\": {\n    \"id\": 123,\n    \"name\": \"John Doe Manager (Updated)\",\n    \"email\": \"john.updated@example.com\",\n    \"_links\": {\n      \"self\": \"/api/v1/profiles/123\"\n    }\n  }\n}\n```\n\n**Errors:**\n- 400: Validation error or attempt to change immutable field\n- 404: Profile not found\n- 409: Duplicate document or email"
+          }
+        },
+        {
+          "name": "Soft Delete Profile",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "X-Session-ID",
+                "value": "{{session_id}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Profile no longer active\",\n  \"deactivation_date\": \"2026-02-20\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/profiles/{{profile_id}}?company_ids={{company_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "profiles", "{{profile_id}}"],
+              "query": [
+                {
+                  "key": "company_ids",
+                  "value": "{{company_id}}",
+                  "description": "REQUIRED for multi-tenancy"
+                }
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** `company_ids` parameter REQUIRED\n**Soft Delete:** Sets is_active=False, cascades to agent extension and res.users\n\nDeactivates a profile with reason.\n\n**Request Body:**\n- `reason` (required): Deactivation reason\n- `deactivation_date` (optional): Effective date (defaults to today)\n\n**Cascading Effects:**\n1. Profile: `is_active=False`, reason/date populated\n2. Agent extension: `active=False` (if profile_type=agent)\n3. res.users: `active=False` (if user_id linked)\n\n**Response 200:**\n```json\n{\n  \"data\": {\n    \"id\": 123,\n    \"is_active\": false,\n    \"deactivation_reason\": \"Profile no longer active\",\n    \"deactivation_date\": \"2026-02-20\"\n  }\n}\n```\n\n**Errors:**\n- 400: Already inactive or validation error\n- 404: Profile not found\n- 403: Unauthorized company access"
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Master Data",
+      "description": "Read-only reference data for profile management.",
+      "item": [
+        {
+          "name": "List Profile Types",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "X-Session-ID",
+                "value": "{{session_id}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/profile-types",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "profile-types"]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Read-only:** No company_ids filter (reference data)\n\nReturns all 9 available profile types with categories.\n\n**Response 200:**\n```json\n{\n  \"data\": {\n    \"items\": [\n      {\n        \"key\": \"owner\",\n        \"display_name\": \"Proprietário\",\n        \"category\": \"administrative\",\n        \"requires_agent_fields\": false\n      },\n      {\n        \"key\": \"agent\",\n        \"display_name\": \"Corretor\",\n        \"category\": \"operational\",\n        \"requires_agent_fields\": true\n      },\n      {\n        \"key\": \"portal\",\n        \"display_name\": \"Portal\",\n        \"category\": \"external\",\n        \"requires_agent_fields\": false\n      }\n    ]\n  }\n}\n```"
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Feature 009 Integration",
+      "description": "User onboarding endpoints updated to support profile_id.",
+      "item": [
+        {
+          "name": "Invite User via Profile ID",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "X-Session-ID",
+                "value": "{{session_id}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"profile_id\": {{profile_id}},\n  \"email\": \"john.manager@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/invite",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users", "invite"]
+            },
+            "description": "**Feature 010 Integration:** Invite endpoint now accepts `profile_id` instead of legacy fields.\n\n**New Flow:**\n1. Create profile via POST /api/v1/profiles\n2. Invite user via profile_id (this endpoint)\n3. Profile.user_id populated after invite\n\n**Request Body:**\n- `profile_id` (required): ID from profile creation\n- `email` (required): Must match profile email\n\n**Response 201:**\n```json\n{\n  \"data\": {\n    \"user_id\": 45,\n    \"token\": \"raw_token_sent_once\",\n    \"expires_at\": \"2026-02-21T12:00:00Z\"\n  }\n}\n```\n\n**Errors:**\n- 400: profile_id or email missing\n- 404: Profile not found\n- 409: Profile already has user (user_id populated)"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8069",
+      "type": "string"
+    },
+    {
+      "key": "client_id",
+      "value": "your_client_id_here",
+      "type": "string"
+    },
+    {
+      "key": "client_secret",
+      "value": "your_client_secret_here",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "auto_populated_by_oauth_test_script",
+      "type": "string"
+    },
+    {
+      "key": "session_id",
+      "value": "auto_populated_by_login_test_script",
+      "type": "string"
+    },
+    {
+      "key": "user_agent",
+      "value": "PostmanRuntime/7.26.8",
+      "type": "string"
+    },
+    {
+      "key": "user_email",
+      "value": "owner@example.com",
+      "type": "string"
+    },
+    {
+      "key": "user_password",
+      "value": "SecurePass123!",
+      "type": "string"
+    },
+    {
+      "key": "company_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "profile_id",
+      "value": "auto_populated_by_create_profile_test_script",
+      "type": "string"
+    }
+  ]
+}
