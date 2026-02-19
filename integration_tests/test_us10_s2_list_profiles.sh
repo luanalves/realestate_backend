@@ -84,7 +84,7 @@ echo ""
 echo "Step 2: Listing profiles with company_ids..."
 LIST_RESPONSE=$(curl -s -X GET "$API_BASE/profiles?company_ids=$OWNER_COMPANY" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Session-ID: $OWNER_SESSION")
+    -H "X-Openerp-Session-Id: $OWNER_SESSION")
 
 TOTAL=$(echo "$LIST_RESPONSE" | jq -r '.total // 0')
 if [ "$TOTAL" -eq 0 ]; then
@@ -99,7 +99,7 @@ echo ""
 echo "Step 3: Filtering by profile_type=agent..."
 FILTER_RESPONSE=$(curl -s -X GET "$API_BASE/profiles?company_ids=$OWNER_COMPANY&profile_type=agent" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Session-ID: $OWNER_SESSION")
+    -H "X-Openerp-Session-Id: $OWNER_SESSION")
 
 FILTERED_ITEMS=$(echo "$FILTER_RESPONSE" | jq -r '.items // []')
 if [ "$FILTERED_ITEMS" = "[]" ]; then
@@ -119,7 +119,7 @@ fi
 
 DETAIL_RESPONSE=$(curl -s -X GET "$API_BASE/profiles/$FIRST_ID?company_ids=$OWNER_COMPANY" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Session-ID: $OWNER_SESSION")
+    -H "X-Openerp-Session-Id: $OWNER_SESSION")
 
 DETAIL_ID=$(echo "$DETAIL_RESPONSE" | jq -r '.data.id // empty')
 HATEOAS_LINKS=$(echo "$DETAIL_RESPONSE" | jq -r '.data._links // empty')
@@ -136,7 +136,7 @@ echo ""
 echo "Step 5: Testing pagination..."
 PAGE_RESPONSE=$(curl -s -X GET "$API_BASE/profiles?company_ids=$OWNER_COMPANY&page=1&page_size=2" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Session-ID: $OWNER_SESSION")
+    -H "X-Openerp-Session-Id: $OWNER_SESSION")
 
 PAGE_SIZE=$(echo "$PAGE_RESPONSE" | jq -r '.items | length')
 if [ "$PAGE_SIZE" -gt 2 ]; then
@@ -151,7 +151,7 @@ echo ""
 echo "Step 6: Testing missing company_ids → 400..."
 MISSING_COMPANY_RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$API_BASE/profiles" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Session-ID: $OWNER_SESSION")
+    -H "X-Openerp-Session-Id: $OWNER_SESSION")
 
 HTTP_CODE=$(echo "$MISSING_COMPANY_RESPONSE" | tail -n1)
 if [ "$HTTP_CODE" != "400" ]; then
@@ -168,7 +168,7 @@ AGENT_ID=$(echo "$FILTER_RESPONSE" | jq -r '.items[0].id // empty')
 if [ -n "$AGENT_ID" ] && [ "$AGENT_ID" != "null" ]; then
     AGENT_DETAIL=$(curl -s -X GET "$API_BASE/profiles/$AGENT_ID?company_ids=$OWNER_COMPANY" \
         -H "Authorization: Bearer $BEARER_TOKEN" \
-        -H "X-Session-ID: $OWNER_SESSION")
+        -H "X-Openerp-Session-Id: $OWNER_SESSION")
     
     AGENT_LINK=$(echo "$AGENT_DETAIL" | jq -r '.data._links.agent // empty')
     if [ -n "$AGENT_LINK" ] && [ "$AGENT_LINK" != "null" ]; then

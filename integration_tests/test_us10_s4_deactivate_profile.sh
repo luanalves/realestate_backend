@@ -84,7 +84,7 @@ TEST_CPF="11122233344"
 CREATE_RESPONSE=$(curl -s -X POST "$API_BASE/profiles" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Session-ID: $OWNER_SESSION" \
+    -H "X-Openerp-Session-Id: $OWNER_SESSION" \
     -d "{
         \"name\": \"Delete Test ${TIMESTAMP}\",
         \"company_id\": $OWNER_COMPANY,
@@ -109,7 +109,7 @@ echo "Step 3: Soft deleting profile with reason..."
 DELETE_RESPONSE=$(curl -s -w "\n%{http_code}" -X DELETE "$API_BASE/profiles/$PROFILE_ID?company_ids=$OWNER_COMPANY" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Session-ID: $OWNER_SESSION" \
+    -H "X-Openerp-Session-Id: $OWNER_SESSION" \
     -d "{
         \"reason\": \"Test deactivation\",
         \"deactivation_date\": \"2026-02-19\"
@@ -138,7 +138,7 @@ echo "Step 4: Testing delete already inactive profile → 400..."
 DELETE_AGAIN=$(curl -s -w "\n%{http_code}" -X DELETE "$API_BASE/profiles/$PROFILE_ID?company_ids=$OWNER_COMPANY" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Session-ID: $OWNER_SESSION" \
+    -H "X-Openerp-Session-Id: $OWNER_SESSION" \
     -d "{
         \"reason\": \"Already deleted\"
     }")
@@ -159,7 +159,7 @@ AGENT_CPF="99988877766"
 CREATE_AGENT=$(curl -s -X POST "$API_BASE/profiles" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Session-ID: $OWNER_SESSION" \
+    -H "X-Openerp-Session-Id: $OWNER_SESSION" \
     -d "{
         \"name\": \"Agent Cascade Test\",
         \"company_id\": $OWNER_COMPANY,
@@ -179,7 +179,7 @@ if [ -n "$AGENT_PROFILE_ID" ] && [ "$AGENT_PROFILE_ID" != "null" ]; then
     DELETE_AGENT=$(curl -s -X DELETE "$API_BASE/profiles/$AGENT_PROFILE_ID?company_ids=$OWNER_COMPANY" \
         -H "Content-Type: application/json" \
         -H "Authorization: Bearer $BEARER_TOKEN" \
-        -H "X-Session-ID: $OWNER_SESSION" \
+        -H "X-Openerp-Session-Id: $OWNER_SESSION" \
         -d "{\"reason\": \"Cascade test\"}")
     
     # Verify agent extension is also deactivated (would need agent API check)

@@ -85,7 +85,7 @@ EMAIL_A="companya${TIMESTAMP}@test.com"
 CREATE_A=$(curl -s -X POST "$API_BASE/profiles" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Session-ID: $OWNER_SESSION" \
+    -H "X-Openerp-Session-Id: $OWNER_SESSION" \
     -d "{
         \"name\": \"Company A Profile\",
         \"company_id\": $COMPANY_A,
@@ -143,7 +143,7 @@ if [ -n "$COMPANY_B" ]; then
     CREATE_B=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/profiles" \
         -H "Content-Type: application/json" \
         -H "Authorization: Bearer $BEARER_TOKEN" \
-        -H "X-Session-ID: $OWNER_B_SESSION" \
+        -H "X-Openerp-Session-Id: $OWNER_B_SESSION" \
         -d "{
             \"name\": \"Company B Profile\",
             \"company_id\": $COMPANY_B,
@@ -171,7 +171,7 @@ if [ -n "$COMPANY_B" ]; then
     echo "Step 5: Testing cross-company read (Company A accesses Company B profile)..."
     CROSS_READ=$(curl -s -w "\n%{http_code}" -X GET "$API_BASE/profiles/$PROFILE_B_ID?company_ids=$COMPANY_A" \
         -H "Authorization: Bearer $BEARER_TOKEN" \
-        -H "X-Session-ID: $OWNER_SESSION")
+        -H "X-Openerp-Session-Id: $OWNER_SESSION")
     
     HTTP_CODE=$(echo "$CROSS_READ" | tail -n1)
     if [ "$HTTP_CODE" != "404" ]; then
@@ -186,7 +186,7 @@ if [ -n "$COMPANY_B" ]; then
     echo "Step 6: Testing unauthorized company_ids access..."
     UNAUTH_ACCESS=$(curl -s -w "\n%{http_code}" -X GET "$API_BASE/profiles?company_ids=$COMPANY_B" \
         -H "Authorization: Bearer $BEARER_TOKEN" \
-        -H "X-Session-ID: $OWNER_SESSION")
+        -H "X-Openerp-Session-Id: $OWNER_SESSION")
     
     HTTP_CODE=$(echo "$UNAUTH_ACCESS" | tail -n1)
     if [ "$HTTP_CODE" != "403" ]; then
@@ -202,7 +202,7 @@ if [ -n "$COMPANY_B" ]; then
     DUPLICATE_IN_A=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/profiles" \
         -H "Content-Type: application/json" \
         -H "Authorization: Bearer $BEARER_TOKEN" \
-        -H "X-Session-ID: $OWNER_SESSION" \
+        -H "X-Openerp-Session-Id: $OWNER_SESSION" \
         -d "{
             \"name\": \"Duplicate in A\",
             \"company_id\": $COMPANY_A,
@@ -227,7 +227,7 @@ echo ""
 echo "Step 8: Testing list endpoint company_ids filter..."
 LIST_PROFILES=$(curl -s -X GET "$API_BASE/profiles?company_ids=$COMPANY_A" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Session-ID: $OWNER_SESSION")
+    -H "X-Openerp-Session-Id: $OWNER_SESSION")
 
 ITEMS=$(echo "$LIST_PROFILES" | jq -r '.data.items // empty')
 if [ -z "$ITEMS" ]; then

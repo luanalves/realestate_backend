@@ -73,7 +73,7 @@ create_profile() {
     local response=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/profiles" \
         -H "Content-Type: application/json" \
         -H "Authorization: Bearer $BEARER_TOKEN" \
-        -H "X-Session-ID: $session" \
+        -H "X-Openerp-Session-Id: $session" \
         -d "{
             \"name\": \"$name\",
             \"company_id\": $company,
@@ -142,7 +142,7 @@ MGR_PASSWORD="ManagerPass123!"
 CREATE_MGR_PROFILE=$(curl -s -X POST "$API_BASE/profiles" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Session-ID: $OWNER_SESSION" \
+    -H "X-Openerp-Session-Id: $OWNER_SESSION" \
     -d "{
         \"name\": \"Test Manager\",
         \"company_id\": $OWNER_COMPANY,
@@ -164,7 +164,7 @@ fi
 INVITE_MGR=$(curl -s -X POST "$API_BASE/users/invite" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Session-ID: $OWNER_SESSION" \
+    -H "X-Openerp-Session-Id: $OWNER_SESSION" \
     -d "{\"profile_id\": $MGR_PROFILE_ID, \"email\": \"$MGR_EMAIL\"}")
 
 MGR_TOKEN=$(echo "$INVITE_MGR" | jq -r '.data.token // empty')
@@ -255,7 +255,7 @@ AGENT_PASSWORD="AgentPass123!"
 CREATE_AGENT_PROFILE=$(curl -s -X POST "$API_BASE/profiles" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Session-ID: $OWNER_SESSION" \
+    -H "X-Openerp-Session-Id: $OWNER_SESSION" \
     -d "{
         \"name\": \"Test Agent\",
         \"company_id\": $OWNER_COMPANY,
@@ -277,7 +277,7 @@ else
     INVITE_AGENT=$(curl -s -X POST "$API_BASE/users/invite" \
         -H "Content-Type: application/json" \
         -H "Authorization: Bearer $BEARER_TOKEN" \
-        -H "X-Session-ID: $OWNER_SESSION" \
+        -H "X-Openerp-Session-Id: $OWNER_SESSION" \
         -d "{\"profile_id\": $AGENT_PROFILE_ID, \"email\": \"$AGENT_EMAIL\"}")
     
     AGENT_TOKEN=$(echo "$INVITE_AGENT" | jq -r '.data.token // empty')

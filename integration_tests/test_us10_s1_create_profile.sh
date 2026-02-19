@@ -90,12 +90,12 @@ echo -e "${GREEN}✓ Owner logged in (company_id=$OWNER_COMPANY)${NC}"
 echo ""
 echo "Step 2: Owner creates Manager profile..."
 TIMESTAMP=$(date +%s)
-MANAGER_CPF="12345678901"  # Valid CPF format (11 digits)
+MANAGER_CPF="11144477735"  # Valid CPF (111.444.777-35)
 
 CREATE_MANAGER_RESPONSE=$(curl -s -X POST "$API_BASE/profiles" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Session-ID: $OWNER_SESSION" \
+    -H "X-Openerp-Session-Id: $OWNER_SESSION" \
     -d "{
         \"name\": \"Manager Test ${TIMESTAMP}\",
         \"company_id\": $OWNER_COMPANY,
@@ -107,11 +107,11 @@ CREATE_MANAGER_RESPONSE=$(curl -s -X POST "$API_BASE/profiles" \
         \"profile_type\": \"manager\"
     }")
 
-MANAGER_ID=$(echo "$CREATE_MANAGER_RESPONSE" | jq -r '.data.id // empty')
-SUCCESS=$(echo "$CREATE_MANAGER_RESPONSE" | jq -r '.success // empty')
-HATEOAS_LINKS=$(echo "$CREATE_MANAGER_RESPONSE" | jq -r '.data._links // empty')
+MANAGER_ID=$(echo "$CREATE_MANAGER_RESPONSE" | jq -r '.id // empty')
+HATEOAS_LINKS=$(echo "$CREATE_MANAGER_RESPONSE" | jq -r '._links // empty')
+ERROR=$(echo "$CREATE_MANAGER_RESPONSE" | jq -r '.error // empty')
 
-if [ -z "$MANAGER_ID" ] || [ "$SUCCESS" != "true" ] || [ "$HATEOAS_LINKS" = "null" ]; then
+if [ -z "$MANAGER_ID" ] || [ "$HATEOAS_LINKS" = "null" ] || [ -n "$ERROR" ]; then
     echo -e "${RED}✗ Failed to create Manager profile${NC}"
     echo "Response: $CREATE_MANAGER_RESPONSE"
     exit 1
@@ -122,12 +122,12 @@ echo -e "${GREEN}✓ Manager profile created (ID=$MANAGER_ID, has HATEOAS links)
 # Step 3: Create Agent Profile (should auto-create agent extension)
 echo ""
 echo "Step 3: Owner creates Agent profile (with agent extension)..."
-AGENT_CPF="98765432109"  # Different CPF
+AGENT_CPF="18580549132"  # Valid CPF (185.805.491-32)
 
 CREATE_AGENT_RESPONSE=$(curl -s -X POST "$API_BASE/profiles" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Session-ID: $OWNER_SESSION" \
+    -H "X-Openerp-Session-Id: $OWNER_SESSION" \
     -d "{
         \"name\": \"Agent Test ${TIMESTAMP}\",
         \"company_id\": $OWNER_COMPANY,
@@ -140,8 +140,8 @@ CREATE_AGENT_RESPONSE=$(curl -s -X POST "$API_BASE/profiles" \
         \"hire_date\": \"2024-01-01\"
     }")
 
-AGENT_ID=$(echo "$CREATE_AGENT_RESPONSE" | jq -r '.data.id // empty')
-AGENT_EXTENSION_LINK=$(echo "$CREATE_AGENT_RESPONSE" | jq -r '.data._links.agent // empty')
+AGENT_ID=$(echo "$CREATE_AGENT_RESPONSE" | jq -r '.id // empty')
+AGENT_EXTENSION_LINK=$(echo "$CREATE_AGENT_RESPONSE" | jq -r '._links.agent // empty')
 
 if [ -z "$AGENT_ID" ] || [ -z "$AGENT_EXTENSION_LINK" ] || [ "$AGENT_EXTENSION_LINK" = "null" ]; then
     echo -e "${RED}✗ Failed to create Agent profile or agent extension${NC}"
@@ -154,12 +154,12 @@ echo -e "${GREEN}✓ Agent profile created (ID=$AGENT_ID, agent_link=$AGENT_EXTE
 # Step 4: Create Portal Profile with occupation
 echo ""
 echo "Step 4: Owner creates Portal profile..."
-PORTAL_CPF="11122233344"
+PORTAL_CPF="30498327164"  # Valid CPF (304.983.271-64)
 
 CREATE_PORTAL_RESPONSE=$(curl -s -X POST "$API_BASE/profiles" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Session-ID: $OWNER_SESSION" \
+    -H "X-Openerp-Session-Id: $OWNER_SESSION" \
     -d "{
         \"name\": \"Portal User ${TIMESTAMP}\",
         \"company_id\": $OWNER_COMPANY,
@@ -171,7 +171,7 @@ CREATE_PORTAL_RESPONSE=$(curl -s -X POST "$API_BASE/profiles" \
         \"occupation\": \"Tenant\"
     }")
 
-PORTAL_ID=$(echo "$CREATE_PORTAL_RESPONSE" | jq -r '.data.id // empty')
+PORTAL_ID=$(echo "$CREATE_PORTAL_RESPONSE" | jq -r '.id // empty')
 
 if [ -z "$PORTAL_ID" ]; then
     echo -e "${RED}✗ Failed to create Portal profile${NC}"
@@ -187,7 +187,7 @@ echo "Step 5: Testing duplicate document+company+type → 409..."
 DUPLICATE_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/profiles" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Session-ID: $OWNER_SESSION" \
+    -H "X-Openerp-Session-Id: $OWNER_SESSION" \
     -d "{
         \"name\": \"Duplicate Manager\",
         \"company_id\": $OWNER_COMPANY,
@@ -226,7 +226,7 @@ echo "Step 8: Testing invalid CPF document → 400..."
 INVALID_DOC_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/profiles" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Session-ID: $OWNER_SESSION" \
+    -H "X-Openerp-Session-Id: $OWNER_SESSION" \
     -d "{
         \"name\": \"Invalid Doc User\",
         \"company_id\": $OWNER_COMPANY,
@@ -251,7 +251,7 @@ echo "Step 9: Testing invalid profile_type → 400..."
 INVALID_TYPE_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/profiles" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Session-ID: $OWNER_SESSION" \
+    -H "X-Openerp-Session-Id: $OWNER_SESSION" \
     -d "{
         \"name\": \"Invalid Type User\",
         \"company_id\": $OWNER_COMPANY,

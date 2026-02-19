@@ -85,7 +85,7 @@ TEST_CPF="11122233344"
 CREATE_RESPONSE=$(curl -s -X POST "$API_BASE/profiles" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Session-ID: $OWNER_SESSION" \
+    -H "X-Openerp-Session-Id: $OWNER_SESSION" \
     -d "{
         \"name\": \"Update Test ${TIMESTAMP}\",
         \"company_id\": $OWNER_COMPANY,
@@ -110,7 +110,7 @@ echo "Step 3: Updating profile name..."
 UPDATE_RESPONSE=$(curl -s -w "\n%{http_code}" -X PUT "$API_BASE/profiles/$PROFILE_ID?company_ids=$OWNER_COMPANY" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Session-ID: $OWNER_SESSION" \
+    -H "X-Openerp-Session-Id: $OWNER_SESSION" \
     -d "{
         \"name\": \"Updated Name ${TIMESTAMP}\"
     }")
@@ -131,7 +131,7 @@ ANOTHER_CPF="55566677788"
 CREATE_ANOTHER=$(curl -s -X POST "$API_BASE/profiles" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Session-ID: $OWNER_SESSION" \
+    -H "X-Openerp-Session-Id: $OWNER_SESSION" \
     -d "{
         \"name\": \"Another Profile\",
         \"company_id\": $OWNER_COMPANY,
@@ -148,7 +148,7 @@ ANOTHER_ID=$(echo "$CREATE_ANOTHER" | jq -r '.data.id // empty')
 DUPLICATE_UPDATE=$(curl -s -w "\n%{http_code}" -X PUT "$API_BASE/profiles/$PROFILE_ID?company_ids=$OWNER_COMPANY" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Session-ID: $OWNER_SESSION" \
+    -H "X-Openerp-Session-Id: $OWNER_SESSION" \
     -d "{
         \"document\": \"$ANOTHER_CPF\"
     }")
@@ -167,7 +167,7 @@ echo "Step 5: Testing immutable profile_type → 400..."
 IMMUTABLE_RESPONSE=$(curl -s -w "\n%{http_code}" -X PUT "$API_BASE/profiles/$PROFILE_ID?company_ids=$OWNER_COMPANY" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Session-ID: $OWNER_SESSION" \
+    -H "X-Openerp-Session-Id: $OWNER_SESSION" \
     -d "{
         \"profile_type\": \"agent\"
     }")
@@ -188,7 +188,7 @@ AGENT_CPF="99988877766"
 CREATE_AGENT=$(curl -s -X POST "$API_BASE/profiles" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Session-ID: $OWNER_SESSION" \
+    -H "X-Openerp-Session-Id: $OWNER_SESSION" \
     -d "{
         \"name\": \"Agent Sync Test\",
         \"company_id\": $OWNER_COMPANY,
@@ -207,7 +207,7 @@ if [ -n "$AGENT_PROFILE_ID" ] && [ "$AGENT_PROFILE_ID" != "null" ]; then
     UPDATE_AGENT=$(curl -s -X PUT "$API_BASE/profiles/$AGENT_PROFILE_ID?company_ids=$OWNER_COMPANY" \
         -H "Content-Type: application/json" \
         -H "Authorization: Bearer $BEARER_TOKEN" \
-        -H "X-Session-ID: $OWNER_SESSION" \
+        -H "X-Openerp-Session-Id: $OWNER_SESSION" \
         -d "{\"name\": \"Agent Synced Name\"}")
     
     # Verify sync by checking agent model (would need agent API access)

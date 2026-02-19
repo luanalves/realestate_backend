@@ -72,7 +72,7 @@ create_profile() {
     local response=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/profiles" \
         -H "Content-Type: application/json" \
         -H "Authorization: Bearer $BEARER_TOKEN" \
-        -H "X-Session-ID: $session" \
+        -H "X-Openerp-Session-Id: $session" \
         -d "{
             \"name\": \"Test Profile $document-$profile_type\",
             \"company_id\": $company,
@@ -177,7 +177,7 @@ echo ""
 echo "Step 5: Testing pagination (page=1, page_size=2)..."
 PAGE1=$(curl -s -X GET "$API_BASE/profiles?company_ids=$OWNER_COMPANY&page=1&page_size=2" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Session-ID: $OWNER_SESSION")
+    -H "X-Openerp-Session-Id: $OWNER_SESSION")
 
 PAGE1_ITEMS=$(echo "$PAGE1" | jq -r '.data.items // empty')
 PAGE1_COUNT=$(echo "$PAGE1" | jq -r '.data.items | length')
@@ -194,7 +194,7 @@ echo ""
 echo "Step 6: Testing pagination (page=2, page_size=2)..."
 PAGE2=$(curl -s -X GET "$API_BASE/profiles?company_ids=$OWNER_COMPANY&page=2&page_size=2" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Session-ID: $OWNER_SESSION")
+    -H "X-Openerp-Session-Id: $OWNER_SESSION")
 
 PAGE2_ITEMS=$(echo "$PAGE2" | jq -r '.data.items // empty')
 PAGE2_COUNT=$(echo "$PAGE2" | jq -r '.data.items | length')
@@ -257,7 +257,7 @@ echo ""
 echo "Step 10: Testing filter by profile_type with pagination..."
 FILTER_RESULT=$(curl -s -X GET "$API_BASE/profiles?company_ids=$OWNER_COMPANY&profile_type=manager&page=1&page_size=3" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Session-ID: $OWNER_SESSION")
+    -H "X-Openerp-Session-Id: $OWNER_SESSION")
 
 FILTER_ITEMS=$(echo "$FILTER_RESULT" | jq -r '.data.items // empty')
 FILTER_COUNT=$(echo "$FILTER_RESULT" | jq -r '.data.items | length')

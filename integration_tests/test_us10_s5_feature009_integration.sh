@@ -85,7 +85,7 @@ TEST_EMAIL="integration${TIMESTAMP}@test.com"
 CREATE_PROFILE=$(curl -s -X POST "$API_BASE/profiles" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Session-ID: $OWNER_SESSION" \
+    -H "X-Openerp-Session-Id: $OWNER_SESSION" \
     -d "{
         \"name\": \"Integration Test ${TIMESTAMP}\",
         \"company_id\": $OWNER_COMPANY,
@@ -116,7 +116,7 @@ echo "Step 3: Inviting user via profile_id..."
 INVITE_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/invite" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Session-ID: $OWNER_SESSION" \
+    -H "X-Openerp-Session-Id: $OWNER_SESSION" \
     -d "{
         \"profile_id\": $PROFILE_ID,
         \"email\": \"$TEST_EMAIL\"
@@ -144,7 +144,7 @@ echo ""
 echo "Step 4: Verifying profile.user_id populated..."
 GET_PROFILE=$(curl -s -X GET "$API_BASE/profiles/$PROFILE_ID?company_ids=$OWNER_COMPANY" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Session-ID: $OWNER_SESSION")
+    -H "X-Openerp-Session-Id: $OWNER_SESSION")
 
 USER_ID=$(echo "$GET_PROFILE" | jq -r '.data.user_id // empty')
 if [ -z "$USER_ID" ] || [ "$USER_ID" == "null" ]; then
@@ -160,7 +160,7 @@ echo "Step 5: Testing invite profile already with user → 409..."
 INVITE_AGAIN=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/invite" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Session-ID: $OWNER_SESSION" \
+    -H "X-Openerp-Session-Id: $OWNER_SESSION" \
     -d "{
         \"profile_id\": $PROFILE_ID,
         \"email\": \"$TEST_EMAIL\"
@@ -180,7 +180,7 @@ echo "Step 6: Verifying security group assignment..."
 # Get user details from API
 GET_USER=$(curl -s -X GET "$API_BASE/users/$USER_ID?company_ids=$OWNER_COMPANY" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Session-ID: $OWNER_SESSION")
+    -H "X-Openerp-Session-Id: $OWNER_SESSION")
 
 USER_GROUPS=$(echo "$GET_USER" | jq -r '.data.groups // empty')
 if [ -z "$USER_GROUPS" ]; then
@@ -198,7 +198,7 @@ AGENT_EMAIL="agent${TIMESTAMP}@test.com"
 CREATE_AGENT_PROFILE=$(curl -s -X POST "$API_BASE/profiles" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Session-ID: $OWNER_SESSION" \
+    -H "X-Openerp-Session-Id: $OWNER_SESSION" \
     -d "{
         \"name\": \"Agent Integration Test\",
         \"company_id\": $OWNER_COMPANY,
@@ -229,7 +229,7 @@ echo -e "${GREEN}✓ Agent profile created with agent extension link${NC}"
 INVITE_AGENT=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/invite" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Session-ID: $OWNER_SESSION" \
+    -H "X-Openerp-Session-Id: $OWNER_SESSION" \
     -d "{
         \"profile_id\": $AGENT_PROFILE_ID,
         \"email\": \"$AGENT_EMAIL\"
