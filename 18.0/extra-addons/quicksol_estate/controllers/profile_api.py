@@ -122,9 +122,8 @@ class ProfileApiController(http.Controller):
             
             # Parse and validate JSON body
             body = json.loads(request.httprequest.data.decode('utf-8'))
-            validator = SchemaValidator()
             
-            is_valid, errors = validator.validate(body, 'PROFILE_CREATE_SCHEMA')
+            is_valid, errors = SchemaValidator.validate_request(body, SchemaValidator.PROFILE_CREATE_SCHEMA)
             if not is_valid:
                 return error_response(400, f'Validation error: {errors}')
             
@@ -384,9 +383,8 @@ class ProfileApiController(http.Controller):
             
             # Parse and validate body
             body = json.loads(request.httprequest.data.decode('utf-8'))
-            validator = SchemaValidator()
             
-            is_valid, errors = validator.validate(body, 'PROFILE_UPDATE_SCHEMA')
+            is_valid, errors = SchemaValidator.validate_request(body, SchemaValidator.PROFILE_UPDATE_SCHEMA)
             if not is_valid:
                 return error_response(400, f'Validation error: {errors}')
             
