@@ -124,6 +124,16 @@ class RealEstateAgent(models.Model):
         help='Link to user account if agent has system access'
     )
     
+    # Profile link (Feature 010: Profile Unification)
+    profile_id = fields.Many2one(
+        'thedevkitchen.estate.profile',
+        'Unified Profile',
+        ondelete='restrict',
+        index=True,
+        help='Link to unified profile record (9 RBAC types). '
+             'Agents are a business extension of the agent profile type.'
+    )
+    
     # ==================== STATUS & LIFECYCLE ====================
     
     active = fields.Boolean(
@@ -449,6 +459,21 @@ class RealEstateAgent(models.Model):
     @api.model
     def create(self, vals):
         """Override create to sync user data and handle company_ids from user"""
+        # Feature 010: If profile_id is provided, sync cadastral data from profile (T14)
+        # Uses setdefault() to allow explicit values to take precedence
+        if vals.get('profile_id'):
+            profile = self.env['thedevkitchen.estate.profile'].sudo().browse(vals['profile_id'])
+            if profile.exists():
+                # Sync cadastral fields using setdefault (don't override explicit values)
+                vals.setdefault('name', profile.name)
+                vals.setdefault('cpf', profile.document)  # document → cpf
+                vals.setdefault('email', profile.email)
+                vals.setdefault('phone', profile.phone)
+                vals.setdefault('mobile', profile.mobile)
+                vals.setdefault('company_id', profile.company_id.id)
+                if profile.hire_date:
+                    vals.setdefault('hire_date', profile.hire_date)
+        
         # If user_id is provided, sync data from user
         if vals.get('user_id'):
             user = self.env['res.users'].browse(vals['user_id'])
