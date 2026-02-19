@@ -122,7 +122,7 @@ echo -e "${GREEN}✓ Manager profile created (ID=$MANAGER_ID, has HATEOAS links)
 # Step 3: Create Agent Profile (should auto-create agent extension)
 echo ""
 echo "Step 3: Owner creates Agent profile (with agent extension)..."
-AGENT_CPF="18580549132"  # Valid CPF (185.805.491-32)
+AGENT_CPF="52998224725"  # Valid CPF (529.982.247-25)
 
 CREATE_AGENT_RESPONSE=$(curl -s -X POST "$API_BASE/profiles" \
     -H "Content-Type: application/json" \
@@ -154,7 +154,7 @@ echo -e "${GREEN}✓ Agent profile created (ID=$AGENT_ID, agent_link=$AGENT_EXTE
 # Step 4: Create Portal Profile with occupation
 echo ""
 echo "Step 4: Owner creates Portal profile..."
-PORTAL_CPF="30498327164"  # Valid CPF (304.983.271-64)
+PORTAL_CPF="71483341879"  # Valid CPF (714.833.418-79)
 
 CREATE_PORTAL_RESPONSE=$(curl -s -X POST "$API_BASE/profiles" \
     -H "Content-Type: application/json" \
@@ -273,7 +273,7 @@ echo -e "${GREEN}✓ Invalid profile_type rejected with 400${NC}"
 # Step 10: Verify HATEOAS links structure
 echo ""
 echo "Step 10: Verifying HATEOAS links structure..."
-SELF_LINK=$(echo "$CREATE_MANAGER_RESPONSE" | jq -r '.data._links.self // empty')
+SELF_LINK=$(echo "$CREATE_MANAGER_RESPONSE" | jq -r '._links.self // empty')
 if [ -z "$SELF_LINK" ] || [ "$SELF_LINK" = "null" ]; then
     echo -e "${RED}✗ Missing HATEOAS self link${NC}"
     exit 1
