@@ -217,17 +217,90 @@ paths:
     parameters:
       - $ref: '#/components/parameters/OwnerId'
     
+    get:
+      tags:
+        - Owners
+      summary: Get owner details
+      description: |
+        Retrieves detailed information about a specific owner.
+        
+        **RBAC**: Owner can view own data, Admin can view all.
+        **Session**: X-Openerp-Session-Id header required.
+      operationId: getOwner
+      security:
+        - bearerAuth: []
+        - sessionAuth: []
+      responses:
+        '200':
+          description: Owner details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnerDetailResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    
+    put:
+      tags:
+        - Owners
+      summary: Update owner
+      description: |
+        Updates owner profile information (name, phone, mobile).
+        
+        **RBAC**: Owner can update own data, Admin can update all.
+        **Immutable fields**: email, cpf (use separate endpoints for email/password changes).
+        **Session**: X-Openerp-Session-Id header required.
+      operationId: updateOwner
+      security:
+        - bearerAuth: []
+        - sessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OwnerUpdate'
+      responses:
+        '200':
+          description: Owner updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnerResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    
     delete:
       tags:
         - Owners
-      summary: Delete owner
-      description: Delete owner account. Validates if owner is the last one in any company.
+      summary: Delete owner (soft delete)
+      description: |
+        Soft deletes owner account by setting active=False.
+        
+        **RBAC**: Admin only (owners cannot delete themselves).
+        **Protection**: Validates if owner is the last one in any company.
+        **Session**: X-Openerp-Session-Id header required.
       operationId: deleteOwner
       security:
         - bearerAuth: []
+        - sessionAuth: []
       responses:
-        '204':
+        '200':
           description: Owner deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteResponse'
         '400':
           $ref: '#/components/responses/ValidationError'
         '401':
@@ -302,6 +375,11 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+    sessionAuth:
+      type: apiKey
+      in: header
+      name: X-Openerp-Session-Id
+      description: Session ID from user login
 
   parameters:
     CompanyId:
@@ -480,6 +558,7 @@ components:
         - name
         - email
         - password
+        - cpf
       properties:
         name:
           type: string
@@ -493,6 +572,11 @@ components:
           type: string
           minLength: 8
           example: "securePassword123"
+        cpf:
+          type: string
+          pattern: '^\d{3}\.\d{3}\.\d{3}-\d{2}$'
+          description: Brazilian CPF (11 digits with mask)
+          example: "123.456.789-09"
         phone:
           type: string
           maxLength: 20
@@ -535,6 +619,9 @@ components:
         email:
           type: string
           example: "joao@premium.com.br"
+        cpf:
+          type: string
+          example: "123.456.789-09"
         phone:
           type: string
         mobile:
@@ -554,6 +641,10 @@ components:
         - $ref: '#/components/schemas/Owner'
         - type: object
           properties:
+            company_count:
+              type: integer
+              description: Number of companies this owner is linked to
+              example: 2
             companies:
               type: array
               items:

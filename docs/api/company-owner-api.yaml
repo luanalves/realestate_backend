@@ -180,41 +180,12 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
-  /companies/{company_id}/owners:
-    parameters:
-      - $ref: '#/components/parameters/CompanyId'
-
-    get:
-      tags:
-        - Owners
-      summary: List company owners
-      operationId: listOwners
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: active
-          in: query
-          schema:
-            type: boolean
-            default: true
-      responses:
-        '200':
-          description: List of owners
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OwnerListResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
+  /owners:
     post:
       tags:
         - Owners
-      summary: Create owner for company
+      summary: Create owner (Self Registration)
+      description: Create a new Owner account without company association.
       operationId: createOwner
       security:
         - bearerAuth: []
@@ -226,7 +197,7 @@ paths:
               $ref: '#/components/schemas/OwnerCreate'
       responses:
         '201':
-          description: Owner created
+          description: Owner created successfully
           content:
             application/json:
               schema:
@@ -235,10 +206,6 @@ paths:
           $ref: '#/components/responses/ValidationError'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
         '409':
           description: Email already exists
           content:
@@ -246,18 +213,23 @@ paths:
               schema:
                 $ref: '#/components/schemas/ConflictError'
 
-  /companies/{company_id}/owners/{owner_id}:
+  /owners/{owner_id}:
     parameters:
-      - $ref: '#/components/parameters/CompanyId'
       - $ref: '#/components/parameters/OwnerId'
-
+    
     get:
       tags:
         - Owners
       summary: Get owner details
+      description: |
+        Retrieves detailed information about a specific owner.
+        
+        **RBAC**: Owner can view own data, Admin can view all.
+        **Session**: X-Openerp-Session-Id header required.
       operationId: getOwner
       security:
         - bearerAuth: []
+        - sessionAuth: []
       responses:
         '200':
           description: Owner details
@@ -271,14 +243,21 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
-
+    
     put:
       tags:
         - Owners
       summary: Update owner
+      description: |
+        Updates owner profile information (name, phone, mobile).
+        
+        **RBAC**: Owner can update own data, Admin can update all.
+        **Immutable fields**: email, cpf (use separate endpoints for email/password changes).
+        **Session**: X-Openerp-Session-Id header required.
       operationId: updateOwner
       security:
         - bearerAuth: []
+        - sessionAuth: []
       requestBody:
         required: true
         content:
@@ -287,7 +266,7 @@ paths:
               $ref: '#/components/schemas/OwnerUpdate'
       responses:
         '200':
-          description: Owner updated
+          description: Owner updated successfully
           content:
             application/json:
               schema:
@@ -300,27 +279,89 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
-
+    
     delete:
       tags:
         - Owners
-      summary: Deactivate owner (soft delete)
+      summary: Delete owner (soft delete)
+      description: |
+        Soft deletes owner account by setting active=False.
+        
+        **RBAC**: Admin only (owners cannot delete themselves).
+        **Protection**: Validates if owner is the last one in any company.
+        **Session**: X-Openerp-Session-Id header required.
       operationId: deleteOwner
       security:
         - bearerAuth: []
+        - sessionAuth: []
       responses:
         '200':
-          description: Owner deactivated
+          description: Owner deleted successfully
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/DeleteResponse'
         '400':
-          description: Cannot remove last owner
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /owners/{owner_id}/companies/{company_id}:
+    parameters:
+      - $ref: '#/components/parameters/OwnerId'
+      - $ref: '#/components/parameters/CompanyId'
+
+    post:
+      tags:
+        - Owners
+      summary: Link owner to company
+      operationId: linkOwnerToCompany
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Owner linked to company successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ValidationErrorResponse'
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Owner linked to company successfully"
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Owners
+      summary: Unlink owner from company
+      operationId: unlinkOwnerFromCompany
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Owner unlinked from company successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Owner unlinked from company successfully"
+        '400':
+          $ref: '#/components/responses/ValidationError'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -334,6 +375,11 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+    sessionAuth:
+      type: apiKey
+      in: header
+      name: X-Openerp-Session-Id
+      description: Session ID from user login
 
   parameters:
     CompanyId:
@@ -512,6 +558,7 @@ components:
         - name
         - email
         - password
+        - cpf
       properties:
         name:
           type: string
@@ -525,6 +572,11 @@ components:
           type: string
           minLength: 8
           example: "securePassword123"
+        cpf:
+          type: string
+          pattern: '^\d{3}\.\d{3}\.\d{3}-\d{2}$'
+          description: Brazilian CPF (11 digits with mask)
+          example: "123.456.789-09"
         phone:
           type: string
           maxLength: 20
@@ -567,6 +619,9 @@ components:
         email:
           type: string
           example: "joao@premium.com.br"
+        cpf:
+          type: string
+          example: "123.456.789-09"
         phone:
           type: string
         mobile:
@@ -586,6 +641,10 @@ components:
         - $ref: '#/components/schemas/Owner'
         - type: object
           properties:
+            company_count:
+              type: integer
+              description: Number of companies this owner is linked to
+              example: 2
             companies:
               type: array
               items:
