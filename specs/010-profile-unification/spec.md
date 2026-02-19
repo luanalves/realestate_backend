@@ -3,7 +3,7 @@
 **Feature Branch**: `010-profile-unification`
 **Created**: 2026-02-18
 **Status**: Draft
-**ADR References**: ADR-004, ADR-008, ADR-009, ADR-011, ADR-015, ADR-018, ADR-019, ADR-024 (new)
+**ADR References**: ADR-004, ADR-008, ADR-009, ADR-011, ADR-015, ADR-018, ADR-019, ADR-024 (accepted)
 **KB References**: KB-09 (Database Best Practices)
 
 ---
@@ -711,8 +711,10 @@ Follows ADR-019 hierarchy. Same matrix as Feature 009 invite flow:
 
 ## ADR-024: Unificação de Perfis em Modelo Normalizado
 
+> **Note**: This ADR has been formalized and accepted. See [docs/adr/ADR-024-profile-unification.md](../../docs/adr/ADR-024-profile-unification.md) for the complete documentation.
+
 ### Status
-Proposto
+Accepted (formalized on 2026-02-19)
 
 ### Contexto
 

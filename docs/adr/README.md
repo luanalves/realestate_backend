@@ -29,6 +29,7 @@ Este diretório contém as decisões arquiteturais do projeto Real Estate Manage
 | [ADR-021](./ADR-021-async-messaging-rabbitmq-celery.md) | **Async Messaging with RabbitMQ and Celery** | **Accepted** | **2026-02-10** |
 | [ADR-022](./ADR-022-code-quality-linting-static-analysis.md) | **Code Quality - Linting and Static Analysis** | **Accepted** | **2026-02-12** |
 | [ADR-023](./ADR-023-mailhog-email-testing-development.md) | **MailHog para Testes de Email em Desenvolvimento** | **Accepted** | **2026-02-17** |
+| [ADR-024](./ADR-024-profile-unification.md) | **Unificação de Perfis em Modelo Normalizado** | **Accepted** | **2026-02-19** |
 
 ## Como usar as ADRs
 
