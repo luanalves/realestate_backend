@@ -137,6 +137,71 @@ Parâmetros de path e query devem ter `example`:
 6. **Onboarding mais rápido**: Novos desenvolvedores entendem a API pela documentação interativa
 7. **Consistência**: Todos os endpoints seguem o mesmo padrão de documentação
 
+## Arquitetura de Geração Dinâmica
+
+### Como Funciona
+
+O Swagger é **gerado dinamicamente** pelo controller `swagger_controller.py` (módulo `thedevkitchen_apigateway`), que:
+
+1. **Lê da tabela do banco de dados** `thedevkitchen_api_endpoint` para obter a lista de endpoints registrados
+2. Constrói a especificação OpenAPI 3.0 com base nos registros encontrados
+3. Serve a documentação via endpoints `/api/docs` (Swagger UI) e `/api/v1/openapi.json` (spec JSON)
+
+### Persistência de Dados
+
+**⚠️ IMPORTANTE**: Os registros na tabela `thedevkitchen_api_endpoint` **persistem no banco de dados independentemente dos arquivos XML de dados**.
+
+#### Implicações Práticas
+
+- **Instalação inicial**: Arquivos XML em `data/api_endpoints.xml` criam os registros durante a instalação do módulo
+- **Upgrades**: Arquivos XML atualizam/criam registros durante upgrades do módulo
+- **Remoção de código**: Remover um controller e seu arquivo XML **NÃO remove automaticamente** os registros do banco
+- **Swagger UI**: Continua exibindo endpoints removidos até que os registros sejam deletados manualmente do banco
+
+#### Processo de Remoção de Endpoints
+
+Quando remover endpoints (ex: deprecação de APIs), realize as seguintes etapas:
+
+```bash
+# 1. Remover o código (controller)
+rm controllers/deprecated_api.py
+
+# 2. Remover o arquivo XML de dados
+# Editar ou remover: data/api_endpoints.xml
+
+# 3. Limpar registros do banco (OBRIGATÓRIO)
+docker compose exec db psql -U odoo -d realestate -c "
+DELETE FROM thedevkitchen_api_endpoint 
+WHERE path LIKE '%deprecated_path%';
+"
+
+# 4. Verificar Swagger UI
+# Acessar http://localhost:8069/api/docs
+# Confirmar que endpoints removidos não aparecem mais
+```
+
+#### Verificação de Sincronização
+
+Para verificar se há endpoints órfãos no banco:
+
+```sql
+-- Listar todos os endpoints registrados
+SELECT id, name, path, method, active 
+FROM thedevkitchen_api_endpoint 
+ORDER BY path;
+
+-- Verificar endpoints de um módulo específico
+SELECT id, name, path, method 
+FROM thedevkitchen_api_endpoint 
+WHERE path LIKE '/api/v1/tenants%';
+```
+
+### Caso Real: Limpeza de Endpoints Órfãos
+
+Durante a Feature 010 (Profile Unification), os endpoints da API de Tenants foram removidos do código e dos arquivos XML. No entanto, os 6 registros na tabela `thedevkitchen_api_endpoint` permaneceram ativos, fazendo com que o Swagger UI continuasse exibindo os endpoints removidos.
+
+**Solução aplicada**: Limpeza manual via DELETE no banco de dados após identificação pelo comando SQL acima.
+
 ## Referências
 
 - [OpenAPI 3.0 Specification](https://spec.openapis.org/oas/v3.0.3)
