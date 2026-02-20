@@ -71,6 +71,9 @@ paths:
         - If `profile_type='portal'`, requires `occupation` field
         - Compound unique constraint: Same document allowed if different (company_id, profile_type_id)
         
+        **Next Step**: After creating a profile, use `POST /api/v1/users/invite` with the returned
+        `profile_id` to send the invitation email and create the user account.
+        
         **Multi-tenancy**: Company isolation active (@require_company)
       operationId: createProfile
       security:
@@ -124,7 +127,15 @@ paths:
                 profile_type:
                   type: string
                   enum: [owner, director, manager, agent, prospector, receptionist, financial, legal, portal]
-                  description: Profile type code
+                  description: |
+                    Profile type code (string).
+                    
+                    **Backend Relationship**: This string code is used to lookup the corresponding
+                    record in `thedevkitchen.profile.type` table by matching the `code` field.
+                    The profile is then linked to the found record via `profile_type_id` (FK).
+                    
+                    To get all available profile types with their IDs and codes,
+                    use `GET /api/v1/profile-types`.
                   example: agent
                 occupation:
                   type: string

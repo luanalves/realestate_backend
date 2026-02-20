@@ -41,6 +41,14 @@ paths:
         Creates a new `res.users` record without password and sends an invite email
         with a secure link for password creation.
         
+        **✅ RECOMMENDED FLOW (Feature 010 Integration)**:
+        Use `profile_id` to reference an existing profile from `POST /api/v1/profiles`.
+        All user data (name, email, document, company_id) is loaded from the profile.
+        This eliminates duplicate data entry.
+        
+        **Legacy Flow**:
+        Provide all fields directly (name, email, document, profile).
+        
         **Authorization Matrix**:
         - Owner → can invite ALL 9 profiles
         - Director → agent, prospector, receptionist, financial, legal
@@ -66,15 +74,19 @@ paths:
             schema:
               $ref: '#/components/schemas/InviteUserRequest'
             examples:
+              profileIdFlow:
+                summary: ✅ Recommended - Invite from Profile ID
+                value:
+                  profile_id: 123
               standardProfile:
-                summary: Invite an Agent
+                summary: Legacy - Invite an Agent
                 value:
                   name: "João Silva"
                   email: "joao@empresa.com"
                   document: "12345678901"
                   profile: "agent"
               portalProfile:
-                summary: Invite a Portal user (Tenant)
+                summary: Legacy - Invite a Portal user (Tenant)
                 value:
                   name: "Maria Souza"
                   email: "maria@email.com"
@@ -84,7 +96,7 @@ paths:
                   birthdate: "1990-05-15"
                   company_id: 3
               ownerProfile:
-                summary: Invite a Property Owner
+                summary: Legacy - Invite a Property Owner
                 value:
                   name: "Carlos Oliveira"
                   email: "carlos@email.com"
@@ -416,23 +428,37 @@ components:
   schemas:
     InviteUserRequest:
       type: object
-      required: [name, email, document, profile]
       properties:
+        profile_id:
+          type: integer
+          description: |
+            **✅ RECOMMENDED**: ID of existing thedevkitchen.estate.profile record.
+            When provided, all user data (name, email, document, company_id, profile) 
+            is loaded from the profile. This is the preferred flow for Feature 010 integration.
+          example: 123
         name:
           type: string
           maxLength: 255
-          description: Full name of the user
+          description: |
+            Full name of the user.
+            **Required** if profile_id not provided (legacy flow).
         email:
           type: string
           format: email
-          description: Email address (must be unique in system)
+          description: |
+            Email address (must be unique in system).
+            **Required** if profile_id not provided (legacy flow).
         document:
           type: string
-          description: CPF (11 digits) for internal profiles, CPF or CNPJ (14 digits) for portal
+          description: |
+            CPF (11 digits) for internal profiles, CPF or CNPJ (14 digits) for portal.
+            **Required** if profile_id not provided (legacy flow).
         profile:
           type: string
           enum: [owner, director, manager, agent, prospector, receptionist, financial, legal, portal]
-          description: User profile determines Odoo security group
+          description: |
+            User profile determines Odoo security group.
+            **Required** if profile_id not provided (legacy flow).
         phone:
           type: string
           description: Phone number (REQUIRED for portal profile, optional otherwise)

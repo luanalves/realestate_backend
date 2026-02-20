@@ -40,7 +40,14 @@ paths:
       description: |
         Creates a new `res.users` record without password and sends an invite email
         with a secure link for password creation.
-        Operates only in the active company context provided by `X-Company-ID`.
+        
+        **✅ RECOMMENDED FLOW (Feature 010 Integration)**:
+        Use `profile_id` to reference an existing profile from `POST /api/v1/profiles`.
+        All user data (name, email, document, company_id) is loaded from the profile.
+        This eliminates duplicate data entry.
+        
+        **Legacy Flow**:
+        Provide all fields directly (name, email, document, profile).
         
         **Authorization Matrix**:
         - Owner → can invite ALL 9 profiles
@@ -67,15 +74,19 @@ paths:
             schema:
               $ref: '#/components/schemas/InviteUserRequest'
             examples:
+              profileIdFlow:
+                summary: ✅ Recommended - Invite from Profile ID
+                value:
+                  profile_id: 123
               standardProfile:
-                summary: Invite an Agent
+                summary: Legacy - Invite an Agent
                 value:
                   name: "João Silva"
                   email: "joao@empresa.com"
                   document: "12345678901"
                   profile: "agent"
               portalProfile:
-                summary: Invite a Portal user (Tenant)
+                summary: Legacy - Invite a Portal user (Tenant)
                 value:
                   name: "Maria Souza"
                   email: "maria@email.com"
@@ -85,7 +96,7 @@ paths:
                   birthdate: "1990-05-15"
                   company_id: 3
               ownerProfile:
-                summary: Invite a Property Owner
+                summary: Legacy - Invite a Property Owner
                 value:
                   name: "Carlos Oliveira"
                   email: "carlos@email.com"
@@ -132,15 +143,6 @@ paths:
                 success: false
                 error: "forbidden"
                 message: "Managers cannot invite owners"
-        '404':
-          description: Company context invalid/incompatible or cross-company isolation
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-              example:
-                success: false
-                error: "not_found"
         '409':
           description: Conflict (email or document already exists)
           content:
@@ -158,7 +160,7 @@ paths:
                     success: false
                     error: "conflict"
                     field: "document"
-                    message: "Document already registered in this company"
+                    message: "Document already registered for another tenant"
         '500':
           description: Email sending failed
           content:
@@ -214,11 +216,6 @@ paths:
                     success: false
                     error: "validation_error"
                     message: "Password and confirmation do not match"
-                invalidTokenFormat:
-                  value:
-                    success: false
-                    error: "validation_error"
-                    message: "Invalid token format"
         '404':
           description: Token not found
           content:
@@ -255,7 +252,6 @@ paths:
         Public endpoint. Always returns 200 regardless of whether email exists
         (anti-enumeration per ADR-008). If email exists and user is active,
         generates reset token and sends email. Rate limited to 3 requests/email/hour.
-        Response status and JSON shape must remain identical for existing/non-existing/inactive users.
       operationId: forgotPassword
       requestBody:
         required: true
@@ -348,8 +344,7 @@ paths:
       description: |
         Resends invite email with a new token for a user who hasn't set their
         password yet (`signup_pending=True`). Invalidates all previous tokens.
-        Only works for users in the requester's active company (`X-Company-ID`).
-        Company context mismatch must return a generic 404 without disclosing resource existence.
+        Only works for users in the requester's company.
       operationId: resendInvite
       security:
         - bearerAuth: []
@@ -428,28 +423,42 @@ components:
       required: true
       schema:
         type: integer
-      description: Active company ID for request scope (required by @require_company)
+      description: Company ID for multi-tenancy context
 
   schemas:
     InviteUserRequest:
       type: object
-      required: [name, email, document, profile]
       properties:
+        profile_id:
+          type: integer
+          description: |
+            **✅ RECOMMENDED**: ID of existing thedevkitchen.estate.profile record.
+            When provided, all user data (name, email, document, company_id, profile) 
+            is loaded from the profile. This is the preferred flow for Feature 010 integration.
+          example: 123
         name:
           type: string
           maxLength: 255
-          description: Full name of the user
+          description: |
+            Full name of the user.
+            **Required** if profile_id not provided (legacy flow).
         email:
           type: string
           format: email
-          description: Email address (must be unique in system)
+          description: |
+            Email address (must be unique in system).
+            **Required** if profile_id not provided (legacy flow).
         document:
           type: string
-          description: CPF (11 digits) for internal profiles, CPF or CNPJ (14 digits) for portal
+          description: |
+            CPF (11 digits) for internal profiles, CPF or CNPJ (14 digits) for portal.
+            **Required** if profile_id not provided (legacy flow).
         profile:
           type: string
           enum: [owner, director, manager, agent, prospector, receptionist, financial, legal, portal]
-          description: User profile determines Odoo security group
+          description: |
+            User profile determines Odoo security group.
+            **Required** if profile_id not provided (legacy flow).
         phone:
           type: string
           description: Phone number (REQUIRED for portal profile, optional otherwise)
