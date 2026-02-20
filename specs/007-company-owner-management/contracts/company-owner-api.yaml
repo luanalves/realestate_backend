@@ -213,103 +213,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/ConflictError'
 
-  /owners/{owner_id}:
-    parameters:
-      - $ref: '#/components/parameters/OwnerId'
-    
-    get:
-      tags:
-        - Owners
-      summary: Get owner details
-      description: |
-        Retrieves detailed information about a specific owner.
-        
-        **RBAC**: Owner can view own data, Admin can view all.
-        **Session**: X-Openerp-Session-Id header required.
-      operationId: getOwner
-      security:
-        - bearerAuth: []
-        - sessionAuth: []
-      responses:
-        '200':
-          description: Owner details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OwnerDetailResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-    
-    put:
-      tags:
-        - Owners
-      summary: Update owner
-      description: |
-        Updates owner profile information (name, phone, mobile).
-        
-        **RBAC**: Owner can update own data, Admin can update all.
-        **Immutable fields**: email, cpf (use separate endpoints for email/password changes).
-        **Session**: X-Openerp-Session-Id header required.
-      operationId: updateOwner
-      security:
-        - bearerAuth: []
-        - sessionAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/OwnerUpdate'
-      responses:
-        '200':
-          description: Owner updated successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OwnerResponse'
-        '400':
-          $ref: '#/components/responses/ValidationError'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-    
-    delete:
-      tags:
-        - Owners
-      summary: Delete owner (soft delete)
-      description: |
-        Soft deletes owner account by setting active=False.
-        
-        **RBAC**: Admin only (owners cannot delete themselves).
-        **Protection**: Validates if owner is the last one in any company.
-        **Session**: X-Openerp-Session-Id header required.
-      operationId: deleteOwner
-      security:
-        - bearerAuth: []
-        - sessionAuth: []
-      responses:
-        '200':
-          description: Owner deleted successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DeleteResponse'
-        '400':
-          $ref: '#/components/responses/ValidationError'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
   /owners/{owner_id}/companies/{company_id}:
     parameters:
       - $ref: '#/components/parameters/OwnerId'
@@ -586,27 +489,6 @@ components:
           maxLength: 20
           example: "(11) 99999-0000"
 
-    OwnerUpdate:
-      type: object
-      properties:
-        name:
-          type: string
-          maxLength: 255
-        email:
-          type: string
-          format: email
-        password:
-          type: string
-          minLength: 8
-        phone:
-          type: string
-          maxLength: 20
-        mobile:
-          type: string
-          maxLength: 20
-        active:
-          type: boolean
-
     Owner:
       type: object
       properties:
@@ -712,20 +594,6 @@ components:
         data:
           allOf:
             - $ref: '#/components/schemas/Owner'
-            - type: object
-              properties:
-                links:
-                  $ref: '#/components/schemas/HATEOASLinks'
-
-    OwnerDetailResponse:
-      type: object
-      properties:
-        success:
-          type: boolean
-          example: true
-        data:
-          allOf:
-            - $ref: '#/components/schemas/OwnerDetail'
             - type: object
               properties:
                 links:
