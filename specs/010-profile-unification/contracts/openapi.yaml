@@ -91,7 +91,7 @@ paths:
                 - company_id
                 - document
                 - email
-                - profile_type
+                - profile_type_id
               properties:
                 name:
                   type: string
@@ -124,19 +124,17 @@ paths:
                   format: date
                   description: Date of birth (ISO 8601)
                   example: "1990-01-01"
-                profile_type:
-                  type: string
-                  enum: [owner, director, manager, agent, prospector, receptionist, financial, legal, portal]
+                profile_type_id:
+                  type: integer
                   description: |
-                    Profile type code (string).
+                    Foreign key to `thedevkitchen.profile.type` table.
                     
-                    **Backend Relationship**: This string code is used to lookup the corresponding
-                    record in `thedevkitchen.profile.type` table by matching the `code` field.
-                    The profile is then linked to the found record via `profile_type_id` (FK).
+                    **Best Practice**: API receives the ID directly (not string code).
+                    This avoids unnecessary database lookup and improves performance.
                     
-                    To get all available profile types with their IDs and codes,
-                    use `GET /api/v1/profile-types`.
-                  example: agent
+                    To get available profile type IDs, use `GET /api/v1/profile-types`
+                    which returns: `[{"id": 4, "code": "agent", "name": "Corretor"}, ...]`
+                  example: 4
                 occupation:
                   type: string
                   description: Occupation (required for portal type)
@@ -156,7 +154,7 @@ paths:
                   email: joao.silva@example.com
                   phone: "+5511999998888"
                   birthdate: "1990-01-01"
-                  profile_type: agent
+                  profile_type_id: 4
                   hire_date: "2025-01-15"
               portal:
                 summary: Create Portal Profile (Tenant)
@@ -167,7 +165,7 @@ paths:
                   email: maria.santos@example.com
                   phone: "+5511988776655"
                   birthdate: "1985-05-15"
-                  profile_type: portal
+                  profile_type_id: 9
                   occupation: "Arquiteta"
       responses:
         '201':

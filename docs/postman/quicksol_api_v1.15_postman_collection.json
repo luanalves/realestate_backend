@@ -1,0 +1,4601 @@
+{
+  "info": {
+    "_postman_id": "b7e3f1a2-8c4d-4e5f-9a6b-1c2d3e4f5a6b",
+    "name": "Quicksol Real Estate API",
+    "description": "Complete API collection for QuickSol Real Estate Management System.\n\n## Features\n- Multi-tenancy with company isolation\n- RBAC: 9 security profiles\n- Profile Unification (Feature 010)\n- User Onboarding & Password Management (Feature 009)\n- Properties, Agents, Leads management\n- Commission tracking and performance\n- Owner & Company management\n- Complete Assignment CRUD\n\n## Authentication Flow\n1. **Get OAuth Token**: POST /api/v1/auth/token\n2. **User Login**: POST /api/v1/users/login (returns session_id)\n3. **Use Both**: Authorization header + X-Openerp-Session-Id header (GET) or session_id in body (POST type=json)\n4. **Set tenant context**: `X-Company-ID` header on authenticated multi-tenant endpoints\n\n## Headers\n- `Authorization: Bearer {{access_token}}`\n- `X-Openerp-Session-Id: {{session_id}}` (REQUIRED for GET)\n- `X-Company-ID: {{company_id}}` (REQUIRED for invite/resend-invite)\n- `User-Agent: {{user_agent}}`\n- `Content-Type: application/json`\n\n## Important Notes (ADR-016)\n- ⚠️ **POST/PUT/PATCH**: `session_id` goes in **body JSON** (not header)\n- ⚠️ **GET requests**: `session_id` goes in **header** `X-Openerp-Session-Id`\n- ⚠️ **No JSON-RPC**: Business endpoints send JSON directly in body\n- ✅ **Variables**: Use {{...}} for all authentication values\n- ✅ **Test Scripts**: OAuth and Login endpoints auto-save tokens\n\n## ⚠️ Known Limitations\n- **Owner CRUD (Feature 007)**: GET/PUT/DELETE /api/v1/owners/{id} documented but NOT IMPLEMENTED in code\n  - Returns 404 HTML page (Odoo error page)\n  - OpenAPI spec available: docs/openapi/007-company-owner.yaml\n  - POST /api/v1/owners (create) and company link/unlink endpoints ARE working\n\n## Changelog v1.15\n- **BREAKING**: POST /api/v1/profiles - Changed `profile_type` (string) → `profile_type_id` (integer FK)\n- **PERFORMANCE**: Removed unnecessary ProfileType lookup, API now receives FK directly\n- **BEST PRACTICE**: Follows KB-09 database best practices (direct FK reference)\n- **WORKFLOW**: 1) GET /api/v1/profile-types → get ID, 2) POST /api/v1/profiles with profile_type_id\n- Updated OpenAPI specs: profile_type_id as integer in all schemas\n\n## Changelog v1.14\n- **FIX**: POST /api/v1/users/invite - Added correct flow with profile_id (Feature 010 integration)\n- **DOCS**: Clarified POST /api/v1/profiles - profile_type is string that relates to thedevkitchen.profile.type via code\n- **FLOW**: Recommended usage: 1) POST /api/v1/profiles → 2) POST /api/v1/users/invite with profile_id\n- Removed duplicate user data entry between profile creation and invite\n\n## Changelog v1.13\n- **FIX**: ADR-016 compliance - moved session_id from header to body JSON for all POST/PUT/PATCH endpoints\n- **FIX**: Removed X-Openerp-Session-Id header from POST/PUT/PATCH (header only for GET/DELETE)\n- Session placement rules enforced: GET/DELETE → header, POST/PUT/PATCH → body\n\n## Changelog v1.12\n- **NEW**: Profile Unification (Feature 010) - ADR-024\n- POST /api/v1/profiles - Create unified profile (9 RBAC types)\n- GET /api/v1/profiles - List profiles with pagination and filters\n- GET /api/v1/profiles/{id} - Get profile detail\n- PUT /api/v1/profiles/{id} - Update profile (immutable fields enforced)\n- DELETE /api/v1/profiles/{id} - Soft delete profile\n- GET /api/v1/profile-types - List available profile types\n- Compound unique constraint: (document, company_id, profile_type_id)\n- RBAC Authorization Matrix: Owner (9), Manager (5), Agent (2)\n- Agent auto-creates extension (611 LOC business logic preserved)\n- Multi-tenancy: Same document allowed across companies\n- Integration with Feature 009: invite references profile_id\n- **DOCS**: Updated Owner API OpenAPI spec with GET/PUT/DELETE endpoints (not yet implemented)\n\n## Changelog v1.11\n- Added `X-Company-ID` header to authenticated onboarding requests (`invite`, `resend-invite`)\n- Clarified active-company scope for multitenancy\n\n## Changelog v1.10\n- **NEW**: User Onboarding & Password Management (Feature 009)\n- POST /api/v1/users/invite - Invite users with RBAC authorization matrix\n- POST /api/v1/users/{id}/resend-invite - Resend invitation email\n- POST /api/v1/auth/set-password - Set password from invite token\n- POST /api/v1/auth/forgot-password - Request password reset\n- POST /api/v1/auth/reset-password - Reset password with token\n- Portal dual record creation: res.users + real.estate.tenant\n- Token security: UUID v4 → SHA-256 hashing\n- Anti-enumeration pattern on forgot-password\n\n## Previous Versions\n- v1.9: Properties endpoint with company_ids parameter and assignment scope hardening\n- v1.8: Properties endpoint with company_ids parameter\n- v1.7: Create Owner with CPF validation (validate_docbr)\n- v1.6: Assignment CRUD endpoints with pagination and filters\n- v1.5: Fixed ADR-016 compliance, Master Data endpoints\n- v1.4: Integrated Company & Owner Management (Feature 007)\n- v1.3: Complete API coverage (50+ endpoints)",
+    "version": "1.15",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Authentication",
+      "description": "OAuth 2.0 authentication endpoints. Run these first to get access_token.",
+      "item": [
+        {
+          "name": "Get OAuth Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.access_token) {",
+                  "    pm.environment.set('access_token', jsonData.access_token);",
+                  "    console.log('✅ Access token saved');",
+                  "    if (jsonData.refresh_token) {",
+                  "        pm.environment.set('refresh_token', jsonData.refresh_token);",
+                  "        console.log('✅ Refresh token saved');",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_id\": \"{{client_id}}\",\n  \"client_secret\": \"{{client_secret}}\",\n  \"grant_type\": \"client_credentials\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/token",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "token"
+              ]
+            },
+            "description": "Get OAuth 2.0 access token.\n\n**Authentication:** None (public endpoint)\n\n**Response:** access_token, refresh_token, expires_in\n\n**IMPORTANT:** OAuth endpoints do NOT use JSON-RPC. Send JSON directly in body."
+          }
+        },
+        {
+          "name": "Refresh OAuth Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.access_token) {",
+                  "    pm.environment.set('access_token', jsonData.access_token);",
+                  "    console.log('✅ Access token refreshed');",
+                  "    if (jsonData.refresh_token) {",
+                  "        pm.environment.set('refresh_token', jsonData.refresh_token);",
+                  "        console.log('✅ Refresh token saved');",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_id\": \"{{client_id}}\",\n  \"client_secret\": \"{{client_secret}}\",\n  \"grant_type\": \"refresh_token\",\n  \"refresh_token\": \"{{refresh_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/refresh",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "refresh"
+              ]
+            },
+            "description": "Refresh an expired access token using the refresh_token.\n\n**Authentication:** None (public endpoint)\n\n**Response:** new access_token, refresh_token, expires_in"
+          }
+        },
+        {
+          "name": "Revoke Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{access_token}}\",\n  \"token_type_hint\": \"access_token\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/revoke",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "revoke"
+              ]
+            },
+            "description": "Revoke an active access or refresh token.\n\n**Authentication:** Bearer Token\n\n**token_type_hint:** 'access_token' or 'refresh_token'"
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. User Invitation",
+      "description": "User invitation endpoints with RBAC authorization matrix.",
+      "item": [
+        {
+          "name": "Invite User (Standard Profile)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe Manager\",\n  \"email\": \"john.manager@example.com\",\n  \"document\": \"12345678901\",\n  \"profile\": \"manager\",\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/invite",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "invite"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company), scoped by `X-Company-ID`\n**Fingerprint validation:** Active (IP + User-Agent)\n\n**IMPORTANT:** Business endpoints do NOT use JSON-RPC format. Send JSON directly in body with session_id field.\n\n**Authorization Matrix:**\n- Owner: Can invite all 9 profiles\n- Manager: Can invite 5 operational profiles\n- Agent: Can invite owner + portal\n- Others: 403 Forbidden\n\n**Request Body:**\n- `name` (required): Full name\n- `email` (required): Valid email, unique\n- `document` (required): CPF/CNPJ\n- `profile` (required): One of 9 profiles (owner, director, manager, agent, prospector, receptionist, financial, legal, portal)\n- `session_id` (required): Session ID from login\n\n**Required Headers:**\n- `X-Company-ID` (required): Active company scope for request\n\n**Errors (precedence):**\n- 403: Forbidden (authorization matrix violation)\n- 404: Invalid/incompatible company context or cross-company access (`not_found`)\n- 400: Validation errors\n- 409: Duplicate email or duplicate document in active company"
+          }
+        },
+        {
+          "name": "Invite User (from Profile ID)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"profile_id\": 123,\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/invite",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "invite"
+              ]
+            },
+            "description": "**✅ RECOMMENDED FLOW (Feature 010 Integration)**\n\nInvite user from existing profile record. All data (name, email, document, company_id) is loaded from the profile.\n\n**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company context loaded from profile.company_id\n\n**Request Body:**\n- `profile_id` (required): ID of thedevkitchen.estate.profile record\n- `session_id` (required): Session ID from login\n\n**Process:**\n1. Validates profile_id exists\n2. Checks profile has no linked user yet\n3. Extracts name, email, document, company_id from profile\n4. Derives profile type from profile.profile_type_id.code\n5. Creates res.users with invitation flow\n\n**Errors:**\n- 404: Profile not found\n- 409: Profile already has a user account\n- 403: Authorization matrix violation\n- 400: Validation errors\n\n**Use Case:** After creating profile with POST /api/v1/profiles, use this endpoint to send invitation email."
+          }
+        },
+        {
+          "name": "Invite User (Portal Profile)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Company-ID",
+                "value": "{{company_id}}",
+                "description": "Active company context required by @require_company"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Jane Doe Tenant\",\n  \"email\": \"jane.tenant@example.com\",\n  \"document\": \"98765432109\",\n  \"profile\": \"portal\",\n  \"phone\": \"+5511988776655\",\n  \"birthdate\": \"1985-05-15\",\n  \"occupation\": \"Software Engineer\",\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/invite",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "invite"
+              ]
+            },
+            "description": "**Portal Dual Record Creation**\n\nCreates both:\n1. `res.users` (portal group)\n2. `real.estate.tenant` (linked via partner_id)\n\n**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Request is scoped by `X-Company-ID`\n\n**IMPORTANT:** Business endpoints do NOT use JSON-RPC format. Send JSON directly in body with session_id field.\n\n**Additional Required Fields for Portal:**\n- `phone` (required): Tenant phone number\n- `birthdate` (required): ISO 8601 date (YYYY-MM-DD)\n- `company_id` (required): Target company for tenant record\n- `occupation` (optional): Tenant occupation\n- `session_id` (required): Session ID from login\n\n**Required Headers:**\n- `X-Company-ID` (required): Active company scope for request\n\n**Errors:**\n- 400: Missing portal required fields\n- 403: Forbidden by RBAC\n- 404: Invalid/incompatible company context or cross-company access (`not_found`)\n- 409: Duplicate document in active company"
+          }
+        },
+        {
+          "name": "Resend Invite",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Company-ID",
+                "value": "{{company_id}}",
+                "description": "Active company context required by @require_company"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/:user_id/resend-invite",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                ":user_id",
+                "resend-invite"
+              ],
+              "variable": [
+                {
+                  "key": "user_id",
+                  "value": "123",
+                  "description": "User ID to resend invite"
+                }
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Scoped by `X-Company-ID`; only same active company is allowed\n**Rate Limiting:** Max 5 resends per user (configurable)\n\n**IMPORTANT:** Business endpoints do NOT use JSON-RPC format. Send JSON directly in body with session_id field.\n\n**Behavior:**\n- Invalidates previous pending invite token\n- Generates new token with fresh TTL\n- Sends new invite email\n- Returns 429 if max resends exceeded\n- Returns 404 if user not found, invalid company context, or cross-company\n- Returns 400 if user already active\n\n**Request Body:**\n- `session_id` (required): Session ID from login\n\n**Required Headers:**\n- `X-Company-ID` (required): Active company scope for request\n\n**Error precedence:** 403 (authz) → 404 (isolation/context) → 400 (validation)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Password Management",
+      "description": "Public password management endpoints (set, forgot, reset).",
+      "item": [
+        {
+          "name": "Set Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"<paste-token-from-email>\",\n  \"password\": \"MySecurePassword123\",\n  \"confirm_password\": \"MySecurePassword123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/set-password",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "set-password"
+              ]
+            },
+            "description": "**Authentication:** None (public endpoint)\n**Token Source:** Invite email\n\n**IMPORTANT:** This is a PUBLIC endpoint. No OAuth token or session required.\n\n**Request Body:**\n- `token` (required): Raw token from invite email (UUID format)\n- `password` (required): New password (min 8 chars)\n- `confirm_password` (required): Must match password\n\n**Errors:**\n- 400: Validation error (password rules or token format)\n- 404: Token not found\n- 410: Token expired or already used"
+          }
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john.manager@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/forgot-password",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "forgot-password"
+              ]
+            },
+            "description": "**Authentication:** None (public endpoint)\n**Anti-Enumeration Pattern (ADR-008):** Always returns 200\n\n**IMPORTANT:** This endpoint ALWAYS returns 200 OK with same response, regardless of whether email exists or not. This prevents user enumeration attacks.\n\n**Request Body:**\n- `email` (required): Email address to send reset link\n\n**Behavior (if email exists and user is active):**\n1. Invalidates previous pending reset tokens\n2. Generates new reset token (type='reset')\n3. Sends reset email with token link\n4. Rate limiting check (3 requests/hour)\n\n**Behavior (if email doesn't exist or user inactive):**\n1. Returns same 200 response\n2. No email sent\n3. No database changes\n\n**Response 200 (always):**\n```json\n{\n  \"message\": \"If the email exists, a password reset link has been sent.\"\n}\n```\n\n**Rate Limiting:**\n- 429: If more than 3 requests in 1 hour from same IP\n\n**Security Features:**\n- Anti-enumeration (identical response for all cases)\n- Rate limiting per IP\n- Token expiry (default 24h)\n- Previous tokens invalidated"
+          }
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"<paste-token-from-email>\",\n  \"password\": \"MyNewSecurePassword123\",\n  \"confirm_password\": \"MyNewSecurePassword123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/reset-password",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "reset-password"
+              ]
+            },
+            "description": "**Authentication:** None (public endpoint)\n**Token Source:** Reset password email\n\n**IMPORTANT:** This is a PUBLIC endpoint. No OAuth token or session required.\n\n**Request Body:**\n- `token` (required): Raw token from reset email (UUID format)\n- `password` (required): New password (min 8 chars)\n- `confirm_password` (required): Must match password\n\n**Token Validation:**\n- Token must exist and match SHA-256 hash\n- Token must have type='reset'\n- Token status must be 'pending'\n- Token must not be expired (TTL check)\n\n**Password Requirements:**\n- Minimum 8 characters\n- Must match confirm_password\n\n**Side Effects:**\n- Password updated\n- Token marked as 'used'\n- **ALL active sessions invalidated** (is_active=false in api_session table)\n- User must login again after reset\n\n**Response 200:**\n```json\n{\n  \"message\": \"Password reset successfully. Please log in with your new password.\",\n  \"links\": {\n    \"login\": \"/api/v1/users/login\"\n  }\n}\n```\n\n**Errors:**\n- 400: Password validation failed\n- 410: Token expired, used, or invalid\n\n**Security Note:** All previous sessions are invalidated to prevent unauthorized access after password reset."
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. User Management",
+      "description": "User authentication, profile management, and session endpoints.",
+      "item": [
+        {
+          "name": "User Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.session_id) {",
+                  "    pm.environment.set('session_id', jsonData.session_id);",
+                  "    console.log('✅ Session ID saved');",
+                  "} else if (jsonData && jsonData.result && jsonData.result.session_id) {",
+                  "    pm.environment.set('session_id', jsonData.result.session_id);",
+                  "    console.log('✅ Session ID saved (from result)');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{user_email}}\",\n  \"password\": \"{{user_password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "login"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token required (JWT only)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\nLogin with email/password and get session_id for subsequent requests.\n\n**Response:** session_id, user info"
+          }
+        },
+        {
+          "name": "User Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/logout",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "logout"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Fingerprint validation:** Active\n\nInvalidate current session."
+          }
+        },
+        {
+          "name": "Get Current User (/me)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Fingerprint validation:** Active\n\nGet information about the currently authenticated user including roles and company access."
+          }
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Name\",\n  \"phone\": \"+55 11 99999-0000\",\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/profile",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "profile"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Fingerprint validation:** Active\n\nUpdate the current user's profile information (name, phone, etc.)."
+          }
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"old_password\": \"current_password\",\n  \"new_password\": \"new_secure_password\",\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/change-password",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "change-password"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Fingerprint validation:** Active\n\nChange the current user's password. Requires old password for verification."
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Properties",
+      "description": "Property CRUD operations with multi-tenancy isolation.",
+      "item": [
+        {
+          "name": "List Properties",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "Session ID for fingerprint validation (REQUIRED for GET)"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/properties?company_ids=63&limit=20&offset=0",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "properties"
+              ],
+              "query": [
+                {
+                  "key": "company_ids",
+                  "value": "63",
+                  "description": "REQUIRED - Comma-separated company IDs (e.g., '63' or '63,65')"
+                },
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Items per page (default: 20, max: 100)"
+                },
+                {
+                  "key": "offset",
+                  "value": "0",
+                  "description": "Offset for pagination (default: 0)"
+                },
+                {
+                  "key": "is_active",
+                  "value": "true",
+                  "description": "Filter by active status (true/false). Omit to return all.",
+                  "disabled": true
+                },
+                {
+                  "key": "property_type_id",
+                  "value": "1",
+                  "description": "Filter by property type ID",
+                  "disabled": true
+                },
+                {
+                  "key": "property_status",
+                  "value": "available",
+                  "description": "Filter: available, sold, rented, unavailable",
+                  "disabled": true
+                },
+                {
+                  "key": "agent_id",
+                  "value": "1",
+                  "description": "Filter by assigned agent ID",
+                  "disabled": true
+                },
+                {
+                  "key": "city",
+                  "value": "São Paulo",
+                  "description": "Filter by city (partial match)",
+                  "disabled": true
+                },
+                {
+                  "key": "state_id",
+                  "value": "1",
+                  "description": "Filter by state ID",
+                  "disabled": true
+                },
+                {
+                  "key": "min_price",
+                  "value": "100000",
+                  "description": "Minimum price filter",
+                  "disabled": true
+                },
+                {
+                  "key": "max_price",
+                  "value": "500000",
+                  "description": "Maximum price filter",
+                  "disabled": true
+                },
+                {
+                  "key": "for_sale",
+                  "value": "true",
+                  "description": "Filter properties for sale",
+                  "disabled": true
+                },
+                {
+                  "key": "for_rent",
+                  "value": "true",
+                  "description": "Filter properties for rent",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For GET requests, session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in body.\n\n**REQUIRED PARAMETER:** `company_ids` - Comma-separated company IDs. User must have access to all specified companies.\n\nReturns paginated list of properties filtered by company, with optional filters for type, status, price range, city, agent, etc.\n\n**RBAC (ADR-019):**\n- Admin: All properties in requested companies\n- Manager/Owner: All properties in requested companies\n- Agent: Only assigned properties in requested companies\n\n**Response (200):**\n```json\n{\n  \"success\": true,\n  \"data\": [...],\n  \"count\": 5,\n  \"total\": 50,\n  \"limit\": 20,\n  \"offset\": 0,\n  \"_links\": {\n    \"self\": \"/api/v1/properties?company_ids=63&limit=20&offset=0\",\n    \"next\": \"/api/v1/properties?company_ids=63&limit=20&offset=20\"\n  }\n}\n```\n\n**Error Responses:**\n- 400: company_ids parameter is required\n- 400: Invalid company_ids format\n- 403: Access denied to company IDs"
+          }
+        },
+        {
+          "name": "Create Property",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.id) {",
+                  "    pm.environment.set('property_id', jsonData.id);",
+                  "    console.log('✅ Property ID saved: ' + jsonData.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Apartamento Centro - 3 quartos\",\n  \"property_type_id\": 1,\n  \"address\": \"Rua das Flores, 123\",\n  \"city\": \"São Paulo\",\n  \"price\": 450000.0,\n  \"bedrooms\": 3,\n  \"bathrooms\": 2,\n  \"area\": 120.5,\n  \"description\": \"Apartamento reformado em excelente localização\",\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/properties",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "properties"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\nCreate a new property in the current company."
+          }
+        },
+        {
+          "name": "Get Property Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "Session ID for fingerprint validation (REQUIRED for GET)"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/properties/{{property_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "properties",
+                "{{property_id}}"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\n**IMPORTANT:** For GET requests, session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in body.\n\nRetrieve details of a specific property by ID."
+          }
+        },
+        {
+          "name": "Update Property",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"price\": 480000.0,\n  \"state\": \"available\",\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/properties/{{property_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "properties",
+                "{{property_id}}"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\nUpdate an existing property's details."
+          }
+        },
+        {
+          "name": "Delete Property (Soft Delete)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "Session ID for fingerprint validation"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/properties/{{property_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "properties",
+                "{{property_id}}"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\nSoft delete (archive) a property. Can be restored."
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Agents",
+      "description": "Agent management operations with multi-tenancy isolation.",
+      "item": [
+        {
+          "name": "List Agents",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "Session ID for fingerprint validation (REQUIRED for GET)"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/agents?limit=20&offset=0",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "agents"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                },
+                {
+                  "key": "active",
+                  "value": "true",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\n**IMPORTANT:** For GET requests, session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in body.\n\nReturn paginated list of agents in the current company."
+          }
+        },
+        {
+          "name": "Create Agent",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.id) {",
+                  "    pm.environment.set('agent_id', jsonData.id);",
+                  "    console.log('✅ Agent ID saved: ' + jsonData.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"João Silva\",\n  \"cpf\": \"123.456.789-09\",\n  \"company_id\": {{company_id}},\n  \"email\": \"joao.silva.agent@example.com\",\n  \"phone\": \"+55 11 98765-4321\",\n  \"mobile\": \"+55 11 91234-5678\",\n  \"creci\": \"CRECI-SP 12345\",\n  \"hire_date\": \"2026-02-13\",\n  \"bank_name\": \"Banco do Brasil\",\n  \"bank_account\": \"12345-6\",\n  \"pix_key\": \"joao.silva@email.com\",\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/agents",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "agents"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\nCreate a new real estate agent.\n\n**Required fields:**\n- name (string): Agent's full name (3-255 chars)\n- cpf (string): Brazilian CPF (11 digits)\n- company_id (integer): Real estate company ID (required for multi-tenancy)\n- email (string): Email address (required for account activation)\n\n**Optional fields:**\n- phone (string): Phone number\n- mobile (string): Mobile number\n- creci (string): CRECI registration (min 4 chars)\n- hire_date (string): ISO date (YYYY-MM-DD)\n- bank_name (string): Bank name\n- bank_account (string): Account number\n- pix_key (string): PIX key\n\n**RBAC:** Only managers and admins can create agents.\n**Response:** 201 with agent object and HATEOAS links."
+          }
+        },
+        {
+          "name": "Get Agent Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "Session ID for fingerprint validation (REQUIRED for GET)"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/agents/{{agent_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "agents",
+                "{{agent_id}}"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\n**IMPORTANT:** For GET requests, session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in body.\n\nRetrieve details of a specific agent by ID."
+          }
+        },
+        {
+          "name": "Update Agent",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+55 11 99999-0000\",\n  \"creci\": \"F654321\",\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/agents/{{agent_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "agents",
+                "{{agent_id}}"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\nUpdate an existing agent's details."
+          }
+        },
+        {
+          "name": "Deactivate Agent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/agents/{{agent_id}}/deactivate",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "agents",
+                "{{agent_id}}",
+                "deactivate"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\nDeactivate an agent (soft delete). Agent can be reactivated later."
+          }
+        },
+        {
+          "name": "Reactivate Agent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/agents/{{agent_id}}/reactivate",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "agents",
+                "{{agent_id}}",
+                "reactivate"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\nReactivate a previously deactivated agent."
+          }
+        },
+        {
+          "name": "Get Agent's Properties",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "Session ID for fingerprint validation (REQUIRED for GET)"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/agents/{{agent_id}}/properties?limit=20&offset=0",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "agents",
+                "{{agent_id}}",
+                "properties"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                }
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\n**IMPORTANT:** For GET requests, session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in body.\n\nList all properties assigned to a specific agent."
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Assignments",
+      "description": "Property-to-agent assignment management.",
+      "item": [
+        {
+          "name": "Create Assignment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.id) {",
+                  "    pm.environment.set('assignment_id', jsonData.id);",
+                  "    console.log('✅ Assignment ID saved: ' + jsonData.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"agent_id\": {{agent_id}},\n  \"property_id\": {{property_id}},\n  \"company_id\": {{company_id}},\n  \"responsibility_type\": \"primary\",\n  \"commission_percentage\": 6.0,\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/assignments",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "assignments"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\nAssign a property to an agent.\n\n**Required Fields:**\n- agent_id: Agent ID\n- property_id: Property ID\n- company_id: Company ID\n\n**Optional Fields:**\n- responsibility_type: primary/secondary/support (default: primary)\n- commission_percentage: 0-100 (default: 0)"
+          }
+        },
+        {
+          "name": "List Assignments",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "Session ID for fingerprint validation (REQUIRED for GET)"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/assignments?company_ids=63&page=1&page_size=20&active_only=true",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "assignments"
+              ],
+              "query": [
+                {
+                  "key": "company_ids",
+                  "value": "63",
+                  "description": "REQUIRED - Comma-separated company IDs (e.g., '63' or '63,65')"
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number (default: 1)"
+                },
+                {
+                  "key": "page_size",
+                  "value": "20",
+                  "description": "Items per page (default: 20, max: 100)"
+                },
+                {
+                  "key": "active_only",
+                  "value": "true",
+                  "description": "Show only active assignments (default: true)"
+                },
+                {
+                  "key": "agent_id",
+                  "value": "1",
+                  "description": "Filter by agent ID",
+                  "disabled": true
+                },
+                {
+                  "key": "property_id",
+                  "value": "1",
+                  "description": "Filter by property ID",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For GET requests, session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in body.\n\n**REQUIRED PARAMETER:** `company_ids` - Comma-separated company IDs (e.g., '63' or '63,65'). User must have access to all specified companies.\n\nReturns paginated list of agent-property assignments filtered by company.\n\n**RBAC (ADR-019):**\n- Admin: All assignments in requested companies\n- Manager: All assignments in requested companies (must have access)\n- Agent: Only own assignments in requested companies\n\n**Response (200):**\n```json\n{\n  \"success\": true,\n  \"data\": [...],\n  \"pagination\": {\n    \"total\": 10,\n    \"page\": 1,\n    \"page_size\": 20,\n    \"total_pages\": 1\n  }\n}\n```\n\n**Error Responses:**\n- 400: company_ids parameter is required\n- 400: Invalid company_ids format\n- 403: Access denied to company IDs"
+          }
+        },
+        {
+          "name": "Get Assignment",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "Session ID for fingerprint validation (REQUIRED for GET)"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/assignments/{{assignment_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "assignments",
+                "{{assignment_id}}"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Returns 404 if not accessible (ADR-008)\n**Fingerprint validation:** Active\n\n**IMPORTANT:** For GET requests, session_id MUST be sent via header 'X-Openerp-Session-Id'.\n\nReturns full assignment details with HATEOAS links to agent, property, and company."
+          }
+        },
+        {
+          "name": "Update Assignment",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"responsibility_type\": \"secondary\",\n  \"commission_percentage\": 4.0,\n  \"notes\": \"Assisting primary agent\",\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/assignments/{{assignment_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "assignments",
+                "{{assignment_id}}"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Returns 404 if not accessible (ADR-008)\n**Fingerprint validation:** Active\n\n**RBAC (ADR-019):**\n- Manager/Owner: Can update all fields\n- Agent: Can only update notes\n\n**Editable Fields:**\n- responsibility_type: primary/secondary/support\n- commission_percentage: 0-100 (Manager/Owner only)\n- notes: Free text\n\n**Immutable Fields:**\n- agent_id, property_id, company_id (delete and recreate instead)"
+          }
+        },
+        {
+          "name": "Delete Assignment",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "Session ID for fingerprint validation"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/assignments/{{assignment_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "assignments",
+                "{{assignment_id}}"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\nRemove a property-agent assignment."
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Commissions",
+      "description": "Commission rules and transaction management.",
+      "item": [
+        {
+          "name": "Get Commission Rules",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "Session ID for fingerprint validation (REQUIRED for GET)"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/agents/{{agent_id}}/commission-rules",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "agents",
+                "{{agent_id}}",
+                "commission-rules"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\n**IMPORTANT:** For GET requests, session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in body.\n\nList all commission rules for a specific agent."
+          }
+        },
+        {
+          "name": "Create Commission Rule",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.id) {",
+                  "    pm.environment.set('rule_id', jsonData.id);",
+                  "    console.log('✅ Rule ID saved: ' + jsonData.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transaction_type\": \"sale\",\n  \"structure_type\": \"percentage\",\n  \"valid_from\": \"2026-02-14\",\n  \"percentage\": 5.0,\n  \"min_value\": 100000,\n  \"max_value\": 500000,\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/agents/{{agent_id}}/commission-rules",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "agents",
+                "{{agent_id}}",
+                "commission-rules"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n\n**Required Fields:**\n- `transaction_type` (string): \"sale\" or \"rent\"\n- `structure_type` (string): \"percentage\", \"fixed\", or \"tiered\"\n- `valid_from` (string): Start date in ISO format (YYYY-MM-DD)\n\n**Optional Fields:**\n- `percentage` (float): Commission percentage (default: 0.0)\n- `fixed_amount` (float): Fixed commission amount (default: 0.0)\n- `min_value` (float): Minimum transaction value (default: 0.0)\n- `max_value` (float): Maximum transaction value (default: 999999999.99)\n- `valid_until` (string): Expiration date in ISO format (optional)\n\n**RBAC:** Only Manager, Owner, or Admin can create commission rules."
+          }
+        },
+        {
+          "name": "Update Commission Rule",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"percentage\": 6.0,\n  \"active\": true,\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/commission-rules/{{rule_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "commission-rules",
+                "{{rule_id}}"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\nUpdate an existing commission rule."
+          }
+        },
+        {
+          "name": "Create Commission Transaction",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"agent_id\": {{agent_id}},\n  \"company_id\": {{company_id}},\n  \"transaction_type\": \"sale\",\n  \"transaction_amount\": 850000.00,\n  \"transaction_reference\": \"VENDA-2024-001\",\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/commission-transactions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "commission-transactions"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\nRecord a commission transaction for an agent."
+          }
+        }
+      ]
+    },
+    {
+      "name": "9. Performance",
+      "description": "Agent performance metrics and rankings.",
+      "item": [
+        {
+          "name": "Get Agent Performance",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "Session ID for fingerprint validation (REQUIRED for GET)"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/agents/{{agent_id}}/performance",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "agents",
+                "{{agent_id}}",
+                "performance"
+              ],
+              "query": [
+                {
+                  "key": "date_from",
+                  "value": "2026-01-01",
+                  "disabled": true
+                },
+                {
+                  "key": "date_to",
+                  "value": "2026-12-31",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\n**IMPORTANT:** For GET requests, session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in body.\n\nGet performance metrics for a specific agent (sales count, value, commissions)."
+          }
+        },
+        {
+          "name": "Get Agents Ranking",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "Session ID for fingerprint validation (REQUIRED for GET)"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/agents/ranking?company_id={{company_id}}&metric=total_sales&limit=10",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "agents",
+                "ranking"
+              ],
+              "query": [
+                {
+                  "key": "company_id",
+                  "value": "{{company_id}}",
+                  "description": "(Required) Company ID"
+                },
+                {
+                  "key": "metric",
+                  "value": "total_sales",
+                  "description": "total_commissions (default), total_sales, average_commission"
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": "Max results 1-100 (default: 10)"
+                },
+                {
+                  "key": "start_date",
+                  "value": "",
+                  "description": "Optional: Start date YYYY-MM-DD",
+                  "disabled": true
+                },
+                {
+                  "key": "end_date",
+                  "value": "",
+                  "description": "Optional: End date YYYY-MM-DD",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\n**IMPORTANT:** For GET requests, session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in body.\n\n**Required:** company_id\n\n**Metrics:**\n- total_commissions (default)\n- total_sales\n- average_commission\n\nGet ranked list of agents by performance metric."
+          }
+        }
+      ]
+    },
+    {
+      "name": "10. Leads - CRUD",
+      "description": "Lead management operations with RBAC (agents see own, managers see all).",
+      "item": [
+        {
+          "name": "List Leads",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "Session ID for fingerprint validation (REQUIRED for GET)"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/leads?limit=20&offset=0",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "leads"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                },
+                {
+                  "key": "state",
+                  "value": "qualified",
+                  "disabled": true
+                },
+                {
+                  "key": "agent_id",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "budget_min",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "budget_max",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "bedrooms",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "location",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "sort_by",
+                  "value": "create_date",
+                  "disabled": true
+                },
+                {
+                  "key": "sort_order",
+                  "value": "desc",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\n**IMPORTANT:** For GET requests, session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in body.\n\n**RBAC:** Agents see own leads, Managers see all company leads."
+          }
+        },
+        {
+          "name": "Create Lead",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.id) {",
+                  "    pm.environment.set('lead_id', jsonData.id);",
+                  "    console.log('✅ Lead ID saved: ' + jsonData.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"João Silva - Apartamento Centro\",\n  \"phone\": \"+55 11 98765-4321\",\n  \"email\": \"joao.silva@example.com\",\n  \"budget_min\": 200000.0,\n  \"budget_max\": 350000.0,\n  \"bedrooms_needed\": 2,\n  \"location_preference\": \"Centro, Jardins\",\n  \"first_contact_date\": \"2026-02-03\",\n  \"expected_closing_date\": \"2026-03-15\",\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/leads",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "leads"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\nCreate a new lead. Lead is auto-assigned to the creating agent."
+          }
+        },
+        {
+          "name": "Get Lead Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "Session ID for fingerprint validation (REQUIRED for GET)"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/leads/{{lead_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "leads",
+                "{{lead_id}}"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\n**IMPORTANT:** For GET requests, session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in body.\n\nRetrieve details of a specific lead."
+          }
+        },
+        {
+          "name": "Update Lead",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"state\": \"contacted\",\n  \"budget_max\": 400000.0,\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/leads/{{lead_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "leads",
+                "{{lead_id}}"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\nUpdate an existing lead's details or state."
+          }
+        },
+        {
+          "name": "Archive Lead (Soft Delete)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "Session ID for fingerprint validation"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/leads/{{lead_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "leads",
+                "{{lead_id}}"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\nSoft delete (archive) a lead."
+          }
+        }
+      ]
+    },
+    {
+      "name": "11. Lead Actions",
+      "description": "Lead workflow actions (convert, reopen).",
+      "item": [
+        {
+          "name": "Convert Lead to Sale",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"property_id\": {{property_id}},\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/leads/{{lead_id}}/convert",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "leads",
+                "{{lead_id}}",
+                "convert"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\n**Requirements:** Lead must be in 'qualified' state.\n\nConvert a qualified lead into a sale by associating with a property."
+          }
+        },
+        {
+          "name": "Reopen Lost Lead",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Client re-engaged after budget increase\",\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/leads/{{lead_id}}/reopen",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "leads",
+                "{{lead_id}}",
+                "reopen"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\n**Requirements:** Lead must be in 'lost' state.\n\nReopen a lost lead back into the pipeline."
+          }
+        }
+      ]
+    },
+    {
+      "name": "12. Lead Analytics",
+      "description": "Lead statistics and data export.",
+      "item": [
+        {
+          "name": "Get Lead Statistics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "Session ID for fingerprint validation (REQUIRED for GET)"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/leads/statistics",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "leads",
+                "statistics"
+              ],
+              "query": [
+                {
+                  "key": "agent_id",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "date_from",
+                  "value": "2026-01-01",
+                  "disabled": true
+                },
+                {
+                  "key": "date_to",
+                  "value": "2026-12-31",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\n**IMPORTANT:** For GET requests, session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in body.\n\nGet aggregate lead statistics with optional filters."
+          }
+        },
+        {
+          "name": "Export Leads to CSV",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "Session ID for fingerprint validation (REQUIRED for GET)"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/leads/export?state=qualified",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "leads",
+                "export"
+              ],
+              "query": [
+                {
+                  "key": "state",
+                  "value": "qualified"
+                }
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\n**IMPORTANT:** For GET requests, session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in body.\n\nExport leads as CSV file with optional state filter."
+          }
+        }
+      ]
+    },
+    {
+      "name": "13. Lead Activities",
+      "description": "Activity tracking and scheduling on leads.",
+      "item": [
+        {
+          "name": "List Lead Activities",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "Session ID for fingerprint validation (REQUIRED for GET)"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/leads/{{lead_id}}/activities?limit=50&offset=0",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "leads",
+                "{{lead_id}}",
+                "activities"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                }
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Fingerprint validation:** Active\n\n**IMPORTANT:** For GET requests, session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in body.\n\nList all activities logged on a specific lead."
+          }
+        },
+        {
+          "name": "Log Activity on Lead",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Called client - interested in 3-bedroom condos downtown. Budget confirmed at R$400k.\",\n  \"activity_type\": \"call\",\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/leads/{{lead_id}}/activities",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "leads",
+                "{{lead_id}}",
+                "activities"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Fingerprint validation:** Active\n\nLog a new activity (call, email, visit, etc.) on a lead."
+          }
+        },
+        {
+          "name": "Schedule Activity on Lead",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"summary\": \"Follow-up call regarding budget increase\",\n  \"activity_type_id\": 1,\n  \"date_deadline\": \"2026-02-10\",\n  \"note\": \"Client requested callback after 2pm\",\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/leads/{{lead_id}}/schedule-activity",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "leads",
+                "{{lead_id}}",
+                "schedule-activity"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Fingerprint validation:** Active\n\nSchedule a future activity on a lead with deadline."
+          }
+        }
+      ]
+    },
+    {
+      "name": "14. Lead Filters",
+      "description": "Saved search filters for leads.",
+      "item": [
+        {
+          "name": "List Saved Filters",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "Session ID for fingerprint validation (REQUIRED for GET)"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/leads/filters",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "leads",
+                "filters"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Fingerprint validation:** Active\n\n**IMPORTANT:** For GET requests, session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in body.\n\nList saved search filters for the current user."
+          }
+        },
+        {
+          "name": "Create Saved Filter",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.id) {",
+                  "    pm.environment.set('filter_id', jsonData.id);",
+                  "    console.log('✅ Filter ID saved: ' + jsonData.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"High-value Centro leads\",\n  \"filter_domain\": {\n    \"budget_min\": 300000,\n    \"budget_max\": 500000,\n    \"bedrooms\": 3,\n    \"location\": \"Centro\",\n    \"state\": \"qualified\"\n  },\n  \"is_shared\": false,\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/leads/filters",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "leads",
+                "filters"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Fingerprint validation:** Active\n\nCreate a saved search filter. Can be private or shared with team."
+          }
+        },
+        {
+          "name": "Delete Saved Filter",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "Session ID for fingerprint validation"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/leads/filters/{{filter_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "leads",
+                "filters",
+                "{{filter_id}}"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Fingerprint validation:** Active\n\nDelete a saved search filter."
+          }
+        }
+      ]
+    },
+    {
+      "name": "15. Owners",
+      "description": "Owner management endpoints. Owners can self-register and manage their profile.",
+      "item": [
+        {
+          "name": "Create Owner (Self-Registration)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "if (pm.response.code === 201 && jsonData && jsonData.data) {",
+                  "    pm.environment.set('owner_id', jsonData.data.id);",
+                  "    console.log('✅ Owner created with ID: ' + jsonData.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"João Silva\",\n  \"email\": \"joao.silva@example.com\",\n  \"password\": \"senha_segura_123\",\n  \"cpf\": \"123.456.789-09\",\n  \"phone\": \"11987654321\",\n  \"mobile\": \"11987654321\",\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/owners",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "owners"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token only (JWT, no session required)\n**Multi-tenancy:** Not applicable (self-registration, no company context)\n**Fingerprint validation:** Active\n\nCreate a new Owner without company association (self-registration).\n\n**Required fields:** name, email, password, cpf\n**Optional fields:** phone, mobile\n\n**CPF Validation:** Must be a valid Brazilian CPF (11 digits). Format accepted: 123.456.789-09 or 12345678909.\n\n**Response:** 201 with owner details (including cpf) and HATEOAS links"
+          }
+        },
+        {
+          "name": "Get Owner by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "Session ID for fingerprint validation (REQUIRED for GET)"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/owners/{{owner_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "owners",
+                "{{owner_id}}"
+              ]
+            },
+            "description": "⚠️ **ENDPOINT NOT IMPLEMENTED YET** - Returns 404 HTML page\n\n**Status:** Documented in OpenAPI (docs/openapi/007-company-owner.yaml) but not implemented in owner_api.py\n\n**When implemented:**\n- **Authentication:** Bearer Token + Session ID required (@require_jwt + @require_session)\n- **Fingerprint validation:** Active\n- **RBAC:** Owner can see own data, Admin can see all\n- **Response:** 200 with owner details (id, name, email, cpf, phone, mobile, companies, company_count)\n\n**IMPORTANT:** For GET requests, session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in body."
+          }
+        },
+        {
+          "name": "Update Owner",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"João Silva Updated\",\n  \"phone\": \"11999888777\",\n  \"mobile\": \"11999888777\",\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/owners/{{owner_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "owners",
+                "{{owner_id}}"
+              ]
+            },
+            "description": "⚠️ **ENDPOINT NOT IMPLEMENTED YET** - Returns 404 HTML page\n\n**Status:** Documented in OpenAPI (docs/openapi/007-company-owner.yaml) but not implemented in owner_api.py\n\n**When implemented:**\n- **Authentication:** Bearer Token + Session ID required (@require_jwt + @require_session)\n- **Fingerprint validation:** Active\n- **RBAC:** Owner can update own data, Admin can update all\n- **Updatable fields:** name, phone, mobile\n- **Immutable fields:** email, cpf (use separate endpoints for email/password changes)\n- **Response:** 200 with updated owner data"
+          }
+        },
+        {
+          "name": "Delete Owner (Soft Delete)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "Session ID for fingerprint validation"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/owners/{{owner_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "owners",
+                "{{owner_id}}"
+              ]
+            },
+            "description": "⚠️ **ENDPOINT NOT IMPLEMENTED YET** - Returns 404 HTML page\n\n**Status:** Documented in OpenAPI (docs/openapi/007-company-owner.yaml) but not implemented in owner_api.py\n\n**When implemented:**\n- **Authentication:** Bearer Token + Session ID required (@require_jwt + @require_session)\n- **Fingerprint validation:** Active\n- **RBAC:** Admin only (owners cannot delete themselves)\n- **Behavior:** Soft delete (active=False)\n- **Validation:** Cannot delete if owner is the last owner of any company\n- **Response:** 200 with success message"
+          }
+        },
+        {
+          "name": "Link Owner to Company",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"company_id\": {{company_id}},\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/owners/{{owner_id}}/companies",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "owners",
+                "{{owner_id}}",
+                "companies"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\nLink an existing owner to a company (add co-owner).\n**RBAC:** Admin or existing Owner of the target company.\n**Body:** company_id (required)"
+          }
+        },
+        {
+          "name": "Unlink Owner from Company",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "Session ID for fingerprint validation"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/owners/{{owner_id}}/companies/{{company_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "owners",
+                "{{owner_id}}",
+                "companies",
+                "{{company_id}}"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\nUnlink owner from a company.\n**RBAC:** Admin only.\n**Validation:** Cannot unlink if owner is the last owner of the company."
+          }
+        }
+      ]
+    },
+    {
+      "name": "16. Companies",
+      "description": "Company management endpoints with multi-tenancy.",
+      "item": [
+        {
+          "name": "List Companies",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "Session ID for fingerprint validation (REQUIRED for GET)"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/companies?limit=20&offset=0",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "companies"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Maximum results (default: 20, max: 100)"
+                },
+                {
+                  "key": "offset",
+                  "value": "0",
+                  "description": "Number of results to skip (pagination)"
+                },
+                {
+                  "key": "active",
+                  "value": "true",
+                  "description": "Filter by active status",
+                  "disabled": true
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "Search by name or CNPJ",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\n**IMPORTANT:** For GET requests, session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in body.\n\nList all companies the user has access to. Returns only companies in user's estate_company_ids."
+          }
+        },
+        {
+          "name": "Create Company",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "if (pm.response.code === 201 && jsonData && jsonData.data) {",
+                  "    pm.environment.set('company_id', jsonData.data.id);",
+                  "    console.log('✅ Company created with ID: ' + jsonData.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"QuickSol Imóveis\",\n  \"legal_name\": \"QuickSol Negócios Imobiliários LTDA\",\n  \"cnpj\": \"12.345.678/0001-95\",\n  \"creci\": \"CRECI/SP 123456\",\n  \"email\": \"contato@quicksol.com.br\",\n  \"phone\": \"11912345678\",\n  \"mobile\": \"11987654321\",\n  \"website\": \"https://quicksol.com.br\",\n  \"street\": \"Av. Paulista, 1000\",\n  \"street2\": \"15º andar\",\n  \"city\": \"São Paulo\",\n  \"state_id\": 1,\n  \"zip_code\": \"01310-100\",\n  \"description\": \"Empresa imobiliária especializada em imóveis de alto padrão\",\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/companies",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "companies"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\nCreate a new Real Estate Company.\n\n**Required fields:** name, legal_name, cnpj (valid Brazilian CNPJ), email\n**Optional fields:** creci, phone, mobile, website, address fields, description\n\n**Validation:** CNPJ format + check digits, CNPJ uniqueness, email format.\nCreator automatically linked as owner."
+          }
+        },
+        {
+          "name": "Get Company by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "Session ID for fingerprint validation (REQUIRED for GET)"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/companies/{{company_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "companies",
+                "{{company_id}}"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\n**IMPORTANT:** For GET requests, session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in body.\n\nRetrieve specific company details by ID. User must have access to this company."
+          }
+        },
+        {
+          "name": "Update Company",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"11999888777\",\n  \"website\": \"https://quicksol.com.br\",\n  \"description\": \"Empresa imobiliária especializada em imóveis comerciais e residenciais\",\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/companies/{{company_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "companies",
+                "{{company_id}}"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\nUpdate company information.\n**RBAC:** Owner of the company or Admin.\n**NOTE:** CNPJ and legal_name cannot be changed after creation."
+          }
+        },
+        {
+          "name": "Delete Company (Soft Delete)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "Session ID for fingerprint validation"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/companies/{{company_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "companies",
+                "{{company_id}}"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\nSoft delete (deactivate) a company.\n**RBAC:** Admin only.\nRelated data preserved (soft delete)."
+          }
+        },
+        {
+          "name": "List Company Properties",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "Session ID for fingerprint validation (REQUIRED for GET)"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/companies/{{company_id}}/properties?page=1&page_size=20",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "companies",
+                "{{company_id}}",
+                "properties"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number (default: 1)"
+                },
+                {
+                  "key": "page_size",
+                  "value": "20",
+                  "description": "Items per page (default: 20, max: 100)"
+                },
+                {
+                  "key": "property_type_id",
+                  "value": "",
+                  "description": "Filter by property type ID",
+                  "disabled": true
+                },
+                {
+                  "key": "property_status",
+                  "value": "available",
+                  "description": "Filter by status: available/rented/sold/reserved/maintenance",
+                  "disabled": true
+                },
+                {
+                  "key": "city",
+                  "value": "",
+                  "description": "Filter by city name",
+                  "disabled": true
+                },
+                {
+                  "key": "state_id",
+                  "value": "",
+                  "description": "Filter by state ID",
+                  "disabled": true
+                },
+                {
+                  "key": "agent_id",
+                  "value": "",
+                  "description": "Filter by agent ID",
+                  "disabled": true
+                },
+                {
+                  "key": "min_price",
+                  "value": "",
+                  "description": "Minimum price filter",
+                  "disabled": true
+                },
+                {
+                  "key": "max_price",
+                  "value": "",
+                  "description": "Maximum price filter",
+                  "disabled": true
+                },
+                {
+                  "key": "for_sale",
+                  "value": "true",
+                  "description": "Filter properties for sale",
+                  "disabled": true
+                },
+                {
+                  "key": "for_rent",
+                  "value": "",
+                  "description": "Filter properties for rent",
+                  "disabled": true
+                },
+                {
+                  "key": "order_by",
+                  "value": "create_date DESC",
+                  "description": "Sort field: price, create_date, name, etc.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\n**IMPORTANT:** For GET requests, session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in body.\n\nList all properties belonging to a specific company with pagination and filters.\n\n**RBAC (ADR-019):**\n- Admin/Manager: All properties in company\n- Agent: Only assigned properties\n\n**Returns:** Paginated list with HATEOAS links (self, next, prev)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "17. Master Data",
+      "description": "Reference data endpoints. All require JWT + Session + Company authentication.",
+      "item": [
+        {
+          "name": "List Property Types",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "Session ID for fingerprint validation (REQUIRED for GET)"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/property-types",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "property-types"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\n**IMPORTANT:** For GET requests, session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in body.\n\nList all available property types (Apartment, House, Commercial, etc.)."
+          }
+        },
+        {
+          "name": "List Location Types",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "Session ID for fingerprint validation (REQUIRED for GET)"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/location-types",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "location-types"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\n**IMPORTANT:** For GET requests, session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in body.\n\nList all available location types."
+          }
+        },
+        {
+          "name": "List States/Regions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "Session ID for fingerprint validation (REQUIRED for GET)"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/states",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "states"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\n**IMPORTANT:** For GET requests, session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in body.\n\nList all Brazilian states/regions."
+          }
+        },
+        {
+          "name": "List Tags",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "Session ID for fingerprint validation (REQUIRED for GET)"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/tags",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tags"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\n**IMPORTANT:** For GET requests, session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in body.\n\nList all available property tags."
+          }
+        },
+        {
+          "name": "List Amenities",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "Session ID for fingerprint validation (REQUIRED for GET)"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/amenities",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "amenities"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\n**IMPORTANT:** For GET requests, session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in body.\n\nList all available property amenities."
+          }
+        }
+      ]
+    },
+    {
+      "name": "18. Tenants",
+      "item": [
+        {
+          "name": "List Tenants",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "Session ID for fingerprint validation (REQUIRED for GET)"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/tenants?page=1&page_size=20",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tenants"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number"
+                },
+                {
+                  "key": "page_size",
+                  "value": "20",
+                  "description": "Items per page (max 100)"
+                },
+                {
+                  "key": "is_active",
+                  "value": "true",
+                  "description": "Filter active/archived",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For GET requests (type='http'), session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in request body.\n\nReturns paginated list of tenants filtered by company. Agents see only tenants with leases on their assigned properties (transitive RBAC)."
+          }
+        },
+        {
+          "name": "Create Tenant",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.data && jsonData.data.id) {",
+                  "    pm.environment.set('tenant_id', jsonData.data.id);",
+                  "    console.log('\\u2705 tenant_id saved: ' + jsonData.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Maria Santos\",\n  \"phone\": \"(11) 98765-4321\",\n  \"email\": \"maria@example.com\",\n  \"occupation\": \"Lawyer\",\n  \"birthdate\": \"1985-03-20\",\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/tenants",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tenants"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\nCreates a new tenant. Automatically linked to user's companies.\n\n**Required:** name\n**Optional:** phone, email (validated), occupation, birthdate (YYYY-MM-DD)"
+          }
+        },
+        {
+          "name": "Get Tenant Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "Session ID for fingerprint validation (REQUIRED for GET)"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/tenants/{{tenant_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tenants",
+                "{{tenant_id}}"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For GET requests (type='http'), session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in request body.\n\nReturns tenant details with inline lease summaries and HATEOAS links. Agents see only tenants with leases on their assigned properties."
+          }
+        },
+        {
+          "name": "Update Tenant",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"(11) 91234-5678\",\n  \"email\": \"maria.new@example.com\",\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/tenants/{{tenant_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tenants",
+                "{{tenant_id}}"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\nUpdates tenant fields. Supports reactivation via {\"active\": true}.\n\n**Optional:** name, phone, email (validated), occupation, birthdate, active"
+          }
+        },
+        {
+          "name": "Archive Tenant (Soft Delete)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "Session ID for fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Moved to another city\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/tenants/{{tenant_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tenants",
+                "{{tenant_id}}"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\nSoft-archives a tenant (sets active=false). ADR-015 compliant.\n\n**Warning:** If tenant has active leases, response includes warning. Leases NOT terminated automatically (TD-004).\n\n**Optional body:** reason"
+          }
+        },
+        {
+          "name": "Get Tenant Lease History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "Session ID for fingerprint validation (REQUIRED for GET)"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/tenants/{{tenant_id}}/leases?page=1&page_size=20",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tenants",
+                "{{tenant_id}}",
+                "leases"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number"
+                },
+                {
+                  "key": "page_size",
+                  "value": "20",
+                  "description": "Items per page (max 100)"
+                }
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For GET requests (type='http'), session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in request body.\n\nReturns paginated list of all leases (active + archived) for a tenant. Includes historical data."
+          }
+        }
+      ]
+    },
+    {
+      "name": "19. Leases",
+      "item": [
+        {
+          "name": "List Leases",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "Session ID for fingerprint validation (REQUIRED for GET)"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/leases?page=1&page_size=20",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "leases"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "page_size",
+                  "value": "20"
+                },
+                {
+                  "key": "property_id",
+                  "value": "",
+                  "description": "Filter by property",
+                  "disabled": true
+                },
+                {
+                  "key": "tenant_id",
+                  "value": "",
+                  "description": "Filter by tenant",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "",
+                  "description": "Filter: draft, active, terminated, expired",
+                  "disabled": true
+                },
+                {
+                  "key": "is_active",
+                  "value": "",
+                  "description": "Filter active/archived",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For GET requests (type='http'), session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in request body.\n\nReturns paginated list of leases. Agents see only leases on their assigned properties (transitive RBAC).\n\n**State Machine:** draft -> active -> terminated | expired"
+          }
+        },
+        {
+          "name": "Create Lease",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.data && jsonData.data.id) {",
+                  "    pm.environment.set('lease_id', jsonData.data.id);",
+                  "    console.log('\\u2705 lease_id saved: ' + jsonData.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"property_id\": 1,\n  \"tenant_id\": 1,\n  \"start_date\": \"2026-02-01\",\n  \"end_date\": \"2027-02-01\",\n  \"rent_amount\": 3000.0,\n  \"status\": \"draft\",\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/leases",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "leases"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\nCreates a new lease.\n\n**Required:** property_id, tenant_id, start_date, end_date, rent_amount (> 0)\n**Optional:** status (draft|active, default: draft)\n\n**Validations:** Property/Tenant must exist in user's company, end_date > start_date, no concurrent active lease on property."
+          }
+        },
+        {
+          "name": "Get Lease Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "Session ID for fingerprint validation (REQUIRED for GET)"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/leases/{{lease_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "leases",
+                "{{lease_id}}"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For GET requests (type='http'), session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in request body.\n\nReturns lease details with property info, tenant info, renewal history, and HATEOAS links."
+          }
+        },
+        {
+          "name": "Update Lease",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rent_amount\": 2800.0,\n  \"status\": \"active\",\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/leases/{{lease_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "leases",
+                "{{lease_id}}"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\nUpdates lease fields. Cannot update terminated/expired leases.\n\n**Optional:** start_date, end_date, rent_amount, status (valid forward transitions only: draft->active->terminated|expired)"
+          }
+        },
+        {
+          "name": "Archive Lease (Soft Delete)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "Session ID for fingerprint validation"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/leases/{{lease_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "leases",
+                "{{lease_id}}"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\nSoft-archives a lease (sets active=false). ADR-015 compliant."
+          }
+        },
+        {
+          "name": "Renew Lease",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"new_end_date\": \"2028-02-01\",\n  \"new_rent_amount\": 3200.0,\n  \"reason\": \"Annual renewal with adjustment\",\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/leases/{{lease_id}}/renew",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "leases",
+                "{{lease_id}}",
+                "renew"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\nRenews an active lease in-place with audit trail.\n\n**Required:** new_end_date (must be after current end_date)\n**Optional:** new_rent_amount (> 0), reason\n\n**Rules:** Only active leases can be renewed. Creates renewal history audit record."
+          }
+        },
+        {
+          "name": "Terminate Lease",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"termination_date\": \"2026-09-30\",\n  \"reason\": \"Early termination by tenant\",\n  \"penalty_amount\": 5000.0,\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/leases/{{lease_id}}/terminate",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "leases",
+                "{{lease_id}}",
+                "terminate"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\nTerminates a lease before its natural end date.\n\n**Required:** termination_date\n**Optional:** reason, penalty_amount (>= 0, informational only TD-005)\n\n**Rules:** Only active leases can be terminated. Status changes to 'terminated'."
+          }
+        }
+      ]
+    },
+    {
+      "name": "20. Sales",
+      "item": [
+        {
+          "name": "List Sales",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "Session ID for fingerprint validation (REQUIRED for GET)"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/sales?page=1&page_size=20",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "sales"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "page_size",
+                  "value": "20"
+                },
+                {
+                  "key": "property_id",
+                  "value": "",
+                  "description": "Filter by property",
+                  "disabled": true
+                },
+                {
+                  "key": "agent_id",
+                  "value": "",
+                  "description": "Filter by agent",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "",
+                  "description": "Filter: completed, cancelled",
+                  "disabled": true
+                },
+                {
+                  "key": "min_price",
+                  "value": "",
+                  "description": "Minimum sale price",
+                  "disabled": true
+                },
+                {
+                  "key": "max_price",
+                  "value": "",
+                  "description": "Maximum sale price",
+                  "disabled": true
+                },
+                {
+                  "key": "is_active",
+                  "value": "",
+                  "description": "Filter active/archived",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For GET requests (type='http'), session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in request body.\n\nReturns paginated list of sales. Agents see only sales on their assigned properties (transitive RBAC)."
+          }
+        },
+        {
+          "name": "Create Sale",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.data && jsonData.data.id) {",
+                  "    pm.environment.set('sale_id', jsonData.data.id);",
+                  "    console.log('\\u2705 sale_id saved: ' + jsonData.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"property_id\": 1,\n  \"company_id\": 63,\n  \"buyer_name\": \"Carlos Souza\",\n  \"sale_date\": \"2026-02-10\",\n  \"sale_price\": 450000.0,\n  \"buyer_phone\": \"(11) 99888-7766\",\n  \"buyer_email\": \"carlos@example.com\",\n  \"agent_id\": 1,\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/sales",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "sales"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\nCreates a new sale. Sets property status to 'sold'.\n\n**Required:** property_id, company_id, buyer_name, sale_date, sale_price (> 0)\n**Optional:** buyer_phone, buyer_email (validated), agent_id, lead_id\n\n**Side effects:** Property status -> sold, sale.created event emitted (fire-and-forget TD-002)"
+          }
+        },
+        {
+          "name": "Get Sale Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "Session ID for fingerprint validation (REQUIRED for GET)"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/sales/{{sale_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "sales",
+                "{{sale_id}}"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For GET requests (type='http'), session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in request body.\n\nReturns sale details with property, agent, lead, and company info."
+          }
+        },
+        {
+          "name": "Update Sale",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sale_price\": 460000.0,\n  \"buyer_email\": \"carlos.new@example.com\",\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/sales/{{sale_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "sales",
+                "{{sale_id}}"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\nUpdates sale fields. Cannot update cancelled sales.\n\n**Optional:** buyer_name, buyer_phone, buyer_email (validated), sale_date, sale_price (> 0)\n\n**Note:** No DELETE endpoint for sales. Use Cancel instead (TD-003)."
+          }
+        },
+        {
+          "name": "Cancel Sale",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Buyer withdrew from deal\",\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/sales/{{sale_id}}/cancel",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "sales",
+                "{{sale_id}}",
+                "cancel"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\nCancels a sale with mandatory reason.\n\n**Required:** reason\n\n**Side effects:** Sale status -> cancelled, property status reverted from 'sold' (if still sold). Already-cancelled sales return 400."
+          }
+        }
+      ]
+    },
+    {
+      "name": "21. Profiles (Feature 010)",
+      "description": "Unified profile management for all 9 RBAC types. Based on ADR-024 (Profile Unification).",
+      "item": [
+        {
+          "name": "Create Profile",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"João Silva\",\n  \"company_id\": {{company_id}},\n  \"document\": \"12345678901\",\n  \"email\": \"joao.silva@example.com\",\n  \"phone\": \"+5511999998888\",\n  \"birthdate\": \"1990-01-01\",\n  \"profile_type_id\": 4,\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/profiles",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "profiles"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent)\n\n**IMPORTANT - Profile Type Field (FK Best Practice):**\n- Field `profile_type_id` accepts INTEGER (foreign key to thedevkitchen.profile.type)\n- **Best Practice**: API receives FK directly, no lookup needed (follows KB-09)\n- **Workflow**: 1) GET /api/v1/profile-types → get ID, 2) POST with profile_type_id\n- Example: `{\"profile_type_id\": 4}` for Agent (Corretor)\n\n**RBAC Authorization Matrix (ADR-024):**\n- **Owner**: Can create all 9 types\n- **Manager**: Can create 5 operational types (agent, prospector, receptionist, financial, legal)\n- **Agent**: Can create 2 types (owner=property owner, portal=tenant)\n- **Others**: 403 Forbidden\n\n**Required Fields:** name, company_id, document, email, profile_type_id_id\n**Optional:** phone, mobile, birthdate, occupation (required for portal), hire_date (for agent)\n\n**Special Behavior:**\n- If profile_type_id code is 'agent', auto-creates real.estate.agent extension\n- If profile_type_id code is 'portal', requires occupation field\n- Compound unique constraint: Same document  allowed if different (company_id, profile_type_id)\n\n**Response 201:** Profile created with id, _links to self and extension\n\n**Next Step:** Use profile.id with POST /api/v1/users/invite to send invitation email"
+          }
+        },
+        {
+          "name": "List Profiles",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "REQUIRED for GET - Session ID in header, NOT body"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/profiles?company_ids={{company_id}}&limit=20&offset=0",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "profiles"
+              ],
+              "query": [
+                {
+                  "key": "company_ids",
+                  "value": "{{company_id}}",
+                  "description": "Required: Comma-separated company IDs"
+                },
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Max results per page (default: 20, max: 100)"
+                },
+                {
+                  "key": "offset",
+                  "value": "0",
+                  "description": "Pagination offset"
+                },
+                {
+                  "key": "profile_type_id",
+                  "value": "4",
+                  "description": "Optional: Filter by profile type ID (e.g., 4 for agent)",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n\n**IMPORTANT:** For GET requests, session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in body.\n\n**Required Query Params:** company_ids\n**Optional:** profile_type_id, document, name, active, limit, offset\n\n**Response 200:** data array, count, limit, offset, _links"
+          }
+        },
+        {
+          "name": "Get Profile Detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "REQUIRED for GET - Session ID in header"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/profiles/:profile_id?company_ids={{company_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "profiles",
+                ":profile_id"
+              ],
+              "query": [
+                {
+                  "key": "company_ids",
+                  "value": "{{company_id}}",
+                  "description": "Required: Company ID for multi-tenancy"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "profile_id",
+                  "value": "42",
+                  "description": "Profile ID to retrieve"
+                }
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n\n**IMPORTANT:** For GET requests, session_id MUST be sent via header.\n\n**Response 200:** Full profile details with _links\n**Error 404:** Profile not found or cross-company access"
+          }
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"João Silva Updated\",\n  \"email\": \"joao.updated@example.com\",\n  \"phone\": \"+5511988887777\",\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/profiles/:profile_id?company_ids={{company_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "profiles",
+                ":profile_id"
+              ],
+              "query": [
+                {
+                  "key": "company_ids",
+                  "value": "{{company_id}}",
+                  "description": "Required: Company ID"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "profile_id",
+                  "value": "42",
+                  "description": "Profile ID to update"
+                }
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n\n**Updatable Fields:** name, email, phone, mobile, birthdate, occupation, hire_date\n**Immutable Fields:** profile_type, company_id, document (400 if attempted)\n\n**Response 200:** Updated profile\n**Errors:** 400 (immutable field), 404 (not found), 409 (duplicate email)"
+          }
+        },
+        {
+          "name": "Delete Profile (Soft Delete)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "Session ID for fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deactivation_reason\": \"Employee resignation\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/profiles/:profile_id?company_ids={{company_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "profiles",
+                ":profile_id"
+              ],
+              "query": [
+                {
+                  "key": "company_ids",
+                  "value": "{{company_id}}",
+                  "description": "Required: Company ID"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "profile_id",
+                  "value": "42",
+                  "description": "Profile ID to soft delete"
+                }
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n\n**IMPORTANT:** Soft delete - sets active=false, preserves data.\n\n**Optional:** deactivation_reason\n\n**Behavior:** Sets active=false, deactivation_date, cascades to agent extension, deactivates linked res.users\n\n**Response 200:** Success with deactivation details\n**Error 404:** Not found or already inactive"
+          }
+        },
+        {
+          "name": "List Profile Types",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "description": "REQUIRED for GET - Session ID in header"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/profile-types",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "profile-types"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** N/A - Profile types are global\n\n**IMPORTANT:** For GET requests, session_id MUST be sent via header.\n\n**Response 200:** Array of 9 profile types (owner, director, manager, agent, prospector, receptionist, financial, legal, portal) with code, name, description, is_active"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8069",
+      "type": "string"
+    },
+    {
+      "key": "client_id",
+      "value": "app",
+      "type": "string"
+    },
+    {
+      "key": "client_secret",
+      "value": "secret",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refresh_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "session_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "user_agent",
+      "value": "PostmanRuntime/7.26.8",
+      "type": "string"
+    },
+    {
+      "key": "user_email",
+      "value": "admin@example.com",
+      "type": "string"
+    },
+    {
+      "key": "user_password",
+      "value": "admin",
+      "type": "string"
+    },
+    {
+      "key": "property_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "agent_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "assignment_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "rule_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "lead_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "filter_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "owner_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "company_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "tenant_id",
+      "value": ""
+    },
+    {
+      "key": "lease_id",
+      "value": ""
+    },
+    {
+      "key": "sale_id",
+      "value": ""
+    }
+  ]
+}

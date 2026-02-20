@@ -108,7 +108,7 @@ class SchemaValidator:
     
     # Profile creation schema (FR1.1)
     PROFILE_CREATE_SCHEMA = {
-        'required': ['name', 'company_id', 'document', 'email', 'birthdate', 'profile_type'],
+        'required': ['name', 'company_id', 'document', 'email', 'birthdate', 'profile_type_id'],
         'optional': ['phone', 'mobile', 'occupation', 'hire_date'],
         'types': {
             'name': str,
@@ -116,7 +116,7 @@ class SchemaValidator:
             'document': str,
             'email': str,
             'birthdate': str,
-            'profile_type': str,
+            'profile_type_id': int,
             'phone': str,
             'mobile': str,
             'occupation': str,
@@ -130,7 +130,7 @@ class SchemaValidator:
             ) if v else False,
             'email': lambda v: '@' in v and '.' in v.split('@')[-1] if v else False,
             'birthdate': lambda v: len(v.strip()) > 0,
-            'profile_type': lambda v: len(v.strip()) > 0,
+            'profile_type_id': lambda v: isinstance(v, int) and v > 0,
         }
     }
 

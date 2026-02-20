@@ -36,17 +36,23 @@ PROFILE_CREATION_MATRIX = {
 
 class ProfileApiController(http.Controller):
     
-    def _get_user_allowed_profile_types(self, user):
-        """Get list of profile type codes the user is authorized to create"""
-        allowed_types = []
+    def _get_user_allowed_profile_type_ids(self, user):
+        """Get list of profile type IDs the user is authorized to create"""
+        allowed_codes = []
         
         for group_xml_id, types in PROFILE_CREATION_MATRIX.items():
             if user.has_group(group_xml_id):
                 # Return the most permissive role (owner has all)
-                if len(types) > len(allowed_types):
-                    allowed_types = types
+                if len(types) > len(allowed_codes):
+                    allowed_codes = types
         
-        return allowed_types
+        # Convert codes to IDs
+        if not allowed_codes:
+            return []
+        
+        ProfileType = request.env['thedevkitchen.profile.type']
+        profile_types = ProfileType.sudo().search([('code', 'in', allowed_codes), ('is_active', '=', True)])
+        return profile_types.ids
     
     def _serialize_profile(self, profile):
         """Serialize profile record to JSON dict with HATEOAS links"""
@@ -111,21 +117,19 @@ class ProfileApiController(http.Controller):
             if request.user_company_ids and company_id not in request.user_company_ids:
                 return error_response(403, f'Access denied to company {company_id}')
             
-            # Lookup profile_type record by code
-            profile_type_code = body['profile_type']
-            ProfileType = request.env['thedevkitchen.profile.type']
-            profile_type = ProfileType.sudo().search([
-                ('code', '=', profile_type_code),
-                ('is_active', '=', True)
-            ], limit=1)
+            # Get profile_type_id from body (integer FK)
+            profile_type_id = body['profile_type_id']
             
-            if not profile_type:
-                return error_response(400, f'Invalid profile_type: {profile_type_code}')
+            # Validate profile_type_id exists and is active
+            ProfileType = request.env['thedevkitchen.profile.type']
+            profile_type = ProfileType.sudo().browse(profile_type_id)
+            if not profile_type.exists() or not profile_type.is_active:
+                return error_response(400, f'Invalid or inactive profile_type_id: {profile_type_id}')
             
             # Check RBAC authorization matrix (FR1.10)
-            allowed_types = self._get_user_allowed_profile_types(user)
-            if profile_type_code not in allowed_types:
-                return error_response(403, f'Your role cannot create profile_type: {profile_type_code}')
+            allowed_type_ids = self._get_user_allowed_profile_type_ids(user)
+            if profile_type_id not in allowed_type_ids:
+                return error_response(403, f'Your role cannot create profile_type_id: {profile_type_id} ({profile_type.name})')
             
             # Normalize document (D11)
             document_raw = body['document']
@@ -139,18 +143,18 @@ class ProfileApiController(http.Controller):
             existing = Profile.sudo().search([
                 ('document', '=', document_normalized),
                 ('company_id', '=', company_id),
-                ('profile_type_id', '=', profile_type.id)
+                ('profile_type_id', '=', profile_type_id)
             ], limit=1)
             
             if existing:
                 return error_response(409, 
-                    f'Profile already exists with this document ({document_raw}) for profile_type {profile_type_code} in company {company_id}')
+                    f'Profile already exists with this document ({document_raw}) for profile_type_id {profile_type_id} ({profile_type.name}) in company {company_id}')
             
             # Build profile vals
             profile_vals = {
                 'name': body['name'],
                 'company_id': company_id,
-                'profile_type_id': profile_type.id,
+                'profile_type_id': profile_type_id,
                 'document': document_normalized,
                 'email': body['email'],
                 'birthdate': body['birthdate'],
@@ -165,8 +169,8 @@ class ProfileApiController(http.Controller):
             # Create profile
             profile = Profile.sudo().create(profile_vals)
             
-            # If profile_type='agent', auto-create agent extension (FR1.4)
-            if profile_type_code == 'agent':
+            # If profile_type code is 'agent', auto-create agent extension (FR1.4)
+            if profile.profile_type_id.code == 'agent':
                 Agent = request.env['real.estate.agent']
                 from datetime import date
                 agent_vals = {
