@@ -30,9 +30,10 @@ Key Features:
 - **Web Publishing**: SEO-optimized property publishing
 - **Authorization Control**: Track authorization periods
 - **Brazilian Market**: CEP integration, IPTU, CNPJ, CPF validations
-- **Agent and Tenant Management**: Assign agents and tenants to properties
-- **Lease Management**: Handle leasing contracts
+- **Agent Management**: Assign agents to properties
+- **Lease Management**: Handle leasing contracts with profile integration
 - **Sales Management**: Track property sales
+- **Profile Unification**: Unified profile system for all RBAC types (Feature 010)
 
 Property Form Sections:
 ======================
