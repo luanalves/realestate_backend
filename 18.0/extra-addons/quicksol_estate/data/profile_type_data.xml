@@ -78,5 +78,12 @@
             <field name="group_xml_id">quicksol_estate.group_real_estate_portal_user</field>
             <field name="level">external</field>
         </record>
+        
+        <record id="profile_type_property_owner" model="thedevkitchen.profile.type">
+            <field name="code">property_owner</field>
+            <field name="name">Proprietário de Imóvel</field>
+            <field name="group_xml_id">quicksol_estate.group_real_estate_property_owner</field>
+            <field name="level">external</field>
+        </record>
     </data>
 </odoo>

@@ -7,7 +7,7 @@
 
 ## Executive Summary
 
-Implementar o fluxo completo de onboarding de usuários e gestão de senhas para todos os 9 perfis do sistema (ADR-019). Quando um usuário autorizado (Owner, Manager ou Agent) cria um novo usuário via API, o sistema envia automaticamente um email de convite com um link seguro e temporário para criação de senha. Adicionalmente, todos os perfis terão acesso ao fluxo de "Esqueci minha senha" para recuperação de acesso. O tempo de validade do link enviado por email será configurável dinamicamente via menu Technical do Odoo, com padrão de 24 horas. Todos os perfis utilizam o mesmo endpoint de login existente (`POST /api/v1/users/login`) e seguem o padrão de cadastro de `res.users` do Odoo, conforme já implementado para o perfil Owner.
+Implementar o fluxo completo de onboarding de usuários e gestão de senhas para todos os 10 perfis do sistema (ADR-019, ADR-024). Quando um usuário autorizado (Owner, Manager ou Agent) cria um novo usuário via API, o sistema envia automaticamente um email de convite com um link seguro e temporário para criação de senha. Adicionalmente, todos os perfis terão acesso ao fluxo de "Esqueci minha senha" para recuperação de acesso. O tempo de validade do link enviado por email será configurável dinamicamente via menu Technical do Odoo, com padrão de 24 horas. Todos os perfis utilizam o mesmo endpoint de login existente (`POST /api/v1/users/login`) e seguem o padrão de cadastro de `res.users` do Odoo, conforme já implementado para o perfil Owner.
 
 ---
 
@@ -15,8 +15,8 @@ Implementar o fluxo completo de onboarding de usuários e gestão de senhas para
 
 ### Session 2026-02-16
 
-**Q1: Agent invitando "owner" — risco de escalação de privilégio?**
-- **R**: Sem risco. Agent pode convidar perfil `owner` (`group_real_estate_owner`) — Property Owner já tem cadastro (`owner_api.py`) mas falta o fluxo de convite com senha. É regra de negócio intencional.
+**Q1: Agent invitando "property_owner" — risco de escalação de privilégio?**
+- **R**: Sem risco. Agent pode convidar perfil `property_owner` (`group_real_estate_property_owner`) — Property Owner (dono de imóvel, cliente) é perfil externo (portal) sem privilégios administrativos. Distinto de `owner` (Company Owner). É regra de negócio intencional.
 
 **Q2: Agent invitando "portal" (tenant) — tenant não é `res.users` hoje**
 - **R**: Dual record obrigatório. Quando `profile=portal`, o endpoint `/api/v1/users/invite` deve criar simultaneamente:
@@ -88,7 +88,7 @@ Os seguintes itens estão **explicitamente fora do escopo** desta feature e NÃO
 - [ ] Given `profile=portal`, when Agent convida tenant, then cria simultaneamente `res.users` (grupo portal) + `real.estate.tenant` vinculado via `partner_id`
 - [ ] Given `profile=portal`, when campos obrigatórios de tenant (`document`, `phone`, `birthdate`, `company_id`) faltando, then retorna erro 400 com campos faltantes
 - [ ] Given `profile=portal`, when `document` já existe na mesma empresa ativa, then retorna 409 Conflict; when existe apenas em outra empresa, then criação é permitida
-- [ ] Given `profile=owner`, when Agent convida property owner, then cria `res.users` com grupo `group_real_estate_owner` (mesmo padrão do `owner_api.py` mas sem senha)
+- [ ] Given `profile=property_owner`, when Agent convida property owner (dono de imóvel), then cria `res.users` com grupo `group_real_estate_property_owner`
 - [ ] Given email de convite enviado, when usuário clica no link, then é redirecionado para página/endpoint de criação de senha
 - [ ] Given link de convite válido, when usuário define senha (min 8 chars), then senha é salva e usuário pode fazer login
 - [ ] Given link de convite expirado (TTL configurável, padrão 24h), when usuário tenta usá-lo, then recebe erro 410 Gone informando que o link expirou
@@ -109,7 +109,7 @@ Os seguintes itens estão **explicitamente fora do escopo** desta feature e NÃO
 | E2E (API) | `test_manager_invites_agent()` | Manager cria Agent e email é enviado | ⚠️ Required |
 | E2E (API) | `test_agent_invites_tenant_dual_record()` | Agent convida tenant: cria `real.estate.tenant` + `res.users` (portal) vinculados via `partner_id` | ⚠️ Required |
 | E2E (API) | `test_agent_invites_tenant_missing_fields()` | Convite portal sem campos obrigatórios de tenant retorna 400 | ⚠️ Required |
-| E2E (API) | `test_agent_invites_owner()` | Agent cria property owner (group_real_estate_owner) e email é enviado | ⚠️ Required |
+| E2E (API) | `test_agent_invites_property_owner()` | Agent cria property owner (group_real_estate_property_owner) e email é enviado | ⚠️ Required |
 | E2E (API) | `test_set_password_valid_token()` | Criação de senha com token válido | ⚠️ Required |
 | E2E (API) | `test_set_password_expired_token()` | Token expirado retorna 410 | ⚠️ Required |
 | E2E (API) | `test_set_password_used_token()` | Token já usado retorna 410 | ⚠️ Required |
@@ -250,7 +250,7 @@ Os seguintes itens estão **explicitamente fora do escopo** desta feature e NÃO
 **FR1: Convite de Usuário (Invite)**
 - FR1.1: `POST /api/v1/users/invite` é o endpoint genérico para todos os perfis. Cria `res.users` do Odoo (mesmo padrão do Owner) sem senha e dispara email de convite
 - FR1.2: Owner, Manager e Agent podem convidar usuários (conforme matriz de autorização abaixo)
-- FR1.3: Owner pode convidar qualquer perfil; Manager pode convidar perfis operacionais; Agent pode convidar inquilinos (portal) e donos de imóveis (owner)
+- FR1.3: Owner pode convidar qualquer perfil; Manager pode convidar perfis operacionais; Agent pode convidar inquilinos (portal) e donos de imóveis (property_owner)
 - FR1.4: Email de convite contém link com token seguro (UUID v4 + hash SHA-256)
 - FR1.5: Token de convite é armazenado no banco com status, data de criação e data de expiração
 - FR1.6: Validade do link é lida da configuração dinâmica `thedevkitchen.email.link.settings` (padrão 24h)
@@ -259,7 +259,7 @@ Os seguintes itens estão **explicitamente fora do escopo** desta feature e NÃO
 - FR1.9: Usuário é criado como `res.users` seguindo o padrão implementado no Owner (`owner_api.py`), com `password=False` e campo `signup_pending=True`, e grupo de segurança atribuído conforme o perfil
 - FR1.10: Email utiliza `mail.template` do Odoo para internacionalização futura
 - FR1.11: **Caso especial — Perfil `portal` (tenant)**: Quando o invite é para `profile=portal`, o endpoint deve criar simultaneamente: (a) `res.users` com grupo portal; (b) `real.estate.tenant` com `name`, `document`, `email`, `phone`, `birthdate`, `company_ids`. O campo `partner_id` do `real.estate.tenant` deve ser vinculado ao `res.partner` do `res.users` criado, garantindo a ligação entre entidade de negócio e acesso ao sistema. Para este perfil, os campos `document` (CPF/CNPJ), `phone`, `birthdate` e `company_id` são **obrigatórios** no request body.
-- FR1.12: **Caso especial — Perfil `owner`**: Property Owner já possui cadastro existente (`owner_api.py`), mas falta o fluxo de convite com senha. O endpoint de invite cria `res.users` com grupo `group_real_estate_owner` seguindo o mesmo padrão, mas com `password=False` e envio de email para criação de senha em vez de definir senha no ato do cadastro.
+- FR1.12: **Caso especial — Perfil `property_owner`**: Property Owner (dono de imóvel, cliente) é perfil externo (level=external) distinto de `owner` (Company Owner). O endpoint de invite cria `res.users` com grupo `group_real_estate_property_owner` com `password=False` e envio de email para criação de senha.
 - FR1.13: Para perfis que NÃO são `portal`, o campo `document` no request body corresponde ao CPF (validação via `validate_docbr`). Para perfil `portal`, o campo `document` aceita CPF ou CNPJ (validação via `validators.validate_document()`).
 - FR1.14: O endpoint opera exclusivamente na empresa ativa recebida em `X-Company-ID`; ausência, invalidez ou falta de vínculo do header resulta em 404 genérico.
 - FR1.15: Para `profile=portal`, os campos `document`, `phone`, `birthdate` e `company_id` são obrigatórios **somente** no `POST /api/v1/users/invite` (não aplicável a endpoints de senha/reenvio).
@@ -461,7 +461,7 @@ def get_settings(self):
   "name": "string (required, max 255)",
   "email": "string (required, valid email format)",
   "document": "string (required — CPF para perfis internos, CPF ou CNPJ para portal)",
-  "profile": "string (required, enum: owner|director|manager|agent|prospector|receptionist|financial|legal|portal)",
+  "profile": "string (required, enum: owner|director|manager|agent|prospector|receptionist|financial|legal|portal|property_owner)",
   "phone": "string (optional para perfis internos, OBRIGATÓRIO para portal)",
   "mobile": "string (optional)"
 }
@@ -548,7 +548,7 @@ def get_settings(self):
 | Owner | owner, director, manager, agent, prospector, receptionist, financial, legal, portal |
 | Director | Herda Manager (agent, prospector, receptionist, financial, legal) |
 | Manager | agent, prospector, receptionist, financial, legal |
-| Agent | owner (dono de imóvel), portal (inquilino) |
+| Agent | property_owner (dono de imóvel), portal (inquilino) |
 | Others | Nenhum (403 Forbidden) |
 
 **Regras Operacionais de Isolamento**:

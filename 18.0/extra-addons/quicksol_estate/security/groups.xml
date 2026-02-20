@@ -91,5 +91,13 @@
             <field name="comment">Cliente/Inquilino com acesso limitado apenas aos seus próprios registros</field>
         </record>
 
+        <!-- Property Owner - Proprietário de Imóvel (Cliente) -->
+        <record id="group_real_estate_property_owner" model="res.groups">
+            <field name="name">Real Estate Property Owner</field>
+            <field name="category_id" ref="module_category_real_estate"/>
+            <field name="implied_ids" eval="[(4, ref('base.group_portal'))]"/>
+            <field name="comment">Proprietário de imóvel (cliente da imobiliária) com acesso via portal aos seus imóveis, contratos e pagamentos</field>
+        </record>
+
     </data>
 </odoo>

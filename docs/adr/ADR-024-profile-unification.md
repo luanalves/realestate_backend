@@ -4,11 +4,12 @@
 Aceito
 
 ## Data
-2026-02-19
+Original: 2026-02-19  
+Última Atualização: 2026-02-20 (v2 - Adicionado property_owner como 10º tipo)
 
 ## Contexto
 
-O sistema de gerenciamento imobiliário possui **9 perfis RBAC** definidos em ADR-019 (Owner, Director, Manager, Agent, Prospector, Receptionist, Financial, Legal, Portal), mas sua implementação no banco de dados era **inconsistente e não normalizada**:
+O sistema de gerenciamento imobiliário possui **10 perfis RBAC** definidos em ADR-019 (Owner, Director, Manager, Agent, Prospector, Receptionist, Financial, Legal, Portal, Property Owner), mas sua implementação no banco de dados era **inconsistente e não normalizada**:
 
 ### Problemas Identificados
 
@@ -16,7 +17,7 @@ O sistema de gerenciamento imobiliário possui **9 perfis RBAC** definidos em AD
 - **2 perfis** com tabelas dedicadas:
   - `real.estate.agent` (611 LOC, campos de negócio + cadastrais)
   - `real.estate.tenant` (35 LOC, apenas cadastrais)
-- **7 perfis** apenas como `res.groups` do Odoo, sem dados cadastrais próprios
+- **8 perfis** apenas como `res.groups` do Odoo, sem dados cadastrais próprios
 
 **2. Violação de multi-tenancy:**
 - Tenant tinha `UNIQUE(document)` **global**, impedindo mesma pessoa em múltiplas empresas
@@ -40,7 +41,7 @@ O sistema de gerenciamento imobiliário possui **9 perfis RBAC** definidos em AD
 
 - **ADR-004**: Nomenclatura de módulos e tabelas (`thedevkitchen_` prefix)
 - **ADR-008**: Segurança multi-tenancy (isolamento por `company_id`)
-- **ADR-019**: Sistema RBAC com 9 perfis pré-definidos
+- **ADR-019**: Sistema RBAC com 10 perfis pré-definidos
 - **KB-09**: Database Best Practices (enums > 5 items → lookup table, 3NF compliance)
 
 ## Decisão
@@ -53,7 +54,7 @@ O sistema de gerenciamento imobiliário possui **9 perfis RBAC** definidos em AD
 ```python
 class ProfileType(models.Model):
     _name = 'thedevkitchen.profile.type'
-    _description = 'Profile Type (Lookup Table for 9 RBAC Roles)'
+    _description = 'Profile Type (Lookup Table for 10 RBAC Roles)'
     
     code = fields.Char(required=True, index=True)  # 'owner', 'agent', 'portal'
     name = fields.Char(required=True, translate=True)
@@ -62,7 +63,7 @@ class ProfileType(models.Model):
     odoo_group_id = fields.Many2one('res.groups')  # Link to Odoo security group
 ```
 
-**Seed Data**: 9 registros fixos via `profile_type_data.xml`
+**Seed Data**: 10 registros fixos via `profile_type_data.xml`
 
 **Motivo**: KB-09 §2.1 recomenda lookup table para enums > 5 items (extensibilidade, i18n, UI-friendly)
 
@@ -76,7 +77,7 @@ class ProfileType(models.Model):
 ```python
 class EstateProfile(models.Model):
     _name = 'thedevkitchen.estate.profile'
-    _description = 'Unified Profile (9 RBAC Types)'
+    _description = 'Unified Profile (10 RBAC Types)'
     _sql_constraints = [
         ('unique_document_company_type',
          'UNIQUE(document, company_id, profile_type_id)',
@@ -147,7 +148,37 @@ class Agent(models.Model):
 
 ---
 
-### 5. API Unificada
+### 5. Property Owner como 10º Profile Type (v2 - 2026-02-20)
+
+**Problema Identificado**: Ambiguidade semântica entre `owner` (Company Owner) e Property Owner (cliente).
+
+**Contexto**:
+- `profile_type='owner'` originalmente definido para **Company Owner** (administrator da imobiliária)
+- Feature 009 especificava que Agent pode convidar **Property Owner** (cliente dono do imóvel)
+- Model `real.estate.property.owner` existia separadamente sem integração ao sistema de profiles
+
+**Solução**: Adicionar `profile_type='property_owner'` como 10º tipo (level=external)
+
+**Distinção Clara**:
+
+| Conceito | Profile Type | Modelo | Descrição |
+|----------|--------------|--------|-----------|
+| **Company Owner** | `owner` | `res.users` + grupo | Dono/sócio da imobiliária (admin) |
+| **Property Owner** | `property_owner` | `thedevkitchen.estate.profile` | Cliente dono do imóvel |
+
+**Migração Futura** (Phase 2):
+- Migrar registros de `real.estate.property.owner` → `thedevkitchen.estate.profile` com `profile_type_id='property_owner'`
+- Atualizar FK `real.estate.property.owner_id` → apontar para `profile_id`
+- Feature 009: Agent convida `property_owner` (não `owner`)
+
+**Referências**:
+- Investigation Report: `.investigate-property-owner.md`
+- DEC-011 (Feature 007): Company Owner vs Property Owner terminology
+- Migration: `migrations/18.0.3.0.0/README.md`
+
+---
+
+### 6. API Unificada
 
 **Endpoint**: `POST /api/v1/profiles`
 
@@ -164,15 +195,15 @@ class Agent(models.Model):
 ```
 
 **RBAC Authorization Matrix**:
-- **Owner** → pode criar todos os 9 tipos
+- **Owner** → pode criar todos os 10 tipos
 - **Manager** → pode criar 5 tipos operacionais (agent, prospector, receptionist, financial, legal)
-- **Agent** → pode criar 2 tipos externos (owner=property owner, portal=tenant)
+- **Agent** → pode criar 2 tipos externos (property_owner, portal)
 
 **Implementação**: `quicksol_estate/controllers/profile_api.py`
 
 ---
 
-### 6. Integração com Feature 009 (Invite Flow)
+### 7. Integração com Feature 009 (Invite Flow)
 
 **Fluxo two-step**:
 1. **Criar perfil** via `POST /api/v1/profiles` (dados cadastrais completos)
@@ -206,7 +237,7 @@ POST /api/v1/users/invite
 ### Positivas
 
 **1. Consistência arquitetural:**
-- ✅ Todos os 9 perfis RBAC possuem cadastro normalizado
+- ✅ Todos os 10 perfis RBAC possuem cadastro normalizado
 - ✅ Mesma estrutura de dados, mesma API, mesmas regras de validação
 
 **2. Multi-tenancy correto:**
@@ -227,7 +258,7 @@ POST /api/v1/users/invite
 
 **6. Testabilidade:**
 - ✅ 8 testes E2E (T21-T28) validam CRUD, RBAC, multi-tenancy, integrate Feature 009
-- ✅ Constraint compound unique testado com dados reais (3 empresas, 9 tipos)
+- ✅ Constraint compound unique testado com dados reais (3 empresas, 10 tipos)
 
 ---
 
@@ -260,7 +291,7 @@ POST /api/v1/users/invite
 ### Arquivos Criados/Modificados
 
 **Models** (`18.0/extra-addons/quicksol_estate/models/`):
-- ✅ `profile_type.py` (novo) — Lookup table com 9 tipos
+- ✅ `profile_type.py` (novo) — Lookup table com 10 tipos
 - ✅ `profile.py` (novo) — Tabela unificada com 230 LOC
 - ✅ `agent.py` (modificado) — Adicionado FK `profile_id`, sincronização
 
@@ -274,7 +305,7 @@ POST /api/v1/users/invite
   * GET /api/v1/profile-types (lista tipos disponíveis)
 
 **Data** (`18.0/extra-addons/quicksol_estate/data/`):
-- ✅ `profile_type_data.xml` (novo) — Seed data com 9 registros
+- ✅ `profile_type_data.xml` (novo) — Seed data com 10 registros
 
 **Security** (`18.0/extra-addons/quicksol_estate/security/`):
 - ✅ `ir.model.access.csv` (modificado) — Permissões CRUD por grupo
@@ -305,7 +336,7 @@ POST /api/v1/users/invite
 
 | Test ID | Cenário | Status |
 |---------|---------|--------|
-| T21 | Create profile (9 tipos) | ✅ PASS |
+| T21 | Create profile (10 tipos) | ✅ PASS |
 | T22 | List profiles (paginação, filtros) | ✅ PASS |
 | T23 | Update profile (imutabilidade) | ✅ PASS |
 | T24 | Soft delete (cascade) | ✅ PASS |
@@ -318,9 +349,9 @@ POST /api/v1/users/invite
 
 | Role | Allowed Profile Types | Forbidden | Test Coverage |
 |------|----------------------|-----------|---------------|
-| **Owner** | 9/9 (all) | 0 | ✅ 9/9 = 100% |
-| **Manager** | 5/9 (agent, prospector, receptionist, financial, legal) | 4/9 → 403 | ✅ 5+4 = 100% |
-| **Agent** | 2/9 (owner=property owner, portal=tenant) | 7/9 → 403 | ✅ 2+7 = 100% |
+| **Owner** | 10/10 (all) | 0 | ✅ 10/10 = 100% |
+| **Manager** | 5/10 (agent, prospector, receptionist, financial, legal) | 5/10 → 403 | ✅ 5+5 = 100% |
+| **Agent** | 2/10 (property_owner, portal) | 8/10 → 403 | ✅ 2+8 = 100% |
 
 ### Multi-Tenancy Validado
 
