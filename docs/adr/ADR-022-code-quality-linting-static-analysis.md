@@ -456,14 +456,207 @@ Esta ADR complementa:
 3. **ADR-004**: Como nomear (convenções)
 4. **ADR-022**: Como manter limpo (linting e análise estática)
 
+## Code Documentation Philosophy (Emenda 2026-02-20)
+
+### Decisão: Priorizar Código Auto-Explicativo sobre Docstrings Extensivas
+
+**Status**: Aceito - 2026-02-20
+
+#### Contexto
+
+Durante revisão de código em 2026-02-20, identificamos que docstrings extensivas podem:
+1. Ficar desatualizadas mais rápido que o código
+2. Adicionar ruído visual ao código
+3. Duplicar informações que já estão claras pelo código bem escrito
+4. Criar falsa sensação de segurança ("está documentado, então está correto")
+
+A filosofia de **Clean Code** prega que "código que precisa de comentários para ser entendido não é um bom código".
+
+#### Princípios Adotados
+
+**1. Código Auto-Explicativo é a Documentação Principal**
+
+✅ **PREFERIR** (código claro):
+```python
+def strip_non_digits(document: str) -> str:
+    """Remove formatting, keeping only digits."""
+    return re.sub(r'[^0-9]', '', document)
+
+CPF_LENGTH = 11  # Brazilian individual tax ID
+CNPJ_LENGTH = 14  # Brazilian company tax ID
+
+def is_cpf(document: str) -> bool:
+    return len(document) == CPF_LENGTH and _checksum_valid(document)
+```
+
+❌ **EVITAR** (docstring extensa com informações óbvias):
+```python
+def normalize_document(document):
+    """
+    Strip all non-digit characters from a document string (CPF or CNPJ).
+    
+    This function takes a document string that may contain formatting
+    characters like dots, dashes, and slashes, and returns only the
+    numeric digits. This is useful for standardizing document formats
+    before validation or storage.
+    
+    Args:
+        document (str): CPF/CNPJ with or without formatting. Can be
+                       formatted as XXX.XXX.XXX-XX (CPF) or 
+                       XX.XXX.XXX/XXXX-XX (CNPJ), or just digits.
+        
+    Returns:
+        str: A string containing only numeric digits (0-9). If the input
+             is empty or None, returns an empty string.
+        
+    Example:
+        >>> normalize_document('123.456.789-01')
+        '12345678901'
+        >>> normalize_document('12.345.678/0001-95')
+        '12345678000195'
+        >>> normalize_document('')
+        ''
+        
+    Note:
+        This function does not validate the document format or checksum.
+        Use validate_document() or is_cpf()/is_cnpj() for validation.
+    """
+    if not document:
+        return ''
+    return re.sub(r'[^0-9]', '', document)
+```
+
+**2. Quando Usar Docstrings (Exceções)**
+
+✅ **Docstrings OBRIGATÓRIAS apenas para**:
+- **Regras de negócio não-óbvias** (ex: validação CRECI varia por estado)
+- **Comportamentos contra-intuitivos** (ex: context flags que bypassam validação)
+- **APIs públicas** que serão consumidas por outros módulos/equipes
+- **Formatos específicos do domínio brasileiro** (ex: CRECI/SP 123456 vs CRECI-RJ 12345)
+
+✅ **Formato Minimalista** (1 linha quando possível):
+```python
+def validate_creci(creci: str, state_code: Optional[str] = None) -> bool:
+    """Brazilian broker license. Format: CRECI/SP 123456 (varies by state)."""
+    # Implementation...
+
+def write(self, vals):
+    """Override to validate transitions. Context flags: cron_expire, lease_terminate."""
+    # Implementation...
+```
+
+**3. Type Hints > Docstrings para Tipos**
+
+✅ **PREFERIR** type hints explícitos:
+```python
+from typing import Optional, Literal
+
+DocumentType = Literal['cpf', 'cnpj']
+
+def validate_document(document: str, doc_type: Optional[DocumentType] = None) -> bool:
+    """Validates CPF (11 digits) or CNPJ (14 digits)."""
+    pass
+```
+
+❌ **EVITAR** documentar tipos em docstrings quando type hints já existem:
+```python
+def validate_document(document, doc_type=None):
+    """Validate a document.
+    
+    Args:
+        document (str): The document string  # ❌ Redundante com type hint
+        doc_type (str, optional): Either 'cpf' or 'cnpj'  # ❌ Redundante
+    
+    Returns:
+        bool: True if valid  # ❌ Redundante
+    """
+```
+
+**4. Constants e Inline Comments para Regras de Negócio**
+
+✅ **PREFERIR** constants com comments inline:
+```python
+# Valid CRECI formats by state (Brazilian real estate broker license)
+CRECI_PATTERN_SP = r'CRECI[/-]?SP\s*\d{6}'  # São Paulo: 6 digits
+CRECI_PATTERN_RJ = r'CRECI[/-]?RJ\s*\d{5}'  # Rio de Janeiro: 5 digits
+CRECI_PATTERN_MG = r'CRECI[/-]?MG\s*\d{5}'  # Minas Gerais: 5 digits
+
+VALID_TRANSITIONS = {
+    'draft': ['active'],
+    'active': ['terminated'],  # 'expired' only via cron
+    'terminated': [],
+    'expired': [],
+}
+```
+
+#### Arquivos Afetados (2026-02-20)
+
+Os seguintes arquivos tiveram docstrings extensivas removidas seguindo esta filosofia:
+
+- ✅ `models/agent.py` - Removido cabeçalho de módulo (ADRs já documentadas em `/docs/adr/`)
+- ✅ `models/profile.py` - Removido cabeçalho extenso (informação desatualizada: dizia 9 tipos, agora são 10)
+- ✅ `models/lease.py` - Removidas docstrings de `write()` e `_cron_expire_leases()` (comportamento agora via inline comments)
+- ✅ `utils/validators.py` - Removidas docstrings extensivas de 10 funções (código + type hints são auto-explicativos)
+
+**Justificativa**: 
+- Código Python 3.10+ com type hints é auto-documentado
+- Nomes de funções/variáveis são descritivos (`strip_non_digits` vs `normalize_document`)
+- Constants explicam regras de negócio sem docstrings (`CPF_LENGTH = 11  # Brazilian individual tax ID`)
+- Inline comments para casos específicos (ex: `# São Paulo: 6 digits`)
+- Reduz manutenção (docstrings ficam desatualizadas, código não)
+
+#### Pylint Configuration Update
+
+Desabilitar checagem de docstrings obrigatórias:
+
+```toml
+[tool.pylint.messages_control]
+disable = [
+    "C0103",  # invalid-name (Odoo usa _name, _inherit)
+    "C0114",  # missing-module-docstring
+    "C0115",  # missing-class-docstring (NEW - 2026-02-20)
+    "C0116",  # missing-function-docstring (NEW - 2026-02-20)
+    "R0903",  # too-few-public-methods (models Odoo)
+    "W0212",  # protected-access (_name é padrão Odoo)
+]
+```
+
+**Pre-commit**: Remover `flake8-docstrings` de `additional_dependencies`:
+
+```yaml
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.0.0
+    hooks:
+      - id: flake8
+        # Removido: additional_dependencies: [flake8-docstrings]
+```
+
+#### Trade-offs
+
+**Vantagens**:
+- ✅ Código mais limpo e conciso
+- ✅ Menos manutenção (docstrings não ficam desatualizadas)
+- ✅ Força boas práticas de nomenclatura e type hints
+- ✅ Desenvolvedores leem o código, não apenas docstrings
+
+**Desvantagens**:
+- ❌ Curva de aprendizado para código de domínio brasileiro (CRECI, CPF, CNPJ)
+- ❌ Menos exemplos inline de uso
+- ❌ IDEs mostram menos ajuda contextual (solved by type hints)
+
+**Mitigação**:
+- ADRs documentam decisões arquiteturais e regras de negócio
+- Type hints fornecem informação de tipos
+- Constants documentam valores mágicos e regras
+- Inline comments para casos específicos de domínio
+
+---
+
 ## Referências
 
 - [PEP 8 - Style Guide for Python Code](https://pep8.org/)
-- [✅ **Criar XML linter para views Odoo 18.0** (2026-02-08)
-5. ⏳ Rodar formatação em código existente (uma vez)
-6. ⏳ Treinar equipe nas ferramentas
-7. ⏳ Monitorar métricas de qualidade (Pylint score trend)
-8. ⏳ Ajustar regras baseado em feedback da equipe
+- [Clean Code: A Handbook of Agile Software Craftsmanship](https://www.amazon.com/Clean-Code-Handbook-Software-Craftsmanship/dp/0132350882) - Robert C. Martin
+- [Odoo Development Guidelines](https://www.odoo.com/documentation/18.0/developer/reference/guidelines.html)
 
 ---
 
@@ -471,8 +664,9 @@ Esta ADR complementa:
 
 | Versão | Data | Mudanças |
 |--------|------|----------|
+| 1.2 | 2026-02-20 | **Emenda**: Priorizar código auto-explicativo sobre docstrings extensivas. Removidas docstrings de `agent.py`, `profile.py`, `lease.py`, `validators.py`. Desabilitar pylint C0115, C0116. Filosofia Clean Code adotada. |
 | 1.1 | 2026-02-08 | Adicionado XML linter para views Odoo 18.0 |
-| 1.0 | 2026-02-05 | Versão inicial com Python linters |com/documentation/18.0/developer/reference/guidelines.html)
+| 1.0 | 2026-02-05 | Versão inicial com Python linters |
 
 ## Próximos Passos
 
