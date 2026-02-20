@@ -24,11 +24,7 @@ class PropertyPhone(models.Model):
 
     @api.constrains('phone')
     def _check_phone(self):
-        """
-        Valida telefones brasileiros no backend:
-        - Telefone fixo: (XX) XXXX-XXXX (10 dígitos)
-        - Celular: (XX) 9XXXX-XXXX (11 dígitos)
-        """
+
         for rec in self:
             if not rec.phone:
                 continue
@@ -78,10 +74,7 @@ class PropertyPhone(models.Model):
 
     @api.onchange('phone')
     def _onchange_phone(self):
-        """
-        Normaliza o formato do telefone.
-        A máscara é aplicada pelo widget JavaScript no frontend.
-        """
+
         if self.phone:
             # Remove tudo que não é número
             phone_digits = re.sub(r'\D', '', self.phone)
@@ -123,14 +116,7 @@ class PropertyEmail(models.Model):
 
     @api.constrains('email')
     def _check_email(self):
-        """
-        Valida formato de e-mail:
-        - Deve conter @
-        - Deve ter texto antes do @
-        - Deve ter domínio após o @
-        - Domínio deve ter pelo menos um ponto
-        - Não pode ter espaços
-        """
+
         # Regex simples mas eficaz para validação de email
         email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
         

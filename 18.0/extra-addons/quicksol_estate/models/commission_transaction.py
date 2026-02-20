@@ -1,16 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Real Estate Commission Transaction Model
-
-Records commission transactions with immutable snapshots of commission rules.
-Implements non-retroactive commission calculation - rules apply only from
-their valid_from date forward.
-
-Author: Quicksol Technologies
-Date: 2026-01-12
-User Story: US4 - Configurar Comissões de Agentes (P4)
-ADRs: ADR-004 (Nomenclatura), ADR-008 (Multi-tenancy)
-"""
 
 from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError, UserError

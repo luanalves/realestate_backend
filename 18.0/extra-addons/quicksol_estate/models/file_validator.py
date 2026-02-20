@@ -20,21 +20,7 @@ class FileValidator:
     
     @classmethod
     def validate_file(cls, file_binary, file_name, allowed_extensions=None, max_size=None):
-        """
-        Valida tamanho e extensão de um arquivo
-        
-        Args:
-            file_binary: Arquivo em formato binary (base64)
-            file_name: Nome do arquivo com extensão
-            allowed_extensions: Lista de extensões permitidas (ex: ['.pdf', '.doc'])
-            max_size: Tamanho máximo em bytes (padrão: 5MB)
-            
-        Raises:
-            ValidationError: Se o arquivo não atender aos requisitos
-            
-        Returns:
-            tuple: (file_size_bytes, file_extension)
-        """
+
         if not file_binary or not file_name:
             return None, None
             
@@ -71,14 +57,7 @@ class FileValidator:
     
     @classmethod
     def validate_image(cls, image_binary, image_name, max_size=None):
-        """
-        Valida uma imagem (atalho para validate_file com extensões de imagem)
-        
-        Args:
-            image_binary: Imagem em formato binary (base64)
-            image_name: Nome da imagem com extensão
-            max_size: Tamanho máximo em bytes (padrão: 5MB)
-        """
+
         return cls.validate_file(
             image_binary, 
             image_name, 
@@ -88,14 +67,7 @@ class FileValidator:
     
     @classmethod
     def validate_document(cls, document_binary, document_name, max_size=None):
-        """
-        Valida um documento (atalho para validate_file com extensões de documento)
-        
-        Args:
-            document_binary: Documento em formato binary (base64)
-            document_name: Nome do documento com extensão
-            max_size: Tamanho máximo em bytes (padrão: 5MB)
-        """
+
         return cls.validate_file(
             document_binary, 
             document_name, 
@@ -110,12 +82,7 @@ class FileValidator:
     
     @classmethod
     def get_allowed_extensions_string(cls, extension_type='document'):
-        """
-        Retorna string formatada com extensões permitidas
-        
-        Args:
-            extension_type: 'image' ou 'document'
-        """
+
         if extension_type == 'image':
             extensions = cls.IMAGE_EXTENSIONS
         else:

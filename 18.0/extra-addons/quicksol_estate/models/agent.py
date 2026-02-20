@@ -1,14 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Real Estate Agent Model
-
-Manages real estate agents/brokers with CRECI validation, multi-tenant isolation,
-and commission tracking.
-
-Author: Quicksol Technologies
-Date: 2026-01-12
-ADRs: ADR-004 (Nomenclatura), ADR-012 (CRECI Validation), ADR-015 (Soft-Delete)
-"""
 
 import re
 from odoo import models, fields, api, _

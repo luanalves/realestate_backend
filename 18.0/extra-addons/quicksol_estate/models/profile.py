@@ -1,19 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Unified Profile Model — Single Table for All 9 RBAC Profile Types
 
-Following ADR-024 (Profile Unification), ADR-004 (naming conventions),
-ADR-008 (multi-tenancy), ADR-015 (soft delete), ADR-019 (9 RBAC profiles),
-and KB-09 (database best practices).
-
-This model consolidates all 9 profile types into a single normalized table:
-- Owner, Director, Manager (admin level)
-- Agent, Prospector, Receptionist, Financial, Legal (operational level)
-- Portal/Tenant (external level)
-
-Compound unique constraint: UNIQUE(document, company_id, profile_type_id)
-allows the same person in multiple companies and/or with multiple profiles.
-"""
 from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError
 from ..utils import validators

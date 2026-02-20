@@ -1,11 +1,4 @@
-"""
-EventBus - Central event dispatcher for Observer Pattern.
 
-ADR-020: Observer Pattern for Odoo Event-Driven Architecture
-ADR-021: Async Messaging with RabbitMQ + Celery
-
-Provides hybrid sync/async event emission for decoupled business logic.
-"""
 import logging
 from odoo import api, models
 
@@ -25,32 +18,7 @@ class EventBus(models.AbstractModel):
     
     @api.model
     def emit(self, event_name, data, force_sync=False):
-        """
-        Emit an event to all registered observers.
-        
-        Routing logic:
-        - Events starting with 'before_' are ALWAYS synchronous (validations)
-        - Events in ASYNC_EVENTS dict are async by default (unless force_sync=True)
-        - All other events are synchronous
-        
-        Args:
-            event_name (str): Event identifier (e.g., 'property.before_create', 'user.created')
-            data (dict): Event payload with context
-            force_sync (bool): Force synchronous processing even for async events
-        
-        Returns:
-            str|None: task_id if async, None if sync
-        
-        Examples:
-            # Sync validation (always blocks)
-            self.env['quicksol.event.bus'].emit('user.before_create', {'vals': vals})
-            
-            # Async audit log (non-blocking)
-            task_id = self.env['quicksol.event.bus'].emit('user.created', {'user_id': user.id})
-            
-            # Force sync for testing
-            self.env['quicksol.event.bus'].emit('property.created', data, force_sync=True)
-        """
+
         if event_name.startswith('before_'):
             return self._emit_sync(event_name, data)
         
@@ -61,16 +29,7 @@ class EventBus(models.AbstractModel):
     
     @api.model
     def _emit_sync(self, event_name, data):
-        """
-        Emit event synchronously to all registered observers.
-        
-        Args:
-            event_name (str): Event identifier
-            data (dict): Event payload
-        
-        Returns:
-            None
-        """
+
         _logger.debug(f"EventBus: Emitting sync event '{event_name}' with data: {data}")
         
         # Find all concrete models that inherit from AbstractObserver
@@ -109,32 +68,9 @@ class EventBus(models.AbstractModel):
     
     @api.model
     def _emit_async(self, event_name, data):
-        """
-        Emit event asynchronously via RabbitMQ + Celery.
-        
-        Args:
-            event_name (str): Event identifier
-            data (dict): Event payload
-        
-        Returns:
-            str: Celery task_id for status polling
-        """
+
         try:
-            queue_name = self.ASYNC_EVENTS[event_name]
-            _logger.info(f"EventBus: Emitting async event '{event_name}' to queue '{queue_name}'")
-            
-            # PLACEHOLDER: Integrate with Celery client
-            # from odoo.addons.thedevkitchen_celery.celery_client import process_event_task
-            # task = process_event_task.apply_async(
-            #     args=[event_name, data],
-            #     queue=queue_name,
-            #     priority=self._get_priority(event_name),
-            #     retry=True,
-            #     retry_policy={'max_retries': 3}
-            # )
-            # return task.id
-            
-            _logger.warning(f"Async messaging not fully integrated yet, falling back to sync for '{event_name}'")
+            queue_name = self.ASYNC_EVENTS[event_name]            
             return self._emit_sync(event_name, data)
         
         except Exception as exc:
@@ -143,15 +79,6 @@ class EventBus(models.AbstractModel):
     
     @api.model
     def _get_priority(self, event_name):
-        """
-        Get priority level for async event (used by Celery).
-        
-        Args:
-            event_name (str): Event identifier
-        
-        Returns:
-            int: Priority (0=lowest, 9=highest)
-        """
         priority_map = {
             'commission.split.calculated': 9,
             'property.assignment.changed': 5,

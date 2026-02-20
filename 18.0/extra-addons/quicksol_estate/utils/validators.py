@@ -1,10 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Reusable validation functions for Company & Owner Management
 
-Following ADR-009 (Brazilian market requirements) and ADR-004 (naming conventions).
-All validators return True if valid, False otherwise.
-"""
 import re
 from email_validator import validate_email, EmailNotValidError
 

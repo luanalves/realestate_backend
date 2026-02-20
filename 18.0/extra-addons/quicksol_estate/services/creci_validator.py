@@ -1,34 +1,10 @@
 # -*- coding: utf-8 -*-
-"""
-CRECI Validator Service
-
-Validates Brazilian real estate broker licenses (CRECI - Conselho Regional de Corretores de Imóveis).
-Implements flexible format acceptance and normalization as specified in ADR-012.
-
-Author: Quicksol Technologies
-Date: 2026-01-12
-"""
 
 import re
 from odoo.exceptions import ValidationError
 from odoo import _
 
 class CreciValidator:
-    """
-    CRECI (Conselho Regional de Corretores de Imóveis) validation service.
-    
-    Accepts flexible input formats:
-    - CRECI/SP 12345
-    - CRECI-SP-12345
-    - CRECI SP 12345
-    - 12345-SP
-    - 12345/SP
-    
-    Normalizes to standard format: CRECI/UF NNNNN
-    
-    Valid Brazilian states (UF):
-    AC, AL, AP, AM, BA, CE, DF, ES, GO, MA, MT, MS, MG, PA, PB, PR, PE, PI, RJ, RN, RS, RO, RR, SC, SP, SE, TO
-    """
     
     # Brazilian states
     VALID_STATES = [
@@ -49,18 +25,6 @@ class CreciValidator:
     
     @classmethod
     def normalize(cls, creci_input):
-        """
-        Normalize CRECI to standard format: CRECI/UF NNNNN
-        
-        Args:
-            creci_input (str): CRECI in any accepted format
-            
-        Returns:
-            str: Normalized CRECI (e.g., "CRECI/SP 12345")
-            
-        Raises:
-            ValidationError: If format is invalid
-        """
         if not creci_input:
             return False
             
@@ -107,18 +71,7 @@ class CreciValidator:
     
     @classmethod
     def validate(cls, creci_normalized):
-        """
-        Validate a normalized CRECI.
-        
-        Args:
-            creci_normalized (str): CRECI in normalized format
-            
-        Returns:
-            bool: True if valid
-            
-        Raises:
-            ValidationError: If invalid
-        """
+
         if not creci_normalized:
             return True  # Empty CRECI is allowed (optional field)
         
@@ -142,15 +95,7 @@ class CreciValidator:
     
     @classmethod
     def extract_state(cls, creci_normalized):
-        """
-        Extract state (UF) from normalized CRECI.
-        
-        Args:
-            creci_normalized (str): CRECI in normalized format
-            
-        Returns:
-            str: State code (e.g., 'SP')
-        """
+
         if not creci_normalized:
             return False
             
@@ -159,15 +104,7 @@ class CreciValidator:
     
     @classmethod
     def extract_number(cls, creci_normalized):
-        """
-        Extract number from normalized CRECI.
-        
-        Args:
-            creci_normalized (str): CRECI in normalized format
-            
-        Returns:
-            str: CRECI number (e.g., '12345')
-        """
+
         if not creci_normalized:
             return False
             

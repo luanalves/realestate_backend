@@ -1,14 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Real Estate Lead Filter Model
-
-Allows users to save frequently-used search filters for quick access.
-
-Author: Quicksol Technologies  
-Date: 2026-01-30
-Branch: 006-lead-management
-FRs: FR-048 (Saved search filters)
-"""
 
 from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError

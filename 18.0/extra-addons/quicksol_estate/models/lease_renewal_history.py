@@ -1,12 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Lease Renewal History Model — Feature 008
 
-Audit trail for in-place lease renewals per clarification C2 (mutate in-place with audit history).
-Each renewal captures the previous values before mutation for compliance and reporting.
-
-Reference: data-model.md, spec.md FR-017
-"""
 from odoo import models, fields
 
 

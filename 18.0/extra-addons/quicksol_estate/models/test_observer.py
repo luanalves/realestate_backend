@@ -1,10 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Test Observer for unit tests.
 
-This concrete observer implementation is used by test_abstract_observer.py
-to test the AbstractObserver base class without dynamic model registration issues.
-"""
 from odoo import models, api
 
 

@@ -1,12 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Error Handler Service
-
-Provides standardized error responses for the Real Estate module API endpoints.
-Ensures consistent error formatting across all controllers.
-
-Per ADR-011: All error responses must follow OpenAPI 3.0 specification.
-"""
 
 from odoo import _
 from odoo.http import request
@@ -17,26 +9,10 @@ _logger = logging.getLogger(__name__)
 
 
 class ErrorHandler:
-    """
-    Centralized error handling for API endpoints.
-    
-    Provides standardized error responses with proper HTTP status codes,
-    error messages, and optional details for debugging.
-    """
-    
+
     @staticmethod
     def validation_error(message, field=None, details=None):
-        """
-        Return 400 Bad Request for validation errors.
-        
-        Args:
-            message (str): Human-readable error message
-            field (str, optional): Field name that failed validation
-            details (dict, optional): Additional validation error details
-            
-        Returns:
-            HTTP Response with 400 status
-        """
+
         error_response = {
             'error': 'validation_error',
             'message': str(message),
@@ -54,16 +30,7 @@ class ErrorHandler:
     
     @staticmethod
     def not_found(resource, resource_id=None):
-        """
-        Return 404 Not Found for missing resources.
-        
-        Args:
-            resource (str): Type of resource (e.g., 'agent', 'property')
-            resource_id (int, optional): ID of the resource
-            
-        Returns:
-            HTTP Response with 404 status
-        """
+
         message = _("%(resource)s not found") % {'resource': resource.capitalize()}
         if resource_id:
             message = _("%(resource)s with ID %(id)s not found") % {
@@ -82,15 +49,7 @@ class ErrorHandler:
     
     @staticmethod
     def unauthorized(message=None):
-        """
-        Return 401 Unauthorized for authentication failures.
-        
-        Args:
-            message (str, optional): Custom error message
-            
-        Returns:
-            HTTP Response with 401 status
-        """
+
         error_response = {
             'error': 'unauthorized',
             'message': message or _("Authentication required"),
@@ -102,16 +61,7 @@ class ErrorHandler:
     
     @staticmethod
     def forbidden(message=None, reason=None):
-        """
-        Return 403 Forbidden for authorization failures.
-        
-        Args:
-            message (str, optional): Custom error message
-            reason (str, optional): Reason for denial (e.g., 'company_mismatch')
-            
-        Returns:
-            HTTP Response with 403 status
-        """
+
         error_response = {
             'error': 'forbidden',
             'message': message or _("Access denied"),
@@ -126,16 +76,7 @@ class ErrorHandler:
     
     @staticmethod
     def conflict(message, resource=None):
-        """
-        Return 409 Conflict for duplicate/constraint violations.
-        
-        Args:
-            message (str): Description of the conflict
-            resource (str, optional): Resource type involved
-            
-        Returns:
-            HTTP Response with 409 status
-        """
+
         error_response = {
             'error': 'conflict',
             'message': str(message),
@@ -150,17 +91,7 @@ class ErrorHandler:
     
     @staticmethod
     def server_error(message=None, exception=None, include_trace=False):
-        """
-        Return 500 Internal Server Error.
-        
-        Args:
-            message (str, optional): Custom error message
-            exception (Exception, optional): The exception that occurred
-            include_trace (bool): Whether to include stack trace (dev mode only)
-            
-        Returns:
-            HTTP Response with 500 status
-        """
+
         error_response = {
             'error': 'internal_server_error',
             'message': message or _("An unexpected error occurred"),
@@ -180,16 +111,7 @@ class ErrorHandler:
     
     @staticmethod
     def method_not_allowed(method, allowed_methods=None):
-        """
-        Return 405 Method Not Allowed.
-        
-        Args:
-            method (str): HTTP method that was attempted
-            allowed_methods (list, optional): List of allowed HTTP methods
-            
-        Returns:
-            HTTP Response with 405 status
-        """
+
         message = _("Method %(method)s not allowed") % {'method': method}
         
         error_response = {
@@ -206,16 +128,7 @@ class ErrorHandler:
     
     @staticmethod
     def bad_request(message, error_code=None):
-        """
-        Return 400 Bad Request for malformed requests.
-        
-        Args:
-            message (str): Description of the problem
-            error_code (str, optional): Specific error code
-            
-        Returns:
-            HTTP Response with 400 status
-        """
+
         error_response = {
             'error': error_code or 'bad_request',
             'message': str(message),
@@ -227,16 +140,7 @@ class ErrorHandler:
     
     @staticmethod
     def too_many_requests(message=None, retry_after=None):
-        """
-        Return 429 Too Many Requests for rate limiting.
-        
-        Args:
-            message (str, optional): Custom error message
-            retry_after (int, optional): Seconds until client can retry
-            
-        Returns:
-            HTTP Response with 429 status
-        """
+
         error_response = {
             'error': 'too_many_requests',
             'message': message or _("Rate limit exceeded"),
@@ -252,14 +156,7 @@ class ErrorHandler:
 
 # Convenience function for handling exceptions in controllers
 def handle_exception(func):
-    """
-    Decorator to wrap controller methods with standardized exception handling.
-    
-    Usage:
-        @handle_exception
-        def my_controller_method(self, **kwargs):
-            # ... your code ...
-    """
+
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)

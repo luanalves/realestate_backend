@@ -1,13 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Agent-Property Assignment Model
-
-Manages the relationship between agents and properties with multi-tenant validation.
-
-Author: Quicksol Technologies
-Date: 2026-01-12
-ADRs: ADR-004 (Nomenclatura), ADR-008 (Multi-tenancy)
-"""
 
 from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError

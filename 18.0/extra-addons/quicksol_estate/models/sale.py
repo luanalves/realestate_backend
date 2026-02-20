@@ -48,12 +48,7 @@ class Sale(models.Model):
         return sales
 
     def action_cancel(self, reason):
-        """Cancel a sale and revert property status (FR-029).
 
-        CHK009/CHK031: Only reverts property to 'new' if it is still 'sold'.
-        If property state was changed after the sale (e.g., new lease created),
-        the revert is skipped to avoid data integrity issues.
-        """
         self.ensure_one()
         if self.status == 'cancelled':
             raise ValidationError("Sale is already cancelled.")

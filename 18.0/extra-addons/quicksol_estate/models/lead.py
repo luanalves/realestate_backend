@@ -1,16 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Real Estate Lead Model
 
-Manages real estate leads through the sales pipeline with agent isolation,
-multi-tenant support, and activity tracking.
-
-Author: Quicksol Technologies  
-Date: 2026-01-29
-Branch: 006-lead-management
-ADRs: ADR-001 (Module Structure), ADR-004 (Naming), ADR-015 (Soft-Delete)
-FRs: FR-001 to FR-047 (see specs/006-lead-management/spec.md)
-"""
 
 from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError, UserError

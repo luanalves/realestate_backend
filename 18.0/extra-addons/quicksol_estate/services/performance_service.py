@@ -1,21 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Performance Service - Agent Performance Metrics Aggregation
-
-This service provides:
-- Agent performance metrics calculation (sales count, commissions, averages)
-- Date range filtering for performance data
-- Agent ranking by various metrics (total_commissions, total_sales, avg_commission)
-- Redis caching for performance optimization (TTL: 300s)
-
-Business Rules:
-- All metrics are company-isolated (multi-tenant safe)
-- Performance calculations include all transaction statuses (pending/paid/cancelled)
-- Rankings are per-company only
-- Cache invalidation occurs after new transactions
-
-Architecture: Service-oriented (ADR-001)
-"""
 
 import logging
 import json
@@ -27,72 +10,13 @@ _logger = logging.getLogger(__name__)
 
 
 class PerformanceService:
-    """
-    Service class for agent performance metrics and ranking
-    
-    Methods:
-    - get_agent_performance: Get performance metrics for a single agent with date filtering
-    - get_top_agents_ranking: Get ranked list of agents by performance metric
-    - _calculate_performance_metrics: Internal method to calculate all metrics
-    - _get_cached_performance: Get performance data from Redis cache
-    - _cache_performance: Store performance data in Redis cache
-    - _invalidate_cache: Clear performance cache for an agent
-    """
-    
+
     def __init__(self, env):
-        """
-        Initialize service with Odoo environment
-        
-        Args:
-            env: Odoo environment (access to models, user context, Redis)
-        """
+
         self.env = env
         self.cache_ttl = 300  # 5 minutes cache TTL
     
     def get_agent_performance(self, agent_id, date_from=None, date_to=None):
-        """
-        Get comprehensive performance metrics for an agent
-        
-        Args:
-            agent_id (int): Agent record ID
-            date_from (date, optional): Start date for filtering transactions (inclusive)
-            date_to (date, optional): End date for filtering transactions (inclusive)
-        
-        Returns:
-            dict: {
-                'agent_id': int,
-                'agent_name': str,
-                'company_id': int,
-                'company_name': str,
-                'period': {
-                    'date_from': str (ISO format) or None,
-                    'date_to': str (ISO format) or None,
-                },
-                'metrics': {
-                    'total_sales_count': int,
-                    'total_commissions': float,
-                    'average_commission': float,
-                    'active_properties_count': int,
-                    'pending_commissions': float,
-                    'paid_commissions': float,
-                    'cancelled_commissions': float,
-                },
-                'transactions': [
-                    {
-                        'id': int,
-                        'date': str,
-                        'amount': float,
-                        'commission': float,
-                        'status': str,
-                        'reference': str,
-                    },
-                    ...
-                ]
-            }
-        
-        Raises:
-            UserError: If agent not found or access denied (company isolation)
-        """
         # Validate agent exists
         agent = self.env['real.estate.agent'].sudo().browse(agent_id)
         if not agent.exists():
@@ -136,43 +60,7 @@ class PerformanceService:
         return performance_data
     
     def get_top_agents_ranking(self, company_id, metric='total_commissions', limit=10, date_from=None, date_to=None):
-        """
-        Get ranked list of top-performing agents by metric
-        
-        Args:
-            company_id (int): Company ID for multi-tenant filtering
-            metric (str): Ranking metric - 'total_commissions', 'total_sales', or 'average_commission'
-            limit (int): Maximum number of agents to return (default: 10)
-            date_from (date, optional): Start date for filtering
-            date_to (date, optional): End date for filtering
-        
-        Returns:
-            dict: {
-                'company_id': int,
-                'company_name': str,
-                'metric': str,
-                'period': {
-                    'date_from': str or None,
-                    'date_to': str or None,
-                },
-                'ranking': [
-                    {
-                        'rank': int,
-                        'agent_id': int,
-                        'agent_name': str,
-                        'total_sales_count': int,
-                        'total_commissions': float,
-                        'average_commission': float,
-                        'active_properties_count': int,
-                    },
-                    ...
-                ]
-            }
-        
-        Raises:
-            ValidationError: If invalid metric provided
-            UserError: If company not found or access denied
-        """
+
         # Validate metric
         valid_metrics = ['total_commissions', 'total_sales', 'average_commission']
         if metric not in valid_metrics:
@@ -236,28 +124,7 @@ class PerformanceService:
         }
     
     def _calculate_performance_metrics(self, agent, date_from=None, date_to=None):
-        """
-        Internal method to calculate all performance metrics for an agent
-        
-        Args:
-            agent (recordset): Agent record
-            date_from (date, optional): Start date filter
-            date_to (date, optional): End date filter
-        
-        Returns:
-            dict: {
-                'aggregated': {
-                    'total_sales_count': int,
-                    'total_commissions': float,
-                    'average_commission': float,
-                    'active_properties_count': int,
-                    'pending_commissions': float,
-                    'paid_commissions': float,
-                    'cancelled_commissions': float,
-                },
-                'transactions': [...]
-            }
-        """
+
         # Build search domain for transactions
         domain = [('agent_id', '=', agent.id)]
         
@@ -310,15 +177,7 @@ class PerformanceService:
         }
     
     def _get_cached_performance(self, cache_key):
-        """
-        Get performance data from Redis cache
-        
-        Args:
-            cache_key (str): Redis cache key
-        
-        Returns:
-            dict or None: Cached performance data or None if cache miss
-        """
+
         try:
             # Try to get from Redis (configured in odoo.conf with db_index=1)
             # Note: Redis integration requires odoo-redis module or custom implementation
@@ -329,13 +188,7 @@ class PerformanceService:
             return None
     
     def _cache_performance(self, cache_key, performance_data):
-        """
-        Store performance data in Redis cache with TTL
-        
-        Args:
-            cache_key (str): Redis cache key
-            performance_data (dict): Performance data to cache
-        """
+
         try:
             # Store in Redis with TTL=300s (5 minutes)
             # Implementation pending Redis integration
@@ -344,14 +197,7 @@ class PerformanceService:
             _logger.warning(f'Redis cache write error for key {cache_key}: {e}')
     
     def invalidate_cache(self, agent_id):
-        """
-        Invalidate all performance cache entries for an agent
-        
-        Args:
-            agent_id (int): Agent ID
-        
-        Note: This should be called after creating new commission transactions
-        """
+
         try:
             # Delete all cache keys matching pattern "performance:agent:{agent_id}:*"
             # Implementation pending Redis integration

@@ -1,15 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Profile Type Model — Lookup Table for RBAC Profile Types
 
-Following ADR-024 (Profile Unification), ADR-004 (naming conventions),
-ADR-019 (9 RBAC profiles), and KB-09 §2.1 (lookup tables for enums > 5 values).
-
-This is a normalized catalog of the 9 profile types in the system:
-- Admin level: owner, director, manager
-- Operational level: agent, prospector, receptionist, financial, legal
-- External level: portal (tenant/buyer)
-"""
 from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError
 

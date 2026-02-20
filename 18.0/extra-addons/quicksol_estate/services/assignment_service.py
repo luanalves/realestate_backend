@@ -1,13 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Assignment Service
-
-Provides business logic for agent-property assignments with multi-tenant validation.
-
-Author: Quicksol Technologies
-Date: 2026-01-14
-ADRs: ADR-008 (Multi-tenancy), ADR-003 (Test Coverage)
-"""
 
 from odoo import _
 from odoo.exceptions import ValidationError, AccessError
@@ -17,13 +8,7 @@ _logger = logging.getLogger(__name__)
 
 
 class AssignmentService:
-    """
-    Service layer for agent-property assignment operations.
-    
-    Handles business logic, validation, and multi-tenant isolation
-    for assigning agents to properties.
-    """
-    
+
     def __init__(self, env):
         """
         Initialize service with Odoo environment.
@@ -37,26 +22,7 @@ class AssignmentService:
         self.Property = env['real.estate.property'].sudo()
     
     def assign_agent_to_property(self, agent_id, property_id, responsibility_type='primary', notes='', company_id=None):
-        """
-        Assign an agent to a property with validation.
-        
-        Args:
-            agent_id (int): ID of the agent to assign
-            property_id (int): ID of the property
-            responsibility_type (str): Type of responsibility ('primary', 'secondary', 'support')
-            notes (str): Optional notes about the assignment
-            company_id (int, optional): Company ID for additional validation
-            
-        Returns:
-            tuple: (assignment_record, created) where:
-                - assignment_record: The created or updated assignment record
-                - created (bool): True if a new assignment was created, False if updated
-            
-        Raises:
-            ValidationError: If agent or property doesn't exist
-            ValidationError: If agent and property are in different companies
-            AccessError: If user doesn't have permission to create assignments
-        """
+
         # Validate agent exists
         agent = self.Agent.browse(agent_id)
         if not agent.exists():
@@ -131,20 +97,7 @@ class AssignmentService:
         return (assignment, True)  # Returns tuple: (assignment, created=True)
     
     def unassign_agent_from_property(self, assignment_id, company_id=None):
-        """
-        Remove an agent assignment (soft delete by deactivating).
-        
-        Args:
-            assignment_id (int): ID of the assignment to remove
-            company_id (int, optional): Company ID for additional validation
-            
-        Returns:
-            bool: True if successful
-            
-        Raises:
-            ValidationError: If assignment doesn't exist
-            AccessError: If user doesn't have permission to delete
-        """
+
         assignment = self.Assignment.browse(assignment_id)
         
         if not assignment.exists():
@@ -173,21 +126,7 @@ class AssignmentService:
         return True
     
     def get_agent_properties(self, agent_id, active_only=True, company_id=None):
-        """
-        Get all properties assigned to an agent.
-        
-        Args:
-            agent_id (int): ID of the agent
-            active_only (bool): Return only active assignments (default: True)
-            company_id (int, optional): Company ID for additional filtering
-            
-        Returns:
-            assignments: Recordset of assignment records
-            
-        Raises:
-            ValidationError: If agent doesn't exist
-            AccessError: If user doesn't have permission to view
-        """
+
         agent = self.Agent.browse(agent_id)
         if not agent.exists():
             raise ValidationError(_('Agent with ID %s not found') % agent_id)
@@ -214,21 +153,7 @@ class AssignmentService:
         return assignments
     
     def get_property_agents(self, property_id, active_only=True, company_id=None):
-        """
-        Get all agents assigned to a property.
-        
-        Args:
-            property_id (int): ID of the property
-            active_only (bool): Return only active assignments (default: True)
-            company_id (int, optional): Company ID for additional filtering
-            
-        Returns:
-            assignments: Recordset of assignment records
-            
-        Raises:
-            ValidationError: If property doesn't exist
-            AccessError: If user doesn't have permission to view
-        """
+
         property_obj = self.Property.browse(property_id)
         if not property_obj.exists():
             raise ValidationError(_('Property with ID %s not found') % property_id)
@@ -255,21 +180,7 @@ class AssignmentService:
         return assignments
     
     def bulk_assign_agent(self, agent_id, property_ids, responsibility_type='primary', company_id=None):
-        """
-        Assign one agent to multiple properties at once.
-        
-        Args:
-            agent_id (int): ID of the agent to assign
-            property_ids (list): List of property IDs
-            responsibility_type (str): Type of responsibility
-            company_id (int, optional): Company ID for validation
-            
-        Returns:
-            dict: Summary of created and updated assignments
-            
-        Raises:
-            ValidationError: If validation fails for any property
-        """
+
         results = {
             'created': [],
             'updated': [],

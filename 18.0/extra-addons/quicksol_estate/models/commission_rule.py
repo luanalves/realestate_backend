@@ -1,15 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Real Estate Commission Rule Model
-
-Manages commission rules for real estate agents with support for percentage
-and fixed-amount structures. Rules apply only to future transactions (non-retroactive).
-
-Author: Quicksol Technologies
-Date: 2026-01-12
-User Story: US4 - Configurar Comissões de Agentes (P4)
-ADRs: ADR-004 (Nomenclatura), ADR-008 (Multi-tenancy), ADR-015 (Soft-Delete)
-"""
 
 from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError
@@ -335,37 +324,7 @@ class RealEstateCommissionRule(models.Model):
         return result
     
     def calculate_split_commission(self, property_id, transaction_amount, transaction_type='sale'):
-        """
-        Calculate commission split when property has both agent_id and prospector_id.
-        
-        Args:
-            property_id: Property record (real.estate.property)
-            transaction_amount: Sale/rental amount (float)
-            transaction_type: 'sale' or 'rental' (default: 'sale')
-        
-        Returns:
-            dict: {
-                'prospector_commission': float,
-                'agent_commission': float,
-                'total_commission': float,
-                'split_percentage': float,  # Prospector's share (0.0-1.0)
-            }
-        
-        Business Logic (FR-054 to FR-060):
-            - If prospector_id == agent_id OR prospector_id is empty → no split (100% to agent)
-            - If prospector_id != agent_id:
-                * Get split percentage from system parameter (default 30%)
-                * Calculate total commission using agent's commission rule
-                * Prospector receives: total_commission * split_percentage
-                * Agent receives: total_commission * (1 - split_percentage)
-        
-        Example:
-            Property sale: R$ 500,000
-            Agent commission rule: 6% = R$ 30,000 total
-            Split percentage: 30%
-            → Prospector: R$ 9,000 (30% of R$ 30,000)
-            → Agent: R$ 21,000 (70% of R$ 30,000)
-        """
+
         self.ensure_one()
         
         if not property_id or not property_id.agent_id:
@@ -413,15 +372,7 @@ class RealEstateCommissionRule(models.Model):
         }
     
     def _calculate_commission_amount(self, transaction_amount):
-        """
-        Helper method: Calculate commission amount based on rule structure.
-        
-        Args:
-            transaction_amount: Sale/rental value (float)
-        
-        Returns:
-            float: Commission amount
-        """
+
         self.ensure_one()
         
         if self.structure_type == 'percentage':

@@ -84,12 +84,6 @@ class Lease(models.Model):
     }
 
     def write(self, vals):
-        """Override write to enforce valid status transitions (CHK024).
-
-        Context flags that bypass validation:
-          - cron_expire: used by _cron_expire_leases (active→expired)
-          - lease_terminate: used by terminate endpoint (active→terminated)
-        """
         if 'status' in vals and not self.env.context.get('cron_expire'):
             new_status = vals['status']
             for record in self:
@@ -110,11 +104,7 @@ class Lease(models.Model):
 
     @api.model
     def _cron_expire_leases(self):
-        """Transition active leases past end_date to 'expired' status.
 
-        Called by ir.cron scheduled action (data/lease_cron.xml).
-        Bypasses write() transition validation via context flag.
-        """
         today = fields.Date.today()
         expired_leases = self.search([
             ('status', '=', 'active'),

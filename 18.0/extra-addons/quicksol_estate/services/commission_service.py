@@ -1,18 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Commission Calculation Service
-
-Provides commission calculation logic for real estate agents following
-ADR-001 (service-oriented architecture) and ADR-008 (multi-tenancy).
-
-Implements non-retroactive commission rules - rules apply only to transactions
-occurring on or after their valid_from date.
-
-Author: Quicksol Technologies
-Date: 2026-01-12
-User Story: US4 - Configurar Comissões de Agentes (P4)
-ADRs: ADR-001 (Service Architecture), ADR-008 (Multi-tenancy)
-"""
 
 from odoo import _
 from odoo.exceptions import ValidationError, UserError, AccessError
@@ -25,45 +11,11 @@ _logger = logging.getLogger(__name__)
 
 
 class CommissionService:
-    """
-    Service for calculating agent commissions based on rules.
-    
-    Key Features:
-    - Non-retroactive rule application (rules apply from valid_from forward)
-    - Support for percentage and fixed-amount commission structures
-    - Immutable transaction snapshots for audit trail
-    - Multi-tenant isolation
-    """
-    
+
     def __init__(self, env):
-        """
-        Initialize commission service with Odoo environment.
-        
-        Args:
-            env: Odoo environment (contains models, user, context)
-        """
         self.env = env
     
     def calculate_commission(self, rule, transaction_amount):
-        """
-        Calculate commission based on rule and transaction amount.
-        
-        Args:
-            rule: real.estate.commission.rule record
-            transaction_amount: float - Transaction value
-            
-        Returns:
-            float: Calculated commission amount
-            
-        Raises:
-            ValidationError: If rule or amount invalid
-            
-        Example:
-            >>> service = CommissionService(env)
-            >>> rule = env['real.estate.commission.rule'].browse(1)
-            >>> commission = service.calculate_commission(rule, 500000.00)
-            >>> # Returns: 15000.00 (3% of 500k)
-        """
         if not rule:
             raise ValidationError(_('Commission rule is required'))
         
@@ -106,27 +58,6 @@ class CommissionService:
         return commission
     
     def get_active_rule_for_agent(self, agent_id, transaction_type, transaction_date=None):
-        """
-        Get currently active commission rule for an agent and transaction type.
-        
-        Implements non-retroactive logic:
-        - Only returns rules where transaction_date >= valid_from
-        - Only returns rules where transaction_date <= valid_until (if set)
-        - Returns the most recent rule if multiple match
-        
-        Args:
-            agent_id: int - Agent ID
-            transaction_type: str - 'sale' or 'rental'
-            transaction_date: date - Transaction date (default: today)
-            
-        Returns:
-            real.estate.commission.rule record or False if no active rule
-            
-        Example:
-            >>> service = CommissionService(env)
-            >>> rule = service.get_active_rule_for_agent(1, 'sale', date(2026, 1, 12))
-            >>> # Returns most recent active rule for agent 1 and sales
-        """
         if transaction_date is None:
             transaction_date = date.today()
         
@@ -172,40 +103,6 @@ class CommissionService:
     
     def create_commission_transaction(self, agent_id, company_id, transaction_type, transaction_amount, 
                                      transaction_date=None, transaction_reference=None):
-        """
-        Create commission transaction using active rule for agent.
-        
-        Workflow:
-        1. Get active rule for agent + transaction type + date
-        2. Calculate commission using rule
-        3. Create immutable transaction record with rule snapshot
-        
-        Args:
-            agent_id: int - Agent ID
-            company_id: int - Company ID (required, validates agent belongs to company)
-            transaction_type: str - 'sale' or 'rental'
-            transaction_amount: float - Transaction value
-            transaction_date: date - Transaction date (default: today)
-            transaction_reference: str - External reference (optional)
-            
-        Returns:
-            real.estate.commission.transaction record
-            
-        Raises:
-            UserError: If no active rule found for agent
-            ValidationError: If calculation fails
-            
-        Example:
-            >>> service = CommissionService(env)
-            >>> transaction = service.create_commission_transaction(
-            ...     agent_id=1,
-            ...     company_id=63,
-            ...     transaction_type='sale',
-            ...     transaction_amount=500000.00,
-            ...     transaction_reference='SALE-2024-001'
-            ... )
-            >>> # Creates transaction with R$ 15.000,00 commission (3%)
-        """
         if transaction_date is None:
             transaction_date = date.today()
         
@@ -270,30 +167,6 @@ class CommissionService:
         return transaction
     
     def bulk_create_transactions(self, transactions_data):
-        """
-        Create multiple commission transactions in batch.
-        
-        Useful for end-of-month processing or bulk imports.
-        
-        Args:
-            transactions_data: list of dicts with keys:
-                - agent_id: int
-                - transaction_type: str
-                - transaction_amount: float
-                - transaction_date: date (optional)
-                - transaction_reference: str (optional)
-                
-        Returns:
-            list of created real.estate.commission.transaction records
-            
-        Example:
-            >>> service = CommissionService(env)
-            >>> transactions = service.bulk_create_transactions([
-            ...     {'agent_id': 1, 'transaction_type': 'sale', 'transaction_amount': 500000},
-            ...     {'agent_id': 2, 'transaction_type': 'rental', 'transaction_amount': 5000},
-            ... ])
-            >>> # Returns list of 2 commission transaction records
-        """
         created_transactions = []
         errors = []
         
@@ -343,37 +216,7 @@ class CommissionService:
         return created_transactions
     
     def get_agent_commission_summary(self, agent_id, date_from=None, date_to=None):
-        """
-        Get commission summary for an agent within date range.
-        
-        Enforces company isolation: verifies the agent belongs to a company
-        accessible to the current user before returning commission data.
-        
-        Args:
-            agent_id: int - Agent ID
-            date_from: date - Start date (optional)
-            date_to: date - End date (optional)
-            
-        Returns:
-            dict with keys:
-                - total_transactions: int
-                - total_commission: float
-                - paid_commission: float
-                - pending_commission: float
-                - transactions: list of transaction records
-                
-        Raises:
-            AccessError: If the agent's company is not accessible to current user
-            
-        Example:
-            >>> service = CommissionService(env)
-            >>> summary = service.get_agent_commission_summary(
-            ...     agent_id=1,
-            ...     date_from=date(2026, 1, 1),
-            ...     date_to=date(2026, 12, 31)
-            ... )
-            >>> print(f"Total commission: R$ {summary['total_commission']:.2f}")
-        """
+
         # Load agent and verify company isolation
         agent = self.env['real.estate.agent'].browse(agent_id)
         

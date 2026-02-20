@@ -1,54 +1,17 @@
 # -*- coding: utf-8 -*-
-"""
-Agent Service
-
-Business logic layer for agent management operations.
-Handles agent creation, updates, validation, and business rules.
-
-Per ADR-008: All business logic must be in service layer, not controllers.
-Per ADR-011: Services provide company-aware operations for multi-tenancy.
-"""
-
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError, UserError
 import logging
 
 _logger = logging.getLogger(__name__)
 
-
-class AgentService:
-    """
-    Service layer for agent management business logic.
-    
-    Provides high-level operations for agent CRUD while enforcing
-    business rules, validation, and multi-tenant isolation.
-    """
-    
+class AgentService: 
     def __init__(self, env):
-        """
-        Initialize agent service with Odoo environment.
-        
-        Args:
-            env: Odoo environment context
-        """
+
         self.env = env
         self.Agent = env['real.estate.agent']
     
     def create_agent(self, values, company_id=None):
-        """
-        Create a new agent with validation and business rules.
-        
-        Args:
-            values (dict): Agent field values
-            company_id (int, optional): Company ID (defaults to current user's company)
-            
-        Returns:
-            real.estate.agent: Created agent record
-            
-        Raises:
-            ValidationError: If validation fails
-            UserError: If business rules violated
-        """
         # Ensure company_id is set (multi-tenancy requirement)
         if not company_id:
             company_id = self.env.company.id
@@ -90,21 +53,6 @@ class AgentService:
             raise
     
     def update_agent(self, agent_id, values, user_company_id=None):
-        """
-        Update an existing agent with validation.
-        
-        Args:
-            agent_id (int): Agent ID to update
-            values (dict): Fields to update
-            user_company_id (int, optional): User's company ID for authorization check
-            
-        Returns:
-            real.estate.agent: Updated agent record
-            
-        Raises:
-            ValidationError: If validation fails
-            UserError: If unauthorized or agent not found
-        """
         agent = self.Agent.browse(agent_id)
         
         if not agent.exists():
@@ -142,20 +90,6 @@ class AgentService:
             raise
     
     def deactivate_agent(self, agent_id, reason=None, user_company_id=None):
-        """
-        Soft-delete an agent (set active=False) with reason logging.
-        
-        Args:
-            agent_id (int): Agent ID to deactivate
-            reason (str, optional): Reason for deactivation
-            user_company_id (int, optional): User's company ID for authorization
-            
-        Returns:
-            real.estate.agent: Deactivated agent record
-            
-        Raises:
-            UserError: If unauthorized or agent not found
-        """
         agent = self.Agent.browse(agent_id)
         
         if not agent.exists():
@@ -177,19 +111,6 @@ class AgentService:
             raise
     
     def reactivate_agent(self, agent_id, user_company_id=None):
-        """
-        Reactivate a previously deactivated agent.
-        
-        Args:
-            agent_id (int): Agent ID to reactivate
-            user_company_id (int, optional): User's company ID for authorization
-            
-        Returns:
-            real.estate.agent: Reactivated agent record
-            
-        Raises:
-            UserError: If unauthorized or agent not found
-        """
         agent = self.Agent.browse(agent_id).sudo()
         
         if not agent.exists():
@@ -211,17 +132,6 @@ class AgentService:
             raise
     
     def get_agent(self, agent_id, user_company_id=None, include_inactive=False):
-        """
-        Retrieve an agent by ID with company isolation.
-        
-        Args:
-            agent_id (int): Agent ID
-            user_company_id (int, optional): User's company ID for filtering
-            include_inactive (bool): Whether to include inactive agents
-            
-        Returns:
-            real.estate.agent: Agent record or empty recordset
-        """
         domain = [('id', '=', agent_id)]
         
         if user_company_id:
@@ -233,19 +143,6 @@ class AgentService:
         return self.Agent.search(domain, limit=1)
     
     def list_agents(self, company_id=None, include_inactive=False, limit=None, offset=None, filters=None):
-        """
-        List agents with filtering, pagination, and company isolation.
-        
-        Args:
-            company_id (int, optional): Filter by company ID
-            include_inactive (bool): Whether to include inactive agents
-            limit (int, optional): Maximum records to return
-            offset (int, optional): Records to skip (pagination)
-            filters (dict, optional): Additional search filters (e.g., {'creci_state': 'SP'})
-            
-        Returns:
-            real.estate.agent: Agent recordset
-        """
         domain = []
         
         if company_id:
@@ -269,16 +166,6 @@ class AgentService:
         return self.Agent.search(domain, limit=limit, offset=offset, order='name')
     
     def count_agents(self, company_id=None, include_inactive=False):
-        """
-        Count agents with company isolation.
-        
-        Args:
-            company_id (int, optional): Filter by company ID
-            include_inactive (bool): Whether to count inactive agents
-            
-        Returns:
-            int: Number of agents
-        """
         domain = []
         
         if company_id:
