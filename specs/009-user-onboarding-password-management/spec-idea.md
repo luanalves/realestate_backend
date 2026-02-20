@@ -41,8 +41,8 @@ Implementar o fluxo completo de onboarding de usuários e gestão de senhas para
 | Unit | `test_email_template_rendering()` | Template renderiza com variáveis corretas | ⚠️ Required |
 | E2E (API) | `test_owner_invites_manager()` | Owner cria Manager e email é enviado | ⚠️ Required |
 | E2E (API) | `test_manager_invites_agent()` | Manager cria Agent e email é enviado | ⚠️ Required |
-| E2E (API) | `test_agent_invites_tenant()` | Agent cria inquilino (portal) e email é enviado | ⚠️ Required |
-| E2E (API) | `test_agent_invites_owner()` | Agent cria dono de imóvel (owner) e email é enviado | ⚠️ Required |
+| E2E (API) | `test_agent_invites_tenant()` | Agent cria inquilino (tenant) e email é enviado | ⚠️ Required |
+| E2E (API) | `test_agent_invites_property_owner()` | Agent cria dono de imóvel (property_owner) e email é enviado | ⚠️ Required |
 | E2E (API) | `test_set_password_valid_token()` | Criação de senha com token válido | ⚠️ Required |
 | E2E (API) | `test_set_password_expired_token()` | Token expirado retorna 410 | ⚠️ Required |
 | E2E (API) | `test_set_password_used_token()` | Token já usado retorna 410 | ⚠️ Required |
@@ -150,7 +150,7 @@ Implementar o fluxo completo de onboarding de usuários e gestão de senhas para
 
 ### User Story 6: Login Universal para Todos os Perfis (Priority: P1) 🎯 MVP
 
-**As a** usuário de qualquer perfil (Owner, Director, Manager, Agent, Prospector, Receptionist, Financial, Legal, Portal)
+**As a** usuário de qualquer perfil (Owner, Director, Manager, Agent, Prospector, Receptionist, Financial, Legal, Tenant, Property Owner)
 **I want to** fazer login com meu email e senha
 **So that** eu possa acessar as funcionalidades do meu perfil
 
@@ -178,7 +178,7 @@ Implementar o fluxo completo de onboarding de usuários e gestão de senhas para
 **FR1: Convite de Usuário (Invite)**
 - FR1.1: `POST /api/v1/users/invite` cria usuário como `res.users` do Odoo (mesmo padrão do Owner) sem senha e dispara email de convite
 - FR1.2: Owner, Manager e Agent podem convidar usuários (conforme matriz de autorização abaixo)
-- FR1.3: Owner pode convidar qualquer perfil; Manager pode convidar perfis operacionais; Agent pode convidar inquilinos (portal) e donos de imóveis (owner)
+- FR1.3: Owner pode convidar qualquer perfil; Manager pode convidar perfis operacionais; Agent pode convidar inquilinos (tenant) e donos de imóveis (property_owner)
 - FR1.4: Email de convite contém link com token seguro (UUID v4 + hash SHA-256)
 - FR1.5: Token de convite é armazenado no banco com status, data de criação e data de expiração
 - FR1.6: Validade do link é lida da configuração dinâmica `thedevkitchen.email.link.settings` (padrão 24h)
@@ -370,7 +370,7 @@ def get_settings(self):
   "name": "string (required, max 255)",
   "email": "string (required, valid email format)",
   "cpf": "string (required, valid CPF 11 digits)",
-  "profile": "string (required, enum: owner|director|manager|agent|prospector|receptionist|financial|legal|portal)",
+  "profile": "string (required, enum: owner|director|manager|agent|prospector|receptionist|financial|legal|tenant|property_owner)",
   "phone": "string (optional)",
   "mobile": "string (optional)"
 }
@@ -403,10 +403,10 @@ def get_settings(self):
 
 | Requester Profile | Can Invite Profiles |
 |-------------------|---------------------|
-| Owner | owner, director, manager, agent, prospector, receptionist, financial, legal, portal |
+| Owner | owner, director, manager, agent, prospector, receptionist, financial, legal, tenant, property_owner |
 | Director | Herda Manager (agent, prospector, receptionist, financial, legal) |
 | Manager | agent, prospector, receptionist, financial, legal |
-| Agent | owner (dono de imóvel), portal (inquilino) |
+| Agent | property_owner (dono de imóvel), tenant (inquilino) |
 | Others | Nenhum (403 Forbidden) |
 
 **Error Responses**:

@@ -299,8 +299,8 @@ When `profile=portal`:
 
 | Requester Group | Allowed Target Profiles |
 |----------------|-------------------------|
-| `group_real_estate_owner` | ALL 9 profiles |
+| `group_real_estate_owner` | ALL 10 profiles |
 | `group_real_estate_director` | agent, prospector, receptionist, financial, legal |
 | `group_real_estate_manager` | agent, prospector, receptionist, financial, legal |
-| `group_real_estate_agent` | owner, portal |
+| `group_real_estate_agent` | property_owner, tenant |
 | All others | NONE (403 Forbidden) |

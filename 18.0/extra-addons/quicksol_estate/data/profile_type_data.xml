@@ -10,7 +10,7 @@
             Hierarchy:
             - Admin level: owner, director, manager
             - Operational level: agent, prospector, receptionist, financial, legal
-            - External level: portal (tenant/buyer)
+            - External level: tenant, property_owner
         -->
         
         <!-- ===== Admin Level ===== -->
@@ -73,8 +73,8 @@
         
         <!-- ===== External Level ===== -->
         <record id="profile_type_portal" model="thedevkitchen.profile.type">
-            <field name="code">portal</field>
-            <field name="name">Portal (Inquilino/Comprador)</field>
+            <field name="code">tenant</field>
+            <field name="name">Inquilino/Comprador</field>
             <field name="group_xml_id">quicksol_estate.group_real_estate_portal_user</field>
             <field name="level">external</field>
         </record>

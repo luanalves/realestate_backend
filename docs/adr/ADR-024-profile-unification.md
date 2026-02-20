@@ -9,7 +9,7 @@ Original: 2026-02-19
 
 ## Contexto
 
-O sistema de gerenciamento imobiliário possui **10 perfis RBAC** definidos em ADR-019 (Owner, Director, Manager, Agent, Prospector, Receptionist, Financial, Legal, Portal, Property Owner), mas sua implementação no banco de dados era **inconsistente e não normalizada**:
+O sistema de gerenciamento imobiliário possui **10 perfis RBAC** definidos em ADR-019 (Owner, Director, Manager, Agent, Prospector, Receptionist, Financial, Legal, Tenant, Property Owner), mas sua implementação no banco de dados era **inconsistente e não normalizada**:
 
 ### Problemas Identificados
 
@@ -56,7 +56,7 @@ class ProfileType(models.Model):
     _name = 'thedevkitchen.profile.type'
     _description = 'Profile Type (Lookup Table for 10 RBAC Roles)'
     
-    code = fields.Char(required=True, index=True)  # 'owner', 'agent', 'portal'
+    code = fields.Char(required=True, index=True)  # 'owner', 'agent', 'tenant'
     name = fields.Char(required=True, translate=True)
     description = fields.Text(translate=True)
     is_active = fields.Boolean(default=True)
@@ -138,12 +138,12 @@ class Agent(models.Model):
 ### 4. Tenant Absorvido como Profile Type
 
 **Modelo**: `real.estate.tenant` (removido)  
-**Substituição**: `profile_type='portal'` na tabela unificada
+**Substituição**: `profile_type='tenant'` na tabela unificada
 
 **Motivo**: Tenant tinha apenas 35 LOC, sem lógica de negócio. Seus dados cadastrais são idênticos aos de outros perfis.
 
 **Migração**: 
-- Registros de `real.estate.tenant` → `thedevkitchen.estate.profile` com `profile_type_id='portal'`
+- Registros de `real.estate.tenant` → `thedevkitchen.estate.profile` com `profile_type_id='tenant'`
 - FKs em `real.estate.lease` apontam para `profile_id`
 
 ---
@@ -197,7 +197,7 @@ class Agent(models.Model):
 **RBAC Authorization Matrix**:
 - **Owner** → pode criar todos os 10 tipos
 - **Manager** → pode criar 5 tipos operacionais (agent, prospector, receptionist, financial, legal)
-- **Agent** → pode criar 2 tipos externos (property_owner, portal)
+- **Agent** → pode criar 2 tipos externos (property_owner, tenant)
 
 **Implementação**: `quicksol_estate/controllers/profile_api.py`
 
@@ -281,7 +281,7 @@ POST /api/v1/users/invite
 
 **4. Alteração de contratos de API pré-existentes:**
 - ⚠️ Endpoints de tenant (`/api/v1/tenants/*`) serão descontinuados
-- ⚠️ Clientes precisam migrar para `/api/v1/profiles?profile_type=portal`
+- ⚠️ Clientes precisam migrar para `/api/v1/profiles?profile_type=tenant`
 - **Mitigação**: Documentação de migração, versioning de API (v2 no futuro)
 
 ---
@@ -351,7 +351,7 @@ POST /api/v1/users/invite
 |------|----------------------|-----------|---------------|
 | **Owner** | 10/10 (all) | 0 | ✅ 10/10 = 100% |
 | **Manager** | 5/10 (agent, prospector, receptionist, financial, legal) | 5/10 → 403 | ✅ 5+5 = 100% |
-| **Agent** | 2/10 (property_owner, portal) | 8/10 → 403 | ✅ 2+8 = 100% |
+| **Agent** | 2/10 (property_owner, tenant) | 8/10 → 403 | ✅ 2+8 = 100% |
 
 ### Multi-Tenancy Validado
 

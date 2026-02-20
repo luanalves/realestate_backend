@@ -150,7 +150,7 @@ curl -s -X POST "$BASE_URL/api/v1/users/login" \
   -d '{"email":"novo.agente@test.com","password":"NewAgentPass456!"}' | jq .
 ```
 
-### Flow 3: Agent Invites Portal User (Tenant — Dual Record)
+### Flow 3: Agent Invites Tenant (Dual Record)
 
 ```bash
 # Step 1: Authenticate as Agent

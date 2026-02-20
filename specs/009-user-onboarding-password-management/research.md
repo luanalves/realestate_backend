@@ -283,10 +283,10 @@ class ResUsersOnboarding(models.Model):
 
 ```python
 INVITE_AUTHORIZATION = {
-    'group_real_estate_owner': ['owner', 'director', 'manager', 'agent', 'prospector', 'receptionist', 'financial', 'legal', 'portal'],
+    'group_real_estate_owner': ['owner', 'director', 'manager', 'agent', 'prospector', 'receptionist', 'financial', 'legal', 'tenant', 'property_owner'],
     'group_real_estate_director': ['agent', 'prospector', 'receptionist', 'financial', 'legal'],  # Inherits manager
     'group_real_estate_manager': ['agent', 'prospector', 'receptionist', 'financial', 'legal'],
-    'group_real_estate_agent': ['owner', 'portal'],
+    'group_real_estate_agent': ['property_owner', 'tenant'],
 }
 
 PROFILE_TO_GROUP = {

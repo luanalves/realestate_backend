@@ -77,7 +77,7 @@ SELECT name FROM res_groups WHERE name = 'Real Estate Property Owner';
 |---------|-----------|---------|
 | Owner | All 10 types | ✅ |
 | Manager | 5 operational (agent, prospector, receptionist, financial, legal) | No change |
-| Agent | **property_owner** + portal | ✅ Changed from "owner" to "property_owner" |
+| Agent | **property_owner** + tenant | ✅ Changed from "owner" to "property_owner" |
 
 ## References
 

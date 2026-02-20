@@ -19,10 +19,10 @@ Implementar o fluxo completo de onboarding de usuários e gestão de senhas para
 - **R**: Sem risco. Agent pode convidar perfil `property_owner` (`group_real_estate_property_owner`) — Property Owner (dono de imóvel, cliente) é perfil externo (portal) sem privilégios administrativos. Distinto de `owner` (Company Owner). É regra de negócio intencional.
 
 **Q2: Agent invitando "portal" (tenant) — tenant não é `res.users` hoje**
-- **R**: Dual record obrigatório. Quando `profile=portal`, o endpoint `/api/v1/users/invite` deve criar simultaneamente:
+- **R**: Dual record obrigatório. Quando `profile=tenant`, o endpoint `/api/v1/users/invite` deve criar simultaneamente:
   1. `res.users` com grupo portal (para acesso ao sistema)
   2. `real.estate.tenant` (entidade de negócio) vinculado via `partner_id`
-- Campos obrigatórios do `real.estate.tenant` que não existem no invite genérico devem ser **adicionados como campos obrigatórios condicionais** no endpoint quando `profile=portal`.
+- Campos obrigatórios do `real.estate.tenant` que não existem no invite genérico devem ser **adicionados como campos obrigatórios condicionais** no endpoint quando `profile=tenant`.
 
 **Q3: Login funciona para todos os perfis sem alteração?**
 - **R**: Sim. Análise do `auth_controller.py` confirma:
@@ -35,7 +35,7 @@ Implementar o fluxo completo de onboarding de usuários e gestão de senhas para
 - **R**: Todos os perfis usam `POST /api/v1/users/invite`. Campos faltantes nos controllers existentes devem ser obrigatórios no endpoint. Perfis que não estão adequados devem ser adaptados (Owner, Tenant).
 
 **Q5: Document duplicado — tenant existente sem `res.users`**
-- **R**: A regra de conflito de `document` para `profile=portal` é **por empresa ativa** (`X-Company-ID`):
+- **R**: A regra de conflito de `document` para `profile=tenant` é **por empresa ativa** (`X-Company-ID`):
   - Se já existe `real.estate.tenant` com mesmo `document` na **mesma empresa ativa** (com ou sem `res.users` vinculado), retornar **409 Conflict** com `{"error": "conflict", "field": "document", "message": "Document already registered in this company"}`.
   - Se o mesmo `document` existir apenas em **outra empresa**, o invite **é permitido** na empresa ativa (não há unicidade global entre empresas).
   - Quando o conflito ocorrer por tenant sem `res.users` na mesma empresa, a resolução é operacional: o administrador deve vincular/corrigir manualmente (menu Odoo ou endpoint de edição de tenant).
@@ -85,9 +85,9 @@ Os seguintes itens estão **explicitamente fora do escopo** desta feature e NÃO
 - [ ] Given Owner/Manager/Agent autenticado, when cria usuário via `POST /api/v1/users/invite` com campos obrigatórios, then usuário é criado como `res.users` SEM senha (bloqueado para login) e email de convite é enviado
 - [ ] Given usuário com múltiplas empresas vinculadas, when envia invite com `X-Company-ID`, then operação usa somente a empresa ativa do header (sem escopo agregado)
 - [ ] Given `X-Company-ID` ausente, inválido ou não vinculado ao usuário autenticado, when tenta invite, then resposta é 404 genérico (sem exposição de contexto)
-- [ ] Given `profile=portal`, when Agent convida tenant, then cria simultaneamente `res.users` (grupo portal) + `real.estate.tenant` vinculado via `partner_id`
-- [ ] Given `profile=portal`, when campos obrigatórios de tenant (`document`, `phone`, `birthdate`, `company_id`) faltando, then retorna erro 400 com campos faltantes
-- [ ] Given `profile=portal`, when `document` já existe na mesma empresa ativa, then retorna 409 Conflict; when existe apenas em outra empresa, then criação é permitida
+- [ ] Given `profile=tenant`, when Agent convida tenant, then cria simultaneamente `res.users` (grupo portal) + `real.estate.tenant` vinculado via `partner_id`
+- [ ] Given `profile=tenant`, when campos obrigatórios de tenant (`document`, `phone`, `birthdate`, `company_id`) faltando, then retorna erro 400 com campos faltantes
+- [ ] Given `profile=tenant`, when `document` já existe na mesma empresa ativa, then retorna 409 Conflict; when existe apenas em outra empresa, then criação é permitida
 - [ ] Given `profile=property_owner`, when Agent convida property owner (dono de imóvel), then cria `res.users` com grupo `group_real_estate_property_owner`
 - [ ] Given email de convite enviado, when usuário clica no link, then é redirecionado para página/endpoint de criação de senha
 - [ ] Given link de convite válido, when usuário define senha (min 8 chars), then senha é salva e usuário pode fazer login
@@ -258,11 +258,11 @@ Os seguintes itens estão **explicitamente fora do escopo** desta feature e NÃO
 - FR1.8: CPF/Document duplicado retorna 409 Conflict
 - FR1.9: Usuário é criado como `res.users` seguindo o padrão implementado no Owner (`owner_api.py`), com `password=False` e campo `signup_pending=True`, e grupo de segurança atribuído conforme o perfil
 - FR1.10: Email utiliza `mail.template` do Odoo para internacionalização futura
-- FR1.11: **Caso especial — Perfil `portal` (tenant)**: Quando o invite é para `profile=portal`, o endpoint deve criar simultaneamente: (a) `res.users` com grupo portal; (b) `real.estate.tenant` com `name`, `document`, `email`, `phone`, `birthdate`, `company_ids`. O campo `partner_id` do `real.estate.tenant` deve ser vinculado ao `res.partner` do `res.users` criado, garantindo a ligação entre entidade de negócio e acesso ao sistema. Para este perfil, os campos `document` (CPF/CNPJ), `phone`, `birthdate` e `company_id` são **obrigatórios** no request body.
+- FR1.11: **Caso especial — Perfil `tenant`**: Quando o invite é para `profile=tenant`, o endpoint deve criar simultaneamente: (a) `res.users` com grupo portal; (b) `real.estate.tenant` com `name`, `document`, `email`, `phone`, `birthdate`, `company_ids`. O campo `partner_id` do `real.estate.tenant` deve ser vinculado ao `res.partner` do `res.users` criado, garantindo a ligação entre entidade de negócio e acesso ao sistema. Para este perfil, os campos `document` (CPF/CNPJ), `phone`, `birthdate` e `company_id` são **obrigatórios** no request body.
 - FR1.12: **Caso especial — Perfil `property_owner`**: Property Owner (dono de imóvel, cliente) é perfil externo (level=external) distinto de `owner` (Company Owner). O endpoint de invite cria `res.users` com grupo `group_real_estate_property_owner` com `password=False` e envio de email para criação de senha.
-- FR1.13: Para perfis que NÃO são `portal`, o campo `document` no request body corresponde ao CPF (validação via `validate_docbr`). Para perfil `portal`, o campo `document` aceita CPF ou CNPJ (validação via `validators.validate_document()`).
+- FR1.13: Para perfis que NÃO são `tenant`, o campo `document` no request body corresponde ao CPF (validação via `validate_docbr`). Para perfil `tenant`, o campo `document` aceita CPF ou CNPJ (validação via `validators.validate_document()`).
 - FR1.14: O endpoint opera exclusivamente na empresa ativa recebida em `X-Company-ID`; ausência, invalidez ou falta de vínculo do header resulta em 404 genérico.
-- FR1.15: Para `profile=portal`, os campos `document`, `phone`, `birthdate` e `company_id` são obrigatórios **somente** no `POST /api/v1/users/invite` (não aplicável a endpoints de senha/reenvio).
+- FR1.15: Para `profile=tenant`, os campos `document`, `phone`, `birthdate` e `company_id` são obrigatórios **somente** no `POST /api/v1/users/invite` (não aplicável a endpoints de senha/reenvio).
 - FR1.16: Conflito de `document` para `portal` é avaliado por empresa ativa: duplicado na mesma empresa retorna 409; duplicado em outra empresa não bloqueia criação.
 - FR1.17: Se existir tenant na mesma empresa com mesmo `document` e sem `res.users`, retornar 409 com mensagem explícita de conflito e exigir resolução manual de vínculo.
 - FR1.18: A matriz RBAC é avaliada antes das validações de payload; perfis não autorizados retornam 403 independentemente de outros problemas na requisição.
@@ -461,13 +461,13 @@ def get_settings(self):
   "name": "string (required, max 255)",
   "email": "string (required, valid email format)",
   "document": "string (required — CPF para perfis internos, CPF ou CNPJ para portal)",
-  "profile": "string (required, enum: owner|director|manager|agent|prospector|receptionist|financial|legal|portal|property_owner)",
+  "profile": "string (required, enum: owner|director|manager|agent|prospector|receptionist|financial|legal|tenant|property_owner)",
   "phone": "string (optional para perfis internos, OBRIGATÓRIO para portal)",
   "mobile": "string (optional)"
 }
 ```
 
-**Request Body — Campos Condicionais quando `profile=portal`** (obrigatórios):
+**Request Body — Campos Condicionais quando `profile=tenant`** (obrigatórios):
 ```json
 {
   "...campos base acima...",
@@ -509,7 +509,7 @@ def get_settings(self):
 }
 ```
 
-**Response Success para `profile=portal` (201)** — inclui tenant data:
+**Response Success para `profile=tenant` (201)** — inclui tenant data:
 ```json
 {
   "success": true,
@@ -518,7 +518,7 @@ def get_settings(self):
     "name": "Maria Souza",
     "email": "maria@email.com",
     "document": "12345678901",
-    "profile": "portal",
+    "profile": "tenant",
     "signup_pending": true,
     "invite_sent_at": "2026-02-16T10:00:00Z",
     "invite_expires_at": "2026-02-17T10:00:00Z",
@@ -791,7 +791,7 @@ def get_settings(self):
 - **Testing Pattern**: Per `.github/instructions/test-strategy.instructions.md`
 - **Token Security**: SHA-256 hash em banco, token bruto apenas em email/URL
 - **Singleton Pattern**: Settings model com `get_settings()`
-- **Dual Record Creation**: Para `profile=portal`, criação atômica de `res.users` + `real.estate.tenant` em uma mesma transação
+- **Dual Record Creation**: Para `profile=tenant`, criação atômica de `res.users` + `real.estate.tenant` em uma mesma transação
 
 ### Token Security Architecture
 
