@@ -57,7 +57,7 @@ paths:
         - Others → 403 Forbidden
         
         **Portal Special Case**: When `profile=portal`, creates dual record:
-        `res.users` (portal group) + `real.estate.tenant` linked via `partner_id`.
+        `res.users` (portal group) + `thedevkitchen.estate.profile` (type=portal) linked via `partner_id`.
         Additional fields required: `phone`, `birthdate`, `company_id`.
       operationId: inviteUser
       security:
@@ -86,7 +86,7 @@ paths:
                   document: "12345678901"
                   profile: "agent"
               portalProfile:
-                summary: Legacy - Invite a Portal user (Tenant)
+                summary: Legacy - Invite a Portal user (Profile type=portal)
                 value:
                   name: "Maria Souza"
                   email: "maria@email.com"
@@ -160,7 +160,7 @@ paths:
                     success: false
                     error: "conflict"
                     field: "document"
-                    message: "Document already registered for another tenant"
+                    message: "Document already registered for another profile"
         '500':
           description: Email sending failed
           content:
@@ -471,7 +471,7 @@ components:
           description: Date of birth YYYY-MM-DD (REQUIRED for portal profile)
         company_id:
           type: integer
-          description: Company ID for tenant association (REQUIRED for portal profile)
+          description: Company ID for portal profile association (REQUIRED for portal profile)
         occupation:
           type: string
           description: Occupation (optional, portal only)
@@ -505,12 +505,12 @@ components:
             invite_expires_at:
               type: string
               format: date-time
-            tenant_id:
+            profile_id:
               type: integer
-              description: Only present for portal profile
-            tenant:
+              description: Profile ID (only present for portal profile)
+            profile:
               type: object
-              description: Only present for portal profile
+              description: Profile details (only present for portal profile)
               properties:
                 id:
                   type: integer
@@ -525,6 +525,9 @@ components:
                   format: date
                 company_id:
                   type: integer
+                profile_type:
+                  type: string
+                  example: "portal"
         message:
           type: string
         links:
@@ -711,21 +714,22 @@ components:
           signup_pending: true
           invite_sent_at: "2026-02-16T10:00:00Z"
           invite_expires_at: "2026-02-17T10:00:00Z"
-          tenant_id: 15
-          tenant:
+          profile_id: 15
+          profile:
             id: 15
             name: "Maria Souza"
             document: "12345678901"
             phone: "11999998888"
             birthdate: "1990-05-15"
             company_id: 3
+            profile_type: "portal"
         message: "User invited successfully. Email sent to maria@email.com"
         links:
           - href: "/api/v1/users/42"
             rel: "self"
             type: "GET"
-          - href: "/api/v1/tenants/15"
-            rel: "tenant"
+          - href: "/api/v1/profiles/15"
+            rel: "profile"
             type: "GET"
           - href: "/api/v1/users/42/resend-invite"
             rel: "resend_invite"

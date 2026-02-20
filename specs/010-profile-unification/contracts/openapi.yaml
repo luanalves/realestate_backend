@@ -63,7 +63,7 @@ paths:
         **Authorization Matrix (ADR-024)**:
         - **Owner**: Can create all 9 types
         - **Manager**: Can create 5 types (agent, prospector, receptionist, financial, legal)
-        - **Agent**: Can create 2 types (owner=property owner, portal=tenant)
+        - **Agent**: Can create 2 types (owner=property owner, portal=external user/client)
         - **Others**: 403 Forbidden
         
         **Special Behavior**:
@@ -157,7 +157,7 @@ paths:
                   profile_type_id: 4
                   hire_date: "2025-01-15"
               portal:
-                summary: Create Portal Profile (Tenant)
+                summary: Create Portal Profile (External User/Client)
                 value:
                   name: Maria Santos
                   company_id: 1

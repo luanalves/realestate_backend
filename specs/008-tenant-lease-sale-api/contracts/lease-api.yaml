@@ -31,7 +31,7 @@ paths:
           in: query
           schema:
             type: integer
-        - name: tenant_id
+        - name: profile_id
           in: query
           schema:
             type: integer
@@ -89,7 +89,7 @@ paths:
         "400":
           description: Validation error (dates, rent, overlapping lease)
         "404":
-          description: Property or tenant not found
+          description: Property or profile not found
         "401":
           description: Unauthorized
 
@@ -106,7 +106,7 @@ paths:
             type: integer
       responses:
         "200":
-          description: Lease details with property and tenant info
+          description: Lease details with property and profile info
           content:
             application/json:
               schema:
@@ -232,11 +232,11 @@ components:
   schemas:
     LeaseCreateRequest:
       type: object
-      required: [property_id, tenant_id, company_id, start_date, end_date, rent_amount]
+      required: [property_id, profile_id, company_id, start_date, end_date, rent_amount]
       properties:
         property_id:
           type: integer
-        tenant_id:
+        profile_id:
           type: integer
         company_id:
           type: integer
@@ -335,9 +335,9 @@ components:
           type: integer
         property_name:
           type: string
-        tenant_id:
+        profile_id:
           type: integer
-        tenant_name:
+        profile_name:
           type: string
         start_date:
           type: string
