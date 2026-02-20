@@ -4,24 +4,36 @@
 
 Complete Postman collection for Quicksol Real Estate Management System API.
 
-**Version:** 1.7.0  
-**Last Updated:** 2026-02-12  
+**Version:** 1.17.0  
+**Last Updated:** 2026-02-20  
 **Spec Coverage:** Complete API (55+ endpoints)
 
 ## Available Collections
 
-### 1. Complete API Collection (v1.7) ⭐ RECOMMENDED
+### 1. Complete API Collection (v1.17) ⭐ RECOMMENDED
+**File:** `quicksol_api_v1.17_postman_collection.json`  
+**Coverage:** All 55+ endpoints - Complete API coverage  
+**ADR Compliance:** ADR-016 (complete)  
+**Profiles:** 10 RBAC types (tenant + property_owner)  
+**Includes:** Authentication, Users, Properties, Agents, Assignments (full CRUD), Commissions, Performance, Leads, Activities, Filters, Master Data, Profile Management, User Onboarding
+
+### 2. Complete API Collection (v1.16)
+**File:** `quicksol_api_v1.16_postman_collection.json`  
+**Coverage:** Previous version (9 profile types)  
+**Note:** Use v1.17 for latest profile system
+
+### 3. Complete API Collection (v1.7)
 **File:** `quicksol_api_v1.7_postman_collection.json`  
 **Coverage:** All 55+ endpoints - Complete API coverage  
 **ADR Compliance:** ADR-016 (complete)  
 **Includes:** Authentication, Users, Properties, Agents, Assignments (full CRUD), Commissions, Performance, Leads, Activities, Filters, Master Data
 
-### 2. Lead-Focused Collection (v1.2)
+### 4. Lead-Focused Collection (v1.2)
 **File:** `quicksol_api_v1.2_postman_collection.json`  
 **Coverage:** Lead Management focused (Feature 006)  
 **ADR Compliance:** ADR-016 (complete)
 
-### 3. Legacy API Collection (v1.1)
+### 5. Legacy API Collection (v1.1)
 **File:** `quicksol_api_v1.1_postman_collection.json`  
 **Coverage:** Properties, Agents, Assignments, Commissions, RBAC profiles
 
@@ -30,7 +42,20 @@ Complete Postman collection for Quicksol Real Estate Management System API.
 **Coverage:** Lead CRUD, conversions, statistics, multi-tenancy tests  
 **Feature:** 006-lead-management
 
-## Changelog v1.7 (Latest)
+## Changelog v1.17 (Latest)
+
+⚠️ **BREAKING CHANGE:** Profile type 'portal' renamed to 'tenant' (semantic clarity)  
+✅ **NEW**: Added 'property_owner' as 10th profile type (external level)  
+✅ Updated authorization matrix: Agent can now invite property_owner + tenant (not owner)  
+✅ Updated all profile enums: 10 types total (owner, director, manager, agent, prospector, receptionist, financial, legal, tenant, property_owner)  
+✅ Profile types organization: Admin (3), Operational (5), External (2)  
+✅ Swagger generation: Dynamic from thedevkitchen_api_endpoint table (ADR-005)
+
+## Changelog v1.16
+
+✅ Minor documentation improvements
+
+## Changelog v1.7
 
 ⚠️ **BREAKING CHANGE:** Create Owner (POST /api/v1/owners) now requires CPF field  
 ✅ CPF validation using validate_docbr library  
