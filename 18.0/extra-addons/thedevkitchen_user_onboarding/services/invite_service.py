@@ -12,6 +12,7 @@ class InviteService:
     """Service for managing user invitations"""
 
     # Authorization Matrix (R11): Who can invite which profiles
+    # Feature 010: Updated for unified profile system (tenant/property_owner replace portal)
     INVITE_AUTHORIZATION = {
         "quicksol_estate.group_real_estate_owner": [
             "owner",
@@ -22,7 +23,8 @@ class InviteService:
             "receptionist",
             "financial",
             "legal",
-            "portal",
+            "tenant",
+            "property_owner",
         ],
         "quicksol_estate.group_real_estate_director": [
             "agent",
@@ -38,10 +40,11 @@ class InviteService:
             "financial",
             "legal",
         ],
-        "quicksol_estate.group_real_estate_agent": ["owner", "portal"],
+        "quicksol_estate.group_real_estate_agent": ["property_owner", "tenant"],
     }
 
     # Profile to Odoo Group Mapping (R11)
+    # Feature 010: Updated for unified profile system (tenant/property_owner replace portal)
     PROFILE_TO_GROUP = {
         "owner": "quicksol_estate.group_real_estate_owner",
         "director": "quicksol_estate.group_real_estate_director",
@@ -51,11 +54,94 @@ class InviteService:
         "receptionist": "quicksol_estate.group_real_estate_receptionist",
         "financial": "quicksol_estate.group_real_estate_financial",
         "legal": "quicksol_estate.group_real_estate_legal",
-        "portal": "base.group_portal",
+        "tenant": "base.group_portal",
+        "property_owner": "base.group_portal",
     }
 
     def __init__(self, env):
         self.env = env
+
+    def create_user_from_profile(self, profile_record, created_by):
+        """
+        Feature 010: Unified user creation from profile.
+        Creates res.users (login) and links to existing profile via partner_id.
+        
+        NO dual records created (tenant/property_owner) - profile IS the single source of truth.
+        
+        Args:
+            profile_record: thedevkitchen.estate.profile record (already created by POST /api/v1/profiles)
+            created_by: res.users record of the user creating this invite
+            
+        Returns:
+            res.users record with signup_pending=True (waiting for password set)
+        """
+        # Extract data from profile
+        name = profile_record.name
+        email = profile_record.email
+        document = profile_record.document
+        phone = profile_record.phone
+        mobile = profile_record.mobile
+        company_id = profile_record.company_id.id
+        profile_type = profile_record.profile_type_id.code
+        
+        # Validate document based on profile type
+        if profile_type in ["tenant", "property_owner"]:
+            # External profiles: CPF or CNPJ
+            self._validate_document_external(document)
+        else:
+            # Operational profiles: CPF only
+            self._validate_cpf(document)
+        
+        # Check email uniqueness
+        existing_email = self.env["res.users"].sudo().search([("login", "=", email)], limit=1)
+        if existing_email:
+            raise ValidationError(_("Email already exists: {}").format(email))
+        
+        # Check document uniqueness (CPF field for operational profiles)
+        if profile_type not in ["tenant", "property_owner"]:
+            existing_cpf = self.env["res.users"].sudo().search([("cpf", "=", document)], limit=1)
+            if existing_cpf:
+                raise ValidationError(_("CPF already exists: {}").format(document))
+        
+        # Get target group from profile's profile_type
+        group_xml_id = profile_record.profile_type_id.group_xml_id
+        target_group = self.env.ref(group_xml_id)
+        
+        # Prepare user data
+        user_vals = {
+            "name": name,
+            "login": email,
+            "email": email,
+            # No password field - user cannot login until password is set via invite link
+            "signup_pending": True,  # Waiting for invite link
+            "groups_id": [(6, 0, [target_group.id])],
+            "estate_company_ids": [(4, company_id)],
+        }
+        
+        # Add CPF for operational profiles (not stored in res.users for external profiles)
+        if profile_type not in ["tenant", "property_owner"]:
+            user_vals["cpf"] = document
+        
+        # Add optional fields
+        if phone:
+            user_vals["phone"] = phone
+        if mobile:
+            user_vals["mobile"] = mobile
+        
+        # Create user (res.users automatically creates res.partner)
+        new_user = self.env["res.users"].sudo().create(user_vals)
+        
+        # Link profile to user via partner_id
+        profile_record.sudo().write({
+            'partner_id': new_user.partner_id.id
+        })
+        
+        _logger.info(
+            f"User created from profile {profile_record.id}: {email} (profile: {profile_type}) "
+            f"linked via partner_id {new_user.partner_id.id} by {created_by.login}"
+        )
+        
+        return new_user
 
     def check_authorization(self, requester_user, target_profile):
 
@@ -81,7 +167,10 @@ class InviteService:
         self, name, email, document, profile, company, created_by, profile_id=None, profile_record=None, **extra_fields
     ):
         """
-        Create invited user for operational/admin profiles.
+        DEPRECATED: Use create_user_from_profile() instead (Feature 010).
+        
+        Legacy method for operational/admin profiles.
+        Kept for backward compatibility with existing tests/integrations.
         
         T13 (Feature 010): If profile_id is provided, link user to existing profile via partner_id.
         """
@@ -166,7 +255,10 @@ class InviteService:
         profile_record=None,
     ):
         """
-        Create portal user (for tenant/buyer access).
+        DEPRECATED: Use create_user_from_profile() instead (Feature 010).
+        
+        Legacy method for tenant/buyer access.
+        Kept for backward compatibility with existing tests/integrations.
         
         T13 (Feature 010): If profile_id is provided, skip tenant creation and link 
         existing profile to user via partner_id.
@@ -307,8 +399,11 @@ class InviteService:
                 _("Invalid CPF: {}. Must have 11 valid digits.").format(cpf)
             )
 
-    def _validate_document_portal(self, document):
-
+    def _validate_document_external(self, document):
+        """
+        Validate CPF or CNPJ for external profiles (tenant/property_owner).
+        Renamed from _validate_document_portal for Feature 010.
+        """
         document_clean = "".join(filter(str.isdigit, document))
 
         if len(document_clean) == 11:

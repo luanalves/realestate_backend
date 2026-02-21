@@ -48,11 +48,11 @@ class InviteController(http.Controller):
                     {"missing_fields": ["profile_id"]},
                 )
             
-            # Load profile record
+            # Load profile record (optimized: search instead of browse+exists)
             ProfileModel = request.env["thedevkitchen.estate.profile"]
-            profile_record = ProfileModel.sudo().browse(int(profile_id))
+            profile_record = ProfileModel.sudo().search([("id", "=", int(profile_id))], limit=1)
             
-            if not profile_record.exists():
+            if not profile_record:
                 return self._error_response(
                     404, "not_found", f"Profile {profile_id} not found"
                 )
@@ -72,42 +72,10 @@ class InviteController(http.Controller):
                         {"user_id": existing_user.id},
                     )
             
-            # Extract ALL data from profile (no manual input needed)
-            name = profile_record.name
-            email = profile_record.email
-            document = profile_record.document
-            phone = profile_record.phone
-            mobile = profile_record.mobile
-            birthdate = profile_record.birthdate.strftime("%Y-%m-%d") if profile_record.birthdate else None
-            company_id = profile_record.company_id.id
+            # Extract company and profile data
             company = profile_record.company_id
-            profile = profile_record.profile_type_id.code
-
-            # Validate email format
-            if not self._validate_email_format(email):
-                return self._error_response(
-                    400, "validation_error", f"Invalid email format: {email}"
-                )
-
-            # Validate profile value (10 RBAC types - ADR-024)
-            valid_profiles = [
-                "owner",
-                "director",
-                "manager",
-                "agent",
-                "prospector",
-                "receptionist",
-                "financial",
-                "legal",
-                "tenant",
-                "property_owner",
-            ]
-            if profile not in valid_profiles:
-                return self._error_response(
-                    400,
-                    "validation_error",
-                    f'Invalid profile: {profile}. Must be one of: {", ".join(valid_profiles)}',
-                )
+            profile_type = profile_record.profile_type_id.code
+            email = profile_record.email
 
             # Get authenticated user
             current_user = request.env.user
@@ -118,66 +86,24 @@ class InviteController(http.Controller):
 
             # Check authorization
             try:
-                invite_service.check_authorization(current_user, profile)
+                invite_service.check_authorization(current_user, profile_type)
             except UserError as e:
                 _logger.warning(f"[INVITE] Authorization denied: {e}")
                 return self._error_response(403, "forbidden", str(e))
 
-            # Handle external profiles (tenant, property_owner) - dual record creation
-            extension_record = None
-            if profile in ["tenant", "property_owner"]:
-                # Validate external profile required fields from profile record
-                if not phone or not birthdate:
+            # Feature 010: Create user from profile (unified flow - no dual records)
+            try:
+                user = invite_service.create_user_from_profile(
+                    profile_record=profile_record,
+                    created_by=current_user
+                )
+            except ValidationError as e:
+                if "already exists" in str(e):
+                    field = "cpf" if "CPF" in str(e) else "email"
                     return self._error_response(
-                        400,
-                        "validation_error",
-                        f"Profile {profile_id} missing required fields: phone and birthdate are required for {profile} profile",
+                        409, "conflict", str(e), {"field": field}
                     )
-
-                # Create external user (tenant or property_owner) with dual record
-                try:
-                    user, extension_record = invite_service.create_external_user(
-                        profile_type=profile,
-                        name=name,
-                        email=email,
-                        document=document,
-                        phone=phone,
-                        birthdate=birthdate,
-                        company_id=company_id,
-                        created_by=current_user,
-                        occupation=profile_record.occupation if hasattr(profile_record, 'occupation') else None,
-                        profile_id=profile_id,
-                        profile_record=profile_record,
-                    )
-                except ValidationError as e:
-                    if "already exists" in str(e) or "already registered" in str(e):
-                        field = "document" if "document" in str(e).lower() else "email"
-                        return self._error_response(
-                            409, "conflict", str(e), {"field": field}
-                        )
-                    return self._error_response(400, "validation_error", str(e))
-            else:
-                # Standard user creation (operational/admin profiles)
-                try:
-                    user = invite_service.create_invited_user(
-                        name=name,
-                        email=email,
-                        document=document,
-                        profile=profile,
-                        company=company,
-                        created_by=current_user,
-                        phone=phone,
-                        mobile=mobile,
-                        profile_id=profile_id,
-                        profile_record=profile_record,
-                    )
-                except ValidationError as e:
-                    if "already exists" in str(e):
-                        field = "cpf" if "CPF" in str(e) else "email"
-                        return self._error_response(
-                            409, "conflict", str(e), {"field": field}
-                        )
-                    return self._error_response(400, "validation_error", str(e))
+                return self._error_response(400, "validation_error", str(e))
 
             # Generate invite token
             raw_token, token_record = token_service.generate_token(
@@ -195,13 +121,13 @@ class InviteController(http.Controller):
                 frontend_base_url=settings.frontend_base_url,
             )
 
-            # Build response data
+            # Build response data (Feature 010: no dual records, just user + profile link)
             response_data = {
                 "id": user.id,
                 "name": user.name,
                 "email": user.email,
-                "document": document,
-                "profile": profile,
+                "document": profile_record.document,
+                "profile": profile_type,
                 "profile_id": profile_id,
                 "signup_pending": user.signup_pending,
                 "invite_sent_at": (
@@ -216,23 +142,6 @@ class InviteController(http.Controller):
                 ),
             }
 
-            # Add extension data for external profiles (tenant, property_owner)
-            if profile in ["tenant", "property_owner"] and extension_record:
-                extension_key = f"{profile}_id"
-                response_data[extension_key] = extension_record.id
-                response_data[profile] = {
-                    "id": extension_record.id,
-                    "name": extension_record.name,
-                    "document": getattr(extension_record, 'document', document),
-                    "phone": extension_record.phone,
-                    "birthdate": (
-                        extension_record.birthdate.isoformat() if hasattr(extension_record, 'birthdate') and extension_record.birthdate 
-                        else extension_record.birth_date.isoformat() if hasattr(extension_record, 'birth_date') and extension_record.birth_date 
-                        else None
-                    ),
-                    "company_id": company_id,
-                }
-
             # Add email status if failed
             if not email_sent:
                 response_data["email_status"] = "failed"
@@ -244,12 +153,6 @@ class InviteController(http.Controller):
                 "collection": "/api/v1/users",
                 "profile": f"/api/v1/profiles/{profile_id}",
             }
-
-            if extension_record:
-                if profile == "tenant":
-                    links["tenant"] = f"/api/v1/tenants/{extension_record.id}"
-                elif profile == "property_owner":
-                    links["property_owner"] = f"/api/v1/property-owners/{extension_record.id}"
 
             return self._success_response(
                 201,
@@ -265,13 +168,6 @@ class InviteController(http.Controller):
             )
 
     # Helper methods
-
-    def _validate_email_format(self, email):
-        """Basic email format validation"""
-        import re
-
-        pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
-        return re.match(pattern, email) is not None
 
     def _success_response(self, status_code, data, message, links=None):
         """Build success response"""
@@ -432,8 +328,21 @@ class InviteController(http.Controller):
             )
 
     def _get_user_profile(self, user):
-
-        # Map of group XML IDs to profile names
+        """
+        Feature 010: Get user profile type.
+        Prioritizes unified profile lookup (partner_id), falls back to group mapping.
+        """
+        # Primary method: lookup profile via partner_id (Feature 010 unified profile)
+        if user.partner_id:
+            profile_record = (
+                request.env["thedevkitchen.estate.profile"]
+                .sudo()
+                .search([("partner_id", "=", user.partner_id.id)], limit=1)
+            )
+            if profile_record and profile_record.profile_type_id:
+                return profile_record.profile_type_id.code
+        
+        # Fallback: Map groups to profile names (backward compatibility)
         group_to_profile = {
             "quicksol_estate.group_real_estate_owner": "owner",
             "quicksol_estate.group_real_estate_director": "director",
@@ -443,7 +352,8 @@ class InviteController(http.Controller):
             "quicksol_estate.group_real_estate_receptionist": "receptionist",
             "quicksol_estate.group_real_estate_financial": "financial",
             "quicksol_estate.group_real_estate_legal": "legal",
-            "base.group_portal": "portal",
+            # Note: base.group_portal is ambiguous (could be tenant or property_owner)
+            # Unified profile lookup above resolves this
         }
 
         for xml_id, profile in group_to_profile.items():
