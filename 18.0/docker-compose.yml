@@ -187,9 +187,13 @@ services:
   mailhog:
     image: mailhog/mailhog:latest
     container_name: mailhog
+    user: "1000:1000"  # Run as mailhog user to avoid permission issues
     ports:
       - "1025:1025"  # SMTP server
       - "8025:8025"  # Web UI: http://localhost:8025
+    command: ["-storage=maildir", "-maildir-path=/maildir"]
+    volumes:
+      - mailhog-data:/maildir
     networks:
       - odoo-net
     healthcheck:
@@ -203,6 +207,7 @@ volumes:
   odoo18-data:
   odoo18-redis:
   rabbitmq-data:
+  mailhog-data:
 
 networks:
   odoo-net:
