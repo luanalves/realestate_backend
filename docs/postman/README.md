@@ -4,29 +4,33 @@
 
 Complete Postman collection for Quicksol Real Estate Management System API.
 
-**Version:** 1.18.0  
+**Version:** 1.19.0  
 **Last Updated:** 2026-02-21  
 **Spec Coverage:** Complete API (55+ endpoints)
 
 ## Available Collections
 
-### 1. Complete API Collection (v1.18) ⭐ RECOMMENDED
-**File:** `quicksol_api_v1.18_postman_collection.json`  
+### 1. Complete API Collection (v1.19) ⭐ RECOMMENDED
+**File:** `quicksol_api_v1.19_postman_collection.json`  
 **Coverage:** All 55+ endpoints - Complete API coverage  
 **ADR Compliance:** ADR-016 (complete)  
 **Profiles:** 10 RBAC types (tenant + property_owner)  
-**Breaking Change:** POST /api/v1/users/invite - Unified Profile Flow (profile_id + session_id only)  
+**Breaking Change:** Removed legacy invite flows (Standard/Tenant Profile) - only unified profile flow remains  
 **Includes:** Authentication, Users, Properties, Agents, Assignments (full CRUD), Commissions, Performance, Leads, Activities, Filters, Master Data, Profile Management, User Onboarding
 
-### 2. Complete API Collection (v1.17)
-**File:** `quicksol_api_v1.17_postman_collection.json`  
-**Coverage:** Previous version with legacy invite flows  
-**Note:** Use v1.18 for unified profile workflow
+### 2. Complete API Collection (v1.18)
+**File:** `quicksol_api_v1.18_postman_collection.json`  
+**Coverage:** Unified Profile Flow introduced  
+**Note:** Use v1.19 for latest version without legacy requests
 
-### 3. Complete API Collection (v1.16)
+### 3. Complete API Collection (v1.17)
+**File:** Does not exist (version skipped)  
+**Note:** Use v1.19 for latest version
+
+### 4. Complete API Collection (v1.16)
 **File:** `quicksol_api_v1.16_postman_collection.json`  
-**Coverage:** Previous version (9 profile types)  
-**Note:** Use v1.17 for latest profile system
+**Coverage:** Previous version (9 profile types + legacy invite flows)  
+**Note:** Use v1.19 for unified profile workflow
 
 ### 3. Complete API Collection (v1.7)
 **File:** `quicksol_api_v1.7_postman_collection.json`  
@@ -48,16 +52,29 @@ Complete Postman collection for Quicksol Real Estate Management System API.
 **Coverage:** Lead CRUD, conversions, statistics, multi-tenancy tests  
 **Feature:** 006-lead-management
 
-## Changelog v1.18 (Latest - 2026-02-21)
+## Changelog v1.19 (Latest - 2026-02-21)
 
-⚠️ **BREAKING CHANGE:** POST /api/v1/users/invite - Unified Profile Flow ONLY  
-✅ **Simplified API:** Endpoint now accepts ONLY `profile_id` + `session_id` in request body  
+⚠️ **BREAKING CHANGE:** Removed legacy invite flows - only unified profile flow remains  
+✅ **Removed requests:** "Invite User (Standard Profile)" and "Invite User (Tenant Profile)"  
+✅ **Single endpoint:** Only "Invite User (from Profile ID)" remains (simplified name to "Invite User")  
+✅ **Performance:** Query optimization (browse+exists → search, -1 query)  
+✅ **Compliance:** ADR-001 - removed redundant validations from controller layer  
+✅ **Response simplified:** No longer includes extension_record, tenant_id, property_owner_id fields  
+✅ **Architecture:** Profile is the single source of truth (Feature 010 fully implemented)  
+✅ **Unified flow:** create_user_from_profile() method replaces dual record logic  
+✅ **Authorization matrix:** Updated to reflect tenant/property_owner (portal removed)
+
+**Migration from v1.16/older:**  
+If you have "Invite User (Standard Profile)" or "Invite User (Tenant Profile)" requests, delete them and use only the unified "Invite User" request with profile_id.
+
+## Changelog v1.18 (2026-02-21)
+
+⚠️ **BREAKING CHANGE:** POST /api/v1/users/invite - Unified Profile Flow introduced  
+✅ **Simplified API:** Endpoint accepts `profile_id` + `session_id` in request body  
 ✅ **Workflow:** 1) POST /api/v1/profiles → 2) POST /api/v1/users/invite with profile_id  
 ✅ **Auto-extraction:** All user data (name, email, document, phone, birthdate, company_id, profile_type) loaded from profile  
 ✅ **No X-Company-ID header:** Company context extracted from profile.company_id  
-✅ **Removed:** "Invite User (Standard Profile)" and "Invite User (Tenant Profile)" legacy flows  
-✅ **Single endpoint:** One unified "Invite User" request for all 10 profile types  
-✅ **Feature 010:** Complete integration with unified profile management
+✅ **Feature 010:** Integration with unified profile management started
 
 **Migration Guide:**  
 - **Before (v1.17):** POST /api/v1/users/invite with `{ name, email, document, profile, session_id, ...}`  

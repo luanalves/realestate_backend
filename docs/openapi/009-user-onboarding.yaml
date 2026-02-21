@@ -36,29 +36,32 @@ paths:
   /api/v1/users/invite:
     post:
       tags: [Onboarding]
-      summary: Invite a new user
+      summary: Invite a new user (Unified Profile Flow)
       description: |
-        Creates a new `res.users` record without password and sends an invite email
-        with a secure link for password creation.
+        **Feature 010: Unified Profile Flow**
         
-        **✅ RECOMMENDED FLOW (Feature 010 Integration)**:
-        Use `profile_id` to reference an existing profile from `POST /api/v1/profiles`.
-        All user data (name, email, document, company_id) is loaded from the profile.
-        This eliminates duplicate data entry.
+        Creates a `res.users` record (login) and links it to an existing profile via `partner_id`.
+        All user data (name, email, document, phone, birthdate, company_id, profile_type) is 
+        automatically loaded from the profile.
         
-        **Legacy Flow**:
-        Provide all fields directly (name, email, document, profile).
+        **Workflow**:
+        1. `POST /api/v1/profiles` → Create profile with all user data → Get profile_id
+        2. `POST /api/v1/users/invite` with profile_id → Send invitation email
         
-        **Authorization Matrix**:
-        - Owner → can invite ALL 9 profiles
+        **Authorization Matrix (10 RBAC types)**:
+        - Owner → can invite ALL 10 profiles
         - Director → agent, prospector, receptionist, financial, legal
         - Manager → agent, prospector, receptionist, financial, legal
-        - Agent → owner, portal
+        - Agent → tenant, property_owner
         - Others → 403 Forbidden
         
-        **Portal Special Case**: When `profile=portal`, creates dual record:
-        `res.users` (portal group) + `thedevkitchen.estate.profile` (type=portal) linked via `partner_id`.
-        Additional fields required: `phone`, `birthdate`, `company_id`.
+        **10 Profile Types**:
+        - Admin: owner, director, manager
+        - Operational: agent, prospector, receptionist, financial, legal
+        - External: tenant, property_owner
+        
+        **NO Dual Records**: Profile is the single source of truth. 
+        Tenant/property_owner are profile types, not separate entities.
       operationId: inviteUser
       security:
         - bearerAuth: []
@@ -74,34 +77,11 @@ paths:
             schema:
               $ref: '#/components/schemas/InviteUserRequest'
             examples:
-              profileIdFlow:
-                summary: ✅ Recommended - Invite from Profile ID
+              unified:
+                summary: ✅ Unified Flow - Invite from Profile ID
                 value:
                   profile_id: 123
-              standardProfile:
-                summary: Legacy - Invite an Agent
-                value:
-                  name: "João Silva"
-                  email: "joao@empresa.com"
-                  document: "12345678901"
-                  profile: "agent"
-              portalProfile:
-                summary: Legacy - Invite a Portal user (Profile type=portal)
-                value:
-                  name: "Maria Souza"
-                  email: "maria@email.com"
-                  document: "12345678901"
-                  profile: "portal"
-                  phone: "11999998888"
-                  birthdate: "1990-05-15"
-                  company_id: 3
-              ownerProfile:
-                summary: Legacy - Invite a Property Owner
-                value:
-                  name: "Carlos Oliveira"
-                  email: "carlos@email.com"
-                  document: "98765432109"
-                  profile: "owner"
+                  session_id: "abc123session"
       responses:
         '201':
           description: User invited successfully
@@ -110,10 +90,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/InviteUserResponse'
               examples:
-                standardResponse:
+                unifiedResponse:
                   $ref: '#/components/examples/InviteStandardResponse'
-                portalResponse:
-                  $ref: '#/components/examples/InvitePortalResponse'
         '400':
           description: Validation error
           content:
@@ -121,16 +99,18 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
               examples:
-                invalidProfile:
+                missingProfileId:
                   value:
                     success: false
                     error: "validation_error"
-                    message: "Invalid profile: xyz"
-                missingPortalFields:
+                    message: "Missing required field: profile_id"
+                    details:
+                      missing_fields: ["profile_id"]
+                profileNotFound:
                   value:
                     success: false
-                    error: "validation_error"
-                    message: "Fields phone, birthdate, company_id are required for portal profile"
+                    error: "not_found"
+                    message: "Profile 123 not found"
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -428,53 +408,25 @@ components:
   schemas:
     InviteUserRequest:
       type: object
+      required:
+        - profile_id
+        - session_id
       properties:
         profile_id:
           type: integer
           description: |
-            **✅ RECOMMENDED**: ID of existing thedevkitchen.estate.profile record.
-            When provided, all user data (name, email, document, company_id, profile) 
-            is loaded from the profile. This is the preferred flow for Feature 010 integration.
+            **Feature 010 Unified Flow**: ID of existing thedevkitchen.estate.profile record.
+            All user data (name, email, document, phone, birthdate, company_id, profile_type) 
+            is automatically loaded from the profile.
+            
+            **Workflow**:
+            1. `POST /api/v1/profiles` → Create profile with all data → Get profile_id
+            2. `POST /api/v1/users/invite` with profile_id → Send invitation email
           example: 123
-        name:
+        session_id:
           type: string
-          maxLength: 255
-          description: |
-            Full name of the user.
-            **Required** if profile_id not provided (legacy flow).
-        email:
-          type: string
-          format: email
-          description: |
-            Email address (must be unique in system).
-            **Required** if profile_id not provided (legacy flow).
-        document:
-          type: string
-          description: |
-            CPF (11 digits) for internal profiles, CPF or CNPJ (14 digits) for portal.
-            **Required** if profile_id not provided (legacy flow).
-        profile:
-          type: string
-          enum: [owner, director, manager, agent, prospector, receptionist, financial, legal, portal]
-          description: |
-            User profile determines Odoo security group.
-            **Required** if profile_id not provided (legacy flow).
-        phone:
-          type: string
-          description: Phone number (REQUIRED for portal profile, optional otherwise)
-        mobile:
-          type: string
-          description: Mobile phone (optional)
-        birthdate:
-          type: string
-          format: date
-          description: Date of birth YYYY-MM-DD (REQUIRED for portal profile)
-        company_id:
-          type: integer
-          description: Company ID for portal profile association (REQUIRED for portal profile)
-        occupation:
-          type: string
-          description: Occupation (optional, portal only)
+          description: Session ID from login (required for authentication)
+          example: "abc123session"
 
     InviteUserResponse:
       type: object
@@ -496,6 +448,10 @@ components:
               type: string
             profile:
               type: string
+              description: Profile type code (e.g., agent, tenant, property_owner)
+            profile_id:
+              type: integer
+              description: Reference to thedevkitchen.estate.profile record
             signup_pending:
               type: boolean
               example: true
@@ -505,35 +461,24 @@ components:
             invite_expires_at:
               type: string
               format: date-time
-            profile_id:
-              type: integer
-              description: Profile ID (only present for portal profile)
-            profile:
-              type: object
-              description: Profile details (only present for portal profile)
-              properties:
-                id:
-                  type: integer
-                name:
-                  type: string
-                document:
-                  type: string
-                phone:
-                  type: string
-                birthdate:
-                  type: string
-                  format: date
-                company_id:
-                  type: integer
-                profile_type:
-                  type: string
-                  example: "portal"
         message:
           type: string
         links:
-          type: array
-          items:
-            $ref: '#/components/schemas/HATEOASLink'
+          type: object
+          description: HATEOAS links
+          properties:
+            self:
+              type: string
+              example: "/api/v1/users/42"
+            resend_invite:
+              type: string
+              example: "/api/v1/users/42/resend-invite"
+            collection:
+              type: string
+              example: "/api/v1/users"
+            profile:
+              type: string
+              example: "/api/v1/profiles/123"
 
     SetPasswordRequest:
       type: object
@@ -688,49 +633,13 @@ components:
           email: "joao@empresa.com"
           document: "12345678901"
           profile: "agent"
+          profile_id: 123
           signup_pending: true
           invite_sent_at: "2026-02-16T10:00:00Z"
           invite_expires_at: "2026-02-17T10:00:00Z"
         message: "User invited successfully. Email sent to joao@empresa.com"
         links:
-          - href: "/api/v1/users/42"
-            rel: "self"
-            type: "GET"
-          - href: "/api/v1/users/42/resend-invite"
-            rel: "resend_invite"
-            type: "POST"
-          - href: "/api/v1/users"
-            rel: "collection"
-            type: "GET"
-    InvitePortalResponse:
-      value:
-        success: true
-        data:
-          id: 42
-          name: "Maria Souza"
-          email: "maria@email.com"
-          document: "12345678901"
-          profile: "portal"
-          signup_pending: true
-          invite_sent_at: "2026-02-16T10:00:00Z"
-          invite_expires_at: "2026-02-17T10:00:00Z"
-          profile_id: 15
-          profile:
-            id: 15
-            name: "Maria Souza"
-            document: "12345678901"
-            phone: "11999998888"
-            birthdate: "1990-05-15"
-            company_id: 3
-            profile_type: "portal"
-        message: "User invited successfully. Email sent to maria@email.com"
-        links:
-          - href: "/api/v1/users/42"
-            rel: "self"
-            type: "GET"
-          - href: "/api/v1/profiles/15"
-            rel: "profile"
-            type: "GET"
-          - href: "/api/v1/users/42/resend-invite"
-            rel: "resend_invite"
-            type: "POST"
+          self: "/api/v1/users/42"
+          resend_invite: "/api/v1/users/42/resend-invite"
+          collection: "/api/v1/users"
+          profile: "/api/v1/profiles/123"
