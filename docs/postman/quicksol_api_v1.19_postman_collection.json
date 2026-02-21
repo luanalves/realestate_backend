@@ -157,7 +157,7 @@
                   "if (jsonData && jsonData.data && jsonData.data.id) {",
                   "    pm.environment.set('user_id', jsonData.data.id);",
                   "    console.log('✅ User ID saved: ' + jsonData.data.id);",
-                  "    console.log('Use {{user_id}} in resend-invite URL');",
+                  "    console.log('Use {{user_id}} for resend-invite');",
                   "} else if (jsonData && jsonData.id) {",
                   "    pm.environment.set('user_id', jsonData.id);",
                   "    console.log('✅ User ID saved: ' + jsonData.id);",
@@ -231,10 +231,10 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"session_id\": \"{{session_id}}\"\n}"
+              "raw": "{\n  \"user_id\": {{user_id}},\n  \"session_id\": \"{{session_id}}\"\n}"
             },
             "url": {
-              "raw": "{{base_url}}/api/v1/users/:user_id/resend-invite",
+              "raw": "{{base_url}}/api/v1/users/resend-invite",
               "host": [
                 "{{base_url}}"
               ],
@@ -242,18 +242,10 @@
                 "api",
                 "v1",
                 "users",
-                ":user_id",
                 "resend-invite"
-              ],
-              "variable": [
-                {
-                  "key": "user_id",
-                  "value": "{{user_id}}",
-                  "description": "User ID from invite response (auto-saved)"
-                }
               ]
             },
-            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Scoped by `X-Company-ID`; only same active company is allowed\n**Rate Limiting:** Max 5 resends per user (configurable)\n\n**IMPORTANT:** Business endpoints do NOT use JSON-RPC format. Send JSON directly in body with session_id field.\n\n**Behavior:**\n- Invalidates previous pending invite token\n- Generates new token with fresh TTL\n- Sends new invite email\n- Returns 429 if max resends exceeded\n- Returns 404 if user not found, invalid company context, or cross-company\n- Returns 400 if user already active\n\n**Request Body:**\n- `session_id` (required): Session ID from login\n\n**Required Headers:**\n- `X-Company-ID` (required): Active company scope for request\n\n**Error precedence:** 403 (authz) → 404 (isolation/context) → 400 (validation)"
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Scoped by `X-Company-ID`; only same active company is allowed\n**Rate Limiting:** Max 5 resends per user (configurable)\n\n**IMPORTANT:** Business endpoints do NOT use JSON-RPC format. Send JSON directly in body.\n\n**Behavior:**\n- Invalidates previous pending invite token\n- Generates new token with fresh TTL\n- Sends new invite email\n- Returns 429 if max resends exceeded\n- Returns 404 if user not found, invalid company context, or cross-company\n- Returns 400 if user already active\n\n**Request Body:**\n- `user_id` (required): User ID from invite response (auto-saved by Invite User test script)\n- `session_id` (required): Session ID from login\n\n**Required Headers:**\n- `X-Company-ID` (required): Active company scope for request\n\n**Workflow:**\n1. Execute \"Invite User\" → user_id auto-saved to {{user_id}}\n2. Execute \"Resend Invite\" → uses {{user_id}} from environment\n\n**Error precedence:** 403 (authz) → 404 (isolation/context) → 400 (validation)"
           }
         }
       ]

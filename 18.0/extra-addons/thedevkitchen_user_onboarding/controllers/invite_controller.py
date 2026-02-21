@@ -202,7 +202,7 @@ class InviteController(http.Controller):
         )
 
     @http.route(
-        "/api/v1/users/<int:user_id>/resend-invite",
+        "/api/v1/users/resend-invite",
         type="http",
         auth="none",
         methods=["POST"],
@@ -212,8 +212,34 @@ class InviteController(http.Controller):
     @require_jwt
     @require_session
     @require_company
-    def resend_invite(self, user_id, **kwargs):
+    def resend_invite(self, **kwargs):
         try:
+            # Parse request body
+            try:
+                data = json.loads(request.httprequest.data.decode("utf-8"))
+            except (ValueError, UnicodeDecodeError) as e:
+                return self._error_response(
+                    400, "validation_error", "Invalid JSON in request body"
+                )
+
+            # Get user_id from body
+            user_id = data.get("user_id")
+            
+            if not user_id:
+                return self._error_response(
+                    400,
+                    "validation_error",
+                    "Missing required field: user_id",
+                    {"missing_fields": ["user_id"]},
+                )
+            
+            try:
+                user_id = int(user_id)
+            except (TypeError, ValueError):
+                return self._error_response(
+                    400, "validation_error", "Invalid user_id: must be an integer"
+                )
+
             # Context validated by decorators:
             # - @require_session sets request.env user
             # - @require_company enforces company access

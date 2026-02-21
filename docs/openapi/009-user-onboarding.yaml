@@ -317,7 +317,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /api/v1/users/{userId}/resend-invite:
+  /api/v1/users/resend-invite:
     post:
       tags: [Onboarding]
       summary: Resend invite email
@@ -325,6 +325,8 @@ paths:
         Resends invite email with a new token for a user who hasn't set their
         password yet (`signup_pending=True`). Invalidates all previous tokens.
         Only works for users in the requester's company.
+        
+        **Request Body**: user_id + session_id (no path parameter)
       operationId: resendInvite
       security:
         - bearerAuth: []
@@ -333,12 +335,15 @@ paths:
       parameters:
         - $ref: '#/components/parameters/SessionId'
         - $ref: '#/components/parameters/CompanyId'
-        - name: userId
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: ID of the user to resend invite to
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResendInviteRequest'
+            example:
+              user_id: 123
+              session_id: "abc123session"
       responses:
         '200':
           description: Invite resent successfully
@@ -428,6 +433,23 @@ components:
           description: Session ID from login (required for authentication)
           example: "abc123session"
 
+    ResendInviteRequest:
+      type: object
+      required:
+        - user_id
+        - session_id
+      properties:
+        user_id:
+          type: integer
+          description: |
+            User ID (res.users.id) from invite response.
+            **Auto-saved by Postman**: Invite User test script saves this to {{user_id}} environment variable.
+          example: 123
+        session_id:
+          type: string
+          description: Session ID from login (required for authentication)
+          example: "abc123session"
+
     InviteUserResponse:
       type: object
       properties:
@@ -472,7 +494,7 @@ components:
               example: "/api/v1/users/42"
             resend_invite:
               type: string
-              example: "/api/v1/users/42/resend-invite"
+              example: "/api/v1/users/resend-invite"
             collection:
               type: string
               example: "/api/v1/users"
@@ -640,6 +662,6 @@ components:
         message: "User invited successfully. Email sent to joao@empresa.com"
         links:
           self: "/api/v1/users/42"
-          resend_invite: "/api/v1/users/42/resend-invite"
+          resend_invite: "/api/v1/users/resend-invite"
           collection: "/api/v1/users"
           profile: "/api/v1/profiles/123"
