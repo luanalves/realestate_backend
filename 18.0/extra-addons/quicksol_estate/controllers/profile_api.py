@@ -80,6 +80,12 @@ class ProfileApiController(http.Controller):
             }
         }
         
+        # Add user_id if user exists (invited)
+        if profile.partner_id and profile.partner_id.user_ids:
+            user = profile.partner_id.user_ids[0]  # Take first user (should only be one)
+            data['user_id'] = user.id
+            data['_links']['resend_invite'] = f'/api/v1/users/resend-invite'
+        
         # Add agent extension link if profile_type='agent'
         if profile.profile_type_id.code == 'agent':
             agent = request.env['real.estate.agent'].sudo().search([
