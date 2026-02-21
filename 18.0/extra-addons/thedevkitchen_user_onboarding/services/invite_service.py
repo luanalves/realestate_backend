@@ -418,7 +418,7 @@ class InviteService:
             self._validate_cpf(document)
         elif len(document_clean) == 14:
             # CNPJ - Use existing quicksol_estate validator
-            from ..utils import validators
+            from odoo.addons.quicksol_estate.utils import validators
 
             if hasattr(validators, "validate_cnpj"):
                 if not validators.validate_cnpj(document):
