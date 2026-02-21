@@ -492,7 +492,7 @@ class ProfileApiController(http.Controller):
 
         try:
             ProfileType = request.env['thedevkitchen.profile.type']
-            types = ProfileType.sudo().search([('is_active', '=', True)], order='name asc')
+            types = ProfileType.sudo().search([('is_active', '=', True)], order='id asc')
             
             type_list = []
             for ptype in types:
