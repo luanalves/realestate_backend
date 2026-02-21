@@ -3704,6 +3704,24 @@
       "item": [
         {
           "name": "Create Profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.data && jsonData.data.id) {",
+                  "    pm.environment.set('profile_id', jsonData.data.id);",
+                  "    console.log('✅ Profile ID saved: ' + jsonData.data.id);",
+                  "} else if (jsonData && jsonData.id) {",
+                  "    pm.environment.set('profile_id', jsonData.id);",
+                  "    console.log('✅ Profile ID saved: ' + jsonData.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
