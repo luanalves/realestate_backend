@@ -373,11 +373,18 @@ class InviteService:
                 "expires_hours": expires_hours,
             }
 
+            # Prepare email values to override template defaults
+            email_values = {
+                "email_to": user.email,
+                "email_from": user.company_id.email or "noreply@thedevkitchen.com",
+            }
+
             # Send email (async via Odoo mail queue)
             template.with_context(ctx).send_mail(
                 user.id,
                 force_send=False,  # Queue for async sending
                 raise_exception=False,  # Don't block on email failure
+                email_values=email_values,  # Override template variables
             )
 
             _logger.info(f"Invite email sent to {user.email}")
