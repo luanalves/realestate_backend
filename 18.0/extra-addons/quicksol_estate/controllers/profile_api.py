@@ -15,12 +15,12 @@ from ..utils import validators
 _logger = logging.getLogger(__name__)
 
 
-# RBAC Authorization Matrix (FR1.10, ADR-019)
+# RBAC Authorization Matrix (FR1.10, ADR-019, Feature 010)
 # Maps creator role → list of profile types they can create
 PROFILE_CREATION_MATRIX = {
     'quicksol_estate.group_real_estate_owner': [
         'owner', 'director', 'manager', 'agent', 'prospector', 
-        'receptionist', 'financial', 'legal', 'portal'
+        'receptionist', 'financial', 'legal', 'tenant', 'property_owner'
     ],
     'quicksol_estate.group_real_estate_director': [
         'agent', 'prospector', 'receptionist', 'financial', 'legal'
@@ -29,7 +29,7 @@ PROFILE_CREATION_MATRIX = {
         'agent', 'prospector', 'receptionist', 'financial', 'legal'
     ],
     'quicksol_estate.group_real_estate_agent': [
-        'owner', 'portal'  # Agent can create owner (property owner) or portal (tenant)
+        'tenant', 'property_owner'  # Agent can create external profiles (tenant/property_owner)
     ],
 }
 
