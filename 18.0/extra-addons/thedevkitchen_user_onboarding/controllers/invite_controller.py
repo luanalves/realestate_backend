@@ -37,76 +37,59 @@ class InviteController(http.Controller):
                     400, "validation_error", "Invalid JSON in request body"
                 )
 
-            # T13 (Feature 010): Support optional profile_id for unified profile flow
+            # Feature 010: Unified profile flow requires ONLY profile_id + session_id
             profile_id = data.get("profile_id")
-            profile_record = None
             
-            if profile_id:
-                # Load profile record
-                ProfileModel = request.env["thedevkitchen.estate.profile"]
-                profile_record = ProfileModel.sudo().browse(int(profile_id))
-                
-                if not profile_record.exists():
-                    return self._error_response(
-                        404, "not_found", f"Profile {profile_id} not found"
-                    )
-                
-                # Check if profile already has a user (via partner_id)
-                if profile_record.partner_id:
-                    existing_user = (
-                        request.env["res.users"]
-                        .sudo()
-                        .search([("partner_id", "=", profile_record.partner_id.id)], limit=1)
-                    )
-                    if existing_user:
-                        return self._error_response(
-                            409,
-                            "conflict",
-                            f"Profile {profile_id} already has a linked user account",
-                            {"user_id": existing_user.id},
-                        )
-                
-                # Extract data from profile
-                data.setdefault("name", profile_record.name)
-                data.setdefault("email", profile_record.email)
-                data.setdefault("document", profile_record.document)
-                data.setdefault("phone", profile_record.phone)
-                data.setdefault("mobile", profile_record.mobile)
-                data.setdefault("birthdate", profile_record.birthdate.strftime("%Y-%m-%d") if profile_record.birthdate else None)
-                data.setdefault("company_id", profile_record.company_id.id)
-                
-                # Derive profile from profile_type
-                profile = profile_record.profile_type_id.code
-                data["profile"] = profile
-            else:
-                # Legacy flow: validate required fields
-                required_fields = ["name", "email", "document", "profile"]
-                missing_fields = [f for f in required_fields if not data.get(f)]
-                if missing_fields:
-                    return self._error_response(
-                        400,
-                        "validation_error",
-                        f"Missing required fields: {', '.join(missing_fields)}",
-                        {"missing_fields": missing_fields},
-                    )
-                profile = data["profile"]
-
-            # Validate required base fields (either from profile or from body)
-            if not data.get("name") or not data.get("email") or not data.get("document"):
+            if not profile_id:
                 return self._error_response(
                     400,
                     "validation_error",
-                    "Missing required user data (name, email, document)",
+                    "Missing required field: profile_id",
+                    {"missing_fields": ["profile_id"]},
                 )
+            
+            # Load profile record
+            ProfileModel = request.env["thedevkitchen.estate.profile"]
+            profile_record = ProfileModel.sudo().browse(int(profile_id))
+            
+            if not profile_record.exists():
+                return self._error_response(
+                    404, "not_found", f"Profile {profile_id} not found"
+                )
+            
+            # Check if profile already has a user (via partner_id)
+            if profile_record.partner_id:
+                existing_user = (
+                    request.env["res.users"]
+                    .sudo()
+                    .search([("partner_id", "=", profile_record.partner_id.id)], limit=1)
+                )
+                if existing_user:
+                    return self._error_response(
+                        409,
+                        "conflict",
+                        f"Profile {profile_id} already has a linked user account",
+                        {"user_id": existing_user.id},
+                    )
+            
+            # Extract ALL data from profile (no manual input needed)
+            name = profile_record.name
+            email = profile_record.email
+            document = profile_record.document
+            phone = profile_record.phone
+            mobile = profile_record.mobile
+            birthdate = profile_record.birthdate.strftime("%Y-%m-%d") if profile_record.birthdate else None
+            company_id = profile_record.company_id.id
+            company = profile_record.company_id
+            profile = profile_record.profile_type_id.code
 
             # Validate email format
-            email = data["email"]
             if not self._validate_email_format(email):
                 return self._error_response(
                     400, "validation_error", f"Invalid email format: {email}"
                 )
 
-            # Validate profile value
+            # Validate profile value (10 RBAC types - ADR-024)
             valid_profiles = [
                 "owner",
                 "director",
@@ -116,9 +99,9 @@ class InviteController(http.Controller):
                 "receptionist",
                 "financial",
                 "legal",
-                "portal",
+                "tenant",
+                "property_owner",
             ]
-            profile = data["profile"]
             if profile not in valid_profiles:
                 return self._error_response(
                     400,
@@ -126,26 +109,8 @@ class InviteController(http.Controller):
                     f'Invalid profile: {profile}. Must be one of: {", ".join(valid_profiles)}',
                 )
 
-            # Get authenticated user and company context
-            # User is set by @require_session decorator (request.env = request.env(user=user))
+            # Get authenticated user
             current_user = request.env.user
-            
-            company_id = request.httprequest.headers.get("X-Company-ID")
-            if not company_id:
-                return self._error_response(400, "validation_error", "X-Company-ID header is required")
-            
-            company = (
-                request.env["thedevkitchen.estate.company"]
-                .sudo()
-                .browse(int(company_id))
-            )
-            
-            # Validate company exists
-            if not company or not company.exists():
-                _logger.error(f"[INVITE] Company {company_id} not found in database")
-                return self._error_response(
-                    404, "not_found", f"Company {company_id} not found"
-                )
 
             # Initialize services
             invite_service = InviteService(request.env)
@@ -158,32 +123,31 @@ class InviteController(http.Controller):
                 _logger.warning(f"[INVITE] Authorization denied: {e}")
                 return self._error_response(403, "forbidden", str(e))
 
-            # Handle portal profile (dual record creation)
-            if profile == "portal":
-                # Validate portal-specific required fields
-                portal_required = ["phone", "birthdate", "company_id"]
-                missing_portal = [f for f in portal_required if not data.get(f)]
-                if missing_portal:
+            # Handle external profiles (tenant, property_owner) - dual record creation
+            extension_record = None
+            if profile in ["tenant", "property_owner"]:
+                # Validate external profile required fields from profile record
+                if not phone or not birthdate:
                     return self._error_response(
                         400,
                         "validation_error",
-                        f'Fields {", ".join(missing_portal)} are required for portal profile',
-                        {"missing_fields": missing_portal},
+                        f"Profile {profile_id} missing required fields: phone and birthdate are required for {profile} profile",
                     )
 
-                # Create portal user (T13: + optional tenant if no profile_id)
+                # Create external user (tenant or property_owner) with dual record
                 try:
-                    user, tenant = invite_service.create_portal_user(
-                        name=data["name"],
+                    user, extension_record = invite_service.create_external_user(
+                        profile_type=profile,
+                        name=name,
                         email=email,
-                        document=data["document"],
-                        phone=data["phone"],
-                        birthdate=data["birthdate"],
-                        company_id=data["company_id"],
+                        document=document,
+                        phone=phone,
+                        birthdate=birthdate,
+                        company_id=company_id,
                         created_by=current_user,
-                        occupation=data.get("occupation"),
-                        profile_id=profile_id,  # T13: Pass profile_id
-                        profile_record=profile_record,  # T13: Pass profile for partner linkage
+                        occupation=profile_record.occupation if hasattr(profile_record, 'occupation') else None,
+                        profile_id=profile_id,
+                        profile_record=profile_record,
                     )
                 except ValidationError as e:
                     if "already exists" in str(e) or "already registered" in str(e):
@@ -193,21 +157,20 @@ class InviteController(http.Controller):
                         )
                     return self._error_response(400, "validation_error", str(e))
             else:
-                # Standard user creation (non-portal)
+                # Standard user creation (operational/admin profiles)
                 try:
                     user = invite_service.create_invited_user(
-                        name=data["name"],
+                        name=name,
                         email=email,
-                        document=data["document"],
+                        document=document,
                         profile=profile,
                         company=company,
                         created_by=current_user,
-                        phone=data.get("phone"),
-                        mobile=data.get("mobile"),
-                        profile_id=profile_id,  # T13: Pass profile_id
-                        profile_record=profile_record,  # T13: Pass profile for partner linkage
+                        phone=phone,
+                        mobile=mobile,
+                        profile_id=profile_id,
+                        profile_record=profile_record,
                     )
-                    tenant = None
                 except ValidationError as e:
                     if "already exists" in str(e):
                         field = "cpf" if "CPF" in str(e) else "email"
@@ -237,8 +200,9 @@ class InviteController(http.Controller):
                 "id": user.id,
                 "name": user.name,
                 "email": user.email,
-                "document": data["document"],
+                "document": document,
                 "profile": profile,
+                "profile_id": profile_id,
                 "signup_pending": user.signup_pending,
                 "invite_sent_at": (
                     token_record.create_date.isoformat()
@@ -251,23 +215,22 @@ class InviteController(http.Controller):
                     else None
                 ),
             }
-            
-            # T13: Add profile_id if provided
-            if profile_id:
-                response_data["profile_id"] = profile_id
 
-            # Add tenant data for portal
-            if profile == "portal" and tenant:
-                response_data["tenant_id"] = tenant.id
-                response_data["tenant"] = {
-                    "id": tenant.id,
-                    "name": tenant.name,
-                    "document": tenant.document,
-                    "phone": tenant.phone,
+            # Add extension data for external profiles (tenant, property_owner)
+            if profile in ["tenant", "property_owner"] and extension_record:
+                extension_key = f"{profile}_id"
+                response_data[extension_key] = extension_record.id
+                response_data[profile] = {
+                    "id": extension_record.id,
+                    "name": extension_record.name,
+                    "document": getattr(extension_record, 'document', document),
+                    "phone": extension_record.phone,
                     "birthdate": (
-                        tenant.birthdate.isoformat() if tenant.birthdate else None
+                        extension_record.birthdate.isoformat() if hasattr(extension_record, 'birthdate') and extension_record.birthdate 
+                        else extension_record.birth_date.isoformat() if hasattr(extension_record, 'birth_date') and extension_record.birth_date 
+                        else None
                     ),
-                    "company_id": data["company_id"],
+                    "company_id": company_id,
                 }
 
             # Add email status if failed
@@ -279,14 +242,14 @@ class InviteController(http.Controller):
                 "self": f"/api/v1/users/{user.id}",
                 "resend_invite": f"/api/v1/users/{user.id}/resend-invite",
                 "collection": "/api/v1/users",
+                "profile": f"/api/v1/profiles/{profile_id}",
             }
 
-            if tenant:
-                links["tenant"] = f"/api/v1/tenants/{tenant.id}"
-            
-            # T13: Add profile link if profile_id provided
-            if profile_id:
-                links["profile"] = f"/api/v1/profiles/{profile_id}"
+            if extension_record:
+                if profile == "tenant":
+                    links["tenant"] = f"/api/v1/tenants/{extension_record.id}"
+                elif profile == "property_owner":
+                    links["property_owner"] = f"/api/v1/property-owners/{extension_record.id}"
 
             return self._success_response(
                 201,

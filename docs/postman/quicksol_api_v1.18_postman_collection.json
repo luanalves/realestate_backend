@@ -147,46 +147,7 @@
       "description": "User invitation endpoints with RBAC authorization matrix.",
       "item": [
         {
-          "name": "Invite User (Standard Profile)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}",
-                "description": "OAuth 2.0 Bearer token"
-              },
-              {
-                "key": "User-Agent",
-                "value": "{{user_agent}}",
-                "description": "Required for session fingerprint validation"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"John Doe Manager\",\n  \"email\": \"john.manager@example.com\",\n  \"document\": \"12345678901\",\n  \"profile\": \"manager\",\n  \"session_id\": \"{{session_id}}\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/api/v1/users/invite",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "users",
-                "invite"
-              ]
-            },
-            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company), scoped by `X-Company-ID`\n**Fingerprint validation:** Active (IP + User-Agent)\n\n**IMPORTANT:** Business endpoints do NOT use JSON-RPC format. Send JSON directly in body with session_id field.\n\n**Authorization Matrix:**\n- Owner: Can invite all 10 profiles\n- Manager: Can invite 5 operational profiles\n- Agent: Can invite property_owner + tenant\n- Others: 403 Forbidden\n\n**Request Body:**\n- `name` (required): Full name\n- `email` (required): Valid email, unique\n- `document` (required): CPF/CNPJ\n- `profile` (required): One of 10 profiles (owner, director, manager, agent, prospector, receptionist, financial, legal, tenant, property_owner)\n- `session_id` (required): Session ID from login\n\n**Required Headers:**\n- `X-Company-ID` (required): Active company scope for request\n\n**Errors (precedence):**\n- 403: Forbidden (authorization matrix violation)\n- 404: Invalid/incompatible company context or cross-company access (`not_found`)\n- 400: Validation errors\n- 409: Duplicate email or duplicate document in active company"
-          }
-        },
-        {
-          "name": "Invite User (from Profile ID)",
+          "name": "Invite User",
           "request": {
             "method": "POST",
             "header": [
@@ -221,51 +182,7 @@
                 "invite"
               ]
             },
-            "description": "**✅ RECOMMENDED FLOW (Feature 010 Integration)**\n\nInvite user from existing profile record. All data (name, email, document, company_id) is loaded from the profile.\n\n**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company context loaded from profile.company_id\n\n**Request Body:**\n- `profile_id` (required): ID of thedevkitchen.estate.profile record\n- `session_id` (required): Session ID from login\n\n**Process:**\n1. Validates profile_id exists\n2. Checks profile has no linked user yet\n3. Extracts name, email, document, company_id from profile\n4. Derives profile type from profile.profile_type_id.code\n5. Creates res.users with invitation flow\n\n**Errors:**\n- 404: Profile not found\n- 409: Profile already has a user account\n- 403: Authorization matrix violation\n- 400: Validation errors\n\n**Use Case:** After creating profile with POST /api/v1/profiles, use this endpoint to send invitation email."
-          }
-        },
-        {
-          "name": "Invite User (Tenant Profile)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}",
-                "description": "OAuth 2.0 Bearer token"
-              },
-              {
-                "key": "User-Agent",
-                "value": "{{user_agent}}",
-                "description": "Required for session fingerprint validation"
-              },
-              {
-                "key": "X-Company-ID",
-                "value": "{{company_id}}",
-                "description": "Active company context required by @require_company"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Jane Doe Tenant\",\n  \"email\": \"jane.tenant@example.com\",\n  \"document\": \"98765432109\",\n  \"profile\": \"tenant\",\n  \"phone\": \"+5511988776655\",\n  \"birthdate\": \"1985-05-15\",\n  \"occupation\": \"Software Engineer\",\n  \"session_id\": \"{{session_id}}\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/api/v1/users/invite",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "users",
-                "invite"
-              ]
-            },
-            "description": "**Tenant Dual Record Creation**\n\nCreates both:\n1. `res.users` (portal group)\n2. `real.estate.tenant` (linked via partner_id)\n\n**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Request is scoped by `X-Company-ID`\n\n**IMPORTANT:** Business endpoints do NOT use JSON-RPC format. Send JSON directly in body with session_id field.\n\n**Additional Required Fields for Tenant:**\n- `phone` (required): Tenant phone number\n- `birthdate` (required): ISO 8601 date (YYYY-MM-DD)\n- `company_id` (required): Target company for tenant record\n- `occupation` (optional): Tenant occupation\n- `session_id` (required): Session ID from login\n\n**Required Headers:**\n- `X-Company-ID` (required): Active company scope for request\n\n**Errors:**\n- 400: Missing tenant required fields\n- 403: Forbidden by RBAC\n- 404: Invalid/incompatible company context or cross-company access (`not_found`)\n- 409: Duplicate document in active company"
+            "description": "**✅ Feature 010 Unified Profile Flow**\n\nInvite user from existing profile record. All data (name, email, document, phone, birthdate, company_id, profile_type) is automatically loaded from the profile.\n\n**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company context loaded from profile.company_id\n**Fingerprint validation:** Active (IP + User-Agent)\n\n**Request Body:**\n- `profile_id` (required): ID of thedevkitchen.estate.profile record from POST /api/v1/profiles\n- `session_id` (required): Session ID from login\n\n**Workflow:**\n1. POST /api/v1/profiles → Create profile with all user data → Get profile_id\n2. POST /api/v1/users/invite with profile_id → Send invitation email\n\n**Process:**\n1. Validates profile_id exists\n2. Checks profile has no linked user yet (partner_id must be null)\n3. Extracts name, email, document, phone, birthdate, company_id from profile\n4. Derives profile_type from profile.profile_type_id.code\n5. Creates res.users with invitation flow\n6. Links profile to user via partner_id\n7. For external profiles (tenant, property_owner): creates dual record (res.users + extension model)\n8. Generates invite token (UUID v4 → SHA-256)\n9. Sends invitation email with set-password link\n\n**Authorization Matrix:**\n- Owner: Can invite all 10 profiles\n- Manager: Can invite 5 operational profiles (agent, prospector, receptionist, financial, legal)\n- Agent: Can invite tenant + property_owner\n- Others: 403 Forbidden\n\n**10 Profile Types:**\n- Admin: owner, director, manager\n- Operational: agent, prospector, receptionist, financial, legal\n- External: tenant, property_owner\n\n**Errors:**\n- 400: Missing profile_id or validation errors\n- 403: Authorization matrix violation\n- 404: Profile not found\n- 409: Profile already has a linked user account\n\n**Response 201:**\n```json\n{\n  \"status\": 201,\n  \"data\": {\n    \"id\": 42,\n    \"name\": \"John Doe\",\n    \"email\": \"john@example.com\",\n    \"document\": \"12345678901\",\n    \"profile\": \"agent\",\n    \"profile_id\": 123,\n    \"signup_pending\": true,\n    \"invite_sent_at\": \"2026-02-21T10:30:00\",\n    \"invite_expires_at\": \"2026-02-28T10:30:00\"\n  },\n  \"message\": \"User invited successfully. Email sent to john@example.com\",\n  \"_links\": {\n    \"self\": \"/api/v1/users/42\",\n    \"resend_invite\": \"/api/v1/users/42/resend-invite\",\n    \"collection\": \"/api/v1/users\",\n    \"profile\": \"/api/v1/profiles/123\"\n  }\n}\n```"
           }
         },
         {

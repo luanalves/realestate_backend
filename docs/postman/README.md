@@ -4,20 +4,26 @@
 
 Complete Postman collection for Quicksol Real Estate Management System API.
 
-**Version:** 1.17.0  
-**Last Updated:** 2026-02-20  
+**Version:** 1.18.0  
+**Last Updated:** 2026-02-21  
 **Spec Coverage:** Complete API (55+ endpoints)
 
 ## Available Collections
 
-### 1. Complete API Collection (v1.17) ⭐ RECOMMENDED
-**File:** `quicksol_api_v1.17_postman_collection.json`  
+### 1. Complete API Collection (v1.18) ⭐ RECOMMENDED
+**File:** `quicksol_api_v1.18_postman_collection.json`  
 **Coverage:** All 55+ endpoints - Complete API coverage  
 **ADR Compliance:** ADR-016 (complete)  
 **Profiles:** 10 RBAC types (tenant + property_owner)  
+**Breaking Change:** POST /api/v1/users/invite - Unified Profile Flow (profile_id + session_id only)  
 **Includes:** Authentication, Users, Properties, Agents, Assignments (full CRUD), Commissions, Performance, Leads, Activities, Filters, Master Data, Profile Management, User Onboarding
 
-### 2. Complete API Collection (v1.16)
+### 2. Complete API Collection (v1.17)
+**File:** `quicksol_api_v1.17_postman_collection.json`  
+**Coverage:** Previous version with legacy invite flows  
+**Note:** Use v1.18 for unified profile workflow
+
+### 3. Complete API Collection (v1.16)
 **File:** `quicksol_api_v1.16_postman_collection.json`  
 **Coverage:** Previous version (9 profile types)  
 **Note:** Use v1.17 for latest profile system
@@ -42,7 +48,22 @@ Complete Postman collection for Quicksol Real Estate Management System API.
 **Coverage:** Lead CRUD, conversions, statistics, multi-tenancy tests  
 **Feature:** 006-lead-management
 
-## Changelog v1.17 (Latest)
+## Changelog v1.18 (Latest - 2026-02-21)
+
+⚠️ **BREAKING CHANGE:** POST /api/v1/users/invite - Unified Profile Flow ONLY  
+✅ **Simplified API:** Endpoint now accepts ONLY `profile_id` + `session_id` in request body  
+✅ **Workflow:** 1) POST /api/v1/profiles → 2) POST /api/v1/users/invite with profile_id  
+✅ **Auto-extraction:** All user data (name, email, document, phone, birthdate, company_id, profile_type) loaded from profile  
+✅ **No X-Company-ID header:** Company context extracted from profile.company_id  
+✅ **Removed:** "Invite User (Standard Profile)" and "Invite User (Tenant Profile)" legacy flows  
+✅ **Single endpoint:** One unified "Invite User" request for all 10 profile types  
+✅ **Feature 010:** Complete integration with unified profile management
+
+**Migration Guide:**  
+- **Before (v1.17):** POST /api/v1/users/invite with `{ name, email, document, profile, session_id, ...}`  
+- **After (v1.18):** 1) POST /api/v1/profiles with all data → 2) POST /api/v1/users/invite with `{ profile_id, session_id }`
+
+## Changelog v1.17
 
 ⚠️ **BREAKING CHANGE:** Profile type 'portal' renamed to 'tenant' (semantic clarity)  
 ✅ **NEW**: Added 'property_owner' as 10th profile type (external level)  
