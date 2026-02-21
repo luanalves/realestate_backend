@@ -1,22 +1,28 @@
 ---
 name: development-best-practices
-description: Quick reference for Odoo module naming conventions (thedevkitchen_ prefix), controller security patterns (authentication dual decorators), data storage architecture (PostgreSQL vs Redis), and performance optimization (cache strategies, query patterns). Use when creating modules, implementing secure controllers, or optimizing performance. References ADR-004, ADR-011, ADR-017 for detailed guidelines.
+description: "**TRIGGER KEYWORDS**: model, models, _name, controller, endpoint, @http.route, @require_jwt, @require_session, @require_company, module, naming, thedevkitchen_, security decorator, authentication, authorization, PostgreSQL, Redis, cache, performance, query optimization, development, criar, create, implementar, implement, desenvolver, revisar, review. **COVERS**: (1) Module/table naming conventions (thedevkitchen_ prefix - ADR-004), (2) Model naming (_name format), (3) Controller security patterns (triple decorators: @require_jwt + @require_session + @require_company - ADR-011), (4) Storage architecture (PostgreSQL for persistence, Redis for sessions/cache), (5) Performance optimization (cache strategies, N+1 queries, limits). **AUTO-CONSULT WHEN**: Creating/reviewing ANY code (models, controllers, modules), implementing endpoints, validating security, optimizing performance, any development task. References ADR-004, ADR-011, ADR-017."
 ---
 
 # Development Best Practices - Odoo Real Estate
 
-This skill provides quick reference for essential development patterns: module/table naming, controller security, and performance optimization.
+> **🚨 CONSULT THIS SKILL FOR ANY DEVELOPMENT TASK 🚨**  
+> Creating models? ✅ Implementing controllers? ✅ Writing services? ✅ Refactoring? ✅  
+> This is your **mandatory reference** before writing any Odoo code.
 
-**Scope**: Nomenclature, security/storage architecture, and performance
+This skill provides quick reference for **ALL development tasks**: model naming, module structure, controller security, and performance optimization.
+
+**Scope**: Models, Controllers, Modules, Security, Storage Architecture, Performance  
 **Other areas**: For testing, validation, API docs, and Git workflow, see ADRs in [Quick Reference](#quick-reference) section
 
 ## When to Use This Skill
 
-- Creating a new Odoo module (naming conventions)
-- Implementing controllers with proper authentication
-- Optimizing performance (Redis, queries)
-- Validating security patterns
-- Finding relevant ADRs by context
+- **Creating ANY Odoo code**: models, controllers, modules, services
+- **Naming validation**: modules (_name), tables, fields, XML IDs
+- **Security implementation**: authentication decorators, authorization checks
+- **Performance optimization**: Redis cache, query patterns, N+1 prevention
+- **Code review**: validating patterns, security, nomenclature
+- **Development tasks**: any implementation, refactoring, or architecture decision
+- **Finding relevant ADRs** by context
 
 ## Prerequisites
 
@@ -26,25 +32,36 @@ This skill provides quick reference for essential development patterns: module/t
 
 ---
 
-## 1. Module Naming Conventions
+## 1. Module & Model Naming Conventions
 
 **Reference**: [ADR-004: Nomenclatura de Módulos e Tabelas](../../../docs/adr/ADR-004-nomenclatura-modulos-tabelas.md)
+
+**🎯 Use this section when**: Creating modules, defining models (_name), naming tables, creating XML IDs
 
 ### ✅ Required Patterns
 
 **Module Directory Name**:
 ```
 Format: thedevkitchen_<functional_name>
-Example: thedevkitchen_estate
+Example: thedevkitchen_estate, thedevkitchen_user_onboarding
 ```
 
-**Odoo Model Name (_name)**:
+**Odoo Model Name (_name)** - CRITICAL for every model:
 ```python
-_name = 'thedevkitchen.<category>.<entity>'
-# Examples:
+class MyModel(models.Model):
+    _name = 'thedevkitchen.<category>.<entity>'
+    _description = 'Description'
+
+# ✅ CORRECT Examples:
 # 'thedevkitchen.oauth.application'
 # 'thedevkitchen.estate.property'
 # 'thedevkitchen.estate.agent'
+# 'thedevkitchen.estate.profile'
+
+# ❌ WRONG Examples:
+# 'estate.property'  # Missing thedevkitchen prefix
+# 'property'  # No prefix at all
+# 'real.estate.property'  # Wrong prefix
 ```
 
 **Database Table Name** (auto-generated):
@@ -189,10 +206,13 @@ session_redis_prefix = odoo18_
 
 ## Pre-Coding Checklist
 
+**Use before ANY development**: models, controllers, services, modules, or refactoring
+
 ### Naming & Structure
-- [ ] Read ADR-004 for module/table naming
+- [ ] Read ADR-004 for module/table/model naming
 - [ ] Module name follows `thedevkitchen_<name>`
-- [ ] Models follow `thedevkitchen.<category>.<entity>`
+- [ ] Model _name follows `thedevkitchen.<category>.<entity>`
+- [ ] All naming patterns validated (tables, fields, XML IDs)
 
 ### Security
 - [ ] Read [copilot-instructions.md](../../copilot-instructions.md) for auth rules
