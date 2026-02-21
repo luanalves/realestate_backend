@@ -148,6 +148,25 @@
       "item": [
         {
           "name": "Invite User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.data && jsonData.data.id) {",
+                  "    pm.environment.set('user_id', jsonData.data.id);",
+                  "    console.log('✅ User ID saved: ' + jsonData.data.id);",
+                  "    console.log('Use {{user_id}} in resend-invite URL');",
+                  "} else if (jsonData && jsonData.id) {",
+                  "    pm.environment.set('user_id', jsonData.id);",
+                  "    console.log('✅ User ID saved: ' + jsonData.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -168,7 +187,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"profile_id\": 123,\n  \"session_id\": \"{{session_id}}\"\n}"
+              "raw": "{\n  \"profile_id\": {{profile_id}},\n  \"session_id\": \"{{session_id}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/users/invite",
@@ -229,8 +248,8 @@
               "variable": [
                 {
                   "key": "user_id",
-                  "value": "123",
-                  "description": "User ID to resend invite"
+                  "value": "{{user_id}}",
+                  "description": "User ID from invite response (auto-saved)"
                 }
               ]
             },
