@@ -319,7 +319,7 @@ class InviteController(http.Controller):
             # Resend invite email
             try:
                 invite_service.send_invite_email(
-                    user, raw_token, settings.invite_link_ttl_hours
+                    user, raw_token, settings.invite_link_ttl_hours, settings.frontend_base_url
                 )
                 email_status = "sent"
             except Exception as email_error:
