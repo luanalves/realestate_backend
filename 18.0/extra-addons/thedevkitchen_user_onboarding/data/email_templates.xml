@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <data noupdate="1">
+    <data noupdate="0">
         <!-- Email Template: User Invite -->
         <record id="email_template_user_invite" model="mail.template">
             <field name="name">Convite para Criação de Senha</field>
@@ -8,7 +8,6 @@
             <field name="subject">Convite para Criar Senha - ${object.company_id.name or 'Sistema Imobiliário'}</field>
             <field name="email_from">${(object.company_id.email or 'noreply@thedevkitchen.com')}</field>
             <field name="email_to">${object.email}</field>
-            <field name="lang">${object.lang}</field>
             <field name="body_html" type="html">
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
     <div style="background-color: #007bff; color: white; padding: 20px; text-align: center;">
@@ -40,7 +39,6 @@
             <field name="subject">Recuperação de Senha - ${object.company_id.name or 'Sistema Imobiliário'}</field>
             <field name="email_from">${(object.company_id.email or 'noreply@thedevkitchen.com')}</field>
             <field name="email_to">${object.email}</field>
-            <field name="lang">${object.lang}</field>
             <field name="body_html" type="html">
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
     <div style="background-color: #dc3545; color: white; padding: 20px; text-align: center;">
