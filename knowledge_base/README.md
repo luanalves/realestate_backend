@@ -29,6 +29,12 @@ Esta knowledge base foi criada a partir da documentação oficial do Odoo e cont
 | [🏷️ Symbols and Conventions](08-symbols-conventions.md) | Nomenclatura de variáveis, métodos e classes | Models, fields, methods, ordenação de atributos |
 | [🗄️ Database Best Practices](09-database-best-practices.md) | Boas práticas para banco de dados relacional | Normalização, nomenclatura, índices, constraints, migrations |
 
+### 🖥️ Frontend e Infraestrutura
+| Documento | Descrição | Tópicos |
+|-----------|-----------|---------|
+| [🖼️ Frontend & Views](10-frontend-views-odoo18.md) | Diretrizes de views e frontend | Views, templates, OWL, assets |
+| [📧 Email Sending Odoo 18](11-email-sending-odoo18.md) | Guia definitivo de envio de emails | mail.template vs mail.mail, inline_template engine, troubleshooting |
+
 ---
 
 ## 🎯 Guias Rápidos
