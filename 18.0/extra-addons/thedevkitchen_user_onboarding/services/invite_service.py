@@ -373,19 +373,28 @@ class InviteService:
                 "expires_hours": expires_hours,
             }
 
-            # Send email (async via Odoo mail queue)
-            # Let Odoo render template variables naturally
-            template.with_context(ctx).send_mail(
-                user.id,
-                force_send=False,  # Queue for async sending
-                raise_exception=True,  # Raise exception to catch errors
-            )
+            # Render template fields manually to ensure proper variable substitution
+            email_values = template.with_context(ctx).generate_email(user.id)
+            
+            # Create mail.mail record manually with rendered values
+            mail = self.env['mail.mail'].create({
+                'subject': email_values.get('subject', 'Convite para Criar Senha'),
+                'email_to': user.login,  # res.users.login contains the email
+                'email_from': email_values.get('email_from'),
+                'body_html': email_values.get('body_html'),
+                'state': 'outgoing',
+                'auto_delete': True,
+            })
+            
+            # Send immediately or queue
+            if not mail:
+                raise ValidationError("Failed to create mail record")
 
-            _logger.info(f"Invite email sent to {user.email}")
+            _logger.info(f"Invite email queued for {user.login}")
             return True
 
         except Exception as e:
-            _logger.error(f"Failed to send invite email to {user.email}: {e}")
+            _logger.error(f"Failed to send invite email to {user.login}: {e}")
             return False
 
     # Private helper methods
