@@ -1,14 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Invite Service
-
-Handles user invitation logic including authorization matrix, profile-to-group mapping,
-dual record creation for portal profile, and email dispatch.
-
-Author: TheDevKitchen
-Date: 2026-02-16
-ADRs: ADR-004 (Naming), ADR-008 (Multi-tenancy), ADR-019 (RBAC)
-"""
 
 import logging
 from odoo import _
@@ -48,16 +38,7 @@ class InviteService:
         self.env = env
     
     def check_authorization(self, requester_user, target_profile):
-        """
-        Check if requester_user can invite target_profile.
-        
-        Args:
-            requester_user: res.users record (the authenticated user)
-            target_profile: string (e.g., 'manager', 'agent', 'portal')
-        
-        Returns:
-            bool: True if authorized, raises UserError otherwise
-        """
+
         # Get requester's group IDs
         requester_group_ids = requester_user.groups_id.ids
         
@@ -75,22 +56,7 @@ class InviteService:
         ).format(target_profile))
     
     def create_invited_user(self, name, email, document, profile, company, created_by, **extra_fields):
-        """
-        Create a new res.users with the specified profile (without password).
-        Standard flow for non-portal profiles.
-        
-        Args:
-            name: User full name
-            email: User email (login)
-            document: CPF (11 digits)
-            profile: Profile name (e.g., 'manager', 'agent')
-            company: thedevkitchen.estate.company record
-            created_by: res.users record (who is inviting)
-            **extra_fields: phone, mobile, etc.
-        
-        Returns:
-            res.users record (new user)
-        """
+
         # Validate document (CPF for non-portal profiles)
         if profile != 'portal':
             self._validate_cpf(document)
@@ -149,23 +115,7 @@ class InviteService:
     
     def create_portal_user(self, name, email, document, phone, birthdate, company_id, 
                            created_by, occupation=None):
-        """
-        Create portal user with dual record: res.users + real.estate.tenant.
-        Atomic transaction ensures both records are created or neither.
-        
-        Args:
-            name: User/tenant name
-            email: User email
-            document: CPF or CNPJ
-            phone: Tenant phone (required)
-            birthdate: Tenant birthdate (YYYY-MM-DD, required)
-            company_id: thedevkitchen.estate.company ID (required)
-            created_by: res.users record (who is inviting)
-            occupation: Tenant occupation (optional)
-        
-        Returns:
-            tuple: (user, tenant) records
-        """
+
         # Validate required fields
         if not phone:
             raise ValidationError(_('Phone is required for portal profile'))
@@ -238,40 +188,56 @@ class InviteService:
     
     def send_invite_email(self, user, raw_token, expires_hours, frontend_base_url):
         """
-        Send invite email using mail.template.
+        Send invite email by creating mail.mail directly with pre-rendered HTML.
         
-        Args:
-            user: res.users record
-            raw_token: Plain token string (not hashed)
-            expires_hours: Token validity in hours
-            frontend_base_url: Frontend URL for link construction
-        
-        Returns:
-            bool: True if email sent/queued, False if failed
+        Odoo 18's inline_template engine restricts ctx.get() expressions
+        in regex mode (non-admin users). We bypass this by rendering the
+        HTML body in Python and creating mail.mail directly.
         """
         try:
-            # Get email template
-            template = self.env.ref('thedevkitchen_user_onboarding.email_template_user_invite')
-            
-            # Construct invite link
             invite_link = f"{frontend_base_url}/set-password?token={raw_token}"
-            
-            # Prepare template context
-            ctx = {
-                'invite_link': invite_link,
-                'expires_hours': expires_hours,
+            user_name = user.name or user.login
+            company_name = user.company_id.name or 'Sistema Imobiliário'
+            company_email = user.company_id.email or 'noreply@thedevkitchen.com'
+
+            subject = f"Convite para Criar Senha - {company_name}"
+            body_html = f"""
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+    <div style="background-color: #007bff; color: white; padding: 20px; text-align: center;">
+        <h2>Bem-vindo(a) ao Sistema Imobiliário</h2>
+    </div>
+    <div style="padding: 30px; background-color: #f9f9f9;">
+        <p>Olá, <strong>{user_name}</strong>!</p>
+        <p>Você foi convidado(a) para acessar o sistema <strong>{company_name}</strong>.</p>
+        <p>Para criar sua senha e ativar sua conta, clique no botão abaixo:</p>
+        <p style="text-align: center;">
+            <a href="{invite_link}" style="display: inline-block; padding: 12px 24px; background-color: #28a745; color: white; text-decoration: none; border-radius: 4px;">Criar Minha Senha</a>
+        </p>
+        <p><strong>⚠️ Este link expira em {expires_hours} horas.</strong></p>
+        <p>Se você não conseguir clicar no botão, copie e cole o link abaixo:</p>
+        <p style="word-break: break-all; background-color: #fff; padding: 10px; border: 1px solid #ddd;">{invite_link}</p>
+        <p>Se você não solicitou este convite, ignore este email.</p>
+    </div>
+    <div style="padding: 20px; text-align: center; font-size: 12px; color: #666;">
+        <p>{company_name} - Todos os direitos reservados</p>
+    </div>
+</div>
+"""
+
+            # Create mail.mail directly (bypasses template rendering restrictions)
+            mail_values = {
+                'subject': subject,
+                'body_html': body_html,
+                'email_from': company_email,
+                'email_to': user.email or user.login,
+                'auto_delete': True,
             }
-            
-            # Send email (async via Odoo mail queue)
-            template.with_context(ctx).send_mail(
-                user.id,
-                force_send=False,  # Queue for async sending
-                raise_exception=False,  # Don't block on email failure
-            )
-            
+            mail = self.env['mail.mail'].sudo().create(mail_values)
+            mail.send()
+
             _logger.info(f'Invite email sent to {user.email}')
             return True
-            
+
         except Exception as e:
             _logger.error(f'Failed to send invite email to {user.email}: {e}')
             return False
@@ -287,10 +253,7 @@ class InviteService:
             raise ValidationError(_('Invalid CPF: {}. Must have 11 valid digits.').format(cpf))
     
     def _validate_document_portal(self, document):
-        """
-        Validate CPF or CNPJ for portal profile.
-        Uses validate_docbr for CPF, custom logic for CNPJ.
-        """
+
         document_clean = ''.join(filter(str.isdigit, document))
         
         if len(document_clean) == 11:

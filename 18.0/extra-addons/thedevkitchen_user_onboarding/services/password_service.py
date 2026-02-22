@@ -180,26 +180,64 @@ class PasswordService:
         return user
     
     def _send_reset_email(self, user, raw_token):
-        """Send password reset email using mail.template"""
+        """
+        Send password reset email by creating mail.mail directly with pre-rendered HTML.
+
+        Odoo 18's inline_template engine restricts ctx.get() expressions
+        in regex mode (non-admin users). We bypass this by rendering the
+        HTML body in Python and creating mail.mail directly.
+        """
         try:
             settings = self.env['thedevkitchen.email.link.settings'].get_settings()
-            template = self.env.ref('thedevkitchen_user_onboarding.email_template_password_reset')
-            
             reset_link = f"{settings.frontend_base_url}/reset-password?token={raw_token}"
-            
-            ctx = {
-                'reset_link': reset_link,
-                'expires_hours': settings.reset_link_ttl_hours,
+            expires_hours = settings.reset_link_ttl_hours
+            user_name = user.name or user.login
+            company_name = user.company_id.name or 'Sistema Imobiliário'
+            company_email = user.company_id.email or 'noreply@thedevkitchen.com'
+
+            subject = f"Recuperação de Senha - {company_name}"
+            body_html = f"""
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+    <div style="background-color: #dc3545; color: white; padding: 20px; text-align: center;">
+        <h2>Recuperação de Senha</h2>
+    </div>
+    <div style="padding: 30px; background-color: #f9f9f9;">
+        <p>Olá, <strong>{user_name}</strong>!</p>
+        <p>Recebemos uma solicitação para redefinir sua senha no sistema <strong>{company_name}</strong>.</p>
+        <p>Para criar uma nova senha, clique no botão abaixo:</p>
+        <p style="text-align: center;">
+            <a href="{reset_link}" style="display: inline-block; padding: 12px 24px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px;">Redefinir Senha</a>
+        </p>
+        <p><strong>⚠️ Este link expira em {expires_hours} horas.</strong></p>
+        <p>Se você não conseguir clicar no botão, copie e cole o link abaixo:</p>
+        <p style="word-break: break-all; background-color: #fff; padding: 10px; border: 1px solid #ddd;">{reset_link}</p>
+        <div style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 10px; margin: 15px 0;">
+            <p><strong>⚠️ Importante:</strong></p>
+            <ul>
+                <li>Se você não solicitou esta recuperação, ignore este email.</li>
+                <li>Nunca compartilhe este link com outras pessoas.</li>
+                <li>Todas as suas sessões ativas serão encerradas após a redefinição.</li>
+            </ul>
+        </div>
+    </div>
+    <div style="padding: 20px; text-align: center; font-size: 12px; color: #666;">
+        <p>{company_name} - Todos os direitos reservados</p>
+    </div>
+</div>
+"""
+
+            mail_values = {
+                'subject': subject,
+                'body_html': body_html,
+                'email_from': company_email,
+                'email_to': user.email or user.login,
+                'auto_delete': True,
             }
-            
-            template.with_context(ctx).send_mail(
-                user.id,
-                force_send=False,
-                raise_exception=False,
-            )
-            
+            mail = self.env['mail.mail'].sudo().create(mail_values)
+            mail.send()
+
             _logger.info(f'Password reset email sent to {user.email}')
-            
+
         except Exception as e:
             _logger.error(f'Failed to send password reset email to {user.email}: {e}')
     
