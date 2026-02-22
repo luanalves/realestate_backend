@@ -7,7 +7,7 @@
             <field name="model_id" ref="base.model_res_users"/>
             <field name="subject">Convite para Criar Senha - ${object.company_id.name or 'Sistema Imobiliário'}</field>
             <field name="email_from">${(object.company_id.email or 'noreply@thedevkitchen.com')}</field>
-            <field name="email_to">${object.email}</field>
+            <field name="email_to">${object.login}</field>
             <field name="body_html" type="html">
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
     <div style="background-color: #007bff; color: white; padding: 20px; text-align: center;">
@@ -38,7 +38,7 @@
             <field name="model_id" ref="base.model_res_users"/>
             <field name="subject">Recuperação de Senha - ${object.company_id.name or 'Sistema Imobiliário'}</field>
             <field name="email_from">${(object.company_id.email or 'noreply@thedevkitchen.com')}</field>
-            <field name="email_to">${object.email}</field>
+            <field name="email_to">${object.login}</field>
             <field name="body_html" type="html">
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
     <div style="background-color: #dc3545; color: white; padding: 20px; text-align: center;">
