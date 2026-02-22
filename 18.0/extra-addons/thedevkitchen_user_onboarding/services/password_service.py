@@ -213,26 +213,16 @@ class PasswordService:
                 "expires_hours": settings.reset_link_ttl_hours,
             }
 
-            # Render template fields manually to ensure proper variable substitution
-            email_values = template.with_context(ctx).generate_email(user.id)
-            
-            # Create mail.mail record manually with rendered values
-            mail = self.env['mail.mail'].create({
-                'subject': email_values.get('subject', 'Recuperação de Senha'),
-                'email_to': user.login,  # res.users.login contains the email
-                'email_from': email_values.get('email_from'),
-                'body_html': email_values.get('body_html'),
-                'state': 'outgoing',
-                'auto_delete': True,
-            })
-            
-            if not mail:
-                raise ValidationError("Failed to create mail record")
+            template.with_context(ctx).send_mail(
+                user.id,
+                force_send=False,
+                raise_exception=False,
+            )
 
-            _logger.info(f"Password reset email queued for {user.login}")
+            _logger.info(f"Password reset email sent to {user.email}")
 
         except Exception as e:
-            _logger.error(f"Failed to send password reset email to {user.login}: {e}")
+            _logger.error(f"Failed to send password reset email to {user.email}: {e}")
 
     def _invalidate_user_sessions(self, user_id):
         """
