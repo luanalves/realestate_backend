@@ -1,15 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Token Service
-
-Handles token generation, validation, invalidation, and rate limiting.
-Uses SHA-256 for token hashing and Redis for rate limiting.
-
-Author: TheDevKitchen
-Date: 2026-02-16
-ADRs: ADR-008 (Anti-enumeration), ADR-015 (Soft Delete)
-"""
-
 import uuid
 import hashlib
 import logging
@@ -21,26 +10,15 @@ _logger = logging.getLogger(__name__)
 
 
 class PasswordTokenService:
-    """Service for managing password tokens (invite and reset)"""
 
     def __init__(self, env):
         self.env = env
 
     def generate_token(self, user, token_type, company=None, created_by=None):
-        """
-        Generate a new token for user invitation or password reset.
+        # Invalidate all previous pending tokens of this type for the user
+        # This ensures only one active token per user + type (last token wins)
+        self.invalidate_previous_tokens(user.id, token_type)
 
-        Args:
-            user: res.users record
-            token_type: 'invite' or 'reset'
-            company: thedevkitchen.estate.company record (optional)
-            created_by: res.users record who created the token (optional)
-
-        Returns:
-            tuple: (raw_token, token_record)
-                - raw_token: Plain UUID string to include in email (32 hex chars)
-                - token_record: thedevkitchen.password.token record
-        """
         # Generate UUID v4 token
         raw_token = uuid.uuid4().hex  # 32 hex characters
 
@@ -79,34 +57,20 @@ class PasswordTokenService:
 
         return raw_token, token_record
 
-    def validate_token(self, raw_token):
-        """
-        Validate a token and return the associated user.
-
-        Args:
-            raw_token: Plain token string from email link
-
-        Returns:
-            dict: {
-                'valid': bool,
-                'user': res.users record or None,
-                'token_record': token record or None,
-                'error': error code ('not_found', 'expired', 'used', 'invalidated')
-            }
-        """
+    def validate_token(self, raw_token, token_type=None):
         # Hash the raw token
         token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+
+        # Build domain — always filter by hash; optionally restrict to token_type
+        domain = [("token", "=", token_hash)]
+        if token_type:
+            domain.append(("token_type", "=", token_type))
 
         # Find token record
         token_record = (
             self.env["thedevkitchen.password.token"]
             .sudo()
-            .search(
-                [
-                    ("token", "=", token_hash),
-                ],
-                limit=1,
-            )
+            .search(domain, limit=1)
         )
 
         if not token_record:
@@ -155,14 +119,6 @@ class PasswordTokenService:
         }
 
     def invalidate_previous_tokens(self, user_id, token_type):
-        """
-        Invalidate all pending tokens of the same type for a user.
-        Called when generating a new token to ensure only one active token per user+type.
-
-        Args:
-            user_id: res.users ID
-            token_type: 'invite' or 'reset'
-        """
         tokens = (
             self.env["thedevkitchen.password.token"]
             .sudo()
@@ -183,22 +139,6 @@ class PasswordTokenService:
             )
 
     def check_rate_limit(self, email, token_type="reset"):
-        """
-        Check if rate limit is exceeded for forgot-password requests.
-        Uses simple in-memory counter (Redis integration pending).
-
-        Args:
-            email: User email for rate limiting
-            token_type: 'reset' (only forgot-password is rate limited)
-
-        Returns:
-            dict: {
-                'allowed': bool,
-                'attempts': int,
-                'limit': int,
-                'window_seconds': int
-            }
-        """
         # Get rate limit from settings
         settings = self.env["thedevkitchen.email.link.settings"].get_settings()
         limit = settings.rate_limit_forgot_per_hour

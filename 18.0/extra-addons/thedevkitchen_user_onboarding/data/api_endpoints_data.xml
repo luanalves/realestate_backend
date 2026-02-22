@@ -1,0 +1,241 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- User Onboarding & Password Management Endpoints -->
+
+        <!-- ========================================================
+             User Invitation Endpoints (Authenticated)
+             ======================================================== -->
+
+        <record id="api_endpoint_users_invite" model="thedevkitchen.api.endpoint">
+            <field name="name">Invite User</field>
+            <field name="path">/api/v1/users/invite</field>
+            <field name="method">POST</field>
+            <field name="module_name">thedevkitchen_user_onboarding</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">User Onboarding</field>
+            <field name="summary">Invite a new user to the platform</field>
+            <field name="description">Sends an invitation email to a new user. Creates a pending user account with a secure invite token (UUID v4 → SHA-256).
+
+**Authorization Matrix:**
+- Owner → all 9 profiles
+- Manager → 5 operational profiles (agent, prospector, receptionist, financial, inspector)
+- Agent → owner + portal only
+
+**Required Headers:**
+- `Authorization: Bearer {jwt_token}`
+- `X-Openerp-Session-Id: {session_id}`
+- `X-Company-Id: {company_id}`
+
+**Required Fields:**
+- `name`: Full name of the user (string)
+- `email`: Email address (RFC 5322 validated, string)
+- `profile`: RBAC profile (one of: owner, manager, agent, prospector, receptionist, financial, inspector, maintenance, portal)
+
+**Optional Fields (portal profile only):**
+- `cpf`: Brazilian CPF number (validated, string)
+- `phone`: Phone number (string)
+
+**Request Example:**
+```json
+{
+  "name": "João Silva",
+  "email": "joao.silva@example.com",
+  "profile": "agent"
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "success": true,
+  "data": {
+    "user_id": 42,
+    "email": "joao.silva@example.com",
+    "profile": "agent",
+    "status": "pending",
+    "invite_sent_at": "2025-01-15T10:30:00Z"
+  }
+}
+```
+
+**Error Responses:**
+- **400 Bad Request**: Invalid email, missing fields, invalid profile, duplicate email, invalid CPF
+- **403 Forbidden**: Caller not authorized to invite target profile
+- **409 Conflict**: User with this email already exists</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_users_resend_invite" model="thedevkitchen.api.endpoint">
+            <field name="name">Resend Invite</field>
+            <field name="path">/api/v1/users/{id}/resend-invite</field>
+            <field name="method">POST</field>
+            <field name="module_name">thedevkitchen_user_onboarding</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">User Onboarding</field>
+            <field name="summary">Resend invitation email to a pending user</field>
+            <field name="description">Resends the invitation email to a user whose status is still pending. Invalidates the previous invite token and generates a new one (last-token-wins policy).
+
+**Authorization:** Same matrix as invite endpoint (owner/manager/agent roles).
+
+**Required Headers:**
+- `Authorization: Bearer {jwt_token}`
+- `X-Openerp-Session-Id: {session_id}`
+- `X-Company-Id: {company_id}`
+
+**URL Path Parameter:**
+- `id`: User ID (integer)
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "data": {
+    "user_id": 42,
+    "email": "joao.silva@example.com",
+    "invite_resent_at": "2025-01-15T11:00:00Z"
+  }
+}
+```
+
+**Error Responses:**
+- **404 Not Found**: User not found or not in same company
+- **409 Conflict**: User is not in pending status (already accepted invite)</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <!-- ========================================================
+             Password Management Endpoints (Public)
+             ======================================================== -->
+
+        <record id="api_endpoint_auth_set_password" model="thedevkitchen.api.endpoint">
+            <field name="name">Set Password (Invite)</field>
+            <field name="path">/api/v1/auth/set-password</field>
+            <field name="method">POST</field>
+            <field name="module_name">thedevkitchen_user_onboarding</field>
+            <field name="protected" eval="False"/>
+            <field name="tags">Password Management</field>
+            <field name="summary">Set password using invite token</field>
+            <field name="description">Sets a user's initial password using the token received via invitation email. Token must be type `invite`. Activates the user account and invalidates the token and current session after success.
+
+**Security:**
+- Token format: 32 lowercase hexadecimal characters (UUID v4 hex, no dashes)
+- Stored as SHA-256 hash — raw token never persisted
+- Token type is validated (invite tokens cannot be used in reset flow and vice versa)
+- Session is invalidated after password is set
+
+**Required Fields:**
+- `token`: Invite token from email link (32 hex chars, string)
+- `password`: New password (min 8 characters, string)
+- `password_confirm`: Must match `password` (string)
+
+**Request Example:**
+```json
+{
+  "token": "a1b2c3d4e5f6789012345678abcdef01",
+  "password": "MySecurePassword123!",
+  "password_confirm": "MySecurePassword123!"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Senha definida com sucesso."
+}
+```
+
+**Error Responses:**
+- **400 Bad Request**: `invalidTokenFormat` (token not 32 hex chars), `passwordTooShort`, `passwordMismatch`, `missingFields`
+- **404 Not Found**: Token not found or wrong type
+- **410 Gone**: Token already used or expired</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_auth_forgot_password" model="thedevkitchen.api.endpoint">
+            <field name="name">Forgot Password</field>
+            <field name="path">/api/v1/auth/forgot-password</field>
+            <field name="method">POST</field>
+            <field name="module_name">thedevkitchen_user_onboarding</field>
+            <field name="protected" eval="False"/>
+            <field name="tags">Password Management</field>
+            <field name="summary">Request a password reset email</field>
+            <field name="description">Sends a password reset email to the provided address if a matching active user exists. Always returns 200 to prevent email enumeration attacks (anti-enumeration pattern).
+
+**Security:**
+- Always returns HTTP 200 regardless of whether the email exists
+- Reset token: UUID v4 → SHA-256 hash, sent in email only once
+- TTL configurable via Settings (default 1 hour, range 1–720h)
+- Previous pending reset tokens are invalidated before new one is generated
+
+**Required Fields:**
+- `email`: Email address to send reset link to (string)
+
+**Request Example:**
+```json
+{
+  "email": "joao.silva@example.com"
+}
+```
+
+**Response (200 OK — always):**
+```json
+{
+  "success": true,
+  "message": "Se este e-mail estiver cadastrado, você receberá as instruções de recuperação."
+}
+```
+
+**Note:** A 200 response does NOT confirm the email exists in the system.</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_auth_reset_password" model="thedevkitchen.api.endpoint">
+            <field name="name">Reset Password</field>
+            <field name="path">/api/v1/auth/reset-password</field>
+            <field name="method">POST</field>
+            <field name="module_name">thedevkitchen_user_onboarding</field>
+            <field name="protected" eval="False"/>
+            <field name="tags">Password Management</field>
+            <field name="summary">Reset password using reset token from email</field>
+            <field name="description">Resets a user's password using the token received in the forgot-password email. Token must be type `reset`. Invalidates all active sessions after success.
+
+**Security:**
+- Token format: 32 lowercase hexadecimal characters (UUID v4 hex, no dashes)
+- Token type validated (reset tokens cannot be used in set-password flow)
+- All active sessions are invalidated after successful reset
+- Token is consumed (marked used) after success
+
+**Required Fields:**
+- `token`: Reset token from email link (32 hex chars, string)
+- `password`: New password (min 8 characters, string)
+- `password_confirm`: Must match `password` (string)
+
+**Request Example:**
+```json
+{
+  "token": "f0e1d2c3b4a5987654321fedcba09876",
+  "password": "NewSecurePassword456!",
+  "password_confirm": "NewSecurePassword456!"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Senha redefinida com sucesso."
+}
+```
+
+**Error Responses:**
+- **400 Bad Request**: `invalidTokenFormat` (token not 32 hex chars), `passwordTooShort`, `passwordMismatch`, `missingFields`
+- **404 Not Found**: Token not found or wrong type
+- **410 Gone**: Token already used or expired</field>
+            <field name="active" eval="True"/>
+        </record>
+
+    </data>
+</odoo>

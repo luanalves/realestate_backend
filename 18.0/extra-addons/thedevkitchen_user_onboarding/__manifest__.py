@@ -53,6 +53,7 @@ Technical Details:
         "security/record_rules.xml",
         "data/default_settings.xml",
         "data/email_templates.xml",
+        "data/api_endpoints_data.xml",
         "views/email_link_settings_views.xml",
         "views/menu.xml",
     ],

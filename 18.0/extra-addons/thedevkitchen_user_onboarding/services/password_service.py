@@ -25,8 +25,8 @@ class PasswordService:
         if password != confirm_password:
             raise ValidationError(_('Password and confirmation do not match'))
         
-        # Validate token
-        validation = self.token_service.validate_token(raw_token)
+        # Validate token — enforce 'invite' type so reset tokens cannot be used here
+        validation = self.token_service.validate_token(raw_token, token_type='invite')
         
         if not validation['valid']:
             error = validation['error']
@@ -98,8 +98,8 @@ class PasswordService:
         if password != confirm_password:
             raise ValidationError(_('Password and confirmation do not match'))
         
-        # Validate token
-        validation = self.token_service.validate_token(raw_token)
+        # Validate token — enforce 'reset' type so invite tokens cannot be reused here
+        validation = self.token_service.validate_token(raw_token, token_type='reset')
         
         if not validation['valid']:
             error = validation['error']

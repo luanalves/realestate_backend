@@ -4,61 +4,73 @@
 
 Complete Postman collection for Quicksol Real Estate Management System API.
 
-**Version:** 1.19.0  
-**Last Updated:** 2026-02-21  
+**Version:** 1.20.0  
+**Last Updated:** 2026-02-22  
 **Spec Coverage:** Complete API (55+ endpoints)
 
 ## Available Collections
 
-### 1. Complete API Collection (v1.19) ⭐ RECOMMENDED
-**File:** `quicksol_api_v1.19_postman_collection.json`  
+### 1. Complete API Collection (v1.20) ⭐ RECOMMENDED
+**File:** `quicksol_api_v1.20_postman_collection.json`  
 **Coverage:** All 55+ endpoints - Complete API coverage  
 **ADR Compliance:** ADR-016 (complete)  
-**Profiles:** 10 RBAC types (tenant + property_owner)  
-**Breaking Change:** Removed legacy invite flows (Standard/Tenant Profile) - only unified profile flow remains  
+**Security:** Token format validation + cross-type abuse block + last-token-wins  
 **Includes:** Authentication, Users, Properties, Agents, Assignments (full CRUD), Commissions, Performance, Leads, Activities, Filters, Master Data, Profile Management, User Onboarding
 
-### 2. Complete API Collection (v1.18)
+### 2. Complete API Collection (v1.19)
+**File:** `quicksol_api_v1.19_postman_collection.json`  
+**Coverage:** Unified profile flow (Feature 010) - no legacy invite flows  
+**Note:** Use v1.20 for latest security fixes on password endpoints
+
+### 3. Complete API Collection (v1.18)
 **File:** `quicksol_api_v1.18_postman_collection.json`  
 **Coverage:** Unified Profile Flow introduced  
-**Note:** Use v1.19 for latest version without legacy requests
-
-### 3. Complete API Collection (v1.17)
-**File:** Does not exist (version skipped)  
-**Note:** Use v1.19 for latest version
+**Note:** Use v1.20 for latest version
 
 ### 4. Complete API Collection (v1.16)
 **File:** `quicksol_api_v1.16_postman_collection.json`  
 **Coverage:** Previous version (9 profile types + legacy invite flows)  
-**Note:** Use v1.19 for unified profile workflow
+**Note:** Use v1.20 for unified profile workflow
 
-### 3. Complete API Collection (v1.7)
+### 5. Complete API Collection (v1.7)
 **File:** `quicksol_api_v1.7_postman_collection.json`  
 **Coverage:** All 55+ endpoints - Complete API coverage  
 **ADR Compliance:** ADR-016 (complete)  
 **Includes:** Authentication, Users, Properties, Agents, Assignments (full CRUD), Commissions, Performance, Leads, Activities, Filters, Master Data
 
-### 4. Lead-Focused Collection (v1.2)
+### 6. Lead-Focused Collection (v1.2)
 **File:** `quicksol_api_v1.2_postman_collection.json`  
 **Coverage:** Lead Management focused (Feature 006)  
 **ADR Compliance:** ADR-016 (complete)
 
-### 5. Legacy API Collection (v1.1)
+### 7. Legacy API Collection (v1.1)
 **File:** `quicksol_api_v1.1_postman_collection.json`  
 **Coverage:** Properties, Agents, Assignments, Commissions, RBAC profiles
 
-### 4. Lead Management Collection (Standalone)
+### 8. Lead Management Collection (Standalone)
 **File:** `lead-management-collection.json`  
 **Coverage:** Lead CRUD, conversions, statistics, multi-tenancy tests  
 **Feature:** 006-lead-management
 
-## Changelog v1.19 (Latest - 2026-02-21)
+## Changelog v1.20 (Latest - 2026-02-22)
+
+**Security hardening for password endpoints (Feature 009)**
+
+🔐 **Token format validation** — `set-password` and `reset-password` now reject tokens that are not exactly 32 lowercase hex characters before touching the database. Returns **400 validation_error**. Prevents timing attacks and unnecessary DB lookups.
+
+🔐 **Cross-type token abuse blocked** — `set-password` only accepts tokens with `token_type='invite'`; `reset-password` only accepts `token_type='reset'`. Submitting the wrong type returns **404 not_found** — identical to a missing token, so no state is leaked.
+
+🔐 **Last-token-wins (race condition fix)** — `generate_token()` now atomically invalidates all previous `pending` tokens of the same type for the user before creating the new one. Only one active token per user+type can exist at any time.
+
+📋 **E2E test added** — `integration_tests/test_us9_s2_set_password.sh` covers 9 scenarios (T28-1 to T28-9): valid token, used, expired, not found, malformed, short password, mismatch, missing fields, cross-type abuse.
+
+## Changelog v1.19 (2026-02-21)
 
 ⚠️ **BREAKING CHANGE:** Removed legacy invite flows - only unified profile flow remains  
 ✅ **Removed requests:** "Invite User (Standard Profile)" and "Invite User (Tenant Profile)"  
 ✅ **Single endpoint:** Only "Invite User (from Profile ID)" remains (simplified name to "Invite User")  
 ✅ **Performance:** Query optimization (browse+exists → search, -1 query)  
-✅ **Compliance:** ADR-001 - removed redundant validations from controller layer  
+✅ **Compliance:** ADR-001 — removed redundant validations from controller layer  
 ✅ **Response simplified:** No longer includes extension_record, tenant_id, property_owner_id fields  
 ✅ **Architecture:** Profile is the single source of truth (Feature 010 fully implemented)  
 ✅ **Unified flow:** create_user_from_profile() method replaces dual record logic  

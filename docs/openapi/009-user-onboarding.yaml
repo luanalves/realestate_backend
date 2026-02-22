@@ -10,11 +10,14 @@ info:
     - Password endpoints are public (no auth required)
     
     **Security Architecture**:
-    - Tokens stored as SHA-256 hash in database
+    - Tokens stored as SHA-256 hash in database (raw token never persisted)
     - Raw tokens sent only in email links (HTTPS)
+    - Token format enforced: 32 lowercase hex chars (UUID v4 hex) — malformed → 400
+    - Cross-type token abuse blocked: invite tokens rejected by reset endpoint and vice-versa — → 404 (no state leak)
+    - Last-token-wins: generating a new token auto-invalidates all previous pending tokens of the same type for the user
     - Anti-enumeration on forgot-password (always 200)
     - Rate limiting on forgot-password (3/email/hour)
-  version: 1.0.0
+  version: 1.1.0
   contact:
     name: TheDevKitchen
   license:
@@ -157,9 +160,14 @@ paths:
       tags: [Password]
       summary: Set password for invited user
       description: |
-        Public endpoint. Sets password using a valid invite token from email link.
+        Public endpoint. Sets password using a valid **invite** token from email link.
         Token is verified via SHA-256 hash comparison.
         After success, `signup_pending` is set to `False` and user can login.
+        
+        **Token Security**:
+        - Format enforced: exactly 32 lowercase hexadecimal characters (UUID v4 hex). Any other format → **400**
+        - Type enforced: only `invite` tokens accepted. Passing a `reset` token here → **404** (cross-type reuse blocked without leaking token state)
+        - State enforced: must be `pending` (not `used`, `expired`, or `invalidated`)
       operationId: setPassword
       # No security - public endpoint
       requestBody:
@@ -169,7 +177,7 @@ paths:
             schema:
               $ref: '#/components/schemas/SetPasswordRequest'
             example:
-              token: "a1b2c3d4e5f6..."
+              token: "a1b2c3d4e5f67890a1b2c3d4e5f67890"
               password: "SecurePass123!"
               confirm_password: "SecurePass123!"
       responses:
@@ -196,8 +204,13 @@ paths:
                     success: false
                     error: "validation_error"
                     message: "Password and confirmation do not match"
+                invalidTokenFormat:
+                  value:
+                    success: false
+                    error: "validation_error"
+                    message: "Invalid token format"
         '404':
-          description: Token not found
+          description: Token not found (or wrong token type)
           content:
             application/json:
               schema:
@@ -274,8 +287,14 @@ paths:
       tags: [Password]
       summary: Reset password with token
       description: |
-        Public endpoint. Resets password using a valid reset token from email link.
+        Public endpoint. Resets password using a valid **reset** token from email link.
         After success, all active sessions for the user are invalidated (security).
+        
+        **Token Security**:
+        - Format enforced: exactly 32 lowercase hexadecimal characters (UUID v4 hex). Any other format → **400**
+        - Type enforced: only `reset` tokens accepted. Passing an `invite` token here → **404** (cross-type reuse blocked without leaking token state)
+        - State enforced: must be `pending` (not `used`, `expired`, or `invalidated`)
+        - Concurrent requests: only the first valid consumption wins; subsequent attempts fail with 410
       operationId: resetPassword
       requestBody:
         required: true
@@ -284,7 +303,7 @@ paths:
             schema:
               $ref: '#/components/schemas/ResetPasswordRequest'
             example:
-              token: "x9y8z7w6..."
+              token: "x9y8z7w6a1b2c3d4e5f67890a1b2c3d4"
               password: "NewSecurePass456!"
               confirm_password: "NewSecurePass456!"
       responses:
@@ -300,8 +319,24 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                passwordTooShort:
+                  value:
+                    success: false
+                    error: "validation_error"
+                    message: "Password must be at least 8 characters"
+                passwordMismatch:
+                  value:
+                    success: false
+                    error: "validation_error"
+                    message: "Password and confirmation do not match"
+                invalidTokenFormat:
+                  value:
+                    success: false
+                    error: "validation_error"
+                    message: "Invalid token format"
         '404':
-          description: Token not found
+          description: Token not found (or wrong token type)
           content:
             application/json:
               schema:
@@ -316,6 +351,17 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                tokenExpired:
+                  value:
+                    success: false
+                    error: "token_expired"
+                    message: "This link has expired. Please request a new password reset."
+                tokenUsed:
+                  value:
+                    success: false
+                    error: "token_used"
+                    message: "This link has already been used."
 
   /api/v1/users/resend-invite:
     post:
@@ -508,7 +554,12 @@ components:
       properties:
         token:
           type: string
-          description: Raw token from email link URL
+          pattern: "^[a-f0-9]{32}$"
+          description: |
+            Raw **invite** token from the email link URL (`?token=...`).
+            Must be exactly 32 lowercase hexadecimal characters (UUID v4 hex format).
+            Any other format is rejected with 400 before touching the database.
+          example: "a1b2c3d4e5f67890a1b2c3d4e5f67890"
         password:
           type: string
           minLength: 8
@@ -561,7 +612,12 @@ components:
       properties:
         token:
           type: string
-          description: Raw reset token from email link URL
+          pattern: "^[a-f0-9]{32}$"
+          description: |
+            Raw **reset** token from the email link URL (`?token=...`).
+            Must be exactly 32 lowercase hexadecimal characters (UUID v4 hex format).
+            Any other format is rejected with 400 before touching the database.
+          example: "x9y8z7w6a1b2c3d4e5f67890a1b2c3d4"
         password:
           type: string
           minLength: 8

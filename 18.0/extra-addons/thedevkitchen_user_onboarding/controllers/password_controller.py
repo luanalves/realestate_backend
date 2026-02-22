@@ -73,6 +73,15 @@ class PasswordController(http.Controller):
                 f'Missing required fields: {", ".join(missing)}',
             )
 
+        # Validate token format: must be exactly 32 lowercase hex chars (UUID v4 hex)
+        raw_token = data["token"]
+        if not self._validate_token_format(raw_token):
+            return self._error_response(
+                400,
+                "validation_error",
+                "Invalid token format",
+            )
+
         password_service = PasswordService(request.env)
 
         try:
@@ -80,7 +89,7 @@ class PasswordController(http.Controller):
             user_agent = request.httprequest.headers.get("User-Agent", "")
 
             password_service.set_password(
-                raw_token=data["token"],
+                raw_token=raw_token,
                 password=data["password"],
                 confirm_password=data["confirm_password"],
                 ip_address=ip_address,
@@ -220,6 +229,15 @@ class PasswordController(http.Controller):
                 f'Missing required fields: {", ".join(missing)}',
             )
 
+        # Validate token format: must be exactly 32 lowercase hex chars (UUID v4 hex)
+        raw_token = data["token"]
+        if not self._validate_token_format(raw_token):
+            return self._error_response(
+                400,
+                "validation_error",
+                "Invalid token format",
+            )
+
         password_service = PasswordService(request.env)
 
         try:
@@ -227,7 +245,7 @@ class PasswordController(http.Controller):
             user_agent = request.httprequest.headers.get("User-Agent", "")
 
             password_service.reset_password(
-                raw_token=data["token"],
+                raw_token=raw_token,
                 password=data["password"],
                 confirm_password=data["confirm_password"],
                 ip_address=ip_address,
@@ -262,6 +280,16 @@ class PasswordController(http.Controller):
             )
 
     # Helper methods
+
+    def _validate_token_format(self, token):
+        """Validate raw token is exactly 32 lowercase hex characters (UUID v4 hex).
+
+        Tokens are generated as ``uuid.uuid4().hex`` — always 32 lowercase hex chars.
+        Any other format is immediately rejected with 400 before touching the database.
+        """
+        import re
+
+        return bool(re.fullmatch(r"[a-f0-9]{32}", token))
 
     def _validate_email_format(self, email):
         """Basic email format validation"""
