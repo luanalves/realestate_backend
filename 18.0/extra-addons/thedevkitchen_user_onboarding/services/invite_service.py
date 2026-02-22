@@ -186,6 +186,75 @@ class InviteService:
         
         return user, tenant
     
+    def create_user_from_profile(self, profile_record, created_by):
+        """Feature 010: Create res.users from a unified thedevkitchen.estate.profile record.
+
+        This replaces the old create_invited_user / create_portal_user split.
+        The profile already holds all cadastral data; here we only create the
+        user account and link it back to the profile via partner_id.
+
+        Args:
+            profile_record: thedevkitchen.estate.profile browse record
+            created_by: res.users of the person performing the invite
+
+        Returns:
+            res.users record
+        """
+        profile_type_code = profile_record.profile_type_id.code
+        email = profile_record.email
+
+        # Check email uniqueness
+        existing = self.env['res.users'].sudo().search(
+            [('login', '=', email)], limit=1
+        )
+        if existing:
+            raise ValidationError(
+                _('Email already exists: {}').format(email)
+            )
+
+        # Resolve security group from profile type code
+        group_xml_id = self.PROFILE_TO_GROUP.get(profile_type_code)
+        if not group_xml_id:
+            raise ValidationError(
+                _('Unknown profile type: {}').format(profile_type_code)
+            )
+        target_group = self.env.ref(group_xml_id)
+
+        # profile.company_id is already thedevkitchen.estate.company
+        estate_company = profile_record.company_id
+
+        # Build user values — NO password field so account starts locked
+        # (user sets password via invite token, not directly)
+        user_vals = {
+            'name': profile_record.name,
+            'login': email,
+            'email': email,
+            'signup_pending': True,
+            'groups_id': [(6, 0, [target_group.id])],
+        }
+
+        if estate_company:
+            user_vals['estate_company_ids'] = [(4, estate_company.id)]
+
+        # Carry over phone if present
+        if profile_record.phone:
+            user_vals['phone'] = profile_record.phone
+
+        new_user = self.env['res.users'].sudo().create(user_vals)
+
+        # Link profile → user via partner_id (profile gains the auto-created partner)
+        profile_record.sudo().write({'partner_id': new_user.partner_id.id})
+
+        _logger.info(
+            '[INVITE] User created from profile %s (profile_type=%s, email=%s) by %s',
+            profile_record.id,
+            profile_type_code,
+            email,
+            created_by.login,
+        )
+
+        return new_user
+
     def send_invite_email(self, user, raw_token, expires_hours, frontend_base_url):
 
         try:
