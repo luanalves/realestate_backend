@@ -21,15 +21,15 @@ _logger = logging.getLogger(__name__)
 class InviteService:
     """Service for managing user invitations"""
     
-    # Authorization Matrix (R11): Who can invite which profiles
+    # Authorization Matrix (ADR-024): Who can invite which profiles
     INVITE_AUTHORIZATION = {
-        'quicksol_estate.group_real_estate_owner': ['owner', 'director', 'manager', 'agent', 'prospector', 'receptionist', 'financial', 'legal', 'portal'],
+        'quicksol_estate.group_real_estate_owner': ['owner', 'director', 'manager', 'agent', 'prospector', 'receptionist', 'financial', 'legal', 'property_owner', 'tenant'],
         'quicksol_estate.group_real_estate_director': ['agent', 'prospector', 'receptionist', 'financial', 'legal'],
         'quicksol_estate.group_real_estate_manager': ['agent', 'prospector', 'receptionist', 'financial', 'legal'],
-        'quicksol_estate.group_real_estate_agent': ['owner', 'portal'],
+        'quicksol_estate.group_real_estate_agent': ['property_owner', 'tenant'],
     }
     
-    # Profile to Odoo Group Mapping (R11)
+    # Profile to Odoo Group Mapping (ADR-024)
     PROFILE_TO_GROUP = {
         'owner': 'quicksol_estate.group_real_estate_owner',
         'director': 'quicksol_estate.group_real_estate_director',
@@ -39,7 +39,9 @@ class InviteService:
         'receptionist': 'quicksol_estate.group_real_estate_receptionist',
         'financial': 'quicksol_estate.group_real_estate_financial',
         'legal': 'quicksol_estate.group_real_estate_legal',
-        'portal': 'base.group_portal',
+        'portal': 'base.group_portal',  # Legacy
+        'tenant': 'base.group_portal',  # Portal user - tenant profile
+        'property_owner': 'base.group_portal',  # Portal user - property owner profile
     }
     
     def __init__(self, env):
