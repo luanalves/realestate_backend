@@ -187,13 +187,7 @@ class InviteService:
         return user, tenant
     
     def send_invite_email(self, user, raw_token, expires_hours, frontend_base_url):
-        """
-        Send invite email by creating mail.mail directly with pre-rendered HTML.
-        
-        Odoo 18's inline_template engine restricts ctx.get() expressions
-        in regex mode (non-admin users). We bypass this by rendering the
-        HTML body in Python and creating mail.mail directly.
-        """
+
         try:
             invite_link = f"{frontend_base_url}/set-password?token={raw_token}"
             user_name = user.name or user.login

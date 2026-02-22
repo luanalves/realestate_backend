@@ -1,13 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Password Service
 
-Handles password set/reset logic and session invalidation.
-
-Author: TheDevKitchen
-Date: 2026-02-16
-ADRs: ADR-008 (Anti-enumeration), ADR-015 (Soft Delete)
-"""
 
 import logging
 from odoo import _, fields
@@ -25,22 +17,7 @@ class PasswordService:
         self.token_service = PasswordTokenService(env)
     
     def set_password(self, raw_token, password, confirm_password, ip_address=None, user_agent=None):
-        """
-        Set password for a user using invite token.
-        
-        Args:
-            raw_token: Plain token from email link
-            password: New password
-            confirm_password: Password confirmation
-            ip_address: Request IP (audit)
-            user_agent: Request User-Agent (audit)
-        
-        Returns:
-            res.users record
-        
-        Raises:
-            ValidationError: on invalid token or password validation failure
-        """
+
         # Validate password
         if len(password) < 8:
             raise ValidationError(_('Password must be at least 8 characters'))
@@ -84,14 +61,7 @@ class PasswordService:
         return user
     
     def forgot_password(self, email):
-        """
-        Handle forgot password request.
-        Always returns success (anti-enumeration).
-        Only sends email if user exists and is active.
-        
-        Args:
-            email: User email
-        """
+
         # Find user (NEVER reveal if email exists)
         user = self.env['res.users'].sudo().search([
             ('login', '=', email),
@@ -120,23 +90,7 @@ class PasswordService:
         _logger.info(f'Password reset token generated for {email}')
     
     def reset_password(self, raw_token, password, confirm_password, ip_address=None, user_agent=None):
-        """
-        Reset password using reset token.
-        Invalidates all active sessions after reset.
-        
-        Args:
-            raw_token: Plain token from email link
-            password: New password
-            confirm_password: Password confirmation
-            ip_address: Request IP (audit)
-            user_agent: Request User-Agent (audit)
-        
-        Returns:
-            res.users record
-        
-        Raises:
-            ValidationError: on invalid token or password validation failure
-        """
+
         # Validate password
         if len(password) < 8:
             raise ValidationError(_('Password must be at least 8 characters'))
@@ -180,13 +134,7 @@ class PasswordService:
         return user
     
     def _send_reset_email(self, user, raw_token):
-        """
-        Send password reset email by creating mail.mail directly with pre-rendered HTML.
 
-        Odoo 18's inline_template engine restricts ctx.get() expressions
-        in regex mode (non-admin users). We bypass this by rendering the
-        HTML body in Python and creating mail.mail directly.
-        """
         try:
             settings = self.env['thedevkitchen.email.link.settings'].get_settings()
             reset_link = f"{settings.frontend_base_url}/reset-password?token={raw_token}"
@@ -242,10 +190,7 @@ class PasswordService:
             _logger.error(f'Failed to send password reset email to {user.email}: {e}')
     
     def _invalidate_user_sessions(self, user_id):
-        """
-        Invalidate all active sessions for a user.
-        Sessions are stored in thedevkitchen.api.session (PostgreSQL).
-        """
+
         try:
             sessions = self.env['thedevkitchen.api.session'].sudo().search([
                 ('user_id', '=', user_id),
