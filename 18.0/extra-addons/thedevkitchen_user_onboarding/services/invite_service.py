@@ -56,13 +56,13 @@ class InviteService:
         Returns:
             bool: True if authorized, raises UserError otherwise
         """
-        # Get requester's groups
-        requester_groups = requester_user.groups_id.mapped('full_name')
+        # Get requester's group IDs
+        requester_group_ids = requester_user.groups_id.ids
         
         # Check each authorization rule
         for group_xml_id, allowed_profiles in self.INVITE_AUTHORIZATION.items():
             group = self.env.ref(group_xml_id, raise_if_not_found=False)
-            if group and group.full_name in requester_groups:
+            if group and group.id in requester_group_ids:
                 if target_profile in allowed_profiles:
                     return True
         
