@@ -184,16 +184,29 @@ services:
     networks:
       - odoo-net
 
+  mailhog_mongo:
+    image: mongo:4.4-focal
+    container_name: mailhog_mongo
+    volumes:
+      - mailhog-mongo-data:/data/db
+    networks:
+      - odoo-net
+    healthcheck:
+      test: ["CMD", "mongo", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
   mailhog:
     image: mailhog/mailhog:latest
     container_name: mailhog
-    user: "1000:1000"  # Run as mailhog user to avoid permission issues
+    depends_on:
+      mailhog_mongo:
+        condition: service_healthy
     ports:
       - "1025:1025"  # SMTP server
       - "8025:8025"  # Web UI: http://localhost:8025
-    command: ["-storage=maildir", "-maildir-path=/maildir"]
-    volumes:
-      - mailhog-data:/maildir
+    command: ["-storage=mongodb", "-mongo-uri=mailhog_mongo:27017", "-mongo-db=mailhog", "-mongo-coll=messages"]
     networks:
       - odoo-net
     healthcheck:
@@ -208,6 +221,7 @@ volumes:
   odoo18-redis:
   rabbitmq-data:
   mailhog-data:
+  mailhog-mongo-data:
 
 networks:
   odoo-net:
