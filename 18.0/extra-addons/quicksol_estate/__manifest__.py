@@ -72,6 +72,7 @@ Property Form Sections:
         'data/demo_users.xml',  # Feature 007: Demo users (REATIVADO)
         'data/property_demo_data.xml',
         'data/agent_seed.xml',  # Feature 007: Agent seed data (REATIVADO)
+        'data/seed_test_company.xml',  # Seed: Imobiliária Seed + todos os perfis para testes
         'data/oauth2_seed.xml',  # Feature 007: OAuth2 test client (REATIVADO)
         'data/api_endpoints.xml',
         'data/user_auth_endpoints_data.xml',

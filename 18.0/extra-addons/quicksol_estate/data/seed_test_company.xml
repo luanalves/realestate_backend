@@ -1,0 +1,315 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!--
+            SEED: Imobiliária Seed — Ambiente de Testes
+            ============================================================
+            Cria uma imobiliária dedicada a testes com um usuário para
+            cada perfil do RBAC (9 internos + 1 tenant portal + 1 portal
+            proprietário). Não interfere no usuário admin do Odoo.
+
+            Credenciais padrão: seed@<perfil>.com.br / seed123
+            Empresa: Imobiliária Seed (CNPJ 55.444.333/0001-00)
+
+            CPFs válidos gerados matematicamente (não use em produção).
+            ============================================================
+        -->
+
+        <!-- ============================================================ -->
+        <!-- 1. EMPRESA                                                    -->
+        <!-- ============================================================ -->
+        <record id="company_seed_imobiliaria" model="thedevkitchen.estate.company">
+            <field name="name">Imobiliária Seed</field>
+            <field name="legal_name">Seed Imóveis LTDA</field>
+            <field name="cnpj">55.444.333/0001-00</field>
+            <field name="creci">CRECI/SP 99001</field>
+            <field name="email">contato@imobiliaria-seed.com.br</field>
+            <field name="phone">+55 (11) 99000-0001</field>
+            <field name="street">Rua dos Testes, 1</field>
+            <field name="city">São Paulo</field>
+            <field name="zip_code">01310-100</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <!-- ============================================================ -->
+        <!-- 2. USUÁRIOS INTERNOS                                          -->
+        <!-- ============================================================ -->
+
+        <!-- Owner -->
+        <record id="user_seed_owner" model="res.users">
+            <field name="name">Seed Owner</field>
+            <field name="login">owner@seed.com.br</field>
+            <field name="password">seed123</field>
+            <field name="email">owner@seed.com.br</field>
+            <field name="groups_id" eval="[(6, 0, [
+                ref('base.group_user'),
+                ref('quicksol_estate.group_real_estate_owner')
+            ])]"/>
+            <field name="estate_company_ids" eval="[(6, 0, [
+                ref('quicksol_estate.company_seed_imobiliaria')
+            ])]"/>
+            <field name="main_estate_company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
+        </record>
+
+        <!-- Director -->
+        <record id="user_seed_director" model="res.users">
+            <field name="name">Seed Director</field>
+            <field name="login">director@seed.com.br</field>
+            <field name="password">seed123</field>
+            <field name="email">director@seed.com.br</field>
+            <field name="groups_id" eval="[(6, 0, [
+                ref('base.group_user'),
+                ref('quicksol_estate.group_real_estate_director')
+            ])]"/>
+            <field name="estate_company_ids" eval="[(6, 0, [
+                ref('quicksol_estate.company_seed_imobiliaria')
+            ])]"/>
+            <field name="main_estate_company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
+        </record>
+
+        <!-- Manager -->
+        <record id="user_seed_manager" model="res.users">
+            <field name="name">Seed Manager</field>
+            <field name="login">manager@seed.com.br</field>
+            <field name="password">seed123</field>
+            <field name="email">manager@seed.com.br</field>
+            <field name="groups_id" eval="[(6, 0, [
+                ref('base.group_user'),
+                ref('quicksol_estate.group_real_estate_manager')
+            ])]"/>
+            <field name="estate_company_ids" eval="[(6, 0, [
+                ref('quicksol_estate.company_seed_imobiliaria')
+            ])]"/>
+            <field name="main_estate_company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
+        </record>
+
+        <!-- Agent -->
+        <record id="user_seed_agent" model="res.users">
+            <field name="name">Seed Agent</field>
+            <field name="login">agent@seed.com.br</field>
+            <field name="password">seed123</field>
+            <field name="email">agent@seed.com.br</field>
+            <field name="groups_id" eval="[(6, 0, [
+                ref('base.group_user'),
+                ref('quicksol_estate.group_real_estate_agent')
+            ])]"/>
+            <field name="estate_company_ids" eval="[(6, 0, [
+                ref('quicksol_estate.company_seed_imobiliaria')
+            ])]"/>
+            <field name="main_estate_company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
+        </record>
+
+        <!-- Prospector -->
+        <record id="user_seed_prospector" model="res.users">
+            <field name="name">Seed Prospector</field>
+            <field name="login">prospector@seed.com.br</field>
+            <field name="password">seed123</field>
+            <field name="email">prospector@seed.com.br</field>
+            <field name="groups_id" eval="[(6, 0, [
+                ref('base.group_user'),
+                ref('quicksol_estate.group_real_estate_prospector')
+            ])]"/>
+            <field name="estate_company_ids" eval="[(6, 0, [
+                ref('quicksol_estate.company_seed_imobiliaria')
+            ])]"/>
+            <field name="main_estate_company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
+        </record>
+
+        <!-- Receptionist -->
+        <record id="user_seed_receptionist" model="res.users">
+            <field name="name">Seed Receptionist</field>
+            <field name="login">receptionist@seed.com.br</field>
+            <field name="password">seed123</field>
+            <field name="email">receptionist@seed.com.br</field>
+            <field name="groups_id" eval="[(6, 0, [
+                ref('base.group_user'),
+                ref('quicksol_estate.group_real_estate_receptionist')
+            ])]"/>
+            <field name="estate_company_ids" eval="[(6, 0, [
+                ref('quicksol_estate.company_seed_imobiliaria')
+            ])]"/>
+            <field name="main_estate_company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
+        </record>
+
+        <!-- Financial -->
+        <record id="user_seed_financial" model="res.users">
+            <field name="name">Seed Financial</field>
+            <field name="login">financial@seed.com.br</field>
+            <field name="password">seed123</field>
+            <field name="email">financial@seed.com.br</field>
+            <field name="groups_id" eval="[(6, 0, [
+                ref('base.group_user'),
+                ref('quicksol_estate.group_real_estate_financial')
+            ])]"/>
+            <field name="estate_company_ids" eval="[(6, 0, [
+                ref('quicksol_estate.company_seed_imobiliaria')
+            ])]"/>
+            <field name="main_estate_company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
+        </record>
+
+        <!-- Legal -->
+        <record id="user_seed_legal" model="res.users">
+            <field name="name">Seed Legal</field>
+            <field name="login">legal@seed.com.br</field>
+            <field name="password">seed123</field>
+            <field name="email">legal@seed.com.br</field>
+            <field name="groups_id" eval="[(6, 0, [
+                ref('base.group_user'),
+                ref('quicksol_estate.group_real_estate_legal')
+            ])]"/>
+            <field name="estate_company_ids" eval="[(6, 0, [
+                ref('quicksol_estate.company_seed_imobiliaria')
+            ])]"/>
+            <field name="main_estate_company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
+        </record>
+
+        <!-- ============================================================ -->
+        <!-- 3. USUÁRIOS PORTAL                                            -->
+        <!-- ============================================================ -->
+
+        <!-- Tenant (inquilino) -->
+        <record id="user_seed_tenant" model="res.users">
+            <field name="name">Seed Tenant</field>
+            <field name="login">tenant@seed.com.br</field>
+            <field name="password">seed123</field>
+            <field name="email">tenant@seed.com.br</field>
+            <field name="groups_id" eval="[(6, 0, [
+                ref('base.group_portal'),
+                ref('quicksol_estate.group_real_estate_portal_user')
+            ])]"/>
+        </record>
+
+        <!-- Property Owner (proprietário via portal) -->
+        <record id="user_seed_propowner" model="res.users">
+            <field name="name">Seed Property Owner</field>
+            <field name="login">propowner@seed.com.br</field>
+            <field name="password">seed123</field>
+            <field name="email">propowner@seed.com.br</field>
+            <field name="groups_id" eval="[(6, 0, [
+                ref('base.group_portal'),
+                ref('quicksol_estate.group_real_estate_property_owner')
+            ])]"/>
+        </record>
+
+        <!-- ============================================================ -->
+        <!-- 4. PERFIS (thedevkitchen.estate.profile)                     -->
+        <!-- CPFs válidos gerados matematicamente — apenas para testes.   -->
+        <!-- ============================================================ -->
+
+        <!-- Profile: Owner — CPF 001.001.001-71 -->
+        <record id="profile_seed_owner" model="thedevkitchen.estate.profile">
+            <field name="profile_type_id" ref="quicksol_estate.profile_type_owner"/>
+            <field name="company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
+            <field name="name">Seed Owner</field>
+            <field name="document">001.001.001-71</field>
+            <field name="email">owner@seed.com.br</field>
+            <field name="birthdate">1990-01-15</field>
+        </record>
+
+        <!-- Profile: Director — CPF 002.002.002-32 -->
+        <record id="profile_seed_director" model="thedevkitchen.estate.profile">
+            <field name="profile_type_id" ref="quicksol_estate.profile_type_director"/>
+            <field name="company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
+            <field name="name">Seed Director</field>
+            <field name="document">002.002.002-32</field>
+            <field name="email">director@seed.com.br</field>
+            <field name="birthdate">1985-03-20</field>
+        </record>
+
+        <!-- Profile: Manager — CPF 003.003.003-01 -->
+        <record id="profile_seed_manager" model="thedevkitchen.estate.profile">
+            <field name="profile_type_id" ref="quicksol_estate.profile_type_manager"/>
+            <field name="company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
+            <field name="name">Seed Manager</field>
+            <field name="document">003.003.003-01</field>
+            <field name="email">manager@seed.com.br</field>
+            <field name="birthdate">1988-06-10</field>
+        </record>
+
+        <!-- Profile: Agent — CPF 004.004.004-64 -->
+        <record id="profile_seed_agent" model="thedevkitchen.estate.profile">
+            <field name="profile_type_id" ref="quicksol_estate.profile_type_agent"/>
+            <field name="company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
+            <field name="name">Seed Agent</field>
+            <field name="document">004.004.004-64</field>
+            <field name="email">agent@seed.com.br</field>
+            <field name="birthdate">1992-09-05</field>
+        </record>
+
+        <!-- Profile: Prospector — CPF 005.005.005-25 -->
+        <record id="profile_seed_prospector" model="thedevkitchen.estate.profile">
+            <field name="profile_type_id" ref="quicksol_estate.profile_type_prospector"/>
+            <field name="company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
+            <field name="name">Seed Prospector</field>
+            <field name="document">005.005.005-25</field>
+            <field name="email">prospector@seed.com.br</field>
+            <field name="birthdate">1995-11-22</field>
+        </record>
+
+        <!-- Profile: Receptionist — CPF 006.006.006-96 -->
+        <record id="profile_seed_receptionist" model="thedevkitchen.estate.profile">
+            <field name="profile_type_id" ref="quicksol_estate.profile_type_receptionist"/>
+            <field name="company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
+            <field name="name">Seed Receptionist</field>
+            <field name="document">006.006.006-96</field>
+            <field name="email">receptionist@seed.com.br</field>
+            <field name="birthdate">1993-04-18</field>
+        </record>
+
+        <!-- Profile: Financial — CPF 007.007.007-57 -->
+        <record id="profile_seed_financial" model="thedevkitchen.estate.profile">
+            <field name="profile_type_id" ref="quicksol_estate.profile_type_financial"/>
+            <field name="company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
+            <field name="name">Seed Financial</field>
+            <field name="document">007.007.007-57</field>
+            <field name="email">financial@seed.com.br</field>
+            <field name="birthdate">1987-07-30</field>
+        </record>
+
+        <!-- Profile: Legal — CPF 008.008.008-18 -->
+        <record id="profile_seed_legal" model="thedevkitchen.estate.profile">
+            <field name="profile_type_id" ref="quicksol_estate.profile_type_legal"/>
+            <field name="company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
+            <field name="name">Seed Legal</field>
+            <field name="document">008.008.008-18</field>
+            <field name="email">legal@seed.com.br</field>
+            <field name="birthdate">1986-12-07</field>
+        </record>
+
+        <!-- Profile: Tenant/Portal — CPF 009.009.009-89 -->
+        <record id="profile_seed_tenant" model="thedevkitchen.estate.profile">
+            <field name="profile_type_id" ref="quicksol_estate.profile_type_portal"/>
+            <field name="company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
+            <field name="name">Seed Tenant</field>
+            <field name="document">009.009.009-89</field>
+            <field name="email">tenant@seed.com.br</field>
+            <field name="birthdate">1998-02-14</field>
+        </record>
+
+        <!-- Profile: Property Owner/Portal — CPF 010.010.010-44 -->
+        <record id="profile_seed_propowner" model="thedevkitchen.estate.profile">
+            <field name="profile_type_id" ref="quicksol_estate.profile_type_property_owner"/>
+            <field name="company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
+            <field name="name">Seed Property Owner</field>
+            <field name="document">010.010.010-44</field>
+            <field name="email">propowner@seed.com.br</field>
+            <field name="birthdate">1975-08-25</field>
+        </record>
+
+        <!-- ============================================================ -->
+        <!-- 5. AGENTE (real.estate.agent) para o usuário agent           -->
+        <!-- ============================================================ -->
+        <record id="agent_seed" model="real.estate.agent">
+            <field name="name">Seed Agent</field>
+            <field name="cpf">004.004.004-64</field>
+            <field name="user_id" ref="user_seed_agent"/>
+            <field name="email">agent@seed.com.br</field>
+            <field name="phone">+55 (11) 99000-0004</field>
+            <field name="creci_state">SP</field>
+            <field name="creci_number">000001</field>
+            <field name="company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
+            <field name="active" eval="True"/>
+        </record>
+
+    </data>
+</odoo>
