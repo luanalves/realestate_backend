@@ -175,9 +175,25 @@ Platform employs dual-interface design:
 - OAuth 2.0 for application-to-application (Client Credentials Grant)
 - Session-based with JWT for user authentication
 - Token lifetime: 24 hours (configurable)
-- Redis-backed session storage (DB index 1, AOF persistence)
+- Redis-backed session storage (**DB index 1**, AOF persistence)
 - Rate limiting on authentication endpoints (brute-force protection)
 - Audit logging for all security events
+
+### Async Processing Architecture (ADR-021)
+Eventos não-críticos processados via **RabbitMQ + Celery** (3 workers especializados):
+
+| Worker | Fila | Concurrency | Uso |
+|--------|------|-------------|-----|
+| `celery_commission_worker` | `commission_events` | 2 | Cálculo de comissões |
+| `celery_audit_worker` | `audit_events` | 1 | Audit logs / LGPD |
+| `celery_notification_worker` | `notification_events` | 1 | Emails, webhooks |
+
+**Regras**:
+- Eventos `before_*` / validações → **sempre síncronos** (bloqueiam request)
+- Audit, notificações, bulk ops → **assíncronos** via `EventBus.emit()`
+- Redis DB separado: Odoo usa **DB 1** (`redis_dbindex=1`), Celery usa **DB 2** (`CELERY_RESULT_BACKEND=redis://redis:6379/2`)
+- Celery client instalado no Odoo Dockerfile (`celery[redis]==5.3.4`)
+- Monitoramento: Flower em `http://localhost:5555`
 
 ### Forbidden Patterns
 - `.sudo()` abuse in controllers (bypasses security)
@@ -481,4 +497,4 @@ Para criação de testes, **DEVEM ser utilizados** os prompts e agents especiali
 - Constitution provides strategic direction; copilot-instructions provides tactical rules
 - Conflicts resolved in favor of constitution (strategic supersedes tactical)
 
-**Version**: 1.3.0 | **Ratified**: 2026-01-03 | **Last Amended**: 2026-02-16
+**Version**: 1.4.0 | **Ratified**: 2026-01-03 | **Last Amended**: 2026-02-24

@@ -421,7 +421,7 @@ import os
 app = Celery(
     'odoo_events',
     broker='amqp://odoo:password@rabbitmq:5672//',
-    backend='redis://redis:6379/1'
+    backend='redis://redis:6379/2'  # DB 2 — isolado do Odoo (DB 1)
 )
 
 # Configuração de filas
@@ -519,9 +519,10 @@ services:
       ODOO_USER: admin
       ODOO_PASSWORD: admin
       CELERY_BROKER_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672//
-      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2  # DB 2 — isolado do Odoo (DB 1)
     networks:
       - odoo-net
+    restart: unless-stopped
   
   # Worker para audit logs (medium priority)
   celery_audit_worker:
@@ -534,9 +535,10 @@ services:
     command: celery -A tasks worker --loglevel=info --queues=audit_events --concurrency=1
     environment:
       CELERY_BROKER_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672//
-      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2  # DB 2 — isolado do Odoo (DB 1)
     networks:
       - odoo-net
+    restart: unless-stopped
   
   # Worker para notificações (low priority)
   celery_notification_worker:
@@ -549,8 +551,10 @@ services:
     command: celery -A tasks worker --loglevel=info --queues=notification_events --concurrency=1
     environment:
       CELERY_BROKER_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672//
+      CELERY_RESULT_BACKEND: redis://redis:6379/2  # DB 2 — isolado do Odoo (DB 1)
     networks:
       - odoo-net
+    restart: unless-stopped
   
   # Flower: Monitoramento de Celery
   flower:
@@ -565,7 +569,7 @@ services:
     command: celery --broker=amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672// flower --port=5555
     environment:
       CELERY_BROKER_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672//
-      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2  # DB 2 — isolado do Odoo (DB 1)
       FLOWER_BASIC_AUTH: ${FLOWER_USER}:${FLOWER_PASSWORD}
     networks:
       - odoo-net
@@ -594,7 +598,7 @@ RABBITMQ_PASSWORD=odoo_rabbitmq_secret_2026
 # CELERY ASYNC WORKERS
 # ------------------------------------------------------------------------------
 CELERY_BROKER_URL=amqp://odoo:odoo_rabbitmq_secret_2026@rabbitmq:5672//
-CELERY_RESULT_BACKEND=redis://redis:6379/1
+CELERY_RESULT_BACKEND=redis://redis:6379/2  # DB 2 - isolado do Odoo (redis_dbindex=1 em odoo.conf)
 
 # ------------------------------------------------------------------------------
 # FLOWER MONITORING
@@ -759,11 +763,14 @@ class TestEventBusAsync(TransactionCase):
 ## Checklist de Implementação
 
 **Infraestrutura**:
-- [ ] Adicionar RabbitMQ ao docker-compose.yml com healthcheck
-- [ ] Criar 4 filas: security_events, commission_events, audit_events, notification_events
-- [ ] Adicionar 3 Celery workers (commission, audit, notification)
-- [ ] Adicionar Flower para monitoramento (porta 5555)
-- [ ] Configurar variáveis .env (RABBITMQ_USER, RABBITMQ_PASSWORD, CELERY_BROKER_URL)
+- [x] Adicionar RabbitMQ ao docker-compose.yml com healthcheck
+- [x] Criar 3 filas especializadas: commission_events, audit_events, notification_events (security_events processada síncronamente inline)
+- [x] Adicionar 3 Celery workers especializados: `celery_commission_worker` (concurrency=2), `celery_audit_worker` (concurrency=1), `celery_notification_worker` (concurrency=1)
+- [x] Adicionar Flower para monitoramento (porta 5555)
+- [x] Configurar variáveis .env (RABBITMQ_USER, RABBITMQ_PASSWORD, CELERY_BROKER_URL)
+- [x] Redis DB isolado: Odoo usa DB 1 (`redis_dbindex=1`), Celery usa DB 2 (`CELERY_RESULT_BACKEND=redis://redis:6379/2`)
+- [x] `restart: unless-stopped` em todos os workers
+- [x] `celery[redis]==5.3.4` instalado no Dockerfile do Odoo (cliente Celery para dispatch)
 
 **Código**:
 - [ ] Implementar EventBus com emit_async() usando Celery
@@ -791,3 +798,4 @@ class TestEventBusAsync(TransactionCase):
 | Data | Versão | Autor | Mudanças |
 |------|--------|-------|----------|
 | 2026-01-20 | 1.0 | AI Assistant | Versão inicial - Extensão do ADR-020 com RabbitMQ/Celery para async processing |
+| 2026-02-24 | 1.1 | AI Assistant | Infraestrutura implementada: 3 workers especializados (commission/audit/notification), Redis DB 2 para Celery (isolado do Odoo DB 1), restart policy, celery[redis] no Dockerfile Odoo |

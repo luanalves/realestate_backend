@@ -60,6 +60,8 @@ services:
       DB_NAME: ${DB_NAME}
       JWT_ISSUER: ${JWT_ISSUER}
       JWT_SECRET: ${JWT_SECRET}
+      CELERY_BROKER_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672//
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
     volumes:
       - odoo18-data:/var/lib/odoo
       - ./filestore:/var/lib/odoo/filestore
@@ -111,9 +113,10 @@ services:
       ODOO_USER: admin
       ODOO_PASSWORD: admin
       CELERY_BROKER_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672//
-      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
     networks:
       - odoo-net
+    restart: unless-stopped
 
   celery_audit_worker:
     build:
@@ -136,9 +139,10 @@ services:
       ODOO_USER: admin
       ODOO_PASSWORD: admin
       CELERY_BROKER_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672//
-      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
     networks:
       - odoo-net
+    restart: unless-stopped
 
   celery_notification_worker:
     build:
@@ -161,9 +165,10 @@ services:
       ODOO_USER: admin
       ODOO_PASSWORD: admin
       CELERY_BROKER_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672//
-      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
     networks:
       - odoo-net
+    restart: unless-stopped
 
   flower:
     image: mher/flower:2.0
@@ -179,7 +184,7 @@ services:
     command: celery --broker=amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672// flower --port=5555
     environment:
       CELERY_BROKER_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672//
-      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
       FLOWER_BASIC_AUTH: ${FLOWER_USER}:${FLOWER_PASSWORD}
     networks:
       - odoo-net
@@ -220,7 +225,6 @@ volumes:
   odoo18-data:
   odoo18-redis:
   rabbitmq-data:
-  mailhog-data:
   mailhog-mongo-data:
 
 networks:
