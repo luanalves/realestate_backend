@@ -95,6 +95,47 @@ docker run -d --name odoo18 --network odoo-net \
 
 ---
 
+## Ambiente de Testes — Seed Data
+
+O banco é provisionado automaticamente com uma empresa de testes e um usuário para cada perfil RBAC.
+
+### Reset do banco
+
+```bash
+./reset_db.sh
+```
+
+Dropa e recria o banco `realestate`, instala os módulos e carrega os seeds (sem demo data do core Odoo).
+
+### Empresa Seed
+
+| Campo | Valor |
+|---|---|
+| Nome | Imobiliária Seed |
+| Razão Social | Seed Imóveis LTDA |
+| CNPJ | 55.444.333/0001-00 |
+
+### Usuários Seed
+
+Todos com senha `seed123`.
+
+| Login | Perfil |
+|---|---|
+| `owner@seed.com.br` | Owner |
+| `director@seed.com.br` | Director |
+| `manager@seed.com.br` | Manager |
+| `agent@seed.com.br` | Agent |
+| `prospector@seed.com.br` | Prospector |
+| `receptionist@seed.com.br` | Receptionist |
+| `financial@seed.com.br` | Financial |
+| `legal@seed.com.br` | Legal |
+| `tenant@seed.com.br` | Tenant (Portal) |
+| `propowner@seed.com.br` | Property Owner (Portal) |
+
+> **Admin Odoo:** `admin` / `admin` (inalterado)
+
+---
+
 ## Extras
 
 ### Mount local addons
