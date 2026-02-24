@@ -97,7 +97,7 @@
         <!-- Create corresponding agent records for agent users -->
         <record id="agent_pedro_demo" model="real.estate.agent">
             <field name="name">Pedro Oliveira</field>
-            <field name="cpf">123.456.789-01</field>
+            <field name="cpf">111.222.333-96</field>
             <field name="user_id" ref="user_estate_agent1_demo"/>
             <field name="phone">+55 (11) 99999-1234</field>
             <field name="email">pedro@imobiliaria.com</field>
@@ -110,7 +110,7 @@
 
         <record id="agent_carmen_demo" model="real.estate.agent">
             <field name="name">Carmen Rodriguez</field>
-            <field name="cpf">987.654.321-09</field>
+            <field name="cpf">987.654.321-00</field>
             <field name="user_id" ref="user_estate_agent2_demo"/>
             <field name="phone">+55 (11) 98888-5678</field>
             <field name="email">carmen@luxurygroup.com</field>

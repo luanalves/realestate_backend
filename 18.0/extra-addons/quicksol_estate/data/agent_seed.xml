@@ -9,7 +9,7 @@
 
     <record id="agent_demo_1" model="real.estate.agent">
         <field name="name">João Silva</field>
-        <field name="cpf">12345678901</field>
+        <field name="cpf">12345678909</field>
         <field name="email">joao.silva@kenlo.com.br</field>
         <field name="phone">+55 11 98765-4321</field>
         <field name="mobile">+55 11 98765-4321</field>
@@ -22,7 +22,7 @@
 
     <record id="agent_demo_2" model="real.estate.agent">
         <field name="name">Maria Santos</field>
-        <field name="cpf">98765432109</field>
+        <field name="cpf">98765432100</field>
         <field name="email">maria.santos@kenlo.com.br</field>
         <field name="phone">+55 11 98765-4322</field>
         <field name="mobile">+55 11 98765-4322</field>
@@ -35,7 +35,7 @@
 
     <record id="agent_demo_3" model="real.estate.agent">
         <field name="name">Carlos Oliveira</field>
-        <field name="cpf">45678912345</field>
+        <field name="cpf">45678912364</field>
         <field name="email">carlos.oliveira@kenlo.com.br</field>
         <field name="phone">+55 21 98765-4323</field>
         <field name="mobile">+55 21 98765-4323</field>
@@ -48,7 +48,7 @@
 
     <record id="agent_demo_4" model="real.estate.agent">
         <field name="name">Ana Paula Ferreira</field>
-        <field name="cpf">78912345678</field>
+        <field name="cpf">78912345664</field>
         <field name="email">ana.ferreira@kenlo.com.br</field>
         <field name="phone">+55 11 98765-4324</field>
         <field name="mobile">+55 11 98765-4324</field>
@@ -61,7 +61,7 @@
 
     <record id="agent_demo_5" model="real.estate.agent">
         <field name="name">Roberto Costa</field>
-        <field name="cpf">32165498732</field>
+        <field name="cpf">32165498791</field>
         <field name="email">roberto.costa@kenlo.com.br</field>
         <field name="phone">+55 21 98765-4325</field>
         <field name="mobile">+55 21 98765-4325</field>
