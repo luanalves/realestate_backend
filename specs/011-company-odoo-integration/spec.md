@@ -146,11 +146,12 @@ Campos custom adicionados em `res.company` via `_inherit` usam nomes diretos e l
 
 ## Inventário de Limpeza (Remoções Obrigatórias)
 
-### Tabelas a Remover (DROP) — 7 tabelas
+### Tabelas a Remover (DROP) — 8 tabelas
 
 | Tabela | Tipo | Motivo |
 |--------|------|--------|
 | `thedevkitchen_estate_company` | Tabela principal | Modelo eliminado; campos migram para `res_company` |
+| `real_estate_state` | Tabela principal | Modelo `real.estate.state` eliminado; usar `res.country.state` nativo |
 | `thedevkitchen_user_company_rel` | M2M usuários ↔ companies | Substituída por `res_company_users_rel` (nativo) |
 | `thedevkitchen_company_property_rel` | M2M companies ↔ propriedades | Recriada como M2M com `res.company` |
 | `thedevkitchen_company_agent_rel` | M2M companies ↔ agentes | Recriada como M2M com `res.company` |
@@ -158,11 +159,13 @@ Campos custom adicionados em `res.company` via `_inherit` usam nomes diretos e l
 | `thedevkitchen_company_sale_rel` | M2M companies ↔ vendas | Recriada como M2M com `res.company` |
 | `real_estate_lead_company_rel` | M2M leads ↔ companies | Recriada como M2M com `res.company` |
 
-### Arquivos a Remover (DELETE) — 6 arquivos
+### Arquivos a Remover (DELETE) — 8 arquivos
 
 | Arquivo | Conteúdo | Motivo |
 |---------|----------|--------|
 | `models/company.py` | Modelo standalone `RealEstateCompany` (224 linhas) | Substituído por novo arquivo com `_inherit = 'res.company'` |
+| `models/state.py` | Modelo standalone `real.estate.state` | Eliminado; usar `res.country.state` nativo |
+| `data/states.xml` | Seed com 27 estados brasileiros para modelo custom | Eliminado; `res.country.state` já contém os estados |
 | `views/company_views.xml` | Form, tree, search views para modelo custom | Substituído por views herdadas de `res.company` |
 | `data/company_seed.xml` | 3 seed records para modelo custom | Substituído por seeds de `res.company` |
 | `tests/unit/test_company_unit.py` | Testes unitários do modelo custom | Reescrever para `res.company` estendido |
@@ -341,15 +344,16 @@ Como **equipe de desenvolvimento**, queremos um processo automatizado para recri
 
 ---
 
-## Inventário de Arquivos a Modificar (77 arquivos)
+## Inventário de Arquivos a Modificar (82 arquivos)
 
-### Modelos — `quicksol_estate` (12 arquivos)
+### Modelos — `quicksol_estate` (15 arquivos)
 
 | Arquivo | Alteração |
 |---------|-----------|
 | `models/company.py` | **REMOVER** e recriar como `_inherit = 'res.company'` com campos prefixados |
+| `models/state.py` | **REMOVER** — modelo `real.estate.state` eliminado, usar `res.country.state` nativo |
 | `models/res_users.py` | Remover `estate_company_ids`, `main_estate_company_id`. Adaptar `owner_company_ids` |
-| `models/property.py` | **Remover** M2M `company_ids` → adicionar M2O `company_id = Many2one('res.company')` |
+| `models/property.py` | **Remover** M2M `company_ids` → adicionar M2O `company_id = Many2one('res.company')`. Migrar `state_id` de `real.estate.state` → `res.country.state` |
 | `models/agent.py` | **Remover** M2M `company_ids` + `main_company_id` → M2O `company_id = Many2one('res.company')`. Adaptar sync methods |
 | `models/lead.py` | **Remover** M2M `company_ids` → M2O `company_id = Many2one('res.company')` |
 | `models/lease.py` | **Remover** M2M `company_ids` → M2O `company_id = Many2one('res.company')` |
@@ -358,6 +362,8 @@ Como **equipe de desenvolvimento**, queremos um processo automatizado para recri
 | `models/commission_transaction.py` | `company_id` M2O → `Many2one('res.company')` |
 | `models/profile.py` | `company_id` M2O → `Many2one('res.company')` |
 | `models/assignment.py` | `company_id` M2O → `Many2one('res.company')` |
+| `models/property_owner.py` | Migrar `state_id` de `real.estate.state` → `res.country.state` |
+| `models/property_building.py` | Migrar `state_id` de `real.estate.state` → `res.country.state` |
 | `models/observers/user_company_validator_observer.py` | Adaptar para validar `company_ids` nativo |
 
 ### Controllers — `quicksol_estate` (6 arquivos)
@@ -369,7 +375,7 @@ Como **equipe de desenvolvimento**, queremos um processo automatizado para recri
 | `controllers/sale_api.py` | 1 + `estate_company_ids` | Idem + adaptar `_get_user_company_ids()` |
 | `controllers/property_api.py` | 3 | Atualizar refs e strings de erro |
 | `controllers/agent_api.py` | 3 | Idem |
-| `controllers/master_data_api.py` | 1 | Idem |
+| `controllers/master_data_api.py` | 1 | Idem. Endpoint `/states` migrar de `real.estate.state` → `res.country.state` |
 
 ### Services — `quicksol_estate` (2 arquivos)
 
@@ -382,7 +388,7 @@ Como **equipe de desenvolvimento**, queremos um processo automatizado para recri
 
 | Arquivo | Alteração |
 |---------|-----------|
-| `security/ir.model.access.csv` | Remover 7 linhas de ACL para `model_thedevkitchen_estate_company` |
+| `security/ir.model.access.csv` | Remover 7 linhas de ACL para `model_thedevkitchen_estate_company` + 5 linhas para `model_real_estate_state` |
 | `security/record_rules.xml` | Migrar 15+ regras: `user.estate_company_ids.ids` → `company_ids` nativo |
 
 ### Módulos adjacentes (6 arquivos)
@@ -411,11 +417,12 @@ Como **equipe de desenvolvimento**, queremos um processo automatizado para recri
 
 Todos os scripts em `integration_tests/` que enviam payloads com `thedevkitchen.estate.company` ou queries SQL com `thedevkitchen_estate_company` devem ser atualizados.
 
-### Seed Data, Manifest e Views (5 arquivos)
+### Seed Data, Manifest e Views (6 arquivos)
 
 | Arquivo | Alteração |
 |---------|-----------|
 | `data/company_seed.xml` | **REMOVER** e recriar seeds de `res.company` com campos prefixados |
+| `data/states.xml` | **REMOVER** — modelo custom eliminado, `res.country.state` já contém estados brasileiros |
 | `data/seed_test_company.xml` | Idem |
 | `views/company_views.xml` | **REMOVER** e recriar como inherited views de `res.company` |
 | `views/real_estate_menus.xml` | Action → `res.company` |
@@ -508,7 +515,8 @@ Todos os scripts em `integration_tests/` que enviam payloads com `thedevkitchen.
 - **FR-015**: O reset/migração DEVE ser automatizado via `reset_db.sh` + module update.
 - **FR-016**: 6 ADRs DEVEM ser atualizadas para refletir a nova arquitetura (ADR-004, 008, 009, 019, 020, 024).
 - **FR-017**: KB-07 DEVE ser atualizada com documentação sobre padrões de herança do Odoo.
-- **FR-018**: As 7 linhas de ACL referenciando `model_thedevkitchen_estate_company` DEVEM ser removidas do `ir.model.access.csv`.
+- **FR-018**: As 7 linhas de ACL referenciando `model_thedevkitchen_estate_company` e 5 linhas referenciando `model_real_estate_state` DEVEM ser removidas do `ir.model.access.csv`.
+- **FR-019**: O modelo `real.estate.state` (tabela `real_estate_state`) DEVE ser eliminado. Todos os campos `state_id` que apontavam para `real.estate.state` DEVEM ser migrados para `res.country.state`. O arquivo `data/states.xml` DEVE ser removido — `res.country.state` já contém os estados brasileiros. O endpoint `/states` em `master_data_api.py` DEVE usar `res.country.state`.
 
 ### Key Entities
 
