@@ -95,6 +95,7 @@ O `user_company_validator_observer.py` valida associações usando `estate_compa
 - Q: Business models (property, lease, sale, agent, lead) currently use M2M `company_ids` to associate records with multiple companies. Should they keep M2M or migrate to M2O `company_id` (one company per record) to enable native Odoo record rules? → A: **M2O only**. Each business record belongs to exactly one company via `company_id = Many2one('res.company')`. All M2M `company_ids` fields on business models are eliminated. Native Odoo record rules `[('company_id', 'in', company_ids)]` apply directly.
 - Q: Como distinguir imobiliárias de companies genéricas (ex: company padrão ID=1)? → A: **Boolean flag** `is_real_estate = Boolean(default=False)` em `res.company`. Companies criadas via API imobiliária recebem `True` automaticamente. Endpoints/domínios filtram por `[('is_real_estate', '=', True)]`.
 - Q: Campos em `res.company` devem usar prefixo `x_thedevkitchen_`? → A: **Sem prefixo `x_`**. Campos diretos: `cnpj`, `creci`, `legal_name`, `foundation_date`, `is_real_estate`. Padrão idiomático para módulos Odoo custom instalados via código. ADR-004 esclarece que prefixo `thedevkitchen` aplica-se apenas a **nomes de tabelas** e **nomes de módulos**, não a campos em modelos herdados do core.
+- Q: Campo `state_id` no modelo custom apontava para `real.estate.state` (custom). `res.company` já possui `state_id` nativo apontando para `res.country.state`. Usar o nativo ou renomear? → A: **Usar `state_id` nativo** (`res.country.state`). O modelo custom `real.estate.state` é eliminado. `res.country.state` já contém os estados brasileiros. Qualquer referência a `real.estate.state` deve ser migrada para `res.country.state`.
 
 ---
 
@@ -333,7 +334,7 @@ Como **equipe de desenvolvimento**, queremos um processo automatizado para recri
 - **Módulos de terceiros**: Imobiliárias aparecem como companies normais — intencional e desejável.
 - **Agent sync**: `real.estate.agent` tem `_auto_assign_company` e `_sync_company_from_user` que usavam `estate_company_ids` — adaptar para `company_ids` nativo e `company_id` M2O.
 - **Observer**: `user_company_validator_observer.py` interceptava writes em `estate_company_ids` — adaptar para `company_ids` nativo.
-- **`state_id` divergente**: Campo `state_id` no modelo custom apontava para `real.estate.state` (custom). `res.company` usa `state_id` apontando para `res.country.state`. O campo custom de estado deve ser renomeado ou eliminado para evitar conflito.
+- **`state_id` resolvido**: Campo `state_id` do modelo custom (apontava para `real.estate.state`) é eliminado. Usa-se o `state_id` nativo de `res.company` (`res.country.state`). O modelo custom `real.estate.state` é eliminado — `res.country.state` já contém os estados brasileiros.
 - **Assignment validation**: `assignment.py` atualmente valida `agent.company_id not in property.company_ids` (M2M). Com M2O, a validação simplifica para `agent.company_id != property.company_id`.
 - **Record rules simplificadas**: Com M2O `company_id` em todos os modelos, todas as record rules usam o padrão nativo `[('company_id', 'in', company_ids)]` — sem necessidade de customização.
 - **Integration test scripts**: 14+ shell scripts enviam payloads JSON-RPC com `thedevkitchen.estate.company` em queries SQL — todos devem ser atualizados.
@@ -533,7 +534,7 @@ Todos os scripts em `integration_tests/` que enviam payloads com `thedevkitchen.
 - Campos custom em `res.company` usam nomes diretos (`cnpj`, `creci`, `legal_name`, `foundation_date`, `is_real_estate`) — sem prefixo `x_`. Padrão idiomático para módulos Odoo custom instalados via código.
 - Defaults para novas companies: `currency_id` = BRL, `country_id` = Brasil.
 - Os 9 perfis RBAC existentes continuam com as mesmas permissões — apenas a base de isolamento muda para o mecanismo nativo.
-- `state_id` do modelo custom apontava para `real.estate.state` — como `res.company` já tem `state_id` para `res.country.state`, o campo custom de estado é eliminado ou renomeado para evitar conflito.
+- `state_id` do modelo custom (`real.estate.state`) é eliminado. Usa-se o nativo `state_id` de `res.company` (`res.country.state`). O modelo `real.estate.state` será removido — `res.country.state` já contém os estados brasileiros.
 - `company_ids` nativo do Odoo usa a tabela `res_company_users_rel` (colunas `cid`, `user_id`) — não confundir com a tabela custom eliminada.
 - A `res.company` default do Odoo (ID=1) não será usada como imobiliária.
 
