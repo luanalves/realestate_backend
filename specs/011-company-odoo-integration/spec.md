@@ -55,17 +55,19 @@ Todos os modelos de negócio referenciam `thedevkitchen.estate.company` via tabe
 
 | Modelo | Campo | Tabela M2M |
 |--------|-------|------------|
-| `real.estate.property` | `company_ids` | `thedevkitchen_company_property_rel` |
-| `real.estate.lease` | `company_ids` | `thedevkitchen_company_lease_rel` |
-| `real.estate.sale` | `company_ids` + `company_id` | `thedevkitchen_company_sale_rel` |
-| `real.estate.lead` | `company_ids` | M2M inline |
-| `real.estate.agent` | `company_ids` + `main_company_id` | M2M inline |
-| `real.estate.commission.rule` | `company_id` | Many2one direto |
-| `real.estate.commission.transaction` | `company_id` | Many2one direto |
-| `thedevkitchen.estate.profile` | `company_id` | Many2one direto |
-| `real.estate.property.assignment` | `company_id` | Many2one direto |
+| `real.estate.property` | `company_ids` (M2M) | `thedevkitchen_company_property_rel` |
+| `real.estate.lease` | `company_ids` (M2M) | `thedevkitchen_company_lease_rel` |
+| `real.estate.sale` | `company_ids` (M2M) + `company_id` (M2O) | `thedevkitchen_company_sale_rel` |
+| `real.estate.lead` | `company_ids` (M2M) | M2M inline |
+| `real.estate.agent` | `company_ids` (M2M) + `main_company_id` (M2O) | M2M inline |
+| `real.estate.commission.rule` | `company_id` (M2O) | Many2one direto |
+| `real.estate.commission.transaction` | `company_id` (M2O) | Many2one direto |
+| `thedevkitchen.estate.profile` | `company_id` (M2O) | Many2one direto |
+| `real.estate.property.assignment` | `company_id` (M2O) | Many2one direto |
 
 Nenhum desses modelos expõe um campo `company_id` apontando para `res.company`, impossibilitando record rules nativas.
+
+**Decisão**: Todos os M2M `company_ids` nos modelos de negócio serão migrados para M2O `company_id` apontando para `res.company`. Cada registro pertence a exatamente uma company. Isso elimina as 5 tabelas M2M de relação (property, lease, sale, agent, lead) e habilita record rules nativas `[('company_id', 'in', company_ids)]` sem customização.
 
 ### Controllers Afetados
 
@@ -86,6 +88,14 @@ O `user_company_validator_observer.py` valida associações usando `estate_compa
 
 ---
 
+## Clarifications
+
+### Session 2025-03-02
+
+- Q: Business models (property, lease, sale, agent, lead) currently use M2M `company_ids` to associate records with multiple companies. Should they keep M2M or migrate to M2O `company_id` (one company per record) to enable native Odoo record rules? → A: **M2O only**. Each business record belongs to exactly one company via `company_id = Many2one('res.company')`. All M2M `company_ids` fields on business models are eliminated. Native Odoo record rules `[('company_id', 'in', company_ids)]` apply directly.
+
+---
+
 ## Estratégia Escolhida: Herança Direta (`_inherit = 'res.company'`)
 
 Após análise, a estratégia escolhida é **herança direta** — estender `res.company` com os campos imobiliários, **eliminando completamente** o modelo standalone `thedevkitchen.estate.company` e sua tabela `thedevkitchen_estate_company`.
@@ -98,6 +108,7 @@ Essa abordagem:
 - **Elimina** a tabela custom `thedevkitchen_user_company_rel` — usa-se `company_ids` nativo
 - **Elimina** o campo `estate_company_ids` em `res.users` — substituído por `company_ids` nativo
 - **Simplifica** todos os FKs: modelos que apontavam para `thedevkitchen.estate.company` passam a apontar diretamente para `res.company`
+- **Migra** todos os M2M `company_ids` nos modelos de negócio para M2O `company_id` — cada registro pertence a uma única company, habilitando record rules nativas
 - **Remove** arquivos, views, seeds e testes que referenciam o modelo obsoleto
 
 ### Por que `_inherit` e não `_inherits`?
@@ -120,8 +131,8 @@ Campos custom adicionados em `res.company` via `_inherit` DEVEM usar prefixo `x_
 | `_name` | `thedevkitchen.estate.company` | `res.company` (original preservado) |
 | Campos genéricos | Duplicados (`name`, `email`, `phone`) | Nativos (sem duplicação) |
 | Campos imobiliários | Na tabela custom | Na tabela `res_company` com prefixo `x_thedevkitchen_` |
-| FK nos modelos de negócio | `Many2one('thedevkitchen.estate.company')` | `Many2one('res.company')` |
-| M2M nos modelos de negócio | Tabelas custom (`thedevkitchen_company_*_rel`) | Tabelas M2M padrão com `res.company` |
+| FK nos modelos de negócio | `Many2one('thedevkitchen.estate.company')` ou `Many2many` | `Many2one('res.company')` (M2O único para todos) |
+| M2M nos modelos de negócio | 5 tabelas custom (`thedevkitchen_company_*_rel`) | **Eliminadas** — migradas para M2O `company_id` |
 | Associação de usuários | `thedevkitchen_user_company_rel` (custom M2M) | `res_company_users_rel` (nativo Odoo) |
 | Campo em `res.users` | `estate_company_ids` (stored M2M) | `company_ids` (nativo) |
 | Record rules | `user.estate_company_ids.ids` | `company_ids` (nativo) |
@@ -318,10 +329,11 @@ Como **equipe de desenvolvimento**, queremos um processo automatizado para recri
 - **Exclusão de company com usuários**: O Odoo impede exclusão de `res.company` se houver usuários com ela como `company_id` principal — desassociar primeiro.
 - **Usuário sem `company_ids`**: Middleware retorna 403.
 - **Módulos de terceiros**: Imobiliárias aparecem como companies normais — intencional e desejável.
-- **Agent sync**: `real.estate.agent` tem `_auto_assign_company` e `_sync_company_from_user` que usavam `estate_company_ids` — adaptar para `company_ids` nativo.
+- **Agent sync**: `real.estate.agent` tem `_auto_assign_company` e `_sync_company_from_user` que usavam `estate_company_ids` — adaptar para `company_ids` nativo e `company_id` M2O.
 - **Observer**: `user_company_validator_observer.py` interceptava writes em `estate_company_ids` — adaptar para `company_ids` nativo.
 - **`state_id` divergente**: Campo `state_id` no modelo custom apontava para `real.estate.state` (custom). `res.company` usa `state_id` apontando para `res.country.state`. O campo custom de estado deve ser renomeado ou eliminado para evitar conflito.
-- **Campos M2M recreados**: As M2M que referenciam `thedevkitchen.estate.company` são eliminadas e recriadas com `res.company`. As tabelas terão novos nomes automáticos gerados pelo ORM.
+- **Assignment validation**: `assignment.py` atualmente valida `agent.company_id not in property.company_ids` (M2M). Com M2O, a validação simplifica para `agent.company_id != property.company_id`.
+- **Record rules simplificadas**: Com M2O `company_id` em todos os modelos, todas as record rules usam o padrão nativo `[('company_id', 'in', company_ids)]` — sem necessidade de customização.
 - **Integration test scripts**: 14+ shell scripts enviam payloads JSON-RPC com `thedevkitchen.estate.company` em queries SQL — todos devem ser atualizados.
 
 ---
@@ -334,11 +346,11 @@ Como **equipe de desenvolvimento**, queremos um processo automatizado para recri
 |---------|-----------|
 | `models/company.py` | **REMOVER** e recriar como `_inherit = 'res.company'` com campos prefixados |
 | `models/res_users.py` | Remover `estate_company_ids`, `main_estate_company_id`. Adaptar `owner_company_ids` |
-| `models/property.py` | `company_ids` M2M → `Many2many('res.company')` |
-| `models/agent.py` | `company_ids` + `main_company_id` → `res.company`. Adaptar sync methods |
-| `models/lead.py` | `company_ids` M2M → `Many2many('res.company')` |
-| `models/lease.py` | `company_ids` M2M → `Many2many('res.company')` |
-| `models/sale.py` | `company_ids` + `company_id` → `res.company` |
+| `models/property.py` | **Remover** M2M `company_ids` → adicionar M2O `company_id = Many2one('res.company')` |
+| `models/agent.py` | **Remover** M2M `company_ids` + `main_company_id` → M2O `company_id = Many2one('res.company')`. Adaptar sync methods |
+| `models/lead.py` | **Remover** M2M `company_ids` → M2O `company_id = Many2one('res.company')` |
+| `models/lease.py` | **Remover** M2M `company_ids` → M2O `company_id = Many2one('res.company')` |
+| `models/sale.py` | **Remover** M2M `company_ids` → M2O `company_id = Many2one('res.company')` (já tem M2O, remover M2M) |
 | `models/commission_rule.py` | `company_id` M2O → `Many2one('res.company')` |
 | `models/commission_transaction.py` | `company_id` M2O → `Many2one('res.company')` |
 | `models/profile.py` | `company_id` M2O → `Many2one('res.company')` |
@@ -482,7 +494,7 @@ Todos os scripts em `integration_tests/` que enviam payloads com `thedevkitchen.
 - **FR-004**: Todos os campos genéricos redundantes (`name`, `email`, `phone`, etc.) DEVEM ser eliminados — `res.company` já os possui nativamente.
 - **FR-005**: A tabela custom `thedevkitchen_user_company_rel` DEVE ser eliminada. A associação de usuários DEVE usar exclusivamente `company_ids` nativo.
 - **FR-006**: Os campos `estate_company_ids` e `main_estate_company_id` em `res.users` DEVEM ser removidos. Código que referenciava esses campos DEVE usar `company_ids` e `company_id` nativos.
-- **FR-007**: Cada modelo de negócio que referenciava `thedevkitchen.estate.company` DEVE ter seus FKs e M2Ms atualizados para apontar diretamente para `res.company`. Modelos afetados: `real.estate.property`, `real.estate.lease`, `real.estate.sale`, `real.estate.lead`, `real.estate.agent`, `real.estate.commission.rule`, `real.estate.commission.transaction`, `thedevkitchen.estate.profile`, `real.estate.property.assignment`.
+- **FR-007**: Cada modelo de negócio que referenciava `thedevkitchen.estate.company` DEVE usar `company_id = Many2one('res.company')` (M2O). Todos os campos M2M `company_ids` em modelos de negócio (property, lease, sale, lead, agent) DEVEM ser eliminados e substituídos por M2O `company_id`. Cada registro pertence a exatamente uma company. Modelos afetados: `real.estate.property`, `real.estate.lease`, `real.estate.sale`, `real.estate.lead`, `real.estate.agent`, `real.estate.commission.rule`, `real.estate.commission.transaction`, `thedevkitchen.estate.profile`, `real.estate.property.assignment`.
 - **FR-008**: Todas as record rules em `record_rules.xml` DEVEM usar o domínio nativo `[('company_id', 'in', company_ids)]`. Nenhuma referência a `user.estate_company_ids` pode permanecer.
 - **FR-009**: O middleware `@require_company` DEVE: (a) validar `X-Company-ID` contra `user.company_ids` nativo, (b) setar contexto via `request.update_env(company=...)`, (c) manter bypass para admin.
 - **FR-010**: Os controllers que retornam companies no payload DEVEM manter o mesmo formato de resposta JSON, obtendo dados via `company_ids` nativo.
@@ -508,8 +520,9 @@ Todos os scripts em `integration_tests/` que enviam payloads com `thedevkitchen.
   - **Adapta**: `owner_company_ids` → computed via `company_ids` nativo
 
 - **Modelos de negócio** (property, agent, lead, lease, sale, commission_rule, commission_transaction, profile, assignment):
-  - **FKs/M2Ms**: Todos migram de `thedevkitchen.estate.company` → `res.company`
-  - **Record rules**: Domínio `[('company_id', 'in', company_ids)]`
+  - **Todos usam M2O**: `company_id = Many2one('res.company')` — um registro, uma company
+  - **M2M eliminados**: `company_ids` M2M removido de property, lease, sale, lead, agent
+  - **Record rules**: Domínio nativo `[('company_id', 'in', company_ids)]`
 
 ### Assumptions
 
