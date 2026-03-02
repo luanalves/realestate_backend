@@ -93,7 +93,8 @@ O `user_company_validator_observer.py` valida associações usando `estate_compa
 ### Session 2025-03-02
 
 - Q: Business models (property, lease, sale, agent, lead) currently use M2M `company_ids` to associate records with multiple companies. Should they keep M2M or migrate to M2O `company_id` (one company per record) to enable native Odoo record rules? → A: **M2O only**. Each business record belongs to exactly one company via `company_id = Many2one('res.company')`. All M2M `company_ids` fields on business models are eliminated. Native Odoo record rules `[('company_id', 'in', company_ids)]` apply directly.
-- Q: Como distinguir imobiliárias de companies genéricas (ex: company padrão ID=1)? → A: **Boolean flag** `x_thedevkitchen_is_real_estate = Boolean(default=False)` em `res.company`. Companies criadas via API imobiliária recebem `True` automaticamente. Endpoints/domínios filtram por `[('x_thedevkitchen_is_real_estate', '=', True)]`.
+- Q: Como distinguir imobiliárias de companies genéricas (ex: company padrão ID=1)? → A: **Boolean flag** `is_real_estate = Boolean(default=False)` em `res.company`. Companies criadas via API imobiliária recebem `True` automaticamente. Endpoints/domínios filtram por `[('is_real_estate', '=', True)]`.
+- Q: Campos em `res.company` devem usar prefixo `x_thedevkitchen_`? → A: **Sem prefixo `x_`**. Campos diretos: `cnpj`, `creci`, `legal_name`, `foundation_date`, `is_real_estate`. Padrão idiomático para módulos Odoo custom instalados via código. ADR-004 esclarece que prefixo `thedevkitchen` aplica-se apenas a **nomes de tabelas** e **nomes de módulos**, não a campos em modelos herdados do core.
 
 ---
 
@@ -104,7 +105,7 @@ Após análise, a estratégia escolhida é **herança direta** — estender `res
 Essa abordagem:
 
 - **Elimina** o modelo `thedevkitchen.estate.company` — não existe mais como `_name` separado
-- **Adiciona** campos imobiliários (`x_thedevkitchen_is_real_estate`, `x_thedevkitchen_cnpj`, `x_thedevkitchen_creci`, `x_thedevkitchen_legal_name`, `x_thedevkitchen_foundation_date`) diretamente em `res.company`
+- **Adiciona** campos imobiliários (`is_real_estate`, `cnpj`, `creci`, `legal_name`, `foundation_date`) diretamente em `res.company`
 - **Elimina** a tabela `thedevkitchen_estate_company` e todas as 6 tabelas M2M associadas
 - **Elimina** a tabela custom `thedevkitchen_user_company_rel` — usa-se `company_ids` nativo
 - **Elimina** o campo `estate_company_ids` em `res.users` — substituído por `company_ids` nativo
@@ -119,9 +120,9 @@ Essa abordagem:
 - `_inherit` adiciona os campos diretamente na tabela `res_company`, que é o **padrão do ecossistema Odoo** para módulos que estendem companies com campos de domínio (ex: `l10n_br` adiciona CNPJ em `res_company`)
 - Menos JOINs, menos complexidade, menos manutenção — e compatibilidade total com o mecanismo multi-company nativo
 
-### Prefixo de Campos Custom
+### Nomenclatura de Campos em Modelos Herdados
 
-Campos custom adicionados em `res.company` via `_inherit` DEVEM usar prefixo `x_thedevkitchen_` para evitar colisões com campos de módulos de terceiros ou futuras versões do Odoo. Isso requer atualização da ADR-004 com uma cláusula de exceção para modelos herdados do core.
+Campos custom adicionados em `res.company` via `_inherit` usam nomes diretos e legíveis (`cnpj`, `creci`, `legal_name`, `foundation_date`, `is_real_estate`) — sem prefixo `x_` ou `x_thedevkitchen_`. Isso segue o padrão idiomático de módulos Odoo instalados via código (ex: `l10n_br` usa `cnpj_cpf` diretamente em `res.partner`). A ADR-004 será atualizada para esclarecer que o prefixo `thedevkitchen` aplica-se a **tabelas** e **nomes de módulos**, não a campos em modelos herdados do core.
 
 ### Comparativo Antes/Depois
 
@@ -131,7 +132,7 @@ Campos custom adicionados em `res.company` via `_inherit` DEVEM usar prefixo `x_
 | Tabela | `thedevkitchen_estate_company` | `res_company` (colunas adicionadas) |
 | `_name` | `thedevkitchen.estate.company` | `res.company` (original preservado) |
 | Campos genéricos | Duplicados (`name`, `email`, `phone`) | Nativos (sem duplicação) |
-| Campos imobiliários | Na tabela custom | Na tabela `res_company` com prefixo `x_thedevkitchen_` |
+| Campos imobiliários | Na tabela custom | Na tabela `res_company` — campos diretos (`cnpj`, `creci`, etc.) |
 | FK nos modelos de negócio | `Many2one('thedevkitchen.estate.company')` ou `Many2many` | `Many2one('res.company')` (M2O único para todos) |
 | M2M nos modelos de negócio | 5 tabelas custom (`thedevkitchen_company_*_rel`) | **Eliminadas** — migradas para M2O `company_id` |
 | Associação de usuários | `thedevkitchen_user_company_rel` (custom M2M) | `res_company_users_rel` (nativo Odoo) |
@@ -187,16 +188,16 @@ Todas as 7 linhas referenciando `model_thedevkitchen_estate_company` devem ser r
 
 Como **Owner** de uma imobiliária, quero que minha imobiliária **seja** uma `res.company` nativa do Odoo com campos imobiliários adicionais, para que a infraestrutura de multi-tenancy, isolamento de dados e gestão de usuários funcione com o mecanismo padrão do framework.
 
-O modelo `thedevkitchen.estate.company` deixa de existir. Em seu lugar, `res.company` é estendido via `_inherit` com campos imobiliários prefixados (`x_thedevkitchen_cnpj`, `x_thedevkitchen_creci`, `x_thedevkitchen_legal_name`, `x_thedevkitchen_foundation_date`). Na prática, toda `res.company` pode ser uma imobiliária se os campos imobiliários forem preenchidos.
+O modelo `thedevkitchen.estate.company` deixa de existir. Em seu lugar, `res.company` é estendido via `_inherit` com campos imobiliários prefixados (`cnpj`, `creci`, `legal_name`, `foundation_date`). Na prática, toda `res.company` pode ser uma imobiliária se os campos imobiliários forem preenchidos.
 
 **Why this priority**: Fundação da qual tudo depende. Sem que a imobiliária seja uma `res.company`, nada funciona: nem associação nativa de usuários, nem record rules nativas, nem contexto de empresa ativa.
 
-**Independent Test**: Criar uma company via `env['res.company'].create(...)` com os campos imobiliários, verificar que os campos estão na tabela `res_company`, e que `company.x_thedevkitchen_cnpj` retorna o valor correto.
+**Independent Test**: Criar uma company via `env['res.company'].create(...)` com os campos imobiliários, verificar que os campos estão na tabela `res_company`, e que `company.cnpj` retorna o valor correto.
 
 **Acceptance Scenarios**:
 
 1. **Given** o módulo instalado, **When** um Owner cria uma nova company com nome "Imobiliária Teste", CNPJ "12.345.678/0001-00" e CRECI "CRECI-SP 99999", **Then** um registro em `res_company` é criado com todas essas informações na mesma linha (sem tabela secundária).
-2. **Given** uma company existente com CNPJ preenchido, **When** o sistema consulta `company.x_thedevkitchen_cnpj`, **Then** o valor é lido diretamente da tabela `res_company`.
+2. **Given** uma company existente com CNPJ preenchido, **When** o sistema consulta `company.cnpj`, **Then** o valor é lido diretamente da tabela `res_company`.
 3. **Given** uma company sendo criada, **When** nenhuma moeda ou país é especificado, **Then** defaults são aplicados: `currency_id` = BRL, `country_id` = Brasil.
 4. **Given** duas companies com CNPJs diferentes, **When** uma tenta usar um CNPJ já existente, **Then** constraint de unicidade impede a operação.
 5. **Given** o código anterior usava `env['thedevkitchen.estate.company']`, **When** o código atualizado usa `env['res.company']`, **Then** os mesmos dados e funcionalidades estão disponíveis (sem modelo intermediário).
@@ -297,7 +298,7 @@ Como **equipe de desenvolvimento**, queremos que a documentação arquitetural r
 
 **Acceptance Scenarios**:
 
-1. **Given** ADR-004 (Nomenclatura de Módulos e Tabelas), **When** revisado, **Then** contém cláusula de exceção: "Ao estender modelos core do Odoo via `_inherit`, o `_name` permanece o original. Campos custom DEVEM usar prefixo `x_thedevkitchen_`."
+1. **Given** ADR-004 (Nomenclatura de Módulos e Tabelas), **When** revisado, **Then** esclarece que prefixo `thedevkitchen` aplica-se a **nomes de tabelas** e **nomes de módulos**. Campos em modelos herdados do core usam nomes diretos sem prefixo.
 2. **Given** ADR-008 (Multi-Tenancy API), **When** revisado, **Then** referências a `estate_company_ids` substituídas por `company_ids` nativo.
 3. **Given** ADR-009 (Auth/JWT), **When** revisado, **Then** referência a `estate_company_ids` na seção "Positivas" atualizada.
 4. **Given** ADR-019 (RBAC Multi-Tenancy), **When** revisado, **Then** todas as record rules usam `company_ids` nativo, jornada de onboarding atualizada, `Many2one('thedevkitchen.estate.company')` substituído.
@@ -318,7 +319,7 @@ Como **equipe de desenvolvimento**, queremos um processo automatizado para recri
 **Acceptance Scenarios**:
 
 1. **Given** banco com estrutura antiga, **When** `./reset_db.sh` + module update, **Then** banco recriado sem tabela `thedevkitchen_estate_company`.
-2. **Given** seed data atualizado, **When** sistema inicializado, **Then** companies seed têm campos `x_thedevkitchen_cnpj` e `x_thedevkitchen_creci` preenchidos.
+2. **Given** seed data atualizado, **When** sistema inicializado, **Then** companies seed têm campos `cnpj` e `creci` preenchidos.
 3. **Given** módulo atualizado, **When** ORM cria as tabelas, **Then** 7 tabelas obsoletas não são mais criadas.
 4. **Given** seeds de usuários, **When** sistema inicializado, **Then** usuários têm `company_ids` nativo populado (sem `estate_company_ids`).
 
@@ -326,7 +327,7 @@ Como **equipe de desenvolvimento**, queremos um processo automatizado para recri
 
 ### Edge Cases
 
-- **`res.company` padrão (ID=1)**: A company padrão terá `x_thedevkitchen_is_real_estate = False`. Endpoints e domínios filtram por `[('x_thedevkitchen_is_real_estate', '=', True)]` para excluí-la automaticamente. Não aparece nas listagens de imobiliárias.
+- **`res.company` padrão (ID=1)**: A company padrão terá `is_real_estate = False`. Endpoints e domínios filtram por `[('is_real_estate', '=', True)]` para excluí-la automaticamente. Não aparece nas listagens de imobiliárias.
 - **Exclusão de company com usuários**: O Odoo impede exclusão de `res.company` se houver usuários com ela como `company_id` principal — desassociar primeiro.
 - **Usuário sem `company_ids`**: Middleware retorna 403.
 - **Módulos de terceiros**: Imobiliárias aparecem como companies normais — intencional e desejável.
@@ -423,7 +424,7 @@ Todos os scripts em `integration_tests/` que enviam payloads com `thedevkitchen.
 
 | Arquivo | Alteração |
 |---------|-----------|
-| ADR-004 | Adicionar exceção para `_inherit` + prefixo `x_thedevkitchen_` |
+| ADR-004 | Esclarecer: prefixo `thedevkitchen` para tabelas e módulos apenas (não campos) |
 | ADR-008 | `estate_company_ids` → `company_ids` |
 | ADR-009 | Atualizar referência na seção "Positivas" |
 | ADR-019 | Reescrever record rules, onboarding journey, FK refs |
@@ -440,8 +441,8 @@ Todos os scripts em `integration_tests/` que enviam payloads com `thedevkitchen.
 
 **Seção afetada**: Regra #2 (`_name` must be `thedevkitchen.*`) e Regra #3 (tabela)
 
-**Alteração**: Adicionar cláusula de exceção:
-> "Ao estender modelos core do Odoo via `_inherit` (sem novo `_name`), o `_name` permanece o original do core (ex: `res.company`, `res.users`). Campos custom adicionados nesses modelos DEVEM usar prefixo `x_thedevkitchen_` para evitar colisões com módulos de terceiros."
+**Alteração**: Esclarecer escopo do prefixo:
+> "O prefixo `thedevkitchen` aplica-se a **nomes de tabelas** (ex: `thedevkitchen_estate_company`) e **nomes de módulos** (ex: `thedevkitchen_apigateway`). Ao estender modelos core do Odoo via `_inherit` (sem novo `_name`), o `_name` permanece o original do core (ex: `res.company`, `res.users`). Campos custom adicionados nesses modelos usam nomes diretos e descritivos (ex: `cnpj`, `creci`, `is_real_estate`) — sem prefixo."
 
 ### ADR-019 (RBAC Multi-Tenancy) — Impacto ALTO
 
@@ -489,7 +490,7 @@ Todos os scripts em `integration_tests/` que enviam payloads com `thedevkitchen.
 
 ### Functional Requirements
 
-- **FR-001**: `res.company` DEVE ser estendido via `_inherit` com campos imobiliários prefixados (`x_thedevkitchen_is_real_estate`, `x_thedevkitchen_cnpj`, `x_thedevkitchen_creci`, `x_thedevkitchen_legal_name`, `x_thedevkitchen_foundation_date`), adicionados diretamente na tabela `res_company`. O campo `x_thedevkitchen_is_real_estate` (Boolean, default=False) DEVE ser o discriminador para identificar companies que são imobiliárias.
+- **FR-001**: `res.company` DEVE ser estendido via `_inherit` com campos imobiliários prefixados (`is_real_estate`, `cnpj`, `creci`, `legal_name`, `foundation_date`), adicionados diretamente na tabela `res_company`. O campo `is_real_estate` (Boolean, default=False) DEVE ser o discriminador para identificar companies que são imobiliárias.
 - **FR-002**: O modelo standalone `thedevkitchen.estate.company` DEVE ser completamente eliminado — nenhum `_name = 'thedevkitchen.estate.company'` pode existir no código.
 - **FR-003**: A tabela `thedevkitchen_estate_company` DEVE ser eliminada. As 6 tabelas M2M associadas DEVEM ser eliminadas.
 - **FR-004**: Todos os campos genéricos redundantes (`name`, `email`, `phone`, etc.) DEVEM ser eliminados — `res.company` já os possui nativamente.
@@ -501,7 +502,7 @@ Todos os scripts em `integration_tests/` que enviam payloads com `thedevkitchen.
 - **FR-010**: Os controllers que retornam companies no payload DEVEM manter o mesmo formato de resposta JSON, obtendo dados via `company_ids` nativo.
 - **FR-011**: O controller `invite_controller.py` DEVE associar novos usuários via `company_ids` nativo.
 - **FR-012**: O observer `user_company_validator_observer.py` DEVE validar writes em `company_ids` nativo.
-- **FR-013**: Constraints de unicidade DEVEM ser mantidas: `UNIQUE(x_thedevkitchen_cnpj)` na tabela `res_company`.
+- **FR-013**: Constraints de unicidade DEVEM ser mantidas: `UNIQUE(cnpj)` na tabela `res_company`.
 - **FR-014**: Os endpoints existentes DEVEM manter os mesmos contratos de entrada/saída — zero breaking changes para consumidores da API.
 - **FR-015**: O reset/migração DEVE ser automatizado via `reset_db.sh` + module update.
 - **FR-016**: 6 ADRs DEVEM ser atualizadas para refletir a nova arquitetura (ADR-004, 008, 009, 019, 020, 024).
@@ -512,9 +513,9 @@ Todos os scripts em `integration_tests/` que enviam payloads com `thedevkitchen.
 
 - **Imobiliária** (agora é `res.company` estendido):
   - **Campos nativos usados**: `name`, `email`, `phone`, `mobile`, `website`, `street`, `street2`, `city`, `state_id`, `zip`, `country_id`, `logo`, `currency_id`, `partner_id`
-  - **Campos adicionados**: `x_thedevkitchen_is_real_estate` (Boolean, default=False — discriminador), `x_thedevkitchen_cnpj` (Char, unique), `x_thedevkitchen_creci` (Char), `x_thedevkitchen_legal_name` (Char), `x_thedevkitchen_foundation_date` (Date)
-  - **Constraints**: `UNIQUE(x_thedevkitchen_cnpj)` — SQL constraint na tabela `res_company`
-  - **Filtro de domínio**: `[('x_thedevkitchen_is_real_estate', '=', True)]` para listar apenas imobiliárias
+  - **Campos adicionados**: `is_real_estate` (Boolean, default=False — discriminador), `cnpj` (Char, unique), `creci` (Char), `legal_name` (Char), `foundation_date` (Date)
+  - **Constraints**: `UNIQUE(cnpj)` — SQL constraint na tabela `res_company`
+  - **Filtro de domínio**: `[('is_real_estate', '=', True)]` para listar apenas imobiliárias
 
 - **Usuário** (`res.users`):
   - **Usa nativamente**: `company_ids` (M2M para `res.company`), `company_id` (empresa ativa)
@@ -529,7 +530,7 @@ Todos os scripts em `integration_tests/` que enviam payloads com `thedevkitchen.
 ### Assumptions
 
 - Ambiente de desenvolvimento — destruição e recriação total de dados é aceitável. `./reset_db.sh` é o caminho preferido.
-- Campos custom em `res.company` usam prefixo `x_thedevkitchen_` conforme padrão Odoo para campos de terceiros.
+- Campos custom em `res.company` usam nomes diretos (`cnpj`, `creci`, `legal_name`, `foundation_date`, `is_real_estate`) — sem prefixo `x_`. Padrão idiomático para módulos Odoo custom instalados via código.
 - Defaults para novas companies: `currency_id` = BRL, `country_id` = Brasil.
 - Os 9 perfis RBAC existentes continuam com as mesmas permissões — apenas a base de isolamento muda para o mecanismo nativo.
 - `state_id` do modelo custom apontava para `real.estate.state` — como `res.company` já tem `state_id` para `res.country.state`, o campo custom de estado é eliminado ou renomeado para evitar conflito.
@@ -542,7 +543,7 @@ Todos os scripts em `integration_tests/` que enviam payloads com `thedevkitchen.
 
 ### Measurable Outcomes
 
-- **SC-001**: `res.company` estendido contém colunas `x_thedevkitchen_is_real_estate`, `x_thedevkitchen_cnpj`, `x_thedevkitchen_creci`, `x_thedevkitchen_legal_name`, `x_thedevkitchen_foundation_date` na tabela `res_company`. A company padrão (ID=1) tem `x_thedevkitchen_is_real_estate = False`.
+- **SC-001**: `res.company` estendido contém colunas `is_real_estate`, `cnpj`, `creci`, `legal_name`, `foundation_date` na tabela `res_company`. A company padrão (ID=1) tem `is_real_estate = False`.
 - **SC-002**: A tabela `thedevkitchen_estate_company` NÃO EXISTE no banco de dados.
 - **SC-003**: As 6 tabelas M2M custom NÃO EXISTEM no banco de dados.
 - **SC-004**: A tabela `thedevkitchen_user_company_rel` NÃO EXISTE no banco.
