@@ -93,6 +93,7 @@ O `user_company_validator_observer.py` valida associações usando `estate_compa
 ### Session 2025-03-02
 
 - Q: Business models (property, lease, sale, agent, lead) currently use M2M `company_ids` to associate records with multiple companies. Should they keep M2M or migrate to M2O `company_id` (one company per record) to enable native Odoo record rules? → A: **M2O only**. Each business record belongs to exactly one company via `company_id = Many2one('res.company')`. All M2M `company_ids` fields on business models are eliminated. Native Odoo record rules `[('company_id', 'in', company_ids)]` apply directly.
+- Q: Como distinguir imobiliárias de companies genéricas (ex: company padrão ID=1)? → A: **Boolean flag** `x_thedevkitchen_is_real_estate = Boolean(default=False)` em `res.company`. Companies criadas via API imobiliária recebem `True` automaticamente. Endpoints/domínios filtram por `[('x_thedevkitchen_is_real_estate', '=', True)]`.
 
 ---
 
@@ -103,7 +104,7 @@ Após análise, a estratégia escolhida é **herança direta** — estender `res
 Essa abordagem:
 
 - **Elimina** o modelo `thedevkitchen.estate.company` — não existe mais como `_name` separado
-- **Adiciona** campos imobiliários (`x_thedevkitchen_cnpj`, `x_thedevkitchen_creci`, `x_thedevkitchen_legal_name`, `x_thedevkitchen_foundation_date`) diretamente em `res.company`
+- **Adiciona** campos imobiliários (`x_thedevkitchen_is_real_estate`, `x_thedevkitchen_cnpj`, `x_thedevkitchen_creci`, `x_thedevkitchen_legal_name`, `x_thedevkitchen_foundation_date`) diretamente em `res.company`
 - **Elimina** a tabela `thedevkitchen_estate_company` e todas as 6 tabelas M2M associadas
 - **Elimina** a tabela custom `thedevkitchen_user_company_rel` — usa-se `company_ids` nativo
 - **Elimina** o campo `estate_company_ids` em `res.users` — substituído por `company_ids` nativo
@@ -325,7 +326,7 @@ Como **equipe de desenvolvimento**, queremos um processo automatizado para recri
 
 ### Edge Cases
 
-- **`res.company` padrão (ID=1)**: A company padrão do Odoo não deve ter campos imobiliários preenchidos. Uma validação (ou filtro) deve impedir que ela apareça como imobiliária nos endpoints.
+- **`res.company` padrão (ID=1)**: A company padrão terá `x_thedevkitchen_is_real_estate = False`. Endpoints e domínios filtram por `[('x_thedevkitchen_is_real_estate', '=', True)]` para excluí-la automaticamente. Não aparece nas listagens de imobiliárias.
 - **Exclusão de company com usuários**: O Odoo impede exclusão de `res.company` se houver usuários com ela como `company_id` principal — desassociar primeiro.
 - **Usuário sem `company_ids`**: Middleware retorna 403.
 - **Módulos de terceiros**: Imobiliárias aparecem como companies normais — intencional e desejável.
@@ -488,7 +489,7 @@ Todos os scripts em `integration_tests/` que enviam payloads com `thedevkitchen.
 
 ### Functional Requirements
 
-- **FR-001**: `res.company` DEVE ser estendido via `_inherit` com campos imobiliários prefixados (`x_thedevkitchen_cnpj`, `x_thedevkitchen_creci`, `x_thedevkitchen_legal_name`, `x_thedevkitchen_foundation_date`), adicionados diretamente na tabela `res_company`.
+- **FR-001**: `res.company` DEVE ser estendido via `_inherit` com campos imobiliários prefixados (`x_thedevkitchen_is_real_estate`, `x_thedevkitchen_cnpj`, `x_thedevkitchen_creci`, `x_thedevkitchen_legal_name`, `x_thedevkitchen_foundation_date`), adicionados diretamente na tabela `res_company`. O campo `x_thedevkitchen_is_real_estate` (Boolean, default=False) DEVE ser o discriminador para identificar companies que são imobiliárias.
 - **FR-002**: O modelo standalone `thedevkitchen.estate.company` DEVE ser completamente eliminado — nenhum `_name = 'thedevkitchen.estate.company'` pode existir no código.
 - **FR-003**: A tabela `thedevkitchen_estate_company` DEVE ser eliminada. As 6 tabelas M2M associadas DEVEM ser eliminadas.
 - **FR-004**: Todos os campos genéricos redundantes (`name`, `email`, `phone`, etc.) DEVEM ser eliminados — `res.company` já os possui nativamente.
@@ -511,8 +512,9 @@ Todos os scripts em `integration_tests/` que enviam payloads com `thedevkitchen.
 
 - **Imobiliária** (agora é `res.company` estendido):
   - **Campos nativos usados**: `name`, `email`, `phone`, `mobile`, `website`, `street`, `street2`, `city`, `state_id`, `zip`, `country_id`, `logo`, `currency_id`, `partner_id`
-  - **Campos adicionados**: `x_thedevkitchen_cnpj` (Char, unique), `x_thedevkitchen_creci` (Char), `x_thedevkitchen_legal_name` (Char), `x_thedevkitchen_foundation_date` (Date)
+  - **Campos adicionados**: `x_thedevkitchen_is_real_estate` (Boolean, default=False — discriminador), `x_thedevkitchen_cnpj` (Char, unique), `x_thedevkitchen_creci` (Char), `x_thedevkitchen_legal_name` (Char), `x_thedevkitchen_foundation_date` (Date)
   - **Constraints**: `UNIQUE(x_thedevkitchen_cnpj)` — SQL constraint na tabela `res_company`
+  - **Filtro de domínio**: `[('x_thedevkitchen_is_real_estate', '=', True)]` para listar apenas imobiliárias
 
 - **Usuário** (`res.users`):
   - **Usa nativamente**: `company_ids` (M2M para `res.company`), `company_id` (empresa ativa)
@@ -540,7 +542,7 @@ Todos os scripts em `integration_tests/` que enviam payloads com `thedevkitchen.
 
 ### Measurable Outcomes
 
-- **SC-001**: `res.company` estendido contém colunas `x_thedevkitchen_cnpj`, `x_thedevkitchen_creci`, `x_thedevkitchen_legal_name`, `x_thedevkitchen_foundation_date` na tabela `res_company`.
+- **SC-001**: `res.company` estendido contém colunas `x_thedevkitchen_is_real_estate`, `x_thedevkitchen_cnpj`, `x_thedevkitchen_creci`, `x_thedevkitchen_legal_name`, `x_thedevkitchen_foundation_date` na tabela `res_company`. A company padrão (ID=1) tem `x_thedevkitchen_is_real_estate = False`.
 - **SC-002**: A tabela `thedevkitchen_estate_company` NÃO EXISTE no banco de dados.
 - **SC-003**: As 6 tabelas M2M custom NÃO EXISTEM no banco de dados.
 - **SC-004**: A tabela `thedevkitchen_user_company_rel` NÃO EXISTE no banco.
