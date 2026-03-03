@@ -11,6 +11,10 @@
 #     -H "Content-Type: application/json"
 
 get_full_auth() {
+    # Optional parameters: get_full_auth [login_email] [login_password]
+    local override_user="${1:-}"
+    local override_pass="${2:-}"
+
     # Load .env for database name
     SCRIPT_DIR_LOCAL="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     ENV_FILE="${SCRIPT_DIR_LOCAL}/../../18.0/.env"
@@ -42,9 +46,10 @@ get_full_auth() {
     
     # Step 2: Get API session via /api/v1/users/login
     # This creates a thedevkitchen.api.session record (not just web session)
-    # Uses manager credentials (has estate_company_ids for @require_company)
-    ADMIN_LOGIN="${TEST_USER_MANAGER:-admin}"
-    ADMIN_PASSWORD="${TEST_PASSWORD_MANAGER:-admin}"
+    # Uses manager credentials (has company_ids for @require_company)
+    # Override parameters take priority over .env values
+    ADMIN_LOGIN="${override_user:-${TEST_USER_MANAGER:-admin}}"
+    ADMIN_PASSWORD="${override_pass:-${TEST_PASSWORD_MANAGER:-admin}}"
     
     SESSION_RESPONSE=$(curl -s -X POST "${BASE_URL}/api/v1/users/login" \
         -H "Content-Type: application/json" \

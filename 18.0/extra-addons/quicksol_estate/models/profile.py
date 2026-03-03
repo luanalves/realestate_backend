@@ -23,7 +23,7 @@ class Profile(models.Model):
         help='Type classification (owner, agent, portal, etc.)'
     )
     company_id = fields.Many2one(
-        'thedevkitchen.estate.company',
+        'res.company',
         string='Company',
         required=True,
         ondelete='restrict',

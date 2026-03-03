@@ -42,14 +42,14 @@ class BaseAgentTest(unittest.TestCase):
             'id': 1,
             'name': 'John Agent User',
             'email': 'john@agent.com',
-            'estate_company_ids': [1, 2]
+            'company_ids': [1, 2]
         }
         
         self.user_without_companies = {
             'id': 2,
             'name': 'Jane Agent User',
             'email': 'jane@agent.com'
-            # No estate_company_ids
+            # No company_ids
         }
         
         # Email test cases
@@ -96,7 +96,7 @@ class BaseAgentTest(unittest.TestCase):
         """Mock user-agent company synchronization logic"""
         user = self.create_user_mock(user_data)
         
-        if hasattr(user, 'estate_company_ids') and user.estate_company_ids:
-            agent.company_ids = user.estate_company_ids
+        if hasattr(user, 'company_ids') and user.company_ids:
+            agent.company_ids = user.company_ids
         
         return agent

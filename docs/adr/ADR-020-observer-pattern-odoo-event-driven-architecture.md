@@ -277,11 +277,11 @@ class UserCompanyValidatorObserver(models.AbstractModel):
             return  # Validação só para owners
         
         vals = data.get('vals', {})
-        if 'estate_company_ids' not in vals:
+        if 'company_ids' not in vals:
             return
         
-        user_companies = set(self.env.user.estate_company_ids.ids)
-        new_user_companies = set(vals['estate_company_ids'][0][2])  # Command (6, 0, [ids])
+        user_companies = set(self.env.user.company_ids.ids)
+        new_user_companies = set(vals['company_ids'][0][2])  # Command (6, 0, [ids])
         
         if not new_user_companies.issubset(user_companies):
             raise AccessError(

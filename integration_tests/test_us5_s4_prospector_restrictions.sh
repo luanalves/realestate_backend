@@ -92,7 +92,7 @@ COMPANY_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
         \"params\": {
-            \"model\": \"thedevkitchen.estate.company\",
+            \"model\": \"res.company\",
             \"method\": \"create\",
             \"args\": [{
                 \"name\": \"$COMPANY_NAME\",
@@ -123,7 +123,8 @@ PROSPECTOR_USER_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"login\": \"$PROSPECTOR_LOGIN\",
                 \"password\": \"prospector123\",
                 \"groups_id\": [[6, 0, [$PROSPECTOR_GROUP_ID]]],
-                \"estate_company_ids\": [[6, 0, [$COMPANY_ID]]]
+                \"company_id\": $COMPANY_ID,
+                \"company_ids\": [[6, 0, [$COMPANY_ID]]]
             }],
             \"kwargs\": {}
         },
@@ -161,7 +162,7 @@ PROSPECTOR_AGENT_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"name\": \"Prospector US5S4\",
                 \"user_id\": $PROSPECTOR_UID,
                 \"cpf\": \"$CPF_PROSPECTOR\",
-                \"company_ids\": [[6, 0, [$COMPANY_ID]]]
+                \"company_id\": $COMPANY_ID
             }],
             \"kwargs\": {}
         },
@@ -186,7 +187,8 @@ AGENT_USER_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"login\": \"agent.us5s4.${TIMESTAMP}@company.com\",
                 \"password\": \"agent123\",
                 \"groups_id\": [[6, 0, [23]]],
-                \"estate_company_ids\": [[6, 0, [$COMPANY_ID]]]
+                \"company_id\": $COMPANY_ID,
+                \"company_ids\": [[6, 0, [$COMPANY_ID]]]
             }],
             \"kwargs\": {}
         },
@@ -222,7 +224,7 @@ AGENT_AGENT_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"name\": \"Agent US5S4\",
                 \"user_id\": $AGENT_UID,
                 \"cpf\": \"$CPF_AGENT\",
-                \"company_ids\": [[6, 0, [$COMPANY_ID]]]
+                \"company_id\": $COMPANY_ID
             }],
             \"kwargs\": {}
         },
@@ -245,6 +247,7 @@ LEAD_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
             \"args\": [{
                 \"name\": \"Test Lead US5S4\",
                 \"agent_id\": $AGENT_AGENT_ID,
+                \"company_id\": $COMPANY_ID,
                 \"company_ids\": [[6, 0, [$COMPANY_ID]]]
             }],
             \"kwargs\": {}
@@ -305,6 +308,7 @@ LEAD_CREATE_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
             \"args\": [{
                 \"name\": \"Prospector Lead Attempt\",
                 \"agent_id\": $PROSPECTOR_AGENT_ID,
+                \"company_id\": $COMPANY_ID,
                 \"company_ids\": [[6, 0, [$COMPANY_ID]]]
             }],
             \"kwargs\": {}
@@ -401,7 +405,7 @@ AGENT_CREATE_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
             \"args\": [{
                 \"name\": \"Prospector Agent Attempt\",
                 \"cpf\": \"111.222.333-44\",
-                \"company_ids\": [[6, 0, [$COMPANY_ID]]]
+                \"company_id\": $COMPANY_ID
             }],
             \"kwargs\": {}
         },
@@ -463,6 +467,7 @@ SALE_CREATE_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
             \"model\": \"real.estate.sale\",
             \"method\": \"create\",
             \"args\": [{
+                \"company_id\": $COMPANY_ID,
                 \"company_ids\": [[6, 0, [$COMPANY_ID]]]
             }],
             \"kwargs\": {}

@@ -279,8 +279,8 @@ class AgentApiController(http.Controller):
                 return error_response(404, 'Agent not found')
             
             # Verify company access (multi-tenancy)
-            if hasattr(user, 'estate_default_company_id') and user.estate_default_company_id:
-                if agent.company_id != user.estate_default_company_id:
+            if hasattr(user, 'company_id') and user.company_id:
+                if agent.company_id != user.company_id:
                     return error_response(404, 'Agent not found')
             
             # Serialize agent
@@ -352,8 +352,8 @@ class AgentApiController(http.Controller):
                 return error_response(404, 'Agent not found')
             
             # Verify company access
-            if hasattr(user, 'estate_default_company_id') and user.estate_default_company_id:
-                if agent.company_id != user.estate_default_company_id:
+            if hasattr(user, 'company_id') and user.company_id:
+                if agent.company_id != user.company_id:
                     return error_response(403, 'Cannot update agent from different company')
             
             # Prevent company_id changes (security constraint)
@@ -432,8 +432,8 @@ class AgentApiController(http.Controller):
                 return error_response(404, 'Agent not found')
             
             # Verify company access
-            if hasattr(user, 'estate_default_company_id') and user.estate_default_company_id:
-                if agent.company_id != user.estate_default_company_id:
+            if hasattr(user, 'company_id') and user.company_id:
+                if agent.company_id != user.company_id:
                     return error_response(403, 'Cannot deactivate agent from different company')
             
             # Deactivate agent
@@ -474,8 +474,8 @@ class AgentApiController(http.Controller):
                 return error_response(404, 'Agent not found')
             
             # Verify company access
-            if hasattr(user, 'estate_default_company_id') and user.estate_default_company_id:
-                if agent.company_id != user.estate_default_company_id:
+            if hasattr(user, 'company_id') and user.company_id:
+                if agent.company_id != user.company_id:
                     return error_response(403, 'Cannot reactivate agent from different company')
             
             # Reactivate agent
@@ -532,10 +532,10 @@ class AgentApiController(http.Controller):
             
             # Check company access
             user = request.env.user
-            if hasattr(user, 'estate_default_company_id') and user.estate_default_company_id:
-                if agent.company_id != user.estate_default_company_id:
+            if hasattr(user, 'company_id') and user.company_id:
+                if agent.company_id != user.company_id:
                     return error_response(403, 'Cannot assign agent from different company')
-                if user.estate_default_company_id not in property_obj.company_ids:
+                if user.company_id != property_obj.company_id:
                     return error_response(403, 'Cannot assign to property from different company')
             
             # Create assignment
@@ -586,8 +586,8 @@ class AgentApiController(http.Controller):
             
             # Check company access
             user = request.env.user
-            if hasattr(user, 'estate_default_company_id') and user.estate_default_company_id:
-                if agent.company_id != user.estate_default_company_id:
+            if hasattr(user, 'company_id') and user.company_id:
+                if agent.company_id != user.company_id:
                     return error_response(403, 'Cannot access agent from different company')
             
             # Get active_only parameter
@@ -644,8 +644,8 @@ class AgentApiController(http.Controller):
             
             # Check company access
             user = request.env.user
-            if hasattr(user, 'estate_default_company_id') and user.estate_default_company_id:
-                if assignment.company_id != user.estate_default_company_id:
+            if hasattr(user, 'company_id') and user.company_id:
+                if assignment.company_id != user.company_id:
                     return error_response(403, 'Cannot delete assignment from different company')
             
             # Deactivate assignment
@@ -742,7 +742,7 @@ class AgentApiController(http.Controller):
                     return error_response(400, 'Invalid property_id')
             
             # Use sudo() because company access was already validated above
-            # ir.rule fails with thedevkitchen.estate.company vs res.company mismatch
+            # ir.rule fails with legacy ir.rule reference
             Assignment = request.env['real.estate.agent.property.assignment'].sudo()
             
             # Count total
@@ -862,7 +862,7 @@ class AgentApiController(http.Controller):
         try:
             user = request.env.user
             
-            # Use sudo() because ir.rule fails with thedevkitchen.estate.company vs res.company mismatch
+            # Use sudo() because ir.rule fails with legacy ir.rule reference
             # RBAC is enforced via domain filters below
             Assignment = request.env['real.estate.agent.property.assignment'].sudo()
             
@@ -876,7 +876,7 @@ class AgentApiController(http.Controller):
             
             if not is_admin:
                 # Multi-tenancy
-                domain.append(('company_id', 'in', user.estate_company_ids.ids))
+                domain.append(('company_id', 'in', user.company_ids.ids))
                 
                 # Agent: only own assignments
                 if is_agent and not is_manager:
@@ -1000,7 +1000,7 @@ class AgentApiController(http.Controller):
             except (ValueError, UnicodeDecodeError):
                 return error_response(400, 'Invalid JSON in request body')
             
-            # Use sudo() because ir.rule fails with thedevkitchen.estate.company vs res.company mismatch
+            # Use sudo() because ir.rule fails with legacy ir.rule reference
             # RBAC is enforced via domain filters below
             Assignment = request.env['real.estate.agent.property.assignment'].sudo()
             
@@ -1015,7 +1015,7 @@ class AgentApiController(http.Controller):
             
             if not is_admin:
                 # Multi-tenancy
-                domain.append(('company_id', 'in', user.estate_company_ids.ids))
+                domain.append(('company_id', 'in', user.company_ids.ids))
                 
                 # Agent: only own assignments
                 if is_agent and not (is_manager or is_owner):
@@ -1119,8 +1119,8 @@ class AgentApiController(http.Controller):
             
             # Company isolation check
             user = request.env.user
-            if hasattr(user, 'estate_company_ids'):
-                if agent.company_id.id not in user.estate_company_ids.ids:
+            if hasattr(user, 'company_ids'):
+                if agent.company_id.id not in user.company_ids.ids:
                     return error_response(403, 'Cannot create commission rule for agent in different company')
             
             # Validate required fields
@@ -1187,8 +1187,8 @@ class AgentApiController(http.Controller):
             
             # Company isolation check
             user = request.env.user
-            if hasattr(user, 'estate_company_ids'):
-                if agent.company_id.id not in user.estate_company_ids.ids:
+            if hasattr(user, 'company_ids'):
+                if agent.company_id.id not in user.company_ids.ids:
                     return error_response(403, 'Cannot access commission rules for agent in different company')
             
             # Build search domain
@@ -1249,8 +1249,8 @@ class AgentApiController(http.Controller):
             
             # Company isolation check
             user = request.env.user
-            if hasattr(user, 'estate_company_ids'):
-                if rule.company_id.id not in user.estate_company_ids.ids:
+            if hasattr(user, 'company_ids'):
+                if rule.company_id.id not in user.company_ids.ids:
                     return error_response(403, 'Cannot update commission rule from different company')
             
             # Only allow updating valid_until and active
@@ -1305,14 +1305,14 @@ class AgentApiController(http.Controller):
                 return error_response(404, f'Agent {agent_id} not found')
             
             # Validate agent belongs to the specified company
-            agent_company_ids = agent.company_ids.ids if agent.company_ids else [agent.company_id.id]
-            if company_id not in agent_company_ids:
+            agent_company_id = agent.company_id.id if agent.company_id else None
+            if company_id != agent_company_id:
                 return error_response(400, f'Agent {agent_id} does not belong to company {company_id}')
             
             # Company isolation check - user must have access to the company
             user = request.env.user
-            if hasattr(user, 'estate_company_ids'):
-                if company_id not in user.estate_company_ids.ids:
+            if hasattr(user, 'company_ids'):
+                if company_id not in user.company_ids.ids:
                     return error_response(403, 'You do not have access to this company')
             
             # Use CommissionService to create transaction

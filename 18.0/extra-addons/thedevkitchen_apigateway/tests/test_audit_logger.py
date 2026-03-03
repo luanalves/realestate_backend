@@ -37,8 +37,8 @@ class TestAuditLogger(TransactionCase):
             'login': 'testuser@example.com',
             'email': 'testuser@example.com',
             'password': 'testpassword123',
-            'estate_company_ids': [(6, 0, [cls.company.id])],
-            'estate_default_company_id': cls.company.id,
+            'company_ids': [(6, 0, [cls.company.id])],
+            'company_id': cls.company.id,
         })
 
     def setUp(self):

@@ -86,7 +86,7 @@
             <field name="phone">+55 11 98765-4321</field>
             <field name="email">pedro.agent@quicksol.com.br</field>
             <field name="user_id" ref="demo_user_agent"/>
-            <field name="estate_company_ids" eval="[(4, ref('demo_company_sp'))]"/>
+            <field name="company_id" ref="demo_company_sp"/>
         </record>
 
         <!-- Demo User: Prospector -->
@@ -107,7 +107,7 @@
             <field name="phone">+55 11 91234-5678</field>
             <field name="email">juliana.prospector@quicksol.com.br</field>
             <field name="user_id" ref="demo_user_prospector"/>
-            <field name="estate_company_ids" eval="[(4, ref('demo_company_sp'))]"/>
+            <field name="company_id" ref="demo_company_sp"/>
         </record>
 
         <!-- Demo User: Receptionist -->
@@ -205,7 +205,8 @@
             <field name="is_company" eval="True"/>
         </record>
 
-        <!-- Demo Property -->
+        <!-- Demo Property — commented out (Feature 011: stale field names) -->
+        <!--
         <record id="demo_property_1" model="real.estate.property">
             <field name="name">Apartamento 3 quartos - Jardins</field>
             <field name="description">Amplo apartamento de 120m² com 3 quartos, 2 banhões, sala de estar e jantar integradas. Andar alto com vista para o parque.</field>
@@ -222,19 +223,20 @@
             <field name="state">new</field>
             <field name="agent_ids" eval="[(4, ref('demo_agent_pedro'))]"/>
             <field name="prospector_id" ref="demo_agent_juliana"/>
-            <field name="estate_company_ids" eval="[(4, ref('demo_company_sp'))]"/>
+            <field name="company_ids" eval="[(4, ref('demo_company_sp'))]"/>
         </record>
+        -->
 
-        <!-- Create PropertyOwner linking property to partner -->
+        <!-- PropertyOwner, Sale, Commission records commented out (Feature 011: stale models/fields) -->
+        <!--
         <record id="demo_property_owner_1" model="real.estate.property_owner">
             <field name="property_id" ref="demo_property_1"/>
             <field name="partner_id" ref="demo_partner_owner1"/>
             <field name="ownership_percentage">100.0</field>
             <field name="start_date" eval="(DateTime.now() - timedelta(days=365)).strftime('%Y-%m-%d')"/>
-            <field name="estate_company_ids" eval="[(4, ref('demo_company_sp'))]"/>
+            <field name="company_ids" eval="[(4, ref('demo_company_sp'))]"/>
         </record>
 
-        <!-- Demo Sale -->
         <record id="demo_sale_1" model="real.estate.sale">
             <field name="property_id" ref="demo_property_1"/>
             <field name="buyer_partner_id" ref="demo_partner_buyer1"/>
@@ -243,10 +245,9 @@
             <field name="commission_rate">6.0</field>
             <field name="commission_amount">51000.0</field>
             <field name="state">pending</field>
-            <field name="estate_company_ids" eval="[(4, ref('demo_company_sp'))]"/>
+            <field name="company_ids" eval="[(4, ref('demo_company_sp'))]"/>
         </record>
 
-        <!-- Demo Commission for Agent (70%) -->
         <record id="demo_commission_agent" model="real.estate.commission">
             <field name="sale_id" ref="demo_sale_1"/>
             <field name="agent_id" ref="demo_agent_pedro"/>
@@ -254,10 +255,9 @@
             <field name="percentage">70.0</field>
             <field name="state">pending</field>
             <field name="notes">Comissão principal do corretor responsável</field>
-            <field name="estate_company_ids" eval="[(4, ref('demo_company_sp'))]"/>
+            <field name="company_ids" eval="[(4, ref('demo_company_sp'))]"/>
         </record>
 
-        <!-- Demo Commission for Prospector (30%) -->
         <record id="demo_commission_prospector" model="real.estate.commission">
             <field name="sale_id" ref="demo_sale_1"/>
             <field name="agent_id" ref="demo_agent_juliana"/>
@@ -265,10 +265,12 @@
             <field name="percentage">30.0</field>
             <field name="state">pending</field>
             <field name="notes">Comissão do prospector que trouxe o imóvel</field>
-            <field name="estate_company_ids" eval="[(4, ref('demo_company_sp'))]"/>
+            <field name="company_ids" eval="[(4, ref('demo_company_sp'))]"/>
         </record>
+        -->
 
-        <!-- Demo Property for Rio de Janeiro -->
+        <!-- Demo Property 2 — commented out (Feature 011: stale field names) -->
+        <!--
         <record id="demo_property_2" model="real.estate.property">
             <field name="name">Cobertura 4 quartos - Copacabana</field>
             <field name="description">Cobertura duplex de 200m² com vista para o mar. 4 suítes, piscina privativa, churrasqueira.</field>
@@ -284,8 +286,9 @@
             <field name="selling_price">0.0</field>
             <field name="property_type_id" ref="quicksol_estate.property_type_penthouse"/>
             <field name="state">new</field>
-            <field name="estate_company_ids" eval="[(4, ref('demo_company_rj'))]"/>
+            <field name="company_ids" eval="[(4, ref('demo_company_rj'))]"/>
         </record>
+        -->
 
     </data>
 </odoo>

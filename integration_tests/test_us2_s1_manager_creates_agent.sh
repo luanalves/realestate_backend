@@ -102,7 +102,7 @@ COMPANY_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
         \"params\": {
-            \"model\": \"thedevkitchen.estate.company\",
+            \"model\": \"res.company\",
             \"method\": \"create\",
             \"args\": [{
                 \"name\": \"$COMPANY_NAME\",
@@ -143,7 +143,8 @@ MANAGER_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"name\": \"Manager US2S1\",
                 \"login\": \"$MANAGER_LOGIN\",
                 \"password\": \"manager123\",
-                \"estate_company_ids\": [[6, 0, [$COMPANY_ID]]],
+                \"company_id\": $COMPANY_ID,
+                \"company_ids\": [[6, 0, [$COMPANY_ID]]],
                 \"groups_id\": [[6, 0, [17]]]
             }],
             \"kwargs\": {}
@@ -213,7 +214,8 @@ AGENT_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"name\": \"Agent US2S1\",
                 \"login\": \"$AGENT_LOGIN\",
                 \"password\": \"agent123\",
-                \"estate_company_ids\": [[6, 0, [$COMPANY_ID]]],
+                \"company_id\": $COMPANY_ID,
+                \"company_ids\": [[6, 0, [$COMPANY_ID]]],
                 \"groups_id\": [[6, 0, [23]]]
             }],
             \"kwargs\": {}
@@ -261,7 +263,7 @@ AGENT_CHECK=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 [\"id\", \"=\", $AGENT_UID]
             ]],
             \"kwargs\": {
-                \"fields\": [\"name\", \"login\", \"groups_id\", \"estate_company_ids\"]
+                \"fields\": [\"name\", \"login\", \"groups_id\", \"company_ids\"]
             }
         },
         \"id\": 6
@@ -275,7 +277,7 @@ if [ -z "$AGENT_DATA" ] || [ "$AGENT_DATA" == "null" ]; then
 fi
 
 AGENT_GROUPS=$(echo "$AGENT_DATA" | jq -r '.groups_id // []')
-AGENT_COMPANIES=$(echo "$AGENT_DATA" | jq -r '.estate_company_ids // []')
+AGENT_COMPANIES=$(echo "$AGENT_DATA" | jq -r '.company_ids // []')
 
 echo "Agent details:"
 echo "  Name: $(echo "$AGENT_DATA" | jq -r '.name')"

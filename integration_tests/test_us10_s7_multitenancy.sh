@@ -78,7 +78,7 @@ login_user() {
         -d "{\"login\": \"$email\", \"password\": \"$password\"}")
     
     local session_id=$(echo "$response" | jq -r '.session_id // empty')
-    local company_id=$(echo "$response" | jq -r '.user.main_estate_company_id // empty')
+    local company_id=$(echo "$response" | jq -r '.user.company_id // empty')
     
     if [ -z "$session_id" ] || [ -z "$company_id" ] || [ "$company_id" == "null" ]; then
         echo ""
@@ -122,7 +122,7 @@ CREATE_A=$(curl -s -m 30 -X POST "$API_BASE/profiles" \
         \"email\": \"$EMAIL_A\",
         \"phone\": \"11999998888\",
         \"birthdate\": \"1985-06-10\",
-        \"profile_type\": \"manager\"
+        \"profile_type_id\": 3
     }")
 
 PROFILE_A_ID=$(echo "$CREATE_A" | jq -r '.id // empty')
@@ -196,7 +196,7 @@ if [ -n "$COMPANY_B" ]; then
             \"email\": \"$EMAIL_B\",
             \"phone\": \"11988887777\",
             \"birthdate\": \"1987-09-15\",
-            \"profile_type\": \"manager\"
+            \"profile_type_id\": 3
         }")
     
     HTTP_CODE=$(echo "$CREATE_B" | tail -n1)
@@ -256,7 +256,7 @@ if [ -n "$COMPANY_B" ]; then
             \"email\": \"duplicate_a${TIMESTAMP}@test.com\",
             \"phone\": \"11977776666\",
             \"birthdate\": \"1990-01-01\",
-            \"profile_type\": \"manager\"
+            \"profile_type_id\": 3
         }")
     
     HTTP_CODE=$(echo "$DUPLICATE_IN_A" | tail -n1)

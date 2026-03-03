@@ -109,7 +109,7 @@ COMPANY_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
         \"params\": {
-            \"model\": \"thedevkitchen.estate.company\",
+            \"model\": \"res.company\",
             \"method\": \"create\",
             \"args\": [{
                 \"name\": \"$COMPANY_NAME\",
@@ -149,7 +149,8 @@ AGENT_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"name\": \"Agent US3S2\",
                 \"login\": \"$AGENT_LOGIN\",
                 \"password\": \"agent123\",
-                \"estate_company_ids\": [[6, 0, [$COMPANY_ID]]],
+                \"company_id\": $COMPANY_ID,
+                \"company_ids\": [[6, 0, [$COMPANY_ID]]],
                 \"groups_id\": [[6, 0, [23]]]
             }],
             \"kwargs\": {}
@@ -174,10 +175,10 @@ def calc_cpf_digit(cpf, weights):
     remainder = s % 11
     return '0' if remainder < 2 else str(11 - remainder)
 
-base = "55566677"
+base = "555666778"
 d1 = calc_cpf_digit(base, range(10, 1, -1))
 d2 = calc_cpf_digit(base + d1, range(11, 1, -1))
-cpf = f"{base[0:3]}.{base[3:6]}.{base[6:8]}{d1}-{d2}"
+cpf = f"{base[0:3]}.{base[3:6]}.{base[6:9]}-{d1}{d2}"
 print(cpf)
 PYTHON_EOF
 )
@@ -195,7 +196,7 @@ AGENT_AGENT_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"name\": \"Agent US3S2\",
                 \"user_id\": $AGENT_UID,
                 \"cpf\": \"$CPF_AGENT\",
-                \"company_ids\": [[6, 0, [$COMPANY_ID]]]
+                \"company_id\": $COMPANY_ID
             }],
             \"kwargs\": {}
         },
@@ -284,7 +285,7 @@ STATE_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
         \"params\": {
-            \"model\": \"real.estate.state\",
+            \"model\": \"res.country.state\",
             \"method\": \"search_read\",
             \"args\": [[]],
             \"kwargs\": {
@@ -364,7 +365,7 @@ PROPERTY_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"area\": 85.0,
                 \"price\": 350000.0,
                 \"property_status\": \"available\",
-                \"company_ids\": [[6, 0, [$COMPANY_ID]]]
+                \"company_id\": $COMPANY_ID
             }],
             \"kwargs\": {}
         },
@@ -490,7 +491,7 @@ for i in 2 3 4; do
                     \"area\": 80.0,
                     \"price\": 300000.0,
                     \"property_status\": \"available\",
-                    \"company_ids\": [[6, 0, [$COMPANY_ID]]]
+                    \"company_id\": $COMPANY_ID
                 }],
                 \"kwargs\": {}
             },

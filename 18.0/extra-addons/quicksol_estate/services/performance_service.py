@@ -24,8 +24,8 @@ class PerformanceService:
         
         # Company isolation check
         user = self.env.user
-        if hasattr(user, 'estate_company_ids'):
-            if agent.company_id.id not in user.estate_company_ids.ids:
+        if hasattr(user, 'company_ids'):
+            if agent.company_id.id not in user.company_ids.ids:
                 raise UserError('Access denied: Agent belongs to a different company')
         
         # Check cache first
@@ -67,14 +67,14 @@ class PerformanceService:
             raise ValidationError(f'Invalid metric: {metric}. Must be one of: {", ".join(valid_metrics)}')
         
         # Validate company exists
-        company = self.env['thedevkitchen.estate.company'].sudo().browse(company_id)
+        company = self.env['res.company'].sudo().browse(company_id)
         if not company.exists():
             raise UserError(f'Company {company_id} not found')
         
         # Company isolation check
         user = self.env.user
-        if hasattr(user, 'estate_company_ids'):
-            if company_id not in user.estate_company_ids.ids:
+        if hasattr(user, 'company_ids'):
+            if company_id not in user.company_ids.ids:
                 raise UserError('Access denied: Cannot view rankings for different company')
         
         # Get all active agents for this company

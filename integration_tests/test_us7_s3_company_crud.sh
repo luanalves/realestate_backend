@@ -30,7 +30,8 @@ echo "============================================"
 
 # Step 1: Get full authentication (JWT + session)
 echo "Step 1: Getting authentication (OAuth2 + session)..."
-get_full_auth
+# Pass Owner credentials directly (company creation requires Owner role)
+get_full_auth "owner@seed.com.br" "seed123"
 
 if [ $? -ne 0 ]; then
   echo -e "${RED}✗ Failed to authenticate${NC}"

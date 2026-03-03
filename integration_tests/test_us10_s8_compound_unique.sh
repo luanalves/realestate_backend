@@ -12,6 +12,24 @@
 
 set -e
 
+# Profile type code → ID mapping
+profile_type_to_id() {
+    case "$1" in
+        owner) echo 1 ;;
+        director) echo 2 ;;
+        manager) echo 3 ;;
+        agent) echo 4 ;;
+        prospector) echo 5 ;;
+        receptionist) echo 6 ;;
+        financial) echo 7 ;;
+        legal) echo 8 ;;
+        tenant|portal) echo 9 ;;
+        property_owner) echo 10 ;;
+        *) echo 99999 ;;
+    esac
+}
+
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib/get_oauth2_token.sh"
 
@@ -67,6 +85,7 @@ create_profile() {
     local company="$2"
     local document="$3"
     local profile_type="$4"
+    local profile_type_id=$(profile_type_to_id "$profile_type")
     local email="$5"
     
     local response=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/profiles" \
@@ -80,7 +99,7 @@ create_profile() {
             \"email\": \"$email\",
             \"phone\": \"11999998888\",
             \"birthdate\": \"1990-01-01\",
-            \"profile_type\": \"$profile_type\"
+            \"profile_type_id\": $profile_type_id
         }")
     
     echo "$response"
@@ -106,7 +125,17 @@ echo -e "${GREEN}✓ Owner logged in (company_id=$OWNER_COMPANY)${NC}"
 echo ""
 echo "Step 2: Testing same document + company, different profile_type..."
 TIMESTAMP=$(date +%s)
-TEST_CPF="99988877714"  # Valid CPF (999.888.777-14)
+TEST_CPF=$(python3 -c "
+import time
+base = str((int(time.time()) + 800) % 1000000000).zfill(9)
+def d(cpf, w):
+    s = sum(int(c)*w for c,w in zip(cpf,w))
+    r = s%11
+    return '0' if r<2 else str(11-r)
+d1 = d(base, range(10,1,-1))
+d2 = d(base+d1, range(11,1,-1))
+print(base+d1+d2)
+")
 EMAIL_MANAGER="constraint_manager${TIMESTAMP}@test.com"
 EMAIL_AGENT="constraint_agent${TIMESTAMP}@test.com"
 

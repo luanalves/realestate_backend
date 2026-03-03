@@ -85,25 +85,15 @@ class RealEstateAgent(models.Model):
         help='Mobile phone number'
     )
     
-    # Multi-tenancy - CHANGED from Many2many to Many2one for single company
+    # Multi-tenancy - Many2one for single company
     company_id = fields.Many2one(
-        'thedevkitchen.estate.company',
+        'res.company',
         'Real Estate Company',
         required=True,
         default=lambda self: self._get_default_company(),
         ondelete='restrict',
         tracking=True,
         help='Real estate company this agent belongs to'
-    )
-    
-    # Keep old Many2many field for backward compatibility (deprecated)
-    company_ids = fields.Many2many(
-        'thedevkitchen.estate.company',
-        'thedevkitchen_company_agent_rel',
-        'agent_id',
-        'company_id',
-        string='Real Estate Companies (Deprecated)',
-        help='Deprecated: Use company_id instead. Agents belong to a single company.'
     )
     
     # User account link (optional)
@@ -418,10 +408,11 @@ class RealEstateAgent(models.Model):
     
     def _get_default_company(self):
         """Get default company from user"""
-        if hasattr(self.env.user, 'estate_default_company_id'):
-            return self.env.user.estate_default_company_id
-        # Fallback to first company
-        companies = self.env['thedevkitchen.estate.company'].search([], limit=1)
+        # Use native res.users company_id
+        if self.env.user.company_id:
+            return self.env.user.company_id
+        # Fallback to first real estate company
+        companies = self.env['res.company'].search([('is_real_estate', '=', True)], limit=1)
         return companies[0] if companies else False
     
     # ==================== LEGACY METHODS (keep for compatibility) ====================
@@ -436,15 +427,12 @@ class RealEstateAgent(models.Model):
             if not self.email:
                 self.email = self.user_id.email
             
-            # Sync companies from user's estate_company_ids (always sync, not just when empty)
-            if hasattr(self.user_id, 'estate_company_ids'):
-                user_companies = self.user_id.estate_company_ids
-                if user_companies:
-                    # Set company_ids (Many2many) - always replace with user's companies
-                    self.company_ids = [(6, 0, user_companies.ids)]
-                    # Set company_id (Many2one) to first company if not set
-                    if not self.company_id or self.company_id not in user_companies:
-                        self.company_id = user_companies[0]
+            # Sync companies from user's native company_ids
+            user_companies = self.user_id.company_ids
+            if user_companies:
+                # Set company_id (Many2one) to first company if not set
+                if not self.company_id or self.company_id not in user_companies:
+                    self.company_id = user_companies[0]
     
     @api.model
     def create(self, vals):
@@ -468,27 +456,11 @@ class RealEstateAgent(models.Model):
         if vals.get('user_id'):
             user = self.env['res.users'].browse(vals['user_id'])
             
-            # Sync companies from user's estate_company_ids
-            if hasattr(user, 'estate_company_ids') and user.estate_company_ids:
-                user_company_ids = user.estate_company_ids.ids
-                # Set company_ids if not explicitly provided
-                if 'company_ids' not in vals:
-                    vals['company_ids'] = [(6, 0, user_company_ids)]
+            # Sync company from user's native company_ids
+            if user.company_ids:
                 # Set company_id if not explicitly provided (use first company)
                 if 'company_id' not in vals:
-                    vals['company_id'] = user_company_ids[0]
-        
-        # Migrate company_ids to company_id if needed (backward compatibility)
-        if 'company_ids' in vals and not vals.get('company_id'):
-            company_ids = vals['company_ids']
-            if company_ids and isinstance(company_ids, list) and len(company_ids) > 0:
-                # Handle Command format [(6, 0, [ids])]
-                if isinstance(company_ids[0], tuple):
-                    company_list = company_ids[0][2]
-                    if company_list:
-                        vals['company_id'] = company_list[0]
-                else:
-                    vals['company_id'] = company_ids[0]
+                    vals['company_id'] = user.company_ids[0].id
         
         agent = super().create(vals)
         
@@ -496,34 +468,13 @@ class RealEstateAgent(models.Model):
     
     def write(self, vals):
         """Override write to maintain synchronization"""
-        # Migrate company_ids to company_id if needed
-        if 'company_ids' in vals and 'company_id' not in vals:
-            company_ids = vals['company_ids']
-            if company_ids and isinstance(company_ids, list) and len(company_ids) > 0:
-                if isinstance(company_ids[0], tuple):
-                    company_list = company_ids[0][2]
-                    if company_list:
-                        vals['company_id'] = company_list[0]
-        
-        # Sync company_ids from user when user_id changes
-        # BUT only if company_ids is not explicitly provided in vals
-        if 'user_id' in vals and 'company_ids' not in vals:
+        # Sync company from user when user_id changes
+        if 'user_id' in vals and 'company_id' not in vals:
             user = self.env['res.users'].browse(vals['user_id'])
-            if user and hasattr(user, 'estate_company_ids'):
-                user_companies = user.estate_company_ids
-                if user_companies:
-                    vals['company_ids'] = [(6, 0, user_companies.ids)]
+            if user and user.company_ids:
+                vals['company_id'] = user.company_ids[0].id
         
         result = super().write(vals)
-        
-        # Sync company_ids from company_id for backward compatibility
-        # BUT only if company_ids wasn't explicitly set in this write call
-        if 'company_id' in vals and 'company_ids' not in vals:
-            for agent in self:
-                if agent.company_id:
-                    super(RealEstateAgent, agent).write({
-                        'company_ids': [(6, 0, [agent.company_id.id])]
-                    })
         
         return result
     

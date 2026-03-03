@@ -112,7 +112,7 @@ COMPANY_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
         \"params\": {
-            \"model\": \"thedevkitchen.estate.company\",
+            \"model\": \"res.company\",
             \"method\": \"create\",
             \"args\": [{
                 \"name\": \"$COMPANY_NAME\",
@@ -152,7 +152,8 @@ AGENT1_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"name\": \"Agent 1 US3S1\",
                 \"login\": \"$AGENT1_LOGIN\",
                 \"password\": \"agent123\",
-                \"estate_company_ids\": [[6, 0, [$COMPANY_ID]]],
+                \"company_id\": $COMPANY_ID,
+                \"company_ids\": [[6, 0, [$COMPANY_ID]]],
                 \"groups_id\": [[6, 0, [23]]]
             }],
             \"kwargs\": {}
@@ -183,7 +184,8 @@ AGENT2_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"name\": \"Agent 2 US3S1\",
                 \"login\": \"$AGENT2_LOGIN\",
                 \"password\": \"agent123\",
-                \"estate_company_ids\": [[6, 0, [$COMPANY_ID]]],
+                \"company_id\": $COMPANY_ID,
+                \"company_ids\": [[6, 0, [$COMPANY_ID]]],
                 \"groups_id\": [[6, 0, [23]]]
             }],
             \"kwargs\": {}
@@ -208,10 +210,10 @@ def calc_cpf_digit(cpf, weights):
     remainder = s % 11
     return '0' if remainder < 2 else str(11 - remainder)
 
-base = "33344455"
+base = "333444557"
 d1 = calc_cpf_digit(base, range(10, 1, -1))
 d2 = calc_cpf_digit(base + d1, range(11, 1, -1))
-cpf = f"{base[0:3]}.{base[3:6]}.{base[6:8]}{d1}-{d2}"
+cpf = f"{base[0:3]}.{base[3:6]}.{base[6:9]}-{d1}{d2}"
 print(cpf)
 PYTHON_EOF
 )
@@ -229,7 +231,7 @@ AGENT1_AGENT_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"name\": \"Agent 1 US3S1\",
                 \"user_id\": $AGENT1_UID,
                 \"cpf\": \"$CPF_AGENT1\",
-                \"company_ids\": [[6, 0, [$COMPANY_ID]]]
+                \"company_id\": $COMPANY_ID
             }],
             \"kwargs\": {}
         },
@@ -252,10 +254,10 @@ def calc_cpf_digit(cpf, weights):
     remainder = s % 11
     return '0' if remainder < 2 else str(11 - remainder)
 
-base = "44455566"
+base = "444555669"
 d1 = calc_cpf_digit(base, range(10, 1, -1))
 d2 = calc_cpf_digit(base + d1, range(11, 1, -1))
-cpf = f"{base[0:3]}.{base[3:6]}.{base[6:8]}{d1}-{d2}"
+cpf = f"{base[0:3]}.{base[3:6]}.{base[6:9]}-{d1}{d2}"
 print(cpf)
 PYTHON_EOF
 )
@@ -273,7 +275,7 @@ AGENT2_AGENT_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"name\": \"Agent 2 US3S1\",
                 \"user_id\": $AGENT2_UID,
                 \"cpf\": \"$CPF_AGENT2\",
-                \"company_ids\": [[6, 0, [$COMPANY_ID]]]
+                \"company_id\": $COMPANY_ID
             }],
             \"kwargs\": {}
         },
@@ -362,7 +364,7 @@ STATE_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
         \"params\": {
-            \"model\": \"real.estate.state\",
+            \"model\": \"res.country.state\",
             \"method\": \"search_read\",
             \"args\": [[]],
             \"kwargs\": {
@@ -415,7 +417,7 @@ for i in 1 2 3 4 5; do
                     \"area\": 80.0,
                     \"price\": 300000.0,
                     \"property_status\": \"available\",
-                    \"company_ids\": [[6, 0, [$COMPANY_ID]]],
+                    \"company_id\": $COMPANY_ID,
                     \"agent_id\": $AGENT1_AGENT_ID
                 }],
                 \"kwargs\": {}
@@ -462,7 +464,7 @@ for i in 1 2 3; do
                     \"area\": 150.0,
                     \"price\": 500000.0,
                     \"property_status\": \"available\",
-                    \"company_ids\": [[6, 0, [$COMPANY_ID]]],
+                    \"company_id\": $COMPANY_ID,
                     \"agent_id\": $AGENT2_AGENT_ID
                 }],
                 \"kwargs\": {}

@@ -1496,7 +1496,7 @@
 									"host": ["{{base_url}}"],
 									"path": ["web", "session", "authenticate"]
 								},
-								"description": "**Test:** US1-S1 Owner Login\n**Status:** ✅ PASS\n\n**Validates:**\n- Owner user authentication via JSON-RPC\n- Company creation with valid CNPJ\n- Owner security group assignment (group_real_estate_owner)\n- Session creation and user context\n\n**Expected Result:**\n- Successful login with session_id\n- User has estate_company_ids populated\n- Access to company data verified"
+								"description": "**Test:** US1-S1 Owner Login\n**Status:** ✅ PASS\n\n**Validates:**\n- Owner user authentication via JSON-RPC\n- Company creation with valid CNPJ\n- Owner security group assignment (group_real_estate_owner)\n- Session creation and user context\n\n**Expected Result:**\n- Successful login with session_id\n- User has company_ids populated\n- Access to company data verified"
 							},
 							"response": []
 						},
@@ -1550,7 +1550,7 @@
 									"host": ["{{base_url}}"],
 									"path": ["api", "v1", "properties"]
 								},
-								"description": "**Test:** US1-S3 Multi-tenancy\n**Status:** ✅ PASS\n\n**Validates:**\n- Owner A sees only Company A data\n- Owner B sees only Company B data\n- Cross-company access blocked\n\n**Record Rule:**\n- Domain: [('company_ids', 'in', user.estate_company_ids.ids)]\n\n**Test Setup:**\n1. Create Company A with Owner A\n2. Create Company B with Owner B\n3. Owner A lists properties → sees only Company A\n4. Owner B lists properties → sees only Company B"
+								"description": "**Test:** US1-S3 Multi-tenancy\n**Status:** ✅ PASS\n\n**Validates:**\n- Owner A sees only Company A data\n- Owner B sees only Company B data\n- Cross-company access blocked\n\n**Record Rule:**\n- Domain: [('company_ids', 'in', user.company_ids.ids)]\n\n**Test Setup:**\n1. Create Company A with Owner A\n2. Create Company B with Owner B\n3. Owner A lists properties → sees only Company A\n4. Owner B lists properties → sees only Company B"
 							},
 							"response": []
 						}
@@ -1664,7 +1664,7 @@
 									"host": ["{{base_url}}"],
 									"path": ["api", "v1", "properties"]
 								},
-								"description": "**Test:** US2-S4 Manager Isolation\n**Status:** ✅ PASS\n\n**Validates:**\n- Manager A sees only Company A data\n- Manager B sees only Company B data\n- Cross-company access blocked for managers\n\n**Record Rule:**\n- Domain: [('company_ids', 'in', user.estate_company_ids.ids)]"
+								"description": "**Test:** US2-S4 Manager Isolation\n**Status:** ✅ PASS\n\n**Validates:**\n- Manager A sees only Company A data\n- Manager B sees only Company B data\n- Cross-company access blocked for managers\n\n**Record Rule:**\n- Domain: [('company_ids', 'in', user.company_ids.ids)]"
 							},
 							"response": []
 						}
@@ -2133,7 +2133,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"session_id\": \"{{session_id}}\",\n  \"name\": \"Prospector Test Property\",\n  \"postcode\": \"01234-567\",\n  \"expected_price\": 500000,\n  \"estate_company_ids\": [[4, 1]]\n}"
+							"raw": "{\n  \"session_id\": \"{{session_id}}\",\n  \"name\": \"Prospector Test Property\",\n  \"postcode\": \"01234-567\",\n  \"expected_price\": 500000,\n  \"company_ids\": [[4, 1]]\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/api/v1/properties",
@@ -2254,7 +2254,7 @@
 								"commissions"
 							]
 						},
-						"description": "**Profile:** Financial\n**Expected:** Can view all company commissions\n**Record Rule:** estate_company_ids filtering applies\n**Test:** Login as financial user, verify commission visibility"
+						"description": "**Profile:** Financial\n**Expected:** Can view all company commissions\n**Record Rule:** company_ids filtering applies\n**Test:** Login as financial user, verify commission visibility"
 					},
 					"response": []
 				},
@@ -2398,7 +2398,7 @@
 								"properties"
 							]
 						},
-						"description": "**Test:** Multi-Tenancy Isolation\n**Expected:** User only sees data from assigned companies\n**Record Rule:** estate_company_ids in user.estate_company_ids.ids\n**Setup:** Create 2 companies, assign user to Company A only\n**Validation:** User cannot see Company B data"
+						"description": "**Test:** Multi-Tenancy Isolation\n**Expected:** User only sees data from assigned companies\n**Record Rule:** company_ids in user.company_ids.ids\n**Setup:** Create 2 companies, assign user to Company A only\n**Validation:** User cannot see Company B data"
 					},
 					"response": []
 				},

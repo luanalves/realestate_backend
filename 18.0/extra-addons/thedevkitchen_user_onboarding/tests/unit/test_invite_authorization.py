@@ -83,7 +83,7 @@ class TestInviteAuthorization(TransactionCase):
                 "login": login,
                 "name": name,
                 "email": login,
-                "estate_company_ids": [(6, 0, [self.company.id])],
+                "company_ids": [(6, 0, [self.company.id])],
                 "groups_id": [(6, 0, [g.id for g in groups])],
             }
         )

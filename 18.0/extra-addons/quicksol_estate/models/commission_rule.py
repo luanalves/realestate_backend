@@ -24,7 +24,7 @@ class RealEstateCommissionRule(models.Model):
     )
     
     company_id = fields.Many2one(
-        'thedevkitchen.estate.company',
+        'res.company',
         'Real Estate Company',
         required=True,
         default=lambda self: self._get_default_company(),
@@ -282,10 +282,8 @@ class RealEstateCommissionRule(models.Model):
     def _get_default_company(self):
         """Get default company from user context"""
         user = self.env.user
-        if hasattr(user, 'estate_default_company_id') and user.estate_default_company_id:
-            return user.estate_default_company_id.id
-        if hasattr(user, 'estate_company_ids') and user.estate_company_ids:
-            return user.estate_company_ids[0].id
+        if hasattr(user, 'company_id') and user.company_id:
+            return user.company_id.id
         return None
     
     def _get_default_currency(self):

@@ -21,13 +21,13 @@ class TestAgentUnit(TransactionCase):
         super().setUpClass()
         
         # Create real estate company records for testing
-        cls.company_1 = cls.env['thedevkitchen.estate.company'].create({
+        cls.company_1 = cls.env['res.company'].create({
             'name': 'Estate Company 1',
         })
-        cls.company_2 = cls.env['thedevkitchen.estate.company'].create({
+        cls.company_2 = cls.env['res.company'].create({
             'name': 'Estate Company 2',
         })
-        cls.company_3 = cls.env['thedevkitchen.estate.company'].create({
+        cls.company_3 = cls.env['res.company'].create({
             'name': 'Estate Company 3',
         })
     
@@ -39,7 +39,7 @@ class TestAgentUnit(TransactionCase):
             'name': 'John Agent User',
             'login': 'john@agent.com',
             'email': 'john@agent.com',
-            'estate_company_ids': [(6, 0, [self.company_1.id, self.company_2.id])],
+            'company_ids': [(6, 0, [self.company_1.id, self.company_2.id])],
         })
         
         # Create real user without estate companies 
@@ -186,7 +186,7 @@ class TestAgentUnit(TransactionCase):
         self.assertNotIn(self.company_2, agent.company_ids)
     
     def test_agent_write_user_id_change_safe_access_no_estate_companies(self):
-        """Test write method safely handles users without estate_company_ids"""
+        """Test write method safely handles users without company_ids"""
         
         # Create agent
         agent = self.env['real.estate.agent'].create({
@@ -266,13 +266,13 @@ class TestAgentBusinessLogic(TransactionCase):
         super().setUpClass()
         
         # Create companies for testing
-        cls.company_1 = cls.env['thedevkitchen.estate.company'].create({
+        cls.company_1 = cls.env['res.company'].create({
             'name': 'Business Company 1',
         })
-        cls.company_2 = cls.env['thedevkitchen.estate.company'].create({
+        cls.company_2 = cls.env['res.company'].create({
             'name': 'Business Company 2',
         })
-        cls.company_3 = cls.env['thedevkitchen.estate.company'].create({
+        cls.company_3 = cls.env['res.company'].create({
             'name': 'Business Company 3',
         })
         

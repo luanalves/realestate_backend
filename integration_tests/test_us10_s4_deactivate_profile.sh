@@ -79,7 +79,17 @@ echo -e "${GREEN}✓ Owner logged in (company_id=$OWNER_COMPANY)${NC}"
 echo ""
 echo "Step 2: Creating test profile..."
 TIMESTAMP=$(date +%s)
-TEST_CPF="11122233396"  # Valid CPF (111.222.333-96)
+TEST_CPF=$(python3 -c "
+import time
+base = str((int(time.time()) + 600) % 1000000000).zfill(9)
+def d(cpf, w):
+    s = sum(int(c)*w for c,w in zip(cpf,w))
+    r = s%11
+    return '0' if r<2 else str(11-r)
+d1 = d(base, range(10,1,-1))
+d2 = d(base+d1, range(11,1,-1))
+print(base+d1+d2)
+")
 
 CREATE_RESPONSE=$(curl -s -X POST "$API_BASE/profiles" \
     -H "Content-Type: application/json" \
@@ -92,7 +102,7 @@ CREATE_RESPONSE=$(curl -s -X POST "$API_BASE/profiles" \
         \"email\": \"deletetest${TIMESTAMP}@test.com\",
         \"phone\": \"11987654321\",
         \"birthdate\": \"1990-01-15\",
-        \"profile_type\": \"manager\"
+        \"profile_type_id\": 3
     }")
 
 PROFILE_ID=$(echo "$CREATE_RESPONSE" | jq -r '.id // empty')
@@ -156,7 +166,17 @@ echo -e "${GREEN}✓ Delete inactive profile returns 404 (not found)${NC}"
 echo ""
 echo "Step 5: Testing agent extension cascade deactivation..."
 # Create an agent profile
-AGENT_CPF="99988877714"  # Valid CPF (999.888.777-14)
+AGENT_CPF=$(python3 -c "
+import time
+base = str((int(time.time()) + 700) % 1000000000).zfill(9)
+def d(cpf, w):
+    s = sum(int(c)*w for c,w in zip(cpf,w))
+    r = s%11
+    return '0' if r<2 else str(11-r)
+d1 = d(base, range(10,1,-1))
+d2 = d(base+d1, range(11,1,-1))
+print(base+d1+d2)
+")
 CREATE_AGENT=$(curl -s -X POST "$API_BASE/profiles" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
@@ -168,7 +188,7 @@ CREATE_AGENT=$(curl -s -X POST "$API_BASE/profiles" \
         \"email\": \"agentcascade${TIMESTAMP}@test.com\",
         \"phone\": \"11988887777\",
         \"birthdate\": \"1992-03-20\",
-        \"profile_type\": \"agent\",
+        \"profile_type_id\": 4,
         \"hire_date\": \"2024-01-01\"
     }")
 

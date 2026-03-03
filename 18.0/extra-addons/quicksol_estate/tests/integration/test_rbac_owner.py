@@ -14,7 +14,7 @@ class TestRBACOwner(TransactionCase):
     def setUpClass(cls):
         super().setUpClass()
         
-        cls.Company = cls.env['thedevkitchen.estate.company']
+        cls.Company = cls.env['res.company']
         cls.Property = cls.env['real.estate.property']
         cls.Agent = cls.env['real.estate.agent']
         cls.User = cls.env['res.users']
@@ -49,9 +49,9 @@ class TestRBACOwner(TransactionCase):
         if not cls.country:
             cls.country = cls.env['res.country'].create({'name': 'Brazil', 'code': 'BR'})
         
-        cls.state = cls.env['real.estate.state'].search([('code', '=', 'SP')], limit=1)
+        cls.state = cls.env['res.country.state'].search([('code', '=', 'SP')], limit=1)
         if not cls.state:
-            cls.state = cls.env['real.estate.state'].create({
+            cls.state = cls.env['res.country.state'].create({
                 'name': 'São Paulo',
                 'code': 'SP',
                 'country_id': cls.country.id
@@ -66,7 +66,7 @@ class TestRBACOwner(TransactionCase):
                 cls.env.ref('base.group_partner_manager').id,  # Allow contact creation
                 cls.env.ref('base.group_erp_manager').id,  # Settings - required to create users
             ])],
-            'estate_company_ids': [(6, 0, [cls.company_a.id])],
+            'company_ids': [(6, 0, [cls.company_a.id])],
         })
         
         # Create agent for commission rule testing
@@ -200,11 +200,11 @@ class TestRBACOwner(TransactionCase):
             'name': 'New Agent User',
             'login': 'agent_new@test.com',
             'email': 'agent_new@test.com',
-            'estate_company_ids': [(6, 0, [self.company_a.id])],
+            'company_ids': [(6, 0, [self.company_a.id])],
         })
         
         self.assertTrue(new_user.id)
-        self.assertIn(self.company_a.id, new_user.estate_company_ids.ids)
+        self.assertIn(self.company_a.id, new_user.company_ids.ids)
     
     def test_owner_cannot_assign_user_to_other_company(self):
         """T033.1: Owner cannot assign users to companies they don't have access to (FR-008)."""
@@ -213,7 +213,7 @@ class TestRBACOwner(TransactionCase):
                 'name': 'Invalid User',
                 'login': 'invalid@test.com',
                 'email': 'invalid@test.com',
-                'estate_company_ids': [(6, 0, [self.company_b.id])],
+                'company_ids': [(6, 0, [self.company_b.id])],
             })
         
         self.assertIn("cannot assign users to companies", str(ctx.exception).lower())

@@ -20,7 +20,7 @@ class CompanyValidator:
                 return False, 'At least one company must be specified'
             
             # Safely get user's company IDs with defensive checks
-            estate_companies = getattr(user, 'estate_company_ids', None)
+            estate_companies = getattr(user, 'company_ids', None)
             if estate_companies and hasattr(estate_companies, 'ids'):
                 user_company_ids = set(estate_companies.ids)
             else:
@@ -51,12 +51,12 @@ class CompanyValidator:
                 return None
             
             # Check default company first
-            default_company = getattr(user, 'estate_default_company_id', None)
+            default_company = getattr(user, 'company_id', None)
             if default_company:
                 return default_company.id
             
             # Fallback to first company in list
-            company_ids = getattr(user, 'estate_company_ids', [])
+            company_ids = getattr(user, 'company_ids', [])
             if company_ids:
                 return company_ids[0].id
             

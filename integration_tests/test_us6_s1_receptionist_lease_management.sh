@@ -92,7 +92,7 @@ COMPANY_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
         \"params\": {
-            \"model\": \"thedevkitchen.estate.company\",
+            \"model\": \"res.company\",
             \"method\": \"create\",
             \"args\": [{
                 \"name\": \"$COMPANY_NAME\",
@@ -123,7 +123,8 @@ RECEPTIONIST_USER_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"login\": \"$RECEPTIONIST_LOGIN\",
                 \"password\": \"receptionist123\",
                 \"groups_id\": [[6, 0, [$RECEPTIONIST_GROUP_ID]]],
-                \"estate_company_ids\": [[6, 0, [$COMPANY_ID]]]
+                \"company_id\": $COMPANY_ID,
+                \"company_ids\": [[6, 0, [$COMPANY_ID]]]
             }],
             \"kwargs\": {}
         },
@@ -181,7 +182,7 @@ STATE_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
         \"params\": {
-            \"model\": \"real.estate.state\",
+            \"model\": \"res.country.state\",
             \"method\": \"search_read\",
             \"args\": [[]],
             \"kwargs\": {
@@ -217,7 +218,7 @@ PROPERTY_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"area\": 80.0,
                 \"price\": 300000.0,
                 \"property_status\": \"available\",
-                \"company_ids\": [[6, 0, [$COMPANY_ID]]]
+                \"company_id\": $COMPANY_ID
             }],
             \"kwargs\": {}
         },
@@ -275,6 +276,7 @@ TENANT_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"name\": \"Tenant US6S1\",
                 \"email\": \"tenant.us6s1.${TIMESTAMP}@example.com\",
                 \"phone\": \"11987654321\",
+                \"company_id\": $COMPANY_ID,
                 \"company_ids\": [[6, 0, [$COMPANY_ID]]]
             }],
             \"kwargs\": {}
@@ -318,6 +320,7 @@ LEASE_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"rent_amount\": 3000.0,
                 \"start_date\": \"2026-02-01\",
                 \"end_date\": \"2027-02-01\",
+                \"company_id\": $COMPANY_ID,
                 \"company_ids\": [[6, 0, [$COMPANY_ID]]]
             }],
             \"kwargs\": {}

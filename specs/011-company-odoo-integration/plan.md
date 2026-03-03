@@ -88,7 +88,7 @@ specs/011-company-odoo-integration/
 ├── data-model.md        # Phase 1 output
 ├── quickstart.md        # Phase 1 output
 ├── contracts/           # Phase 1 output
-│   └── company-api.yaml # OpenAPI 3.0 for affected endpoints
+│   └── company-api.md   # API contract documentation for affected endpoints
 ├── checklists/
 │   └── requirements.md  # Quality validation checklist
 └── tasks.md             # Phase 2 output (NOT created by /speckit.plan)

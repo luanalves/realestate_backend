@@ -50,7 +50,8 @@ def calc_cnpj_digit(cnpj, weights):
     remainder = s % 11
     return '0' if remainder < 2 else str(11 - remainder)
 
-base = "13579246"
+import time
+base = str((int(time.time()) + 1) % 100000000).zfill(8)
 branch = "0001"
 cnpj_partial = base + branch
 w1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
@@ -112,7 +113,7 @@ COMPANY_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
         \"params\": {
-            \"model\": \"thedevkitchen.estate.company\",
+            \"model\": \"res.company\",
             \"method\": \"create\",
             \"args\": [{
                 \"name\": \"$COMPANY_NAME\",
@@ -153,7 +154,8 @@ MANAGER_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"login\": \"$MANAGER_LOGIN_EMAIL\",
                 \"password\": \"manager123\",
                 \"groups_id\": [[6, 0, [17]]],
-                \"estate_company_ids\": [[6, 0, [$COMPANY_ID]]]
+                \"company_id\": $COMPANY_ID,
+                \"company_ids\": [[6, 0, [$COMPANY_ID]]]
             }],
             \"kwargs\": {}
         },
@@ -190,7 +192,8 @@ AGENT1_USER_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"login\": \"$AGENT1_LOGIN\",
                 \"password\": \"agent123\",
                 \"groups_id\": [[6, 0, [23]]],
-                \"estate_company_ids\": [[6, 0, [$COMPANY_ID]]]
+                \"company_id\": $COMPANY_ID,
+                \"company_ids\": [[6, 0, [$COMPANY_ID]]]
             }],
             \"kwargs\": {}
         },
@@ -235,7 +238,7 @@ AGENT1_RECORD_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"name\": \"Agent 1 US4S1\",
                 \"user_id\": $AGENT1_UID,
                 \"cpf\": \"$CPF_AGENT1\",
-                \"company_ids\": [[6, 0, [$COMPANY_ID]]]
+                \"company_id\": $COMPANY_ID
             }],
             \"kwargs\": {}
         },
@@ -272,7 +275,8 @@ AGENT2_USER_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"login\": \"$AGENT2_LOGIN\",
                 \"password\": \"agent123\",
                 \"groups_id\": [[6, 0, [23]]],
-                \"estate_company_ids\": [[6, 0, [$COMPANY_ID]]]
+                \"company_id\": $COMPANY_ID,
+                \"company_ids\": [[6, 0, [$COMPANY_ID]]]
             }],
             \"kwargs\": {}
         },
@@ -317,7 +321,7 @@ AGENT2_RECORD_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"name\": \"Agent 2 US4S1\",
                 \"user_id\": $AGENT2_UID,
                 \"cpf\": \"$CPF_AGENT2\",
-                \"company_ids\": [[6, 0, [$COMPANY_ID]]]
+                \"company_id\": $COMPANY_ID
             }],
             \"kwargs\": {}
         },
@@ -379,7 +383,7 @@ STATE_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
         \"params\": {
-            \"model\": \"real.estate.state\",
+            \"model\": \"res.country.state\",
             \"method\": \"search_read\",
             \"args\": [[]],
             \"kwargs\": {\"limit\": 1, \"fields\": [\"id\"]}
@@ -434,7 +438,7 @@ for i in 1 2; do
                     \"street\": \"Rua Agent1\",
                     \"street_number\": \"${i}00\",
                     \"area\": 100.0,
-                    \"company_ids\": [[6, 0, [$COMPANY_ID]]]
+                    \"company_id\": $COMPANY_ID
                 }],
                 \"kwargs\": {}
             },
@@ -471,7 +475,7 @@ for i in 1 2 3; do
                     \"street\": \"Rua Agent2\",
                     \"street_number\": \"${i}00\",
                     \"area\": 120.0,
-                    \"company_ids\": [[6, 0, [$COMPANY_ID]]]
+                    \"company_id\": $COMPANY_ID
                 }],
                 \"kwargs\": {}
             },

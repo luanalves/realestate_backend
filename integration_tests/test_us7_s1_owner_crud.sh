@@ -3,7 +3,7 @@
 # Tests independent Owner creation and deletion via API
 #
 # Success Criteria:
-# - Create Owner without company → 201 with empty estate_company_ids
+# - Create Owner without company → 201 with empty company_ids
 # - Delete owner (if not last) → 200/204
 # - Validation: email format, password strength → 400
 
@@ -49,12 +49,21 @@ echo "Step 2: Creating Owner without company (POST /api/v1/owners)..."
 TIMESTAMP=$(date +%s)
 TEST_EMAIL="independent${TIMESTAMP}@test.com"
 
+TEST_CPF=$(python3 -c "
+import random
+b=f'{random.randint(100,999)}{random.randint(100,999)}{random.randint(100,999)}'
+w1=[10,9,8,7,6,5,4,3,2]; s=sum(int(d)*w for d,w in zip(b,w1)); d1=0 if (11-s%11)>=10 else (11-s%11)
+w2=[11,10,9,8,7,6,5,4,3,2]; s=sum(int(d)*w for d,w in zip(b+str(d1),w2)); d2=0 if (11-s%11)>=10 else (11-s%11)
+print(f'{b[:3]}.{b[3:6]}.{b[6:9]}-{d1}{d2}')
+")
+
 CREATE_RESPONSE=$(curl -s -X POST "${BASE_URL}/api/v1/owners" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer ${ACCESS_TOKEN}" \
   -d "{
     \"name\": \"Independent Owner\",
     \"email\": \"${TEST_EMAIL}\",
+    \"cpf\": \"${TEST_CPF}\",
     \"password\": \"secure123456\",
     \"phone\": \"11987654321\",
     \"mobile\": \"11999887766\"

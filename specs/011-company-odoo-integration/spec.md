@@ -153,11 +153,11 @@ Campos custom adicionados em `res.company` via `_inherit` usam nomes diretos e l
 | `thedevkitchen_estate_company` | Tabela principal | Modelo eliminado; campos migram para `res_company` |
 | `real_estate_state` | Tabela principal | Modelo `real.estate.state` eliminado; usar `res.country.state` nativo |
 | `thedevkitchen_user_company_rel` | M2M usuários ↔ companies | Substituída por `res_company_users_rel` (nativo) |
-| `thedevkitchen_company_property_rel` | M2M companies ↔ propriedades | Recriada como M2M com `res.company` |
-| `thedevkitchen_company_agent_rel` | M2M companies ↔ agentes | Recriada como M2M com `res.company` |
-| `thedevkitchen_company_lease_rel` | M2M companies ↔ contratos | Recriada como M2M com `res.company` |
-| `thedevkitchen_company_sale_rel` | M2M companies ↔ vendas | Recriada como M2M com `res.company` |
-| `real_estate_lead_company_rel` | M2M leads ↔ companies | Recriada como M2M com `res.company` |
+| `thedevkitchen_company_property_rel` | M2M companies ↔ propriedades | Eliminada — substituída por M2O `company_id` no modelo de negócio |
+| `thedevkitchen_company_agent_rel` | M2M companies ↔ agentes | Eliminada — substituída por M2O `company_id` no modelo de negócio |
+| `thedevkitchen_company_lease_rel` | M2M companies ↔ contratos | Eliminada — substituída por M2O `company_id` no modelo de negócio |
+| `thedevkitchen_company_sale_rel` | M2M companies ↔ vendas | Eliminada — substituída por M2O `company_id` no modelo de negócio |
+| `real_estate_lead_company_rel` | M2M leads ↔ companies | Eliminada — substituída por M2O `company_id` no modelo de negócio |
 
 ### Arquivos a Remover (DELETE) — 8 arquivos
 
@@ -428,7 +428,7 @@ Todos os scripts em `integration_tests/` que enviam payloads com `thedevkitchen.
 | `views/real_estate_menus.xml` | Action → `res.company` |
 | `__manifest__.py` | Atualizar referências de data files e dependências |
 
-### Documentação (8 arquivos)
+### Documentação (9 arquivos)
 
 | Arquivo | Alteração |
 |---------|-----------|
@@ -439,6 +439,7 @@ Todos os scripts em `integration_tests/` que enviam payloads com `thedevkitchen.
 | ADR-020 | Atualizar exemplos do Observer |
 | ADR-024 | Atualizar FK do profile model |
 | KB-07 | Adicionar seção sobre padrões de herança Odoo |
+| `constitution.md` | Atualizar Principle IV: `estate_company_ids` → `company_ids` nativo (amendment v1.4.1) |
 | `docs/architecture/DATABASE_ARCHITECTURE_USERS.md` | 20+ refs ao modelo custom |
 
 ---
@@ -517,6 +518,7 @@ Todos os scripts em `integration_tests/` que enviam payloads com `thedevkitchen.
 - **FR-017**: KB-07 DEVE ser atualizada com documentação sobre padrões de herança do Odoo.
 - **FR-018**: As 7 linhas de ACL referenciando `model_thedevkitchen_estate_company` e 5 linhas referenciando `model_real_estate_state` DEVEM ser removidas do `ir.model.access.csv`.
 - **FR-019**: O modelo `real.estate.state` (tabela `real_estate_state`) DEVE ser eliminado. Todos os campos `state_id` que apontavam para `real.estate.state` DEVEM ser migrados para `res.country.state`. O arquivo `data/states.xml` DEVE ser removido — `res.country.state` já contém os estados brasileiros. O endpoint `/states` em `master_data_api.py` DEVE usar `res.country.state`.
+- **FR-020**: A `constitution.md` Principle IV DEVE ser atualizada: referências a `estate_company_ids` substituídas por `company_ids` nativo. Descrição de Record Rules atualizada para padrão nativo `[('company_id', 'in', company_ids)]`. Amendment v1.4.1 PATCH.
 
 ### Key Entities
 

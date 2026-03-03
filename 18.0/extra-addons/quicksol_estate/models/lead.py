@@ -120,16 +120,14 @@ class RealEstateLead(models.Model):
         help='Assigned sales agent (owner of lead)'
     )
     
-    company_ids = fields.Many2many(
-        'thedevkitchen.estate.company',
-        'real_estate_lead_company_rel',
-        'lead_id',
-        'company_id',
-        string='Companies',
+    company_id = fields.Many2one(
+        'res.company',
+        string='Company',
         required=True,
         tracking=True,
-        default=lambda self: self._default_company_ids(),
-        help='Companies this lead belongs to (multi-tenancy)'
+        ondelete='restrict',
+        default=lambda self: self._default_company_id(),
+        help='Company this lead belongs to (multi-tenancy)'
     )
     
     # ==================== PROPERTY PREFERENCES ====================
@@ -260,9 +258,9 @@ class RealEstateLead(models.Model):
         return agent.id if agent else False
     
     @api.model
-    def _default_company_ids(self):
-        """Auto-assign user's companies (FR-031)"""
-        return self.env.user.estate_company_ids.ids
+    def _default_company_id(self):
+        """Auto-assign user's company (FR-031)"""
+        return self.env.user.company_id.id
     
     # ==================== COMPUTED METHODS ====================
     
@@ -331,16 +329,14 @@ class RealEstateLead(models.Model):
                 if record.budget_min > record.budget_max:
                     raise ValidationError("Minimum budget cannot exceed maximum budget.")
     
-    @api.constrains('agent_id', 'company_ids')
+    @api.constrains('agent_id', 'company_id')
     def _check_agent_company(self):
         """Company Validation (FR-023)"""
         for record in self:
-            if record.agent_id and record.company_ids:
-                agent_companies = record.agent_id.company_ids
-                lead_companies = record.company_ids
-                if not (lead_companies & agent_companies):
+            if record.agent_id and record.company_id:
+                if record.agent_id.company_id != record.company_id:
                     raise ValidationError(
-                        "Agent must belong to at least one of the lead's companies."
+                        "Agent must belong to the lead's company."
                     )
     
     @api.constrains('state', 'lost_reason')
@@ -403,7 +399,7 @@ class RealEstateLead(models.Model):
             raise ValidationError(_("Selected property does not exist."))
         
         # Check agent has access to property (via company)
-        if not (property_obj.company_id in self.company_ids):
+        if property_obj.company_id != self.company_id:
             raise ValidationError(_("Agent does not have access to the selected property."))
         
         # Atomic transaction: create sale and update lead
@@ -413,7 +409,7 @@ class RealEstateLead(models.Model):
                 'property_id': property_id,
                 'lead_id': self.id,
                 'agent_id': self.agent_id.id,
-                'company_id': self.company_ids[0].id if self.company_ids else False,
+                'company_id': self.company_id.id if self.company_id else False,
             }
             
             # Copy contact info if partner exists

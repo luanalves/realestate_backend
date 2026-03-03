@@ -96,7 +96,7 @@ COMPANY_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
         \"params\": {
-            \"model\": \"thedevkitchen.estate.company\",
+            \"model\": \"res.company\",
             \"method\": \"create\",
             \"args\": [{
                 \"name\": \"$COMPANY_NAME\",
@@ -135,7 +135,8 @@ MANAGER_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"name\": \"Manager US2S2\",
                 \"login\": \"$MANAGER_LOGIN\",
                 \"password\": \"manager123\",
-                \"estate_company_ids\": [[6, 0, [$COMPANY_ID]]],
+                \"company_id\": $COMPANY_ID,
+                \"company_ids\": [[6, 0, [$COMPANY_ID]]],
                 \"groups_id\": [[6, 0, [17]]]
             }],
             \"kwargs\": {}
@@ -180,7 +181,7 @@ MANAGER_AGENT_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"name\": \"Manager US2S2\",
                 \"user_id\": $MANAGER_UID,
                 \"cpf\": \"$CPF_MANAGER\",
-                \"company_ids\": [[6, 0, [$COMPANY_ID]]]
+                \"company_id\": $COMPANY_ID
             }],
             \"kwargs\": {}
         },
@@ -248,7 +249,7 @@ STATE_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
         \"params\": {
-            \"model\": \"real.estate.state\",
+            \"model\": \"res.country.state\",
             \"method\": \"search_read\",
             \"args\": [[]],
             \"kwargs\": {
@@ -293,7 +294,7 @@ for i in 1 2 3; do
                     \"area\": 80.0,
                     \"price\": 300000.0,
                     \"property_status\": \"available\",
-                    \"company_ids\": [[6, 0, [$COMPANY_ID]]]
+                    \"company_id\": $COMPANY_ID
                 }],
                 \"kwargs\": {}
             },
@@ -387,7 +388,7 @@ COMPANY_CHECK=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
         \"params\": {
-            \"model\": \"thedevkitchen.estate.company\",
+            \"model\": \"res.company\",
             \"method\": \"search_read\",
             \"args\": [[
                 [\"id\", \"=\", $COMPANY_ID]

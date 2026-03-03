@@ -25,7 +25,7 @@ class TestLoginLogoutEndpoints(TransactionCase):
         super().setUpClass()
         
         # Create test company
-        cls.company = cls.env['thedevkitchen.estate.company'].create({
+        cls.company = cls.env['res.company'].create({
             'name': 'Test Company',
             'cnpj': '11222333000181',
         })
@@ -36,8 +36,8 @@ class TestLoginLogoutEndpoints(TransactionCase):
             'login': 'testuser@example.com',
             'email': 'testuser@example.com',
             'password': 'testpassword123',
-            'estate_company_ids': [(6, 0, [cls.company.id])],
-            'estate_default_company_id': cls.company.id,
+            'company_ids': [(6, 0, [cls.company.id])],
+            'company_id': cls.company.id,
         })
         
         # Create OAuth application for Bearer token validation
@@ -207,7 +207,7 @@ class TestLoginLogoutEndpoints(TransactionCase):
                 {
                     'id': company.id,
                     'name': company.name,
-                } for company in self.test_user.estate_company_ids
+                } for company in self.test_user.company_ids
             ]
         }
         

@@ -90,7 +90,17 @@ echo -e "${GREEN}✓ Owner logged in (company_id=$OWNER_COMPANY)${NC}"
 echo ""
 echo "Step 2: Owner creates Manager profile..."
 TIMESTAMP=$(date +%s)
-MANAGER_CPF="11144477735"  # Valid CPF (111.444.777-35)
+MANAGER_CPF=$(python3 -c "
+import time
+base = str((int(time.time()) + 100) % 1000000000).zfill(9)
+def d(cpf, w):
+    s = sum(int(c)*w for c,w in zip(cpf,w))
+    r = s%11
+    return '0' if r<2 else str(11-r)
+d1 = d(base, range(10,1,-1))
+d2 = d(base+d1, range(11,1,-1))
+print(base+d1+d2)
+")
 
 CREATE_MANAGER_RESPONSE=$(curl -s -X POST "$API_BASE/profiles" \
     -H "Content-Type: application/json" \
@@ -104,7 +114,7 @@ CREATE_MANAGER_RESPONSE=$(curl -s -X POST "$API_BASE/profiles" \
         \"phone\": \"11987654321\",
         \"mobile\": \"11999887766\",
         \"birthdate\": \"1990-01-15\",
-        \"profile_type\": \"manager\"
+        \"profile_type_id\": 3
     }")
 
 MANAGER_ID=$(echo "$CREATE_MANAGER_RESPONSE" | jq -r '.id // empty')
@@ -122,7 +132,17 @@ echo -e "${GREEN}✓ Manager profile created (ID=$MANAGER_ID, has HATEOAS links)
 # Step 3: Create Agent Profile (should auto-create agent extension)
 echo ""
 echo "Step 3: Owner creates Agent profile (with agent extension)..."
-AGENT_CPF="52998224725"  # Valid CPF (529.982.247-25)
+AGENT_CPF=$(python3 -c "
+import time
+base = str((int(time.time()) + 200) % 1000000000).zfill(9)
+def d(cpf, w):
+    s = sum(int(c)*w for c,w in zip(cpf,w))
+    r = s%11
+    return '0' if r<2 else str(11-r)
+d1 = d(base, range(10,1,-1))
+d2 = d(base+d1, range(11,1,-1))
+print(base+d1+d2)
+")
 
 CREATE_AGENT_RESPONSE=$(curl -s -X POST "$API_BASE/profiles" \
     -H "Content-Type: application/json" \
@@ -136,7 +156,7 @@ CREATE_AGENT_RESPONSE=$(curl -s -X POST "$API_BASE/profiles" \
         \"phone\": \"11999998888\",
         \"mobile\": \"11988887777\",
         \"birthdate\": \"1992-03-20\",
-        \"profile_type\": \"agent\",
+        \"profile_type_id\": 4,
         \"hire_date\": \"2024-01-01\"
     }")
 
@@ -154,7 +174,17 @@ echo -e "${GREEN}✓ Agent profile created (ID=$AGENT_ID, agent_link=$AGENT_EXTE
 # Step 4: Create Portal Profile with occupation
 echo ""
 echo "Step 4: Owner creates Portal profile..."
-PORTAL_CPF="71483341879"  # Valid CPF (714.833.418-79)
+PORTAL_CPF=$(python3 -c "
+import time
+base = str((int(time.time()) + 300) % 1000000000).zfill(9)
+def d(cpf, w):
+    s = sum(int(c)*w for c,w in zip(cpf,w))
+    r = s%11
+    return '0' if r<2 else str(11-r)
+d1 = d(base, range(10,1,-1))
+d2 = d(base+d1, range(11,1,-1))
+print(base+d1+d2)
+")
 
 CREATE_PORTAL_RESPONSE=$(curl -s -X POST "$API_BASE/profiles" \
     -H "Content-Type: application/json" \
@@ -167,7 +197,7 @@ CREATE_PORTAL_RESPONSE=$(curl -s -X POST "$API_BASE/profiles" \
         \"email\": \"portal${TIMESTAMP}@test.com\",
         \"phone\": \"11988886666\",
         \"birthdate\": \"1995-06-10\",
-        \"profile_type\": \"portal\",
+        \"profile_type_id\": 9,
         \"occupation\": \"Tenant\"
     }")
 
@@ -195,7 +225,7 @@ DUPLICATE_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/profiles" \
         \"email\": \"duplicate${TIMESTAMP}@test.com\",
         \"phone\": \"11999999999\",
         \"birthdate\": \"1990-01-01\",
-        \"profile_type\": \"manager\"
+        \"profile_type_id\": 3
     }")
 
 HTTP_CODE=$(echo "$DUPLICATE_RESPONSE" | tail -n1)
@@ -234,7 +264,7 @@ INVALID_DOC_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/profiles" 
         \"email\": \"invalid${TIMESTAMP}@test.com\",
         \"phone\": \"11999999999\",
         \"birthdate\": \"1990-01-01\",
-        \"profile_type\": \"manager\"
+        \"profile_type_id\": 3
     }")
 
 HTTP_CODE=$(echo "$INVALID_DOC_RESPONSE" | tail -n1)
@@ -259,7 +289,7 @@ INVALID_TYPE_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/profiles"
         \"email\": \"invalidtype${TIMESTAMP}@test.com\",
         \"phone\": \"11999999999\",
         \"birthdate\": \"1990-01-01\",
-        \"profile_type\": \"invalid_type\"
+        \"profile_type_id\": 99999
     }")
 
 HTTP_CODE=$(echo "$INVALID_TYPE_RESPONSE" | tail -n1)

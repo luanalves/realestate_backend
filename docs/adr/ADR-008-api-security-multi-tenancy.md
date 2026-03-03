@@ -5,7 +5,7 @@ Aceito
 
 ## Contexto
 
-O sistema opera em modelo **multi-tenancy** onde múltiplas imobiliárias (companies) compartilham a mesma infraestrutura. Cada usuário está vinculado a uma ou mais empresas via `estate_company_ids` no modelo `res.users`.
+O sistema opera em modelo **multi-tenancy** onde múltiplas imobiliárias (companies) compartilham a mesma infraestrutura. Cada usuário está vinculado a uma ou mais empresas via `company_ids` no modelo `res.users`.
 
 **Problema:** A implementação atual da API REST possui vulnerabilidades que permitem:
 - Usuário A acessar dados da Company B via IDOR (Insecure Direct Object Reference)

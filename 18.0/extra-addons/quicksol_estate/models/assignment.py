@@ -29,7 +29,7 @@ class AgentPropertyAssignment(models.Model):
     )
     
     company_id = fields.Many2one(
-        'thedevkitchen.estate.company',
+        'res.company',
         string='Company',
         required=True,
         index=True,
@@ -82,14 +82,14 @@ class AgentPropertyAssignment(models.Model):
     def _check_company_match(self):
         """Ensure agent and property belong to the same company"""
         for assignment in self:
-            # Check if agent's company is in property's companies
-            if assignment.agent_id.company_id not in assignment.property_id.company_ids:
+            # Check if agent's company matches property's company (M2O)
+            if assignment.agent_id.company_id != assignment.property_id.company_id:
                 raise ValidationError(_(
-                    'Agent and property must share at least one company. '
-                    'Agent company: %s, Property companies: %s'
+                    'Agent and property must belong to the same company. '
+                    'Agent company: %s, Property company: %s'
                 ) % (
                     assignment.agent_id.company_id.name,
-                    ', '.join(assignment.property_id.company_ids.mapped('name'))
+                    assignment.property_id.company_id.name
                 ))
             
             # Ensure assignment company matches agent company
@@ -115,12 +115,12 @@ class AgentPropertyAssignment(models.Model):
         if company_id:
             return company_id
         
-        # Try to get from user's estate companies
-        if hasattr(self.env.user, 'estate_default_company_id'):
-            return self.env.user.estate_default_company_id
+        # Try to get from user's current company (native res.users field)
+        if self.env.user.company_id:
+            return self.env.user.company_id
         
-        # Fallback to first company
-        companies = self.env['thedevkitchen.estate.company'].search([], limit=1)
+        # Fallback to first real estate company
+        companies = self.env['res.company'].search([('is_real_estate', '=', True)], limit=1)
         return companies[0] if companies else False
     
     # ==================== CRUD OVERRIDES ====================

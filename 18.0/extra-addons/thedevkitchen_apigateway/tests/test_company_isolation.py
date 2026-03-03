@@ -3,7 +3,7 @@
 Test cases for multi-tenancy company isolation (Phase 1).
 
 Tests validate:
-1. Record rules enforce data isolation by estate_company_ids
+1. Record rules enforce data isolation by company_ids
 2. User A cannot see records of User B (different companies)
 3. User can only access properties in their assigned companies
 4. User can only access agents in their assigned companies
@@ -42,8 +42,8 @@ class TestCompanyIsolation(TransactionCase):
             'email': 'manager1@company1.com',
             'password': 'password123',
             'groups_id': [(6, 0, [cls.env.ref('base.group_user').id])],
-            'estate_company_ids': [(6, 0, [cls.company1.id])],
-            'estate_default_company_id': cls.company1.id,
+            'company_ids': [(6, 0, [cls.company1.id])],
+            'company_id': cls.company1.id,
         })
         
         cls.manager2 = cls.env['res.users'].create({
@@ -52,41 +52,41 @@ class TestCompanyIsolation(TransactionCase):
             'email': 'manager2@company2.com',
             'password': 'password123',
             'groups_id': [(6, 0, [cls.env.ref('base.group_user').id])],
-            'estate_company_ids': [(6, 0, [cls.company2.id])],
-            'estate_default_company_id': cls.company2.id,
+            'company_ids': [(6, 0, [cls.company2.id])],
+            'company_id': cls.company2.id,
         })
         
         # Create properties for each company
         cls.property1 = cls.env['quicksol_estate.property'].create({
             'name': 'Property Company 1',
-            'estate_company_ids': [(6, 0, [cls.company1.id])],
+            'company_ids': [(6, 0, [cls.company1.id])],
         })
         
         cls.property2 = cls.env['quicksol_estate.property'].create({
             'name': 'Property Company 2',
-            'estate_company_ids': [(6, 0, [cls.company2.id])],
+            'company_ids': [(6, 0, [cls.company2.id])],
         })
         
         # Create agents for each company
         cls.agent1 = cls.env['quicksol_estate.agent'].create({
             'name': 'Agent Company 1',
-            'estate_company_ids': [(6, 0, [cls.company1.id])],
+            'company_ids': [(6, 0, [cls.company1.id])],
         })
         
         cls.agent2 = cls.env['quicksol_estate.agent'].create({
             'name': 'Agent Company 2',
-            'estate_company_ids': [(6, 0, [cls.company2.id])],
+            'company_ids': [(6, 0, [cls.company2.id])],
         })
         
         # Create tenants for each company
         cls.tenant1 = cls.env['quicksol_estate.tenant'].create({
             'name': 'Tenant Company 1',
-            'estate_company_ids': [(6, 0, [cls.company1.id])],
+            'company_ids': [(6, 0, [cls.company1.id])],
         })
         
         cls.tenant2 = cls.env['quicksol_estate.tenant'].create({
             'name': 'Tenant Company 2',
-            'estate_company_ids': [(6, 0, [cls.company2.id])],
+            'company_ids': [(6, 0, [cls.company2.id])],
         })
 
     def test_manager_can_see_own_company_properties(self):
@@ -142,12 +142,12 @@ class TestCompanyIsolation(TransactionCase):
         # Result should be empty due to record rule
         self.assertEqual(len(properties), 0, "Record rule should prevent cross-company access")
 
-    def test_record_rules_enforce_estate_company_ids_filter(self):
-        """Verify record rules are based on estate_company_ids field"""
+    def test_record_rules_enforce_company_ids_filter(self):
+        """Verify record rules are based on company_ids field"""
         # Create a property with multiple company access
         property_multi = self.env['quicksol_estate.property'].create({
             'name': 'Multi-company Property',
-            'estate_company_ids': [(6, 0, [self.company1.id, self.company2.id])],
+            'company_ids': [(6, 0, [self.company1.id, self.company2.id])],
         })
         
         # Both managers should see this property
@@ -170,8 +170,8 @@ class TestCompanyIsolation(TransactionCase):
             'email': 'manager1_2@company1.com',
             'password': 'password123',
             'groups_id': [(6, 0, [self.env.ref('base.group_user').id])],
-            'estate_company_ids': [(6, 0, [self.company1.id])],
-            'estate_default_company_id': self.company1.id,
+            'company_ids': [(6, 0, [self.company1.id])],
+            'company_id': self.company1.id,
         })
         
         # Both should see same properties
@@ -182,11 +182,11 @@ class TestCompanyIsolation(TransactionCase):
         self.assertEqual(sorted(props1.ids), sorted(props2.ids))
 
     def test_property_visibility_respects_company_assignment(self):
-        """Verify property visibility depends on estate_company_ids assignment"""
+        """Verify property visibility depends on company_ids assignment"""
         # Create property assigned to company1
         prop = self.env['quicksol_estate.property'].create({
             'name': 'Test Property',
-            'estate_company_ids': [(6, 0, [self.company1.id])],
+            'company_ids': [(6, 0, [self.company1.id])],
         })
         
         # Manager1 (company1) should see it
@@ -208,11 +208,11 @@ class TestCompanyIsolation(TransactionCase):
             [], limit=1000
         )
         
-        # Check that all returned properties have company1 in estate_company_ids
+        # Check that all returned properties have company1 in company_ids
         for prop in all_properties:
             self.assertIn(
                 self.company1.id,
-                prop.estate_company_ids.ids,
+                prop.company_ids.ids,
                 f"Property {prop.id} should not be visible to Manager1"
             )
 
@@ -221,12 +221,12 @@ class TestCompanyIsolation(TransactionCase):
         # Create agents with specific company
         agent_c1 = self.env['quicksol_estate.agent'].create({
             'name': 'Agent C1',
-            'estate_company_ids': [(6, 0, [self.company1.id])],
+            'company_ids': [(6, 0, [self.company1.id])],
         })
         
         agent_c2 = self.env['quicksol_estate.agent'].create({
             'name': 'Agent C2',
-            'estate_company_ids': [(6, 0, [self.company2.id])],
+            'company_ids': [(6, 0, [self.company2.id])],
         })
         
         # Manager1 should only see agent_c1

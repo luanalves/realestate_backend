@@ -80,7 +80,7 @@ class PasswordToken(models.Model):
     )
 
     company_id = fields.Many2one(
-        "thedevkitchen.estate.company",
+        "res.company",
         string="Company",
         index=True,
         help="Company context for multi-tenancy",

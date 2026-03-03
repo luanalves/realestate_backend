@@ -12,6 +12,24 @@
 
 set -e
 
+# Profile type code → ID mapping
+profile_type_to_id() {
+    case "$1" in
+        owner) echo 1 ;;
+        director) echo 2 ;;
+        manager) echo 3 ;;
+        agent) echo 4 ;;
+        prospector) echo 5 ;;
+        receptionist) echo 6 ;;
+        financial) echo 7 ;;
+        legal) echo 8 ;;
+        tenant|portal) echo 9 ;;
+        property_owner) echo 10 ;;
+        *) echo 99999 ;;
+    esac
+}
+
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib/get_oauth2_token.sh"
 
@@ -66,6 +84,7 @@ create_profile() {
     local session="$1"
     local company="$2"
     local profile_type="$3"
+    local profile_type_id=$(profile_type_to_id "$profile_type")
     local name="$4"
     local document="$5"
     local email="$6"
@@ -81,7 +100,7 @@ create_profile() {
             \"email\": \"$email\",
             \"phone\": \"11999998888\",
             \"birthdate\": \"1990-01-01\",
-            \"profile_type\": \"$profile_type\"
+            \"profile_type_id\": $profile_type_id
         }")
     
     echo "$response"
@@ -183,7 +202,7 @@ if [ "$MANAGER_PROFILE_HTTP" != "200" ] && [ "$MANAGER_PROFILE_HTTP" != "201" ];
     exit 1
 fi
 
-MANAGER_PROFILE_ID=$(echo "$MANAGER_PROFILE_RESPONSE" | sed '$d' | jq -r '.data.id // empty')
+MANAGER_PROFILE_ID=$(echo "$MANAGER_PROFILE_RESPONSE" | sed '$d' | jq -r '.id // .data.id // empty')
 echo -e "${GREEN}✓ Manager profile created (ID=$MANAGER_PROFILE_ID)${NC}"
 
 # Invite Manager via Feature 009 API
@@ -193,10 +212,7 @@ MANAGER_INVITE_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/i
     -H "X-Openerp-Session-Id: $OWNER_SESSION" \
     -H "X-Company-ID: $OWNER_COMPANY" \
     -d "{
-        \"name\": \"RBAC Test Manager\",
-        \"email\": \"$MANAGER_EMAIL\",
-        \"document\": \"$MANAGER_PROFILE_DOC\",
-        \"profile\": \"manager\"
+        \"profile_id\": $MANAGER_PROFILE_ID
     }")
 
 MANAGER_INVITE_HTTP=$(echo "$MANAGER_INVITE_RESPONSE" | tail -n1)
@@ -210,8 +226,8 @@ fi
 MANAGER_USER_ID=$(echo "$MANAGER_INVITE_RESPONSE" | sed '$d' | jq -r '.data.id // empty')
 echo -e "${GREEN}✓ Manager invited (user_id=$MANAGER_USER_ID)${NC}"
 
-# Generate known token for testing (simulate email token)
-MANAGER_RAW_TOKEN="rbac-manager-${TIMESTAMP}-${MANAGER_USER_ID}"
+# Generate known token for testing (simulate email token - must be 32 hex chars like uuid4().hex)
+MANAGER_RAW_TOKEN=$(python3 -c "import uuid; print(uuid.uuid4().hex)")
 MANAGER_TOKEN_HASH=$(printf "%s" "$MANAGER_RAW_TOKEN" | shasum -a 256 | awk '{print $1}')
 
 # Update token in database
@@ -336,7 +352,7 @@ if [ "$AGENT_PROFILE_HTTP" != "200" ] && [ "$AGENT_PROFILE_HTTP" != "201" ]; the
     exit 1
 fi
 
-AGENT_PROFILE_ID=$(echo "$AGENT_PROFILE_RESPONSE" | sed '$d' | jq -r '.data.id // empty')
+AGENT_PROFILE_ID=$(echo "$AGENT_PROFILE_RESPONSE" | sed '$d' | jq -r '.id // .data.id // empty')
 echo -e "${GREEN}✓ Agent profile created (ID=$AGENT_PROFILE_ID)${NC}"
 
 # Invite Agent
@@ -346,10 +362,7 @@ AGENT_INVITE_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/inv
     -H "X-Openerp-Session-Id: $OWNER_SESSION" \
     -H "X-Company-ID: $OWNER_COMPANY" \
     -d "{
-        \"name\": \"RBAC Test Agent\",
-        \"email\": \"$AGENT_EMAIL\",
-        \"document\": \"$AGENT_PROFILE_DOC\",
-        \"profile\": \"agent\"
+        \"profile_id\": $AGENT_PROFILE_ID
     }")
 
 AGENT_INVITE_HTTP=$(echo "$AGENT_INVITE_RESPONSE" | tail -n1)
@@ -363,8 +376,8 @@ fi
 AGENT_USER_ID=$(echo "$AGENT_INVITE_RESPONSE" | sed '$d' | jq -r '.data.id // empty')
 echo -e "${GREEN}✓ Agent invited (user_id=$AGENT_USER_ID)${NC}"
 
-# Generate token for Agent
-AGENT_RAW_TOKEN="rbac-agent-${TIMESTAMP}-${AGENT_USER_ID}"
+# Generate token for Agent (must be 32 hex chars like uuid4().hex)
+AGENT_RAW_TOKEN=$(python3 -c "import uuid; print(uuid.uuid4().hex)")
 AGENT_TOKEN_HASH=$(printf "%s" "$AGENT_RAW_TOKEN" | shasum -a 256 | awk '{print $1}')
 
 docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF > /dev/null 2>&1
@@ -408,8 +421,8 @@ echo -e "${GREEN}✓ Agent logged in (company_id=$AGENT_COMPANY)${NC}"
 # Step 7: Test Agent RBAC - Allowed profiles (2 types)
 # ============================================================
 echo ""
-echo "Step 7: Testing Agent can create 2 types (owner=property owner, portal=tenant)..."
-AGENT_ALLOWED=("owner" "portal")
+echo "Step 7: Testing Agent can create 2 types (property_owner, portal=tenant)..."
+AGENT_ALLOWED=("property_owner" "portal")
 AGENT_ALLOWED_PASSED=0
 
 for idx in "${!AGENT_ALLOWED[@]}"; do
@@ -431,7 +444,7 @@ for idx in "${!AGENT_ALLOWED[@]}"; do
                 \"email\": \"$email\",
                 \"phone\": \"11999998888\",
                 \"birthdate\": \"1990-01-01\",
-                \"profile_type\": \"$ptype\",
+                \"profile_type_id\": $(profile_type_to_id "$ptype"),
                 \"occupation\": \"Tenant\"
             }")
     else
@@ -460,8 +473,8 @@ echo -e "${GREEN}✓ Agent created all 2 allowed types (2/2)${NC}"
 # Step 8: Test Agent RBAC - Forbidden profiles (7 types)
 # ============================================================
 echo ""
-echo "Step 8: Testing Agent cannot create 7 other types (403)..."
-AGENT_FORBIDDEN=("director" "manager" "agent" "prospector" "receptionist" "financial" "legal")
+echo "Step 8: Testing Agent cannot create 8 other types (403)..."
+AGENT_FORBIDDEN=("owner" "director" "manager" "agent" "prospector" "receptionist" "financial" "legal")
 AGENT_FORBIDDEN_PASSED=0
 
 for idx in "${!AGENT_FORBIDDEN[@]}"; do
@@ -482,12 +495,12 @@ for idx in "${!AGENT_FORBIDDEN[@]}"; do
     fi
 done
 
-if [ $AGENT_FORBIDDEN_PASSED -ne 7 ]; then
-    echo -e "${RED}✗ Agent should be blocked from 7 types, got $AGENT_FORBIDDEN_PASSED/7${NC}"
+if [ $AGENT_FORBIDDEN_PASSED -ne 8 ]; then
+    echo -e "${RED}✗ Agent should be blocked from 8 types, got $AGENT_FORBIDDEN_PASSED/8${NC}"
     exit 1
 fi
 
-echo -e "${GREEN}✓ Agent blocked from all 7 forbidden types (7/7 = 403)${NC}"
+echo -e "${GREEN}✓ Agent blocked from all 8 forbidden types (8/8 = 403)${NC}"
 
 # ============================================================
 # Summary
@@ -500,7 +513,7 @@ echo ""
 echo "Summary:"
 echo "  ✓ Owner: Can create all 9 profile types (9/9)"
 echo "  ✓ Manager: Can create 5 operational types (5/5), blocked from 4 admin types (4/4)"
-echo "  ✓ Agent: Can create 2 types (owner+portal) (2/2), blocked from 7 types (7/7)"
+echo "  ✓ Agent: Can create 2 types (property_owner+portal) (2/2), blocked from 8 types (8/8)"
 echo ""
 
 exit 0

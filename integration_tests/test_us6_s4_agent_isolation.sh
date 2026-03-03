@@ -39,10 +39,10 @@ echo ""
 {
     echo "=== Test Started: $(date) ==="
     
-    # STEP 1: Authenticate as admin
-    echo -e "${BLUE}STEP 1${NC}: Authenticating as admin..."
+    # STEP 1: Authenticate as agent
+    echo -e "${BLUE}STEP 1${NC}: Authenticating as agent..."
     
-    if ! authenticate_user "admin" "admin"; then
+    if ! authenticate_user "agent@seed.com.br" "seed123"; then
         echo -e "${RED}✗ FAIL${NC}: Authentication failed"
         exit 1
     fi

@@ -113,7 +113,7 @@ COMPANY_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
         \"params\": {
-            \"model\": \"thedevkitchen.estate.company\",
+            \"model\": \"res.company\",
             \"method\": \"create\",
             \"args\": [{
                 \"name\": \"$COMPANY_NAME\",
@@ -154,7 +154,8 @@ MANAGER_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"name\": \"Manager US2S3\",
                 \"login\": \"$MANAGER_LOGIN_EMAIL\",
                 \"password\": \"manager123\",
-                \"estate_company_ids\": [[6, 0, [$COMPANY_ID]]],
+                \"company_id\": $COMPANY_ID,
+                \"company_ids\": [[6, 0, [$COMPANY_ID]]],
                 \"groups_id\": [[6, 0, [17]]]
             }],
             \"kwargs\": {}
@@ -186,7 +187,8 @@ AGENT1_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"name\": \"Agent 1 US2S3\",
                 \"login\": \"$AGENT1_LOGIN\",
                 \"password\": \"agent123\",
-                \"estate_company_ids\": [[6, 0, [$COMPANY_ID]]],
+                \"company_id\": $COMPANY_ID,
+                \"company_ids\": [[6, 0, [$COMPANY_ID]]],
                 \"groups_id\": [[6, 0, [23]]]
             }],
             \"kwargs\": {}
@@ -218,7 +220,8 @@ AGENT2_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"name\": \"Agent 2 US2S3\",
                 \"login\": \"$AGENT2_LOGIN\",
                 \"password\": \"agent123\",
-                \"estate_company_ids\": [[6, 0, [$COMPANY_ID]]],
+                \"company_id\": $COMPANY_ID,
+                \"company_ids\": [[6, 0, [$COMPANY_ID]]],
                 \"groups_id\": [[6, 0, [23]]]
             }],
             \"kwargs\": {}
@@ -242,10 +245,10 @@ def calc_cpf_digit(cpf, weights):
     s = sum(int(d) * w for d, w in zip(cpf, weights))
     remainder = s % 11
     return '0' if remainder < 2 else str(11 - remainder)
-base = "66677788"
+base = "666777888"
 d1 = calc_cpf_digit(base, range(10, 1, -1))
 d2 = calc_cpf_digit(base + d1, range(11, 1, -1))
-print(f"{base[0:3]}.{base[3:6]}.{base[6:8]}{d1}-{d2}")
+print(f"{base[0:3]}.{base[3:6]}.{base[6:9]}-{d1}{d2}")
 PYTHON_EOF
 )
 
@@ -254,10 +257,10 @@ def calc_cpf_digit(cpf, weights):
     s = sum(int(d) * w for d, w in zip(cpf, weights))
     remainder = s % 11
     return '0' if remainder < 2 else str(11 - remainder)
-base = "77788899"
+base = "777888990"
 d1 = calc_cpf_digit(base, range(10, 1, -1))
 d2 = calc_cpf_digit(base + d1, range(11, 1, -1))
-print(f"{base[0:3]}.{base[3:6]}.{base[6:8]}{d1}-{d2}")
+print(f"{base[0:3]}.{base[3:6]}.{base[6:9]}-{d1}{d2}")
 PYTHON_EOF
 )
 
@@ -266,10 +269,10 @@ def calc_cpf_digit(cpf, weights):
     s = sum(int(d) * w for d, w in zip(cpf, weights))
     remainder = s % 11
     return '0' if remainder < 2 else str(11 - remainder)
-base = "88899900"
+base = "888999001"
 d1 = calc_cpf_digit(base, range(10, 1, -1))
 d2 = calc_cpf_digit(base + d1, range(11, 1, -1))
-print(f"{base[0:3]}.{base[3:6]}.{base[6:8]}{d1}-{d2}")
+print(f"{base[0:3]}.{base[3:6]}.{base[6:9]}-{d1}{d2}")
 PYTHON_EOF
 )
 
@@ -287,7 +290,7 @@ MANAGER_AGENT_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"name\": \"Manager US2S3\",
                 \"user_id\": $MANAGER_UID,
                 \"cpf\": \"$CPF_MANAGER\",
-                \"company_ids\": [[6, 0, [$COMPANY_ID]]]
+                \"company_id\": $COMPANY_ID
             }],
             \"kwargs\": {}
         },
@@ -318,7 +321,7 @@ AGENT1_AGENT_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"name\": \"Agent 1 US2S3\",
                 \"user_id\": $AGENT1_UID,
                 \"cpf\": \"$CPF_AGENT1\",
-                \"company_ids\": [[6, 0, [$COMPANY_ID]]]
+                \"company_id\": $COMPANY_ID
             }],
             \"kwargs\": {}
         },
@@ -349,7 +352,7 @@ AGENT2_AGENT_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"name\": \"Agent 2 US2S3\",
                 \"user_id\": $AGENT2_UID,
                 \"cpf\": \"$CPF_AGENT2\",
-                \"company_ids\": [[6, 0, [$COMPANY_ID]]]
+                \"company_id\": $COMPANY_ID
             }],
             \"kwargs\": {}
         },
@@ -432,7 +435,7 @@ STATE_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
         \"params\": {
-            \"model\": \"real.estate.state\",
+            \"model\": \"res.country.state\",
             \"method\": \"search_read\",
             \"args\": [[]],
             \"kwargs\": {\"fields\": [\"id\", \"name\"], \"limit\": 1}
@@ -475,7 +478,7 @@ PROPERTY1_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"street\": \"Rua Teste\",
                 \"street_number\": \"100\",
                 \"area\": 80.0,
-                \"company_ids\": [[6, 0, [$COMPANY_ID]]]
+                \"company_id\": $COMPANY_ID
             }],
             \"kwargs\": {}
         },
@@ -511,7 +514,7 @@ PROPERTY2_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"street\": \"Rua Teste\",
                 \"street_number\": \"200\",
                 \"area\": 150.0,
-                \"company_ids\": [[6, 0, [$COMPANY_ID]]]
+                \"company_id\": $COMPANY_ID
             }],
             \"kwargs\": {}
         },

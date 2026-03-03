@@ -64,7 +64,7 @@ class MasterDataApiController(http.Controller):
             if country_id:
                 domain.append(('country_id', '=', int(country_id)))
             
-            State = request.env['real.estate.state'].sudo()
+            State = request.env['res.country.state'].sudo()  # Feature 011: native state model
             states = State.search(domain, order='name')
             
             states_list = []
@@ -95,13 +95,13 @@ class MasterDataApiController(http.Controller):
     @require_company
     def list_companies(self, **kwargs):
         try:
-            Company = request.env['thedevkitchen.estate.company'].sudo()
+            Company = request.env['res.company'].sudo()  # Feature 011
             
-            # Se user_company_ids está vazio, o usuário é admin e vê todas as companies
+            # Feature 011: always filter by is_real_estate
             if request.user_company_ids:
-                domain = [('id', 'in', request.user_company_ids)]
+                domain = [('id', 'in', request.user_company_ids), ('is_real_estate', '=', True)]
             else:
-                domain = []  # Admin vê todas
+                domain = [('is_real_estate', '=', True)]  # Admin vê todas as RE companies
             
             companies = Company.search(domain, order='name')
             

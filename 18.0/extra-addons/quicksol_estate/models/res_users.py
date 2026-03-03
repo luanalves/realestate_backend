@@ -19,41 +19,25 @@ class ResUsers(models.Model):
          'CPF já cadastrado. Cada usuário deve ter um CPF único.')
     ]
 
-    # Relacionamento com imobiliárias
-    estate_company_ids = fields.Many2many(
-        'thedevkitchen.estate.company', 
-        'thedevkitchen_user_company_rel', 
-        'user_id', 
-        'company_id',
-        string='Real Estate Companies',
-        help='Imobiliárias que este usuário tem acesso'
-    )
-    
-    # Imobiliária principal do usuário
-    main_estate_company_id = fields.Many2one(
-        'thedevkitchen.estate.company',
-        string='Main Real Estate Company',
-        help='Imobiliária principal do usuário para filtros padrão'
-    )
-    
     # Feature 007: Computed field for Owner's companies (T004)
+    # Uses native res.users company_ids (Feature 011 migration)
     owner_company_ids = fields.Many2many(
-        'thedevkitchen.estate.company',
+        'res.company',
         compute='_compute_owner_companies',
         string='Owned Companies',
         help='Companies where this user is an Owner (has group_real_estate_owner)'
     )
     
-    @api.depends('groups_id', 'estate_company_ids')
+    @api.depends('groups_id', 'company_ids')
     def _compute_owner_companies(self):
         """
         Compute companies owned by this user.
-        Only users with group_real_estate_owner see their estate_company_ids as owner_company_ids.
+        Only users with group_real_estate_owner see their company_ids as owner_company_ids.
         """
         owner_group = self.env.ref('quicksol_estate.group_real_estate_owner', raise_if_not_found=False)
         for user in self:
             if owner_group and owner_group in user.groups_id:
-                user.owner_company_ids = user.estate_company_ids
+                user.owner_company_ids = user.company_ids
             else:
                 user.owner_company_ids = False
     
@@ -61,23 +45,17 @@ class ResUsers(models.Model):
     def get_user_companies(self):
         """Retorna as imobiliárias do usuário atual"""
         if self.env.user.has_group('base.group_system'):
-            # Admin vê todas as imobiliárias
-            return self.env['thedevkitchen.estate.company'].search([])
+            # Admin vê todas as imobiliárias com is_real_estate
+            return self.env['res.company'].search([('is_real_estate', '=', True)])
         else:
             # Usuário comum vê apenas suas imobiliárias
-            return self.env.user.estate_company_ids
+            return self.env.user.company_ids
 
     def has_estate_company_access(self, company_id):
         """Verifica se o usuário tem acesso à imobiliária especificada"""
         if self.env.user.has_group('base.group_system'):
             return True
-        return company_id in self.env.user.estate_company_ids.ids
-    
-    @api.onchange('main_estate_company_id')
-    def _onchange_main_estate_company(self):
-        """Garante que a imobiliária principal esteja nas imobiliárias do usuário"""
-        if self.main_estate_company_id and self.main_estate_company_id not in self.estate_company_ids:
-            self.estate_company_ids = [(4, self.main_estate_company_id.id)]
+        return company_id in self.env.user.company_ids.ids
     
     @api.constrains('cpf')
     def _check_cpf_format(self):
@@ -128,11 +106,11 @@ class ResUsers(models.Model):
         result = super().write(vals)
         
         # Se as imobiliárias do usuário mudaram, atualizar agentes relacionados
-        if 'estate_company_ids' in vals:
+        if 'company_ids' in vals:
             for user in self:
                 agents = self.env['real.estate.agent'].search([('user_id', '=', user.id)])
-                if agents and user.estate_company_ids:
-                    agents.write({'company_ids': [(6, 0, user.estate_company_ids.ids)]})
+                if agents and user.company_ids:
+                    agents.write({'company_id': user.company_ids[0].id})
         
         # Emit groups_changed event for LGPD audit logging (T135)
         if groups_changed:

@@ -88,7 +88,7 @@ class EstateProfile(models.Model):
     name = fields.Char(required=True)
     document = fields.Char(required=True, index=True)  # CPF/CNPJ
     profile_type_id = fields.Many2one('thedevkitchen.profile.type', required=True)
-    company_id = fields.Many2one('thedevkitchen.estate.company', required=True)
+    company_id = fields.Many2one('res.company', required=True)
     partner_id = fields.Many2one('res.partner')  # Link to Odoo contact
     
     # Cadastrais

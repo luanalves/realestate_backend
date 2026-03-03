@@ -30,13 +30,13 @@ class LeaseApiController(http.Controller):
         user = request.env.user
         if user.has_group('base.group_system'):
             return None
-        return user.estate_company_ids.ids
+        return user.company_ids.ids
 
     def _get_agent_property_ids(self, user, company_ids):
         """Get property IDs assigned to agent (transitive RBAC per R3)."""
         agent = request.env['real.estate.agent'].sudo().search([
             ('user_id', '=', user.id),
-            ('company_ids', 'in', company_ids),
+            ('company_id', 'in', company_ids),
         ], limit=1)
         if not agent:
             return []
@@ -92,7 +92,7 @@ class LeaseApiController(http.Controller):
             'termination_reason': lease.termination_reason or None,
             'termination_penalty': lease.termination_penalty or 0.0,
             'renewal_count': len(lease.renewal_history_ids),
-            'company_ids': lease.company_ids.ids,
+            'company_id': lease.company_id.id if lease.company_id else None,
             '_links': links,
         }
 
@@ -130,7 +130,7 @@ class LeaseApiController(http.Controller):
 
             # Company isolation (FR-030)
             if company_ids is not None:
-                domain.append(('company_ids', 'in', company_ids))
+                domain.append(('company_id', 'in', company_ids))
 
             # Optional filters
             if kwargs.get('property_id'):
@@ -208,7 +208,7 @@ class LeaseApiController(http.Controller):
             if not prop.exists():
                 return error_response(404, 'Property not found')
             if company_ids is not None:
-                if not any(cid in company_ids for cid in prop.company_ids.ids):
+                if prop.company_id.id not in company_ids:
                     return error_response(404, 'Property not found')
 
             # Reject if property is sold (FR-029 / FR-013 guard)
@@ -246,7 +246,7 @@ class LeaseApiController(http.Controller):
                 'end_date': data['end_date'],
                 'rent_amount': data['rent_amount'],
                 'status': data.get('status', 'draft'),
-                'company_ids': [(6, 0, company_ids)],
+                'company_id': company_ids[0] if company_ids else False,
             }
 
             # Create (constraint _check_concurrent_lease handles FR-013)
@@ -292,7 +292,7 @@ class LeaseApiController(http.Controller):
 
             # Company isolation
             if company_ids is not None:
-                if not any(cid in company_ids for cid in lease.company_ids.ids):
+                if lease.company_id.id not in company_ids:
                     return error_response(404, 'Lease not found')
 
             # Agent RBAC
@@ -341,7 +341,7 @@ class LeaseApiController(http.Controller):
 
             # Company isolation
             if company_ids is not None:
-                if not any(cid in company_ids for cid in lease.company_ids.ids):
+                if lease.company_id.id not in company_ids:
                     return error_response(404, 'Lease not found')
 
             # Parse body first (needed to check reactivation intent)
@@ -422,7 +422,7 @@ class LeaseApiController(http.Controller):
 
             # Company isolation
             if company_ids is not None:
-                if not any(cid in company_ids for cid in lease.company_ids.ids):
+                if lease.company_id.id not in company_ids:
                     return error_response(404, 'Lease not found')
 
             lease.write({'active': False})
@@ -454,7 +454,7 @@ class LeaseApiController(http.Controller):
 
             # Company isolation
             if company_ids is not None:
-                if not any(cid in company_ids for cid in lease.company_ids.ids):
+                if lease.company_id.id not in company_ids:
                     return error_response(404, 'Lease not found')
 
             # Only active leases can be renewed
@@ -547,7 +547,7 @@ class LeaseApiController(http.Controller):
 
             # Company isolation
             if company_ids is not None:
-                if not any(cid in company_ids for cid in lease.company_ids.ids):
+                if lease.company_id.id not in company_ids:
                     return error_response(404, 'Lease not found')
 
             # Only active leases can be terminated

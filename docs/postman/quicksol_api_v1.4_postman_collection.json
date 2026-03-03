@@ -2507,7 +2507,7 @@
                     }
                   ]
                 },
-                "description": "List all companies the user has access to.\n\nDecorators: @require_jwt, @require_session, @require_company\nRBAC: Returns only companies in user's estate_company_ids\n\nQuery parameters:\n- limit: Page size (default 20, max 100)\n- offset: Page offset (default 0)\n- active: Filter by status (default true)\n- search: Search by name or CNPJ\n\nResponse includes pagination metadata and HATEOAS links"
+                "description": "List all companies the user has access to.\n\nDecorators: @require_jwt, @require_session, @require_company\nRBAC: Returns only companies in user's company_ids\n\nQuery parameters:\n- limit: Page size (default 20, max 100)\n- offset: Page offset (default 0)\n- active: Filter by status (default true)\n- search: Search by name or CNPJ\n\nResponse includes pagination metadata and HATEOAS links"
               },
               "response": []
             },

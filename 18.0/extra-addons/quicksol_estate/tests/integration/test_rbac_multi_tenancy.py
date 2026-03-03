@@ -14,7 +14,7 @@ class TestRBACMultiTenancy(TransactionCase):
     def setUpClass(cls):
         super().setUpClass()
         
-        cls.Company = cls.env['thedevkitchen.estate.company']
+        cls.Company = cls.env['res.company']
         cls.Property = cls.env['real.estate.property']
         cls.Sale = cls.env['real.estate.sale']
         cls.Agent = cls.env['real.estate.agent']
@@ -42,7 +42,7 @@ class TestRBACMultiTenancy(TransactionCase):
             'name': 'User Company A',
             'login': 'user_company_a@test.com',
             'email': 'user_company_a@test.com',
-            'estate_company_ids': [(6, 0, [cls.company_a.id])],
+            'company_ids': [(6, 0, [cls.company_a.id])],
             'groups_id': [(6, 0, [cls.agent_group.id])],
         })
         
@@ -50,7 +50,7 @@ class TestRBACMultiTenancy(TransactionCase):
             'name': 'User Company B',
             'login': 'user_company_b@test.com',
             'email': 'user_company_b@test.com',
-            'estate_company_ids': [(6, 0, [cls.company_b.id])],
+            'company_ids': [(6, 0, [cls.company_b.id])],
             'groups_id': [(6, 0, [cls.agent_group.id])],
         })
         
@@ -59,7 +59,7 @@ class TestRBACMultiTenancy(TransactionCase):
             'name': 'User Multi-Company',
             'login': 'user_multi@test.com',
             'email': 'user_multi@test.com',
-            'estate_company_ids': [(6, 0, [cls.company_a.id, cls.company_b.id])],
+            'company_ids': [(6, 0, [cls.company_a.id, cls.company_b.id])],
             'groups_id': [(6, 0, [cls.manager_group.id])],
         })
         
@@ -67,7 +67,7 @@ class TestRBACMultiTenancy(TransactionCase):
         cls.property_type = cls.env['real.estate.property.type'].create({
             'name': 'Apartment',
         })
-        cls.state = cls.env['real.estate.state'].create({
+        cls.state = cls.env['res.country.state'].create({
             'name': 'São Paulo',
             'code': 'SP',
         })
@@ -262,14 +262,14 @@ class TestRBACMultiTenancy(TransactionCase):
         self.assertNotIn(agent_a, agents_b)
     
     def test_removing_company_access_removes_data_visibility(self):
-        """T140.3: Removing company from user's estate_company_ids removes data access."""
+        """T140.3: Removing company from user's company_ids removes data access."""
         # Multi-company user initially sees all properties
         properties_before = self.Property.with_user(self.user_multi_company).search([])
         self.assertEqual(len(properties_before), 4)
         
         # Remove Company B from user's companies
         self.user_multi_company.write({
-            'estate_company_ids': [(6, 0, [self.company_a.id])],
+            'company_ids': [(6, 0, [self.company_a.id])],
         })
         
         # User should now see only Company A properties

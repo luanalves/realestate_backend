@@ -15,7 +15,7 @@ class TestCommissionSplitObserver(TransactionCase):
     def setUpClass(cls):
         super().setUpClass()
         
-        cls.Company = cls.env['thedevkitchen.estate.company']
+        cls.Company = cls.env['res.company']
         cls.Property = cls.env['real.estate.property']
         cls.Agent = cls.env['real.estate.agent']
         cls.Sale = cls.env['real.estate.sale']

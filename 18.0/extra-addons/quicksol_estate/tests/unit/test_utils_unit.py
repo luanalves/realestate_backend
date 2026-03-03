@@ -70,7 +70,7 @@ class TestUtilsSerializers(TransactionCase):
             'name': 'Test Type'
         })
         
-        cls.state = cls.env['real.estate.state'].create({
+        cls.state = cls.env['res.country.state'].create({
             'name': 'Test State',
             'code': 'TS',
             'country_id': cls.env.ref('base.br').id

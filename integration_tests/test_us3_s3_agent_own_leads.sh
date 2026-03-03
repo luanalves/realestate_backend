@@ -112,7 +112,7 @@ COMPANY_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
         \"params\": {
-            \"model\": \"thedevkitchen.estate.company\",
+            \"model\": \"res.company\",
             \"method\": \"create\",
             \"args\": [{
                 \"name\": \"$COMPANY_NAME\",
@@ -145,7 +145,8 @@ AGENT_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"name\": \"Agent US3S3\",
                 \"login\": \"$AGENT_LOGIN\",
                 \"password\": \"agent123\",
-                \"estate_company_ids\": [[6, 0, [$COMPANY_ID]]],
+                \"company_id\": $COMPANY_ID,
+                \"company_ids\": [[6, 0, [$COMPANY_ID]]],
                 \"groups_id\": [[6, 0, [23]]]
             }],
             \"kwargs\": {}
@@ -175,7 +176,8 @@ OTHER_AGENT_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"name\": \"Other Agent US3S3\",
                 \"login\": \"$OTHER_AGENT_LOGIN\",
                 \"password\": \"agent123\",
-                \"estate_company_ids\": [[6, 0, [$COMPANY_ID]]],
+                \"company_id\": $COMPANY_ID,
+                \"company_ids\": [[6, 0, [$COMPANY_ID]]],
                 \"groups_id\": [[6, 0, [23]]]
             }],
             \"kwargs\": {}
@@ -199,10 +201,10 @@ def calc_cpf_digit(cpf, weights):
     remainder = s % 11
     return '0' if remainder < 2 else str(11 - remainder)
 
-base = "66677788"
+base = "666777888"
 d1 = calc_cpf_digit(base, range(10, 1, -1))
 d2 = calc_cpf_digit(base + d1, range(11, 1, -1))
-cpf = f"{base[0:3]}.{base[3:6]}.{base[6:8]}{d1}-{d2}"
+cpf = f"{base[0:3]}.{base[3:6]}.{base[6:9]}-{d1}{d2}"
 print(cpf)
 PYTHON_EOF
 )
@@ -220,7 +222,7 @@ AGENT_AGENT_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"name\": \"Agent US3S3\",
                 \"user_id\": $AGENT_UID,
                 \"cpf\": \"$CPF_AGENT\",
-                \"company_ids\": [[6, 0, [$COMPANY_ID]]]
+                \"company_id\": $COMPANY_ID
             }],
             \"kwargs\": {}
         },
@@ -242,10 +244,10 @@ def calc_cpf_digit(cpf, weights):
     remainder = s % 11
     return '0' if remainder < 2 else str(11 - remainder)
 
-base = "77788899"
+base = "777888990"
 d1 = calc_cpf_digit(base, range(10, 1, -1))
 d2 = calc_cpf_digit(base + d1, range(11, 1, -1))
-cpf = f"{base[0:3]}.{base[3:6]}.{base[6:8]}{d1}-{d2}"
+cpf = f"{base[0:3]}.{base[3:6]}.{base[6:9]}-{d1}{d2}"
 print(cpf)
 PYTHON_EOF
 )
@@ -263,7 +265,7 @@ OTHER_AGENT_AGENT_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"name\": \"Other Agent US3S3\",
                 \"user_id\": $OTHER_AGENT_UID,
                 \"cpf\": \"$CPF_OTHER_AGENT\",
-                \"company_ids\": [[6, 0, [$COMPANY_ID]]]
+                \"company_id\": $COMPANY_ID
             }],
             \"kwargs\": {}
         },

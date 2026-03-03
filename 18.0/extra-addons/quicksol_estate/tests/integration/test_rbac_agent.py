@@ -14,7 +14,7 @@ class TestRBACAgent(TransactionCase):
     def setUpClass(cls):
         super().setUpClass()
         
-        cls.Company = cls.env['thedevkitchen.estate.company']
+        cls.Company = cls.env['res.company']
         cls.Property = cls.env['real.estate.property']
         cls.Agent = cls.env['real.estate.agent']
         cls.Assignment = cls.env['real.estate.agent.property.assignment']
@@ -33,7 +33,7 @@ class TestRBACAgent(TransactionCase):
             'login': 'agent_a@test.com',
             'email': 'agent_a@test.com',
             'groups_id': [(6, 0, [cls.agent_group.id])],
-            'estate_company_ids': [(6, 0, [cls.company_a.id])],
+            'company_ids': [(6, 0, [cls.company_a.id])],
         })
         
         cls.agent_user_b = cls.User.create({
@@ -41,7 +41,7 @@ class TestRBACAgent(TransactionCase):
             'login': 'agent_b@test.com',
             'email': 'agent_b@test.com',
             'groups_id': [(6, 0, [cls.agent_group.id])],
-            'estate_company_ids': [(6, 0, [cls.company_a.id])],
+            'company_ids': [(6, 0, [cls.company_a.id])],
         })
         
         cls.agent_record_a = cls.Agent.create({
@@ -75,9 +75,9 @@ class TestRBACAgent(TransactionCase):
         if not cls.country:
             cls.country = cls.env['res.country'].create({'name': 'Brazil', 'code': 'BR'})
         
-        cls.state = cls.env['real.estate.state'].search([('code', '=', 'SP')], limit=1)
+        cls.state = cls.env['res.country.state'].search([('code', '=', 'SP')], limit=1)
         if not cls.state:
-            cls.state = cls.env['real.estate.state'].create({
+            cls.state = cls.env['res.country.state'].create({
                 'name': 'São Paulo',
                 'code': 'SP',
                 'country_id': cls.country.id

@@ -12,7 +12,7 @@
                     <field name="email"/>
                     <field name="phone"/>
                     <field name="mobile"/>
-                    <field name="estate_company_ids" widget="many2many_tags"/>
+                    <field name="company_ids" widget="many2many_tags"/>
                     <field name="active" invisible="1"/>
                 </list>
             </field>
@@ -49,7 +49,7 @@
                         </group>
                         
                         <group string="Companies">
-                            <field name="estate_company_ids" widget="many2many_tags" 
+                            <field name="company_ids" widget="many2many_tags" 
                                    options="{'no_create': True}"/>
                         </group>
                     </sheet>
@@ -66,7 +66,7 @@
                     <field name="name" string="Owner" filter_domain="['|', ('name', 'ilike', self), ('email', 'ilike', self)]"/>
                     <field name="email"/>
                     <field name="phone"/>
-                    <field name="estate_company_ids"/>
+                    <field name="company_ids"/>
                     
                     <filter name="active_owners" string="Active" domain="[('active', '=', True)]"/>
                     <filter name="inactive_owners" string="Inactive" domain="[('active', '=', False)]"/>
@@ -77,12 +77,12 @@
                             domain="[('groups_id.name', '=', 'Owner')]"/>
                     
                     <filter name="with_companies" string="With Companies" 
-                            domain="[('estate_company_ids', '!=', False)]"/>
+                            domain="[('company_ids', '!=', False)]"/>
                     <filter name="no_companies" string="Without Companies" 
-                            domain="[('estate_company_ids', '=', False)]"/>
+                            domain="[('company_ids', '=', False)]"/>
                     
                     <group expand="0" string="Group By">
-                        <filter name="group_by_company" string="Company" context="{'group_by': 'estate_company_ids'}"/>
+                        <filter name="group_by_company" string="Company" context="{'group_by': 'company_ids'}"/>
                     </group>
                 </search>
             </field>

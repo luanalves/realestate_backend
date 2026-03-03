@@ -10,7 +10,7 @@
 
 O sistema utiliza uma **arquitetura multi-tenant** com separação clara entre:
 - **Usuários do Sistema** (res.users) - Autenticação e permissões
-- **Imobiliárias** (thedevkitchen.estate.company) - Entidades multi-tenant
+- **Imobiliárias** (res.company) - Entidades multi-tenant
 - **Pessoas Operacionais** (agentes, proprietários, inquilinos) - Dados de negócio
 
 ### Modelo de Dados Hierárquico
@@ -18,9 +18,9 @@ O sistema utiliza uma **arquitetura multi-tenant** com separação clara entre:
 ```
 res.users (Odoo Core)
     ↓ (herança: res_users.py)
-    estate_company_ids (Many2many)
+    company_ids (Many2many)
     ↓
-thedevkitchen.estate.company
+res.company
     ↓ (relacionamentos Many2many)
     ├── real.estate.agent (Agentes/Corretores)
     ├── real.estate.property.owner (Proprietários)
@@ -42,28 +42,28 @@ thedevkitchen.estate.company
 
 | Campo | Tipo | Descrição |
 |-------|------|-----------|
-| `estate_company_ids` | Many2many | Imobiliárias que o usuário tem acesso |
-| `main_estate_company_id` | Many2one | Imobiliária principal do usuário |
+| `company_ids` | Many2many | Imobiliárias que o usuário tem acesso |
+| `company_id` | Many2one | Imobiliária principal do usuário |
 
 #### Tabela de Relacionamento:
 ```sql
 thedevkitchen_user_company_rel (
     user_id INTEGER → res_users.id,
-    company_id INTEGER → thedevkitchen_estate_company.id
+    company_id INTEGER → res_company.id
 )
 ```
 
 #### Regras de Negócio:
 - **Admin (System Administrator)**: Acessa TODAS as imobiliárias
-- **Usuários Normais**: Acessam apenas suas `estate_company_ids`
-- **Auto-sincronização**: Mudanças em `estate_company_ids` atualizam agentes relacionados
+- **Usuários Normais**: Acessam apenas suas `company_ids`
+- **Auto-sincronização**: Mudanças em `company_ids` atualizam agentes relacionados
 - **Eventos LGPD**: Auditoria de alterações de grupos (T135)
 
 ---
 
-### 2.2 Tabela: `thedevkitchen_estate_company`
+### 2.2 Tabela: `res_company`
 
-**Modelo:** `thedevkitchen.estate.company`  
+**Modelo:** `res.company`  
 **Descrição:** Imobiliárias (multi-tenancy)  
 **Arquivo:** `18.0/extra-addons/quicksol_estate/models/company.py`
 
@@ -82,7 +82,7 @@ thedevkitchen_user_company_rel (
 | `website` | Char | - | - | Website |
 | `street` | Char | - | - | Endereço |
 | `city` | Char | - | - | Cidade |
-| `state_id` | Many2one | - | - | → real.estate.state |
+| `state_id` | Many2one | - | - | → res.country.state |
 | `zip_code` | Char | - | - | CEP |
 | `country_id` | Many2one | - | - | → res.country |
 | `active` | Boolean | - | - | Soft-delete (ADR-015) |
@@ -102,31 +102,31 @@ def _check_cnpj(self):
 ```sql
 -- Agentes
 thedevkitchen_company_agent_rel (
-    company_id → thedevkitchen_estate_company.id,
+    company_id → res_company.id,
     agent_id → real_estate_agent.id
 )
 
 -- Proprietários (via properties)
 thedevkitchen_company_property_rel (
-    company_id → thedevkitchen_estate_company.id,
+    company_id → res_company.id,
     property_id → real_estate_property.id
 )
 
 -- Inquilinos
 thedevkitchen_company_tenant_rel (
-    company_id → thedevkitchen_estate_company.id,
+    company_id → res_company.id,
     tenant_id → real_estate_tenant.id
 )
 
 -- Aluguéis
 thedevkitchen_company_lease_rel (
-    company_id → thedevkitchen_estate_company.id,
+    company_id → res_company.id,
     lease_id → real_estate_lease.id
 )
 
 -- Vendas
 thedevkitchen_company_sale_rel (
-    company_id → thedevkitchen_estate_company.id,
+    company_id → res_company.id,
     sale_id → real_estate_sale.id
 )
 ```
@@ -153,7 +153,7 @@ thedevkitchen_company_sale_rel (
 | `email` | Char | - | - | Email |
 | `phone` | Char(20) | - | - | Telefone |
 | `mobile` | Char(20) | - | - | Celular |
-| `company_id` | Many2one | Sim | - | → thedevkitchen.estate.company |
+| `company_id` | Many2one | Sim | - | → res.company |
 | `company_ids` | Many2many | - | - | **Deprecated** (backward compat) |
 | `user_id` | Many2one | - | - | → res.users (acesso ao sistema) |
 | `active` | Boolean | - | - | Soft-delete (ADR-015) |
@@ -238,7 +238,7 @@ active_properties_count → Integer (count assignments ativos)
 | `whatsapp` | Char | - | WhatsApp |
 | `address` | Text | - | Endereço completo |
 | `city` | Char | - | Cidade |
-| `state_id` | Many2one | - | → real.estate.state |
+| `state_id` | Many2one | - | → res.country.state |
 | `zip_code` | Char | - | CEP |
 | `country_id` | Many2one | - | → res.country (default: BR) |
 | `birth_date` | Date | - | Data de nascimento |
@@ -287,7 +287,7 @@ def _check_cnpj(self):
 | `partner_id` | Many2one | - | → res.partner (Portal) |
 | `phone` | Char | - | Telefone |
 | `email` | Char | - | Email |
-| `company_ids` | Many2many | - | → thedevkitchen.estate.company |
+| `company_ids` | Many2many | - | → res.company |
 | `occupation` | Char | - | Profissão |
 | `birthdate` | Date | - | Data de nascimento |
 | `profile_picture` | Binary | - | Foto de perfil |
@@ -317,7 +317,7 @@ def _validate_email(self):
 ```sql
 CREATE TABLE thedevkitchen_user_company_rel (
     user_id INTEGER REFERENCES res_users(id) ON DELETE CASCADE,
-    company_id INTEGER REFERENCES thedevkitchen_estate_company(id) ON DELETE CASCADE,
+    company_id INTEGER REFERENCES res_company(id) ON DELETE CASCADE,
     PRIMARY KEY (user_id, company_id)
 );
 ```
@@ -330,7 +330,7 @@ CREATE TABLE thedevkitchen_user_company_rel (
 
 ```sql
 CREATE TABLE thedevkitchen_company_agent_rel (
-    company_id INTEGER REFERENCES thedevkitchen_estate_company(id) ON DELETE CASCADE,
+    company_id INTEGER REFERENCES res_company(id) ON DELETE CASCADE,
     agent_id INTEGER REFERENCES real_estate_agent(id) ON DELETE CASCADE,
     PRIMARY KEY (company_id, agent_id)
 );
@@ -344,7 +344,7 @@ CREATE TABLE thedevkitchen_company_agent_rel (
 
 ```sql
 CREATE TABLE thedevkitchen_company_tenant_rel (
-    company_id INTEGER REFERENCES thedevkitchen_estate_company(id) ON DELETE CASCADE,
+    company_id INTEGER REFERENCES res_company(id) ON DELETE CASCADE,
     tenant_id INTEGER REFERENCES real_estate_tenant(id) ON DELETE CASCADE,
     PRIMARY KEY (company_id, tenant_id)
 );
@@ -358,7 +358,7 @@ CREATE TABLE thedevkitchen_company_tenant_rel (
 
 ```sql
 CREATE TABLE thedevkitchen_company_property_rel (
-    company_id INTEGER REFERENCES thedevkitchen_estate_company(id) ON DELETE CASCADE,
+    company_id INTEGER REFERENCES res_company(id) ON DELETE CASCADE,
     property_id INTEGER REFERENCES real_estate_property(id) ON DELETE CASCADE,
     PRIMARY KEY (company_id, property_id)
 );
@@ -375,22 +375,22 @@ O sistema utiliza **multi-tenancy baseado em relacionamentos Many2many** com as 
 #### Nível 1: Usuário → Imobiliárias
 ```python
 # res.users
-estate_company_ids = fields.Many2many('thedevkitchen.estate.company')
+company_ids = fields.Many2many('res.company')
 ```
 
-- Usuários **não-admin**: Veem apenas dados das suas `estate_company_ids`
+- Usuários **não-admin**: Veem apenas dados das suas `company_ids`
 - Usuários **admin**: Veem TODOS os dados (bypass multi-tenancy)
 
 #### Nível 2: Dados → Imobiliárias
 
 **Modelo A (Many2many):** Inquilinos, Aluguéis, Vendas
 ```python
-company_ids = fields.Many2many('thedevkitchen.estate.company', ...)
+company_ids = fields.Many2many('res.company', ...)
 ```
 
 **Modelo B (Many2one - Nova Arquitetura):** Agentes
 ```python
-company_id = fields.Many2one('thedevkitchen.estate.company', required=True)
+company_id = fields.Many2one('res.company', required=True)
 ```
 
 **Modelo C (Indireto):** Proprietários
@@ -409,7 +409,7 @@ O sistema utiliza **Record Rules** para aplicar isolamento automático:
     <field name="name">Agent: Company Isolation</field>
     <field name="model_id" ref="model_real_estate_agent"/>
     <field name="domain_force">
-        [('company_id', 'in', user.estate_company_ids.ids)]
+        [('company_id', 'in', user.company_ids.ids)]
     </field>
     <field name="groups" eval="[(4, ref('group_real_estate_agent'))]"/>
 </record>
@@ -480,8 +480,8 @@ POST   /api/v1/agents/{id}/deactivate  # Desativar agente
 ```python
 # Filtro automático por company_id
 if not company_id:
-    if user.estate_default_company_id:
-        domain.append(('company_id', '=', user.estate_default_company_id.id))
+    if user.company_id:
+        domain.append(('company_id', '=', user.company_id.id))
 ```
 
 ---
@@ -505,7 +505,7 @@ DELETE /api/v1/companies/{id}      # Soft-delete (archive)
 ```python
 # T024: Adiciona nova company ao usuário automaticamente
 user.sudo().write({
-    'estate_company_ids': [(4, new_company.id)]
+    'company_ids': [(4, new_company.id)]
 })
 ```
 
@@ -518,7 +518,7 @@ user.sudo().write({
 │   res.users     │
 │ (Odoo Core)     │
 └────────┬────────┘
-         │ Many2many (estate_company_ids)
+         │ Many2many (company_ids)
          ↓
 ┌──────────────────────────┐
 │ thedevkitchen.           │
@@ -618,8 +618,8 @@ user.sudo().write({
    domain.append(('company_id', '=', int(company_id)))
    
 5. Senão, usar company padrão do usuário:
-   if user.estate_default_company_id:
-       domain.append(('company_id', '=', user.estate_default_company_id.id))
+   if user.company_id:
+       domain.append(('company_id', '=', user.company_id.id))
    
 6. Agent.sudo().search(domain, limit=20, offset=0)
    ↓
@@ -638,7 +638,7 @@ user.sudo().write({
 
 | Tipo | Padrão | Exemplo |
 |------|--------|---------|
-| Pessoa (empresa) | `thedevkitchen.estate.{entity}` | `thedevkitchen.estate.company` |
+| Pessoa (empresa) | `thedevkitchen.estate.{entity}` | `res.company` |
 | Pessoa (operacional) | `real.estate.{entity}` | `real.estate.agent` |
 | Propriedade | `real.estate.property.{entity}` | `real.estate.property.owner` |
 | Transação | `real.estate.{type}` | `real.estate.lease` |
@@ -649,7 +649,7 @@ user.sudo().write({
 
 | Modelo | Tabela |
 |--------|--------|
-| `thedevkitchen.estate.company` | `thedevkitchen_estate_company` |
+| `res.company` | `res_company` |
 | `real.estate.agent` | `real_estate_agent` |
 | `real.estate.property.owner` | `real_estate_property_owner` |
 | `real.estate.tenant` | `real_estate_tenant` |
@@ -702,12 +702,12 @@ deactivation_reason = fields.Text(readonly=True)
 
 **Antes:**
 ```python
-company_ids = fields.Many2many('thedevkitchen.estate.company')  # Múltiplas empresas
+company_ids = fields.Many2many('res.company')  # Múltiplas empresas
 ```
 
 **Depois (Nova Arquitetura):**
 ```python
-company_id = fields.Many2one('thedevkitchen.estate.company', required=True)  # Empresa única
+company_id = fields.Many2one('res.company', required=True)  # Empresa única
 company_ids = fields.Many2many(...)  # DEPRECATED (backward compatibility)
 ```
 

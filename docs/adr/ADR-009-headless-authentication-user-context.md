@@ -20,7 +20,7 @@ O sistema atual usa **OAuth 2.0 Client Credentials Grant** (RFC 6749), onde:
 **Requisitos:**
 1. Frontend precisa fazer login com credenciais do usuário (email/senha)
 2. Backend deve identificar qual usuário está autenticado em cada request
-3. Filtros de empresa (`estate_company_ids`) dependem do usuário
+3. Filtros de empresa (`company_ids`) dependem do usuário
 4. Não usar sessões do Odoo (stateless)
 5. Token deve expirar e ser renovável
 
@@ -321,7 +321,7 @@ user = token_record.user_id  # ✅ Usuário da sessão
 - **Contexto de usuário em todas as requisições** - `request.env.user` representa usuário real
 - **Stateless** - Não depende de sessões do Odoo
 - **Escalável** - Frontend pode ser hospedado separadamente
-- **Multi-tenancy funcional** - Filtros por `estate_company_ids` funcionam corretamente
+- **Multi-tenancy funcional** - Filtros por `company_ids` funcionam corretamente
 - **Renovação transparente** - Refresh token permite renovar sem novo login
 - **Auditoria completa** - Todos os logs têm usuário real identificado
 

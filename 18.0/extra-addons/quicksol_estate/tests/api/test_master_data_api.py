@@ -23,9 +23,9 @@ class TestMasterDataAPI(HttpCase):
         cls.client_secret = _PLAINTEXT_CACHE.get(cls.oauth_app.client_id)
         
         # Ensure test data exists
-        cls.state_sp = cls.env['real.estate.state'].search([('code', '=', 'SP')], limit=1)
+        cls.state_sp = cls.env['res.country.state'].search([('code', '=', 'SP')], limit=1)
         if not cls.state_sp:
-            cls.state_sp = cls.env['real.estate.state'].create({
+            cls.state_sp = cls.env['res.country.state'].create({
                 'name': 'São Paulo',
                 'code': 'SP',
                 'country_id': cls.env.ref('base.br').id
@@ -299,8 +299,8 @@ class TestMasterDataAPI(HttpCase):
         token = self._get_access_token()
         
         # Create test company if not exists
-        if not self.env['thedevkitchen.estate.company'].search([], limit=1):
-            self.env['thedevkitchen.estate.company'].create({
+        if not self.env['res.company'].search([], limit=1):
+            self.env['res.company'].create({
                 'name': 'Test Real Estate Company',
                 'email': 'company@test.com',
                 'phone': '(11) 7777-0000'

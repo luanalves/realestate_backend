@@ -122,7 +122,7 @@ CREATE_PROFILE=$(curl -s -X POST "$API_BASE/profiles" \
         \"email\": \"$TEST_EMAIL\",
         \"phone\": \"11999998888\",
         \"birthdate\": \"1988-05-10\",
-        \"profile_type\": \"manager\"
+        \"profile_type_id\": 3
     }")
 
 PROFILE_ID=$(echo "$CREATE_PROFILE" | jq -r '.id // empty')
@@ -244,7 +244,7 @@ CREATE_AGENT_PROFILE=$(curl -s -X POST "$API_BASE/profiles" \
         \"email\": \"$AGENT_EMAIL\",
         \"phone\": \"11977776666\",
         \"birthdate\": \"1990-07-15\",
-        \"profile_type\": \"agent\",
+        \"profile_type_id\": 4,
         \"hire_date\": \"2024-01-01\"
     }")
 

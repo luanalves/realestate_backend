@@ -14,7 +14,7 @@ class TestRBACManager(TransactionCase):
     def setUpClass(cls):
         super().setUpClass()
         
-        cls.Company = cls.env['thedevkitchen.estate.company']
+        cls.Company = cls.env['res.company']
         cls.Property = cls.env['real.estate.property']
         cls.Agent = cls.env['real.estate.agent']
         cls.Assignment = cls.env['real.estate.agent.property.assignment']
@@ -41,7 +41,7 @@ class TestRBACManager(TransactionCase):
             'login': 'manager@test.com',
             'email': 'manager@test.com',
             'groups_id': [(6, 0, [cls.manager_group.id])],
-            'estate_company_ids': [(6, 0, [cls.company_a.id])],
+            'company_ids': [(6, 0, [cls.company_a.id])],
         })
         
         cls.agent_user_a = cls.User.create({
@@ -49,7 +49,7 @@ class TestRBACManager(TransactionCase):
             'login': 'agent_a_mgr@test.com',
             'email': 'agent_a_mgr@test.com',
             'groups_id': [(6, 0, [cls.agent_group.id])],
-            'estate_company_ids': [(6, 0, [cls.company_a.id])],
+            'company_ids': [(6, 0, [cls.company_a.id])],
         })
         
         cls.agent_user_b = cls.User.create({
@@ -57,7 +57,7 @@ class TestRBACManager(TransactionCase):
             'login': 'agent_b_mgr@test.com',
             'email': 'agent_b_mgr@test.com',
             'groups_id': [(6, 0, [cls.agent_group.id])],
-            'estate_company_ids': [(6, 0, [cls.company_a.id])],
+            'company_ids': [(6, 0, [cls.company_a.id])],
         })
         
         # Create property type for testing (moved before properties)
@@ -75,9 +75,9 @@ class TestRBACManager(TransactionCase):
         if not cls.country:
             cls.country = cls.env['res.country'].create({'name': 'Brazil', 'code': 'BR'})
         
-        cls.state = cls.env['real.estate.state'].search([('code', '=', 'SP')], limit=1)
+        cls.state = cls.env['res.country.state'].search([('code', '=', 'SP')], limit=1)
         if not cls.state:
-            cls.state = cls.env['real.estate.state'].create({
+            cls.state = cls.env['res.country.state'].create({
                 'name': 'São Paulo',
                 'code': 'SP',
                 'country_id': cls.country.id
@@ -221,7 +221,7 @@ class TestRBACManager(TransactionCase):
                 'name': 'Unauthorized User',
                 'login': 'unauthorized@test.com',
                 'email': 'unauthorized@test.com',
-                'estate_company_ids': [(6, 0, [self.company_a.id])],
+                'company_ids': [(6, 0, [self.company_a.id])],
             })
     
     def test_manager_cannot_see_other_company_properties(self):

@@ -336,18 +336,18 @@ class UserAuthController(http.Controller):
                 {
                     'id': c.id,
                     'name': c.name,
-                    'cnpj': getattr(c, 'vat', None)
+                    'cnpj': c.cnpj or None
                 }
-                for c in user.estate_company_ids
+                for c in user.company_ids.filtered(lambda c: c.is_real_estate)
             ],
             'default_company_id': (
                 user.company_id.id
                 if user.company_id
-                else (user.estate_company_ids[0].id if user.estate_company_ids else None)
+                else (user.company_ids[0].id if user.company_ids else None)
             ),
-            'main_estate_company_id': (
-                user.main_estate_company_id.id
-                if hasattr(user, 'main_estate_company_id') and user.main_estate_company_id
+            'company_id': (
+                user.company_id.id
+                if hasattr(user, 'company_id') and user.company_id
                 else None
             )
         }

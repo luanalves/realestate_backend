@@ -10,12 +10,7 @@ _logger = logging.getLogger(__name__)
 class AssignmentService:
 
     def __init__(self, env):
-        """
-        Initialize service with Odoo environment.
-        
-        Args:
-            env: Odoo environment (request.env)
-        """
+
         self.env = env
         self.Assignment = env['real.estate.agent.property.assignment'].sudo()
         self.Agent = env['real.estate.agent'].sudo()
@@ -40,19 +35,19 @@ class AssignmentService:
                 'Invalid responsibility type: %s. Must be one of: %s'
             ) % (responsibility_type, ', '.join(valid_types)))
         
-        # Validate company match (agent company must be in property companies)
-        if agent.company_id not in property_obj.company_ids:
+        # Validate company match (agent company must match property company)
+        if agent.company_id != property_obj.company_id:
             raise ValidationError(_(
                 'Cannot assign agent to property from different company. '
-                'Agent company: %s, Property companies: %s'
+                'Agent company: %s, Property company: %s'
             ) % (
                 agent.company_id.name,
-                ', '.join(property_obj.company_ids.mapped('name'))
+                property_obj.company_id.name if property_obj.company_id else 'None'
             ))
         
         # Additional company validation if provided
         if company_id:
-            Company = self.env['thedevkitchen.estate.company'].sudo()
+            Company = self.env['res.company'].sudo()
             company = Company.browse(company_id)
             if not company.exists():
                 raise ValidationError(_('Company with ID %s not found') % company_id)
@@ -105,7 +100,7 @@ class AssignmentService:
         
         # Company validation
         if company_id:
-            Company = self.env['thedevkitchen.estate.company'].sudo()
+            Company = self.env['res.company'].sudo()
             company = Company.browse(company_id)
             if not company.exists():
                 raise ValidationError(_('Company with ID %s not found') % company_id)
@@ -133,7 +128,7 @@ class AssignmentService:
         
         # Company validation
         if company_id:
-            Company = self.env['thedevkitchen.estate.company'].sudo()
+            Company = self.env['res.company'].sudo()
             company = Company.browse(company_id)
             if not company.exists():
                 raise ValidationError(_('Company with ID %s not found') % company_id)
@@ -160,15 +155,15 @@ class AssignmentService:
         
         # Company validation
         if company_id:
-            Company = self.env['thedevkitchen.estate.company'].sudo()
+            Company = self.env['res.company'].sudo()
             company = Company.browse(company_id)
             if not company.exists():
                 raise ValidationError(_('Company with ID %s not found') % company_id)
             
-            if company not in property_obj.company_ids:
+            if company != property_obj.company_id:
                 raise AccessError(_(
-                    'Cannot access property from companies %s using company %s context'
-                ) % (', '.join(property_obj.company_ids.mapped('name')), company.name))
+                    'Cannot access property from company %s using company %s context'
+                ) % (property_obj.company_id.name if property_obj.company_id else 'None', company.name))
         
         # Build domain
         domain = [('property_id', '=', property_id)]

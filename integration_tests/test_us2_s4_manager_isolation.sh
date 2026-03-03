@@ -50,7 +50,8 @@ def calc_cnpj_digit(cnpj, weights):
     remainder = s % 11
     return '0' if remainder < 2 else str(11 - remainder)
 
-base = "44555666"
+import time
+base = str(int(time.time()) % 100000000).zfill(8)
 branch = "0001"
 cnpj_partial = base + branch
 w1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
@@ -69,7 +70,8 @@ def calc_cnpj_digit(cnpj, weights):
     remainder = s % 11
     return '0' if remainder < 2 else str(11 - remainder)
 
-base = "66777888"
+import time
+base = str((int(time.time()) + 3) % 100000000).zfill(8)
 branch = "0001"
 cnpj_partial = base + branch
 w1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
@@ -131,7 +133,7 @@ COMPANY_A_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
         \"params\": {
-            \"model\": \"thedevkitchen.estate.company\",
+            \"model\": \"res.company\",
             \"method\": \"create\",
             \"args\": [{
                 \"name\": \"$COMPANY_A_NAME\",
@@ -159,7 +161,7 @@ COMPANY_B_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
         \"params\": {
-            \"model\": \"thedevkitchen.estate.company\",
+            \"model\": \"res.company\",
             \"method\": \"create\",
             \"args\": [{
                 \"name\": \"$COMPANY_B_NAME\",
@@ -199,7 +201,8 @@ MANAGER_A_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"name\": \"Manager A US2S4\",
                 \"login\": \"$MANAGER_A_LOGIN\",
                 \"password\": \"manager123\",
-                \"estate_company_ids\": [[6, 0, [$COMPANY_A_ID]]],
+                \"company_id\": $COMPANY_A_ID,
+                \"company_ids\": [[6, 0, [$COMPANY_A_ID]]],
                 \"groups_id\": [[6, 0, [17]]]
             }],
             \"kwargs\": {}
@@ -230,7 +233,8 @@ MANAGER_B_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"name\": \"Manager B US2S4\",
                 \"login\": \"$MANAGER_B_LOGIN\",
                 \"password\": \"manager123\",
-                \"estate_company_ids\": [[6, 0, [$COMPANY_B_ID]]],
+                \"company_id\": $COMPANY_B_ID,
+                \"company_ids\": [[6, 0, [$COMPANY_B_ID]]],
                 \"groups_id\": [[6, 0, [17]]]
             }],
             \"kwargs\": {}
@@ -255,10 +259,11 @@ def calc_cpf_digit(cpf, weights):
     remainder = s % 11
     return '0' if remainder < 2 else str(11 - remainder)
 
-base = "11122233"
+import time
+base = str((int(time.time()) + 41) % 1000000000).zfill(9)
 d1 = calc_cpf_digit(base, range(10, 1, -1))
 d2 = calc_cpf_digit(base + d1, range(11, 1, -1))
-cpf = f"{base[0:3]}.{base[3:6]}.{base[6:8]}{d1}-{d2}"
+cpf = f"{base[0:3]}.{base[3:6]}.{base[6:9]}-{d1}{d2}"
 print(cpf)
 PYTHON_EOF
 )
@@ -276,7 +281,7 @@ MANAGER_A_AGENT_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"name\": \"Manager A US2S4\",
                 \"user_id\": $MANAGER_A_UID,
                 \"cpf\": \"$CPF_MANAGER_A\",
-                \"company_ids\": [[6, 0, [$COMPANY_A_ID]]]
+                \"company_id\": $COMPANY_A_ID
             }],
             \"kwargs\": {}
         },
@@ -298,10 +303,11 @@ def calc_cpf_digit(cpf, weights):
     remainder = s % 11
     return '0' if remainder < 2 else str(11 - remainder)
 
-base = "22233344"
+import time
+base = str((int(time.time()) + 47) % 1000000000).zfill(9)
 d1 = calc_cpf_digit(base, range(10, 1, -1))
 d2 = calc_cpf_digit(base + d1, range(11, 1, -1))
-cpf = f"{base[0:3]}.{base[3:6]}.{base[6:8]}{d1}-{d2}"
+cpf = f"{base[0:3]}.{base[3:6]}.{base[6:9]}-{d1}{d2}"
 print(cpf)
 PYTHON_EOF
 )
@@ -319,7 +325,7 @@ MANAGER_B_AGENT_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"name\": \"Manager B US2S4\",
                 \"user_id\": $MANAGER_B_UID,
                 \"cpf\": \"$CPF_MANAGER_B\",
-                \"company_ids\": [[6, 0, [$COMPANY_B_ID]]]
+                \"company_id\": $COMPANY_B_ID
             }],
             \"kwargs\": {}
         },
@@ -405,7 +411,7 @@ STATE_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
         \"params\": {
-            \"model\": \"real.estate.state\",
+            \"model\": \"res.country.state\",
             \"method\": \"search_read\",
             \"args\": [[]],
             \"kwargs\": {
@@ -454,7 +460,7 @@ PROPERTY_A_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"area\": 80.0,
                 \"price\": 300000.0,
                 \"property_status\": \"available\",
-                \"company_ids\": [[6, 0, [$COMPANY_A_ID]]]
+                \"company_id\": $COMPANY_A_ID
             }],
             \"kwargs\": {}
         },
@@ -495,7 +501,7 @@ PROPERTY_B_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"area\": 150.0,
                 \"price\": 500000.0,
                 \"property_status\": \"available\",
-                \"company_ids\": [[6, 0, [$COMPANY_B_ID]]]
+                \"company_id\": $COMPANY_B_ID
             }],
             \"kwargs\": {}
         },
@@ -555,7 +561,7 @@ COMPANY_A_CHECK=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
         \"params\": {
-            \"model\": \"thedevkitchen.estate.company\",
+            \"model\": \"res.company\",
             \"method\": \"search_read\",
             \"args\": [[
                 [\"id\", \"=\", $COMPANY_A_ID]
@@ -590,7 +596,7 @@ COMPANY_B_CHECK=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
         \"params\": {
-            \"model\": \"thedevkitchen.estate.company\",
+            \"model\": \"res.company\",
             \"method\": \"search_read\",
             \"args\": [[
                 [\"id\", \"=\", $COMPANY_B_ID]
@@ -624,7 +630,7 @@ ALL_COMPANIES_CHECK=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
         \"params\": {
-            \"model\": \"thedevkitchen.estate.company\",
+            \"model\": \"res.company\",
             \"method\": \"search_read\",
             \"args\": [[]],
             \"kwargs\": {
@@ -667,7 +673,7 @@ PROPERTIES_CHECK=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 [\"id\", \"in\", [$PROPERTY_A_ID, $PROPERTY_B_ID]]
             ]],
             \"kwargs\": {
-                \"fields\": [\"id\", \"name\", \"company_ids\"]
+                \"fields\": [\"id\", \"name\", \"company_id\"]
             }
         },
         \"id\": 14
@@ -724,7 +730,7 @@ MANAGER_B_COMPANIES=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
         \"params\": {
-            \"model\": \"thedevkitchen.estate.company\",
+            \"model\": \"res.company\",
             \"method\": \"search_read\",
             \"args\": [[]],
             \"kwargs\": {

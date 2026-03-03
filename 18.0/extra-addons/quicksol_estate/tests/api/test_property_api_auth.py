@@ -14,7 +14,7 @@ class TestPropertyAPIAuth(HttpCase):
         super().setUpClass()
         
         # Create test companies (using valid CNPJ)
-        cls.company = cls.env['thedevkitchen.estate.company'].create({
+        cls.company = cls.env['res.company'].create({
             'name': 'Test Company Auth',
             'cnpj': '11.222.333/0001-81'  # Valid CNPJ
         })
@@ -39,9 +39,9 @@ class TestPropertyAPIAuth(HttpCase):
         })
         
         # Get test state and location type
-        cls.state_sp = cls.env['real.estate.state'].search([('code', '=', 'SP')], limit=1)
+        cls.state_sp = cls.env['res.country.state'].search([('code', '=', 'SP')], limit=1)
         if not cls.state_sp:
-            cls.state_sp = cls.env['real.estate.state'].create({
+            cls.state_sp = cls.env['res.country.state'].create({
                 'name': 'São Paulo',
                 'code': 'SP',
                 'country_id': cls.env.ref('base.br').id

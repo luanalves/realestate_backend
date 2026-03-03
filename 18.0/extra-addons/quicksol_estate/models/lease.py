@@ -13,7 +13,7 @@ class Lease(models.Model):
     name = fields.Char(string='Lease Reference', compute='_compute_name', store=True)
     property_id = fields.Many2one('real.estate.property', string='Property', required=True)
     profile_id = fields.Many2one('thedevkitchen.estate.profile', string='Profile', required=True, ondelete='restrict')
-    company_ids = fields.Many2many('thedevkitchen.estate.company', 'thedevkitchen_company_lease_rel', 'lease_id', 'company_id', string='Real Estate Companies')
+    company_id = fields.Many2one('res.company', string='Company', required=True, ondelete='restrict', help='Company for this lease')
     start_date = fields.Date(string='Start Date', required=True)
     end_date = fields.Date(string='End Date', required=True)
     rent_amount = fields.Float(string='Rent', required=True)

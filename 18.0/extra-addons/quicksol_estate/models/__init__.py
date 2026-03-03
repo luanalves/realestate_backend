@@ -8,7 +8,7 @@ from . import observers
 from . import test_observer  # Test observer for unit tests
 
 # Import auxiliary models FIRST (before property)
-from . import state
+# state removed: Feature 011 — use native res.country.state
 from . import location_type
 from . import amenity
 from . import property_owner

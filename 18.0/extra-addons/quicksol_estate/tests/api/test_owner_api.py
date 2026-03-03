@@ -19,7 +19,7 @@ class TestCreateOwnerIndependent(HttpCase):
     Business Rule (T012):
     - Owner can be created WITHOUT a company
     - Owner automatically gets group_real_estate_owner assigned
-    - estate_company_ids starts empty []
+    - company_ids starts empty []
     - Only Owner or Admin can create Owners
     - Returns 201 with HATEOAS links
     """
@@ -29,7 +29,7 @@ class TestCreateOwnerIndependent(HttpCase):
         super().setUpClass()
         
         # Create test company for creator
-        cls.company_a = cls.env['thedevkitchen.estate.company'].create({
+        cls.company_a = cls.env['res.company'].create({
             'name': 'Creator Company',
             'cnpj': '12.345.678/0001-90',
             'email': 'creator@test.com',
@@ -47,7 +47,7 @@ class TestCreateOwnerIndependent(HttpCase):
             'password': 'testpass123',
             'email': 'ownercreator@test.com',
             'groups_id': [(6, 0, [cls.group_owner.id])],
-            'estate_company_ids': [(6, 0, [cls.company_a.id])],
+            'company_ids': [(6, 0, [cls.company_a.id])],
         })
         
         # Create Manager user (non-owner)
@@ -57,7 +57,7 @@ class TestCreateOwnerIndependent(HttpCase):
             'password': 'testpass456',
             'email': 'manager@test.com',
             'groups_id': [(6, 0, [cls.group_manager.id])],
-            'estate_company_ids': [(6, 0, [cls.company_a.id])],
+            'company_ids': [(6, 0, [cls.company_a.id])],
         })
 
     def _get_jwt_token(self, login, password):
@@ -98,8 +98,8 @@ class TestCreateOwnerIndependent(HttpCase):
         self.assertIn('id', data['data'], "Response should contain owner ID")
         self.assertEqual(data['data']['name'], 'New Independent Owner')
         self.assertEqual(data['data']['email'], 'independent@test.com')
-        self.assertEqual(len(data['data']['estate_company_ids']), 0,
-                        "New owner should have empty estate_company_ids")
+        self.assertEqual(len(data['data']['company_ids']), 0,
+                        "New owner should have empty company_ids")
         
         # Verify HATEOAS links
         self.assertIn('links', data, "Response should contain HATEOAS links")
@@ -214,14 +214,14 @@ class TestLinkOwnerToCompany(HttpCase):
         super().setUpClass()
         
         # Create test companies
-        cls.company_a = cls.env['thedevkitchen.estate.company'].create({
+        cls.company_a = cls.env['res.company'].create({
             'name': 'Company A',
             'cnpj': '11.111.111/0001-11',
             'email': 'companya@test.com',
             'phone': '11111111111',
         })
         
-        cls.company_b = cls.env['thedevkitchen.estate.company'].create({
+        cls.company_b = cls.env['res.company'].create({
             'name': 'Company B',
             'cnpj': '22.222.222/0001-22',
             'email': 'companyb@test.com',
@@ -238,7 +238,7 @@ class TestLinkOwnerToCompany(HttpCase):
             'password': 'testpass123',
             'email': 'testowner@test.com',
             'groups_id': [(6, 0, [cls.group_owner.id])],
-            'estate_company_ids': [],  # Initially no companies
+            'company_ids': [],  # Initially no companies
         })
         
         # Create another Owner for Company B
@@ -248,7 +248,7 @@ class TestLinkOwnerToCompany(HttpCase):
             'password': 'testpass456',
             'email': 'owner2@test.com',
             'groups_id': [(6, 0, [cls.group_owner.id])],
-            'estate_company_ids': [(6, 0, [cls.company_b.id])],
+            'company_ids': [(6, 0, [cls.company_b.id])],
         })
 
     def _get_jwt_token(self, login, password):
@@ -268,7 +268,7 @@ class TestLinkOwnerToCompany(HttpCase):
     def test_01_link_owner_to_company(self):
         """Owner can be linked to a Company via POST /owners/{id}/companies"""
         # First, link owner_user to Company A to get access
-        self.owner_user.write({'estate_company_ids': [(4, self.company_a.id)]})
+        self.owner_user.write({'company_ids': [(4, self.company_a.id)]})
         
         token = self._get_jwt_token('test_owner', 'testpass123')
         
@@ -288,14 +288,14 @@ class TestLinkOwnerToCompany(HttpCase):
         
         data = json.loads(response.content.decode('utf-8'))
         self.assertIn('data', data)
-        self.assertIn(self.company_b.id, data['data']['estate_company_ids'],
+        self.assertIn(self.company_b.id, data['data']['company_ids'],
                      "Owner should now be linked to Company B")
 
     def test_02_unlink_owner_from_company(self):
         """Owner can be unlinked from Company if not the last active Owner"""
         # Link owner_user to both companies
         self.owner_user.write({
-            'estate_company_ids': [(6, 0, [self.company_a.id, self.company_b.id])]
+            'company_ids': [(6, 0, [self.company_a.id, self.company_b.id])]
         })
         
         token = self._get_jwt_token('test_owner', 'testpass123')
@@ -312,14 +312,14 @@ class TestLinkOwnerToCompany(HttpCase):
         
         # Verify owner_user no longer in Company B
         self.owner_user.invalidate_recordset()
-        self.assertNotIn(self.company_b, self.owner_user.estate_company_ids,
+        self.assertNotIn(self.company_b, self.owner_user.company_ids,
                         "Owner should be unlinked from Company B")
 
     def test_03_cannot_unlink_last_owner(self):
         """Cannot unlink Owner if they are the last active Owner of that Company"""
         # Make owner_user the ONLY owner of Company A
         self.owner_user.write({
-            'estate_company_ids': [(6, 0, [self.company_a.id])]
+            'company_ids': [(6, 0, [self.company_a.id])]
         })
         
         token = self._get_jwt_token('test_owner', 'testpass123')
@@ -340,7 +340,7 @@ class TestLinkOwnerToCompany(HttpCase):
 
     def test_04_link_returns_hateoas_links(self):
         """Link operation returns HATEOAS links for navigation"""
-        self.owner_user.write({'estate_company_ids': [(4, self.company_a.id)]})
+        self.owner_user.write({'company_ids': [(4, self.company_a.id)]})
         
         token = self._get_jwt_token('test_owner', 'testpass123')
         
@@ -387,7 +387,7 @@ class TestNewOwnerWithoutCompany(HttpCase):
             'password': 'newowner123',
             'email': 'newowner@nocompany.com',
             'groups_id': [(6, 0, [cls.group_owner.id])],
-            'estate_company_ids': [],  # No companies initially
+            'company_ids': [],  # No companies initially
         })
 
     def test_owner_without_company_can_create_company(self):
@@ -410,6 +410,6 @@ class TestNewOwnerWithoutCompany(HttpCase):
         
         # Verify owner is now linked to company
         self.new_owner.invalidate_recordset()
-        self.assertGreater(len(self.new_owner.estate_company_ids), 0,
+        self.assertGreater(len(self.new_owner.company_ids), 0,
                           "Owner should be auto-linked to created company")
 

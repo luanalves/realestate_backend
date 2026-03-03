@@ -111,7 +111,7 @@ fi
 # Step 4: Get profile detail
 echo ""
 echo "Step 4: Getting profile detail..."
-FIRST_ID=$(echo "$LIST_RESPONSE" | jq -r '.data[0].id // empty')
+FIRST_ID=$(echo "$LIST_RESPONSE" | jq -r '[.data[] | select(.active == true)][0].id // .data[0].id // empty')
 if [ -z "$FIRST_ID" ]; then
     echo -e "${RED}✗ No profile ID found${NC}"
     exit 1

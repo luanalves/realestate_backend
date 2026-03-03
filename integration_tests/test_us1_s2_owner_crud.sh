@@ -70,11 +70,11 @@ COMPANY_B_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
         \"params\": {
-            \"model\": \"thedevkitchen.estate.company\",
+            \"model\": \"res.company\",
             \"method\": \"create\",
             \"args\": [{
                 \"name\": \"Company B - CRUD Test ${TIMESTAMP}\",
-                \"cnpj\": \"98.765.432/0001-98\",
+                \"cnpj\": \"98.765.999/0001-64\",
                 \"creci\": \"CRECI-RJ 88888\"
             }],
             \"kwargs\": {}
@@ -109,8 +109,9 @@ OWNER_USER_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"login\": \"$OWNER_LOGIN\",
                 \"password\": \"owner123\",
                 \"groups_id\": [[6, 0, [19]]],
-                \"estate_company_ids\": [[6, 0, [$COMPANY_B_ID]]],
-                \"main_estate_company_id\": $COMPANY_B_ID
+                \"company_id\": $COMPANY_B_ID,
+                \"company_ids\": [[6, 0, [$COMPANY_B_ID]]],
+                \"company_id\": $COMPANY_B_ID
             }],
             \"kwargs\": {}
         },
@@ -172,7 +173,7 @@ CREATE_PROPERTY_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"expected_price\": 500000,
                 \"bedrooms\": 3,
                 \"living_area\": 120,
-                \"company_ids\": [[6, 0, [$COMPANY_B_ID]]]
+                \"company_id\": $COMPANY_B_ID
             }],
             \"kwargs\": {}
         },

@@ -18,8 +18,9 @@
         <!-- ============================================================ -->
         <!-- 1. EMPRESA                                                    -->
         <!-- ============================================================ -->
-        <record id="company_seed_imobiliaria" model="thedevkitchen.estate.company">
+        <record id="company_seed_imobiliaria" model="res.company">
             <field name="name">Imobiliária Seed</field>
+            <field name="is_real_estate" eval="True"/>
             <field name="legal_name">Seed Imóveis LTDA</field>
             <field name="cnpj">55.444.333/0001-00</field>
             <field name="creci">CRECI/SP 99001</field>
@@ -27,7 +28,7 @@
             <field name="phone">+55 (11) 99000-0001</field>
             <field name="street">Rua dos Testes, 1</field>
             <field name="city">São Paulo</field>
-            <field name="zip_code">01310-100</field>
+            <field name="zip">01310-100</field>
             <field name="active" eval="True"/>
         </record>
 
@@ -45,10 +46,10 @@
                 ref('base.group_user'),
                 ref('quicksol_estate.group_real_estate_owner')
             ])]"/>
-            <field name="estate_company_ids" eval="[(6, 0, [
+            <field name="company_ids" eval="[(6, 0, [
                 ref('quicksol_estate.company_seed_imobiliaria')
             ])]"/>
-            <field name="main_estate_company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
+            <field name="company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
         </record>
 
         <!-- Director -->
@@ -61,10 +62,10 @@
                 ref('base.group_user'),
                 ref('quicksol_estate.group_real_estate_director')
             ])]"/>
-            <field name="estate_company_ids" eval="[(6, 0, [
+            <field name="company_ids" eval="[(6, 0, [
                 ref('quicksol_estate.company_seed_imobiliaria')
             ])]"/>
-            <field name="main_estate_company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
+            <field name="company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
         </record>
 
         <!-- Manager -->
@@ -77,10 +78,10 @@
                 ref('base.group_user'),
                 ref('quicksol_estate.group_real_estate_manager')
             ])]"/>
-            <field name="estate_company_ids" eval="[(6, 0, [
+            <field name="company_ids" eval="[(6, 0, [
                 ref('quicksol_estate.company_seed_imobiliaria')
             ])]"/>
-            <field name="main_estate_company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
+            <field name="company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
         </record>
 
         <!-- Agent -->
@@ -93,10 +94,10 @@
                 ref('base.group_user'),
                 ref('quicksol_estate.group_real_estate_agent')
             ])]"/>
-            <field name="estate_company_ids" eval="[(6, 0, [
+            <field name="company_ids" eval="[(6, 0, [
                 ref('quicksol_estate.company_seed_imobiliaria')
             ])]"/>
-            <field name="main_estate_company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
+            <field name="company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
         </record>
 
         <!-- Prospector -->
@@ -109,10 +110,10 @@
                 ref('base.group_user'),
                 ref('quicksol_estate.group_real_estate_prospector')
             ])]"/>
-            <field name="estate_company_ids" eval="[(6, 0, [
+            <field name="company_ids" eval="[(6, 0, [
                 ref('quicksol_estate.company_seed_imobiliaria')
             ])]"/>
-            <field name="main_estate_company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
+            <field name="company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
         </record>
 
         <!-- Receptionist -->
@@ -125,10 +126,10 @@
                 ref('base.group_user'),
                 ref('quicksol_estate.group_real_estate_receptionist')
             ])]"/>
-            <field name="estate_company_ids" eval="[(6, 0, [
+            <field name="company_ids" eval="[(6, 0, [
                 ref('quicksol_estate.company_seed_imobiliaria')
             ])]"/>
-            <field name="main_estate_company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
+            <field name="company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
         </record>
 
         <!-- Financial -->
@@ -141,10 +142,10 @@
                 ref('base.group_user'),
                 ref('quicksol_estate.group_real_estate_financial')
             ])]"/>
-            <field name="estate_company_ids" eval="[(6, 0, [
+            <field name="company_ids" eval="[(6, 0, [
                 ref('quicksol_estate.company_seed_imobiliaria')
             ])]"/>
-            <field name="main_estate_company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
+            <field name="company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
         </record>
 
         <!-- Legal -->
@@ -157,10 +158,10 @@
                 ref('base.group_user'),
                 ref('quicksol_estate.group_real_estate_legal')
             ])]"/>
-            <field name="estate_company_ids" eval="[(6, 0, [
+            <field name="company_ids" eval="[(6, 0, [
                 ref('quicksol_estate.company_seed_imobiliaria')
             ])]"/>
-            <field name="main_estate_company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
+            <field name="company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
         </record>
 
         <!-- ============================================================ -->

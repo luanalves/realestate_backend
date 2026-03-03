@@ -28,7 +28,7 @@ class TestCreatorValidation(TransactionCase):
         super().setUpClass()
         
         # Create test company
-        cls.company_a = cls.env['thedevkitchen.estate.company'].create({
+        cls.company_a = cls.env['res.company'].create({
             'name': 'Test Company A',
             'cnpj': '12.345.678/0001-90',
             'email': 'companya@test.com',
@@ -46,7 +46,7 @@ class TestCreatorValidation(TransactionCase):
             'login': 'test_owner',
             'email': 'owner@test.com',
             'groups_id': [(6, 0, [cls.group_owner.id])],
-            'estate_company_ids': [(6, 0, [cls.company_a.id])],
+            'company_ids': [(6, 0, [cls.company_a.id])],
         })
         
         # Create Manager user (no Owner group)
@@ -55,7 +55,7 @@ class TestCreatorValidation(TransactionCase):
             'login': 'test_manager',
             'email': 'manager@test.com',
             'groups_id': [(6, 0, [cls.group_manager.id])],
-            'estate_company_ids': [(6, 0, [cls.company_a.id])],
+            'company_ids': [(6, 0, [cls.company_a.id])],
         })
         
         # Create Admin user
@@ -74,7 +74,7 @@ class TestCreatorValidation(TransactionCase):
             'login': 'new_owner_by_owner',
             'email': 'newowner@test.com',
             'groups_id': [(6, 0, [self.group_owner.id])],
-            'estate_company_ids': [(6, 0, [self.company_a.id])],
+            'company_ids': [(6, 0, [self.company_a.id])],
         })
         
         self.assertTrue(new_owner.exists(), "Owner should be able to create new Owner users")
@@ -87,7 +87,7 @@ class TestCreatorValidation(TransactionCase):
             'login': 'new_owner_by_admin',
             'email': 'newowner2@test.com',
             'groups_id': [(6, 0, [self.group_owner.id])],
-            'estate_company_ids': [(6, 0, [self.company_a.id])],
+            'company_ids': [(6, 0, [self.company_a.id])],
         })
         
         self.assertTrue(new_owner.exists(), "Admin should be able to create new Owner users")
@@ -101,7 +101,7 @@ class TestCreatorValidation(TransactionCase):
                 'login': 'should_fail',
                 'email': 'fail@test.com',
                 'groups_id': [(6, 0, [self.group_owner.id])],
-                'estate_company_ids': [(6, 0, [self.company_a.id])],
+                'company_ids': [(6, 0, [self.company_a.id])],
             })
 
 
@@ -122,14 +122,14 @@ class TestLastOwnerProtection(TransactionCase):
         super().setUpClass()
         
         # Create test companies
-        cls.company_a = cls.env['thedevkitchen.estate.company'].create({
+        cls.company_a = cls.env['res.company'].create({
             'name': 'Company A',
             'cnpj': '11.111.111/0001-11',
             'email': 'companya@test.com',
             'phone': '11111111111',
         })
         
-        cls.company_b = cls.env['thedevkitchen.estate.company'].create({
+        cls.company_b = cls.env['res.company'].create({
             'name': 'Company B',
             'cnpj': '22.222.222/0001-22',
             'email': 'companyb@test.com',
@@ -145,7 +145,7 @@ class TestLastOwnerProtection(TransactionCase):
             'login': 'owner1',
             'email': 'owner1@test.com',
             'groups_id': [(6, 0, [cls.group_owner.id])],
-            'estate_company_ids': [(6, 0, [cls.company_a.id, cls.company_b.id])],
+            'company_ids': [(6, 0, [cls.company_a.id, cls.company_b.id])],
         })
         
         # Create Owner 2 (linked only to Company B)
@@ -154,7 +154,7 @@ class TestLastOwnerProtection(TransactionCase):
             'login': 'owner2',
             'email': 'owner2@test.com',
             'groups_id': [(6, 0, [cls.group_owner.id])],
-            'estate_company_ids': [(6, 0, [cls.company_b.id])],
+            'company_ids': [(6, 0, [cls.company_b.id])],
         })
 
     def test_01_cannot_delete_last_owner_of_any_company(self):
@@ -175,7 +175,7 @@ class TestLastOwnerProtection(TransactionCase):
         
         # Verify Company B still has at least one active owner
         active_owners = self.env['res.users'].search([
-            ('estate_company_ids', 'in', [self.company_b.id]),
+            ('company_ids', 'in', [self.company_b.id]),
             ('groups_id', 'in', [self.group_owner.id]),
             ('active', '=', True),
         ])
@@ -186,25 +186,25 @@ class TestLastOwnerProtection(TransactionCase):
         # Owner1 is the ONLY owner of Company A
         with self.assertRaises(ValidationError, msg="Should not unlink last owner from Company A"):
             self.owner1.write({
-                'estate_company_ids': [(3, self.company_a.id)]  # Unlink from Company A
+                'company_ids': [(3, self.company_a.id)]  # Unlink from Company A
             })
 
     def test_04_can_unlink_non_last_owner_from_company(self):
         """Can unlink Owner from Company if they are NOT the last active Owner"""
         # Owner2 can be unlinked from Company B because Owner1 is also there
-        original_companies = self.owner2.estate_company_ids
+        original_companies = self.owner2.company_ids
         self.assertIn(self.company_b, original_companies, "Owner2 should initially be in Company B")
         
         self.owner2.write({
-            'estate_company_ids': [(3, self.company_b.id)]  # Unlink from Company B
+            'company_ids': [(3, self.company_b.id)]  # Unlink from Company B
         })
         
-        self.assertNotIn(self.company_b, self.owner2.estate_company_ids,
+        self.assertNotIn(self.company_b, self.owner2.company_ids,
                         "Owner2 should be unlinked from Company B")
         
         # Verify Company B still has active owners
         active_owners = self.env['res.users'].search([
-            ('estate_company_ids', 'in', [self.company_b.id]),
+            ('company_ids', 'in', [self.company_b.id]),
             ('groups_id', 'in', [self.group_owner.id]),
             ('active', '=', True),
         ])
@@ -218,7 +218,7 @@ class TestLastOwnerProtection(TransactionCase):
             'login': 'inactive_owner',
             'email': 'inactive@test.com',
             'groups_id': [(6, 0, [self.group_owner.id])],
-            'estate_company_ids': [(6, 0, [self.company_a.id])],
+            'company_ids': [(6, 0, [self.company_a.id])],
             'active': False,
         })
         

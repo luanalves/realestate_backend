@@ -57,7 +57,7 @@ class Property(models.Model):
     # CEP and Address
     zip_code = fields.Char(string='CEP', size=9, required=True, tracking=True)
     country_id = fields.Many2one('res.country', string='Country', default=lambda self: self.env.ref('base.br').id, required=True, tracking=True)
-    state_id = fields.Many2one('real.estate.state', string='State', required=True, tracking=True)
+    state_id = fields.Many2one('res.country.state', string='State', required=True, tracking=True, domain="[('country_id.code', '=', 'BR')]")
     city = fields.Char(string='City', required=True, tracking=True)
     neighborhood = fields.Char(string='Neighborhood', tracking=True)
     street = fields.Char(string='Street', required=True, tracking=True)
@@ -206,7 +206,7 @@ class Property(models.Model):
     cnpj_owner = fields.Char(string='Owner CNPJ', size=18)
     
     # ========== RELATIONSHIPS ==========
-    company_ids = fields.Many2many('thedevkitchen.estate.company', 'thedevkitchen_company_property_rel', 'property_id', 'company_id', string='Real Estate Companies')
+    company_id = fields.Many2one('res.company', string='Real Estate Company', required=True, ondelete='restrict', default=lambda self: self.env.company, help='Company this property belongs to')
     agent_id = fields.Many2one('real.estate.agent', string='Responsible Agent', tracking=True)
     prospector_id = fields.Many2one(
         'real.estate.agent', 

@@ -91,7 +91,7 @@ class InviteService:
             'password': False,  # No password yet
             'signup_pending': True,  # Waiting for invite link
             'groups_id': [(6, 0, [target_group.id])],
-            'estate_company_ids': [(4, company.id)] if hasattr(company, 'id') else [],
+            'company_ids': [(4, company.id)] if hasattr(company, 'id') else [],
         }
         
         # Add CPF for non-portal profiles
@@ -161,7 +161,7 @@ class InviteService:
         
         # Step 2: Create real.estate.tenant linked via partner_id
         # Note: res.users.create() automatically creates res.partner
-        company = self.env['thedevkitchen.estate.company'].sudo().browse(company_id)
+        company = self.env['res.company'].sudo().browse(company_id)
         
         tenant_vals = {
             'name': name,
@@ -220,7 +220,7 @@ class InviteService:
             )
         target_group = self.env.ref(group_xml_id)
 
-        # profile.company_id is already thedevkitchen.estate.company
+        # profile.company_id points to res.company
         estate_company = profile_record.company_id
 
         # Build user values — NO password field so account starts locked
@@ -234,7 +234,7 @@ class InviteService:
         }
 
         if estate_company:
-            user_vals['estate_company_ids'] = [(4, estate_company.id)]
+            user_vals['company_ids'] = [(4, estate_company.id)]
 
         # Carry over phone if present
         if profile_record.phone:

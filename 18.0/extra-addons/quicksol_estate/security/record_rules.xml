@@ -7,8 +7,8 @@
         <!-- Owner: Access only their estate companies -->
         <record id="rule_owner_estate_companies" model="ir.rule">
             <field name="name">Owner: Own Estate Companies</field>
-            <field name="model_id" ref="model_thedevkitchen_estate_company"/>
-            <field name="domain_force">[('id', 'in', user.estate_company_ids.ids)]</field>
+            <field name="model_id" ref="base.model_res_company"/>
+            <field name="domain_force">[('id', 'in', company_ids), ('is_real_estate', '=', True)]</field>
             <field name="groups" eval="[(4, ref('group_real_estate_owner'))]"/>
             <field name="perm_read" eval="True"/>
             <field name="perm_write" eval="True"/>
@@ -20,7 +20,7 @@
         <record id="rule_owner_company_users" model="ir.rule">
             <field name="name">Owner: Manage Company Users</field>
             <field name="model_id" ref="base.model_res_users"/>
-            <field name="domain_force">[('company_ids', 'in', user.estate_company_ids.ids)]</field>
+            <field name="domain_force">[('company_ids', 'in', company_ids)]</field>
             <field name="groups" eval="[(4, ref('group_real_estate_owner'))]"/>
             <field name="perm_read" eval="True"/>
             <field name="perm_write" eval="True"/>
@@ -32,7 +32,7 @@
         <record id="rule_owner_properties" model="ir.rule">
             <field name="name">Owner: Company Properties</field>
             <field name="model_id" ref="model_real_estate_property"/>
-            <field name="domain_force">[('company_ids', 'in', user.estate_company_ids.ids)]</field>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
             <field name="groups" eval="[(4, ref('group_real_estate_owner'))]"/>
             <field name="perm_read" eval="True"/>
             <field name="perm_write" eval="True"/>
@@ -44,7 +44,7 @@
         <record id="rule_owner_agents" model="ir.rule">
             <field name="name">Owner: Company Agents</field>
             <field name="model_id" ref="model_real_estate_agent"/>
-            <field name="domain_force">[('company_ids', 'in', user.estate_company_ids.ids)]</field>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
             <field name="groups" eval="[(4, ref('group_real_estate_owner'))]"/>
             <field name="perm_read" eval="True"/>
             <field name="perm_write" eval="True"/>
@@ -56,7 +56,7 @@
         <record id="rule_owner_commission_rules" model="ir.rule">
             <field name="name">Owner: Commission Rules</field>
             <field name="model_id" ref="model_real_estate_commission_rule"/>
-            <field name="domain_force">[('company_id', 'in', user.estate_company_ids.ids)]</field>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
             <field name="groups" eval="[(4, ref('group_real_estate_owner'))]"/>
             <field name="perm_read" eval="True"/>
             <field name="perm_write" eval="True"/>
@@ -69,8 +69,8 @@
         <!-- Agent: Access only their estate companies -->
         <record id="rule_agent_estate_companies" model="ir.rule">
             <field name="name">Agent: Own Estate Companies</field>
-            <field name="model_id" ref="model_thedevkitchen_estate_company"/>
-            <field name="domain_force">[('id', 'in', user.estate_company_ids.ids)]</field>
+            <field name="model_id" ref="base.model_res_company"/>
+            <field name="domain_force">[('id', 'in', company_ids), ('is_real_estate', '=', True)]</field>
             <field name="groups" eval="[(4, ref('group_real_estate_agent'))]"/>
             <field name="perm_read" eval="True"/>
             <field name="perm_write" eval="False"/>
@@ -94,7 +94,7 @@
         <record id="rule_agent_create_properties" model="ir.rule">
             <field name="name">Agent: Create Properties</field>
             <field name="model_id" ref="model_real_estate_property"/>
-            <field name="domain_force">[('company_ids', 'in', user.estate_company_ids.ids)]</field>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
             <field name="groups" eval="[(4, ref('group_real_estate_agent'))]"/>
             <field name="perm_read" eval="False"/>
             <field name="perm_write" eval="False"/>
@@ -169,8 +169,8 @@
         <!-- Manager: Access only their estate companies -->
         <record id="rule_manager_estate_companies" model="ir.rule">
             <field name="name">Manager: Own Estate Companies</field>
-            <field name="model_id" ref="model_thedevkitchen_estate_company"/>
-            <field name="domain_force">[('id', 'in', user.estate_company_ids.ids)]</field>
+            <field name="model_id" ref="base.model_res_company"/>
+            <field name="domain_force">[('id', 'in', company_ids), ('is_real_estate', '=', True)]</field>
             <field name="groups" eval="[(4, ref('group_real_estate_manager'))]"/>
             <field name="perm_read" eval="True"/>
             <field name="perm_write" eval="False"/>
@@ -182,7 +182,7 @@
         <record id="rule_manager_all_company_properties" model="ir.rule">
             <field name="name">Manager: All Company Properties</field>
             <field name="model_id" ref="model_real_estate_property"/>
-            <field name="domain_force">[('company_ids', 'in', user.estate_company_ids.ids)]</field>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
             <field name="groups" eval="[(4, ref('group_real_estate_manager'))]"/>
             <field name="perm_read" eval="True"/>
             <field name="perm_write" eval="True"/>
@@ -194,7 +194,7 @@
         <record id="rule_manager_all_company_agents" model="ir.rule">
             <field name="name">Manager: All Company Agents</field>
             <field name="model_id" ref="model_real_estate_agent"/>
-            <field name="domain_force">[('company_ids', 'in', user.estate_company_ids.ids)]</field>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
             <field name="groups" eval="[(4, ref('group_real_estate_manager'))]"/>
             <field name="perm_read" eval="True"/>
             <field name="perm_write" eval="True"/>
@@ -206,7 +206,7 @@
         <record id="rule_manager_all_company_sales" model="ir.rule">
             <field name="name">Manager: All Company Sales</field>
             <field name="model_id" ref="model_real_estate_sale"/>
-            <field name="domain_force">[('company_ids', 'in', user.estate_company_ids.ids)]</field>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
             <field name="groups" eval="[(4, ref('group_real_estate_manager'))]"/>
             <field name="perm_read" eval="True"/>
             <field name="perm_write" eval="True"/>
@@ -218,7 +218,7 @@
         <record id="rule_manager_all_company_leases" model="ir.rule">
             <field name="name">Manager: All Company Leases</field>
             <field name="model_id" ref="model_real_estate_lease"/>
-            <field name="domain_force">[('company_ids', 'in', user.estate_company_ids.ids)]</field>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
             <field name="groups" eval="[(4, ref('group_real_estate_manager'))]"/>
             <field name="perm_read" eval="True"/>
             <field name="perm_write" eval="True"/>
@@ -230,7 +230,7 @@
         <record id="rule_manager_all_company_assignments" model="ir.rule">
             <field name="name">Manager: All Company Assignments</field>
             <field name="model_id" ref="model_real_estate_agent_property_assignment"/>
-            <field name="domain_force">[('property_id.company_ids', 'in', user.estate_company_ids.ids)]</field>
+            <field name="domain_force">[('property_id.company_id', 'in', company_ids)]</field>
             <field name="groups" eval="[(4, ref('group_real_estate_manager'))]"/>
             <field name="perm_read" eval="True"/>
             <field name="perm_write" eval="True"/>
@@ -256,7 +256,7 @@
         <record id="rule_manager_all_company_leads" model="ir.rule">
             <field name="name">Manager: All Company Leads</field>
             <field name="model_id" ref="model_real_estate_lead"/>
-            <field name="domain_force">[('company_ids', 'in', user.estate_company_ids.ids)]</field>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
             <field name="groups" eval="[(4, ref('group_real_estate_manager'))]"/>
             <field name="perm_read" eval="True"/>
             <field name="perm_write" eval="True"/>
@@ -268,7 +268,7 @@
         <record id="rule_owner_all_company_leads" model="ir.rule">
             <field name="name">Owner: All Company Leads</field>
             <field name="model_id" ref="model_real_estate_lead"/>
-            <field name="domain_force">[('company_ids', 'in', user.estate_company_ids.ids)]</field>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
             <field name="groups" eval="[(4, ref('group_real_estate_owner'))]"/>
             <field name="perm_read" eval="True"/>
             <field name="perm_write" eval="True"/>
@@ -282,7 +282,7 @@
         <record id="rule_receptionist_read_properties" model="ir.rule">
             <field name="name">Receptionist: Read Company Properties</field>
             <field name="model_id" ref="model_real_estate_property"/>
-            <field name="domain_force">[('company_ids', 'in', user.estate_company_ids.ids)]</field>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
             <field name="groups" eval="[(4, ref('group_real_estate_receptionist'))]"/>
             <field name="perm_read" eval="True"/>
             <field name="perm_write" eval="False"/>
@@ -294,7 +294,7 @@
         <record id="rule_receptionist_crud_leases" model="ir.rule">
             <field name="name">Receptionist: CRUD Leases</field>
             <field name="model_id" ref="model_real_estate_lease"/>
-            <field name="domain_force">[('company_ids', 'in', user.estate_company_ids.ids)]</field>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
             <field name="groups" eval="[(4, ref('group_real_estate_receptionist'))]"/>
         </record>
         
@@ -302,7 +302,7 @@
         <record id="rule_receptionist_crud_keys" model="ir.rule">
             <field name="name">Receptionist: CRUD Property Keys</field>
             <field name="model_id" ref="model_real_estate_property_key"/>
-            <field name="domain_force">[('property_id.company_ids', 'in', user.estate_company_ids.ids)]</field>
+            <field name="domain_force">[('property_id.company_id', 'in', company_ids)]</field>
             <field name="groups" eval="[(4, ref('group_real_estate_receptionist'))]"/>
         </record>
         
@@ -313,7 +313,7 @@
         <record id="rule_financial_read_sales" model="ir.rule">
             <field name="name">Financial: Read All Company Sales</field>
             <field name="model_id" ref="model_real_estate_sale"/>
-            <field name="domain_force">[('company_ids', 'in', user.estate_company_ids.ids)]</field>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
             <field name="perm_read" eval="True"/>
             <field name="perm_write" eval="False"/>
             <field name="perm_create" eval="False"/>
@@ -325,7 +325,7 @@
         <record id="rule_financial_read_leases" model="ir.rule">
             <field name="name">Financial: Read All Company Leases</field>
             <field name="model_id" ref="model_real_estate_lease"/>
-            <field name="domain_force">[('company_ids', 'in', user.estate_company_ids.ids)]</field>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
             <field name="perm_read" eval="True"/>
             <field name="perm_write" eval="False"/>
             <field name="perm_create" eval="False"/>
@@ -337,7 +337,7 @@
         <record id="rule_financial_crud_commission_rules" model="ir.rule">
             <field name="name">Financial: CRUD Commission Rules</field>
             <field name="model_id" ref="model_real_estate_commission_rule"/>
-            <field name="domain_force">[('company_id', 'in', user.estate_company_ids.ids)]</field>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
             <field name="groups" eval="[(4, ref('group_real_estate_financial'))]"/>
         </record>
         
@@ -345,7 +345,7 @@
         <record id="rule_financial_crud_commission_transactions" model="ir.rule">
             <field name="name">Financial: CRUD Commission Transactions</field>
             <field name="model_id" ref="model_real_estate_commission_transaction"/>
-            <field name="domain_force">[('company_id', 'in', user.estate_company_ids.ids)]</field>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
             <field name="groups" eval="[(4, ref('group_real_estate_financial'))]"/>
         </record>
         
@@ -356,7 +356,7 @@
         <record id="rule_legal_read_contracts" model="ir.rule">
             <field name="name">Legal: Read All Company Contracts</field>
             <field name="model_id" ref="model_real_estate_sale"/>
-            <field name="domain_force">[('company_ids', 'in', user.estate_company_ids.ids)]</field>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
             <field name="perm_read" eval="True"/>
             <field name="perm_write" eval="False"/>
             <field name="perm_create" eval="False"/>
@@ -368,7 +368,7 @@
         <record id="rule_legal_read_leases" model="ir.rule">
             <field name="name">Legal: Read All Company Leases</field>
             <field name="model_id" ref="model_real_estate_lease"/>
-            <field name="domain_force">[('company_ids', 'in', user.estate_company_ids.ids)]</field>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
             <field name="perm_read" eval="True"/>
             <field name="perm_write" eval="False"/>
             <field name="perm_create" eval="False"/>
@@ -380,7 +380,7 @@
         <record id="rule_legal_read_properties" model="ir.rule">
             <field name="name">Legal: Read Properties for Contract Review</field>
             <field name="model_id" ref="model_real_estate_property"/>
-            <field name="domain_force">[('company_ids', 'in', user.estate_company_ids.ids)]</field>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
             <field name="perm_read" eval="True"/>
             <field name="perm_write" eval="False"/>
             <field name="perm_create" eval="False"/>
@@ -435,7 +435,7 @@
         <record id="rule_property_multi_company" model="ir.rule">
             <field name="name">Property: Multi-company Access</field>
             <field name="model_id" ref="model_real_estate_property"/>
-            <field name="domain_force">[('company_ids', 'in', user.estate_company_ids.ids)]</field>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
             <field name="groups" eval="[(4, ref('group_real_estate_manager'))]"/>
         </record>
 
@@ -443,7 +443,7 @@
         <record id="rule_agent_multi_company" model="ir.rule">
             <field name="name">Agent: Multi-company Access</field>
             <field name="model_id" ref="model_real_estate_agent"/>
-            <field name="domain_force">[('company_ids', 'in', user.estate_company_ids.ids)]</field>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
             <field name="groups" eval="[(4, ref('group_real_estate_user')), (4, ref('group_real_estate_manager'))]"/>
         </record>
 
@@ -459,7 +459,7 @@
         <record id="rule_lease_multi_company" model="ir.rule">
             <field name="name">Lease: Multi-company Access</field>
             <field name="model_id" ref="model_real_estate_lease"/>
-            <field name="domain_force">[('company_ids', 'in', user.estate_company_ids.ids)]</field>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
             <field name="groups" eval="[(4, ref('group_real_estate_user')), (4, ref('group_real_estate_manager'))]"/>
         </record>
 
@@ -475,7 +475,7 @@
         <record id="rule_sale_multi_company" model="ir.rule">
             <field name="name">Sale: Multi-company Access</field>
             <field name="model_id" ref="model_real_estate_sale"/>
-            <field name="domain_force">[('company_ids', 'in', user.estate_company_ids.ids)]</field>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
             <field name="groups" eval="[(4, ref('group_real_estate_user')), (4, ref('group_real_estate_manager'))]"/>
         </record>
 
@@ -491,7 +491,7 @@
         <record id="rule_assignment_multi_company" model="ir.rule">
             <field name="name">Assignment: Multi-company Access</field>
             <field name="model_id" ref="model_real_estate_agent_property_assignment"/>
-            <field name="domain_force">[('company_id', 'in', user.estate_company_ids.ids)]</field>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
             <field name="groups" eval="[(4, ref('group_real_estate_user')), (4, ref('group_real_estate_manager'))]"/>
         </record>
 
@@ -507,7 +507,7 @@
         <record id="rule_commission_rule_multi_company" model="ir.rule">
             <field name="name">Commission Rule: Multi-company Access</field>
             <field name="model_id" ref="model_real_estate_commission_rule"/>
-            <field name="domain_force">[('company_id', 'in', user.estate_company_ids.ids)]</field>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
             <field name="groups" eval="[(4, ref('group_real_estate_user')), (4, ref('group_real_estate_manager'))]"/>
         </record>
 
@@ -523,7 +523,7 @@
         <record id="rule_commission_transaction_multi_company" model="ir.rule">
             <field name="name">Commission Transaction: Multi-company Access</field>
             <field name="model_id" ref="model_real_estate_commission_transaction"/>
-            <field name="domain_force">[('company_id', 'in', user.estate_company_ids.ids)]</field>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
             <field name="groups" eval="[(4, ref('group_real_estate_user')), (4, ref('group_real_estate_manager'))]"/>
         </record>
 
@@ -541,7 +541,7 @@
         <record id="rule_lease_renewal_history_multi_company" model="ir.rule">
             <field name="name">Lease Renewal History: Multi-company Access</field>
             <field name="model_id" ref="model_real_estate_lease_renewal_history"/>
-            <field name="domain_force">[('lease_id.company_ids', 'in', user.estate_company_ids.ids)]</field>
+            <field name="domain_force">[('lease_id.company_id', 'in', company_ids)]</field>
             <field name="groups" eval="[(4, ref('group_real_estate_user')), (4, ref('group_real_estate_manager'))]"/>
         </record>
         
@@ -557,7 +557,7 @@
         <record id="rule_owner_lease_renewal_history" model="ir.rule">
             <field name="name">Owner: Company Lease Renewal History</field>
             <field name="model_id" ref="model_real_estate_lease_renewal_history"/>
-            <field name="domain_force">[('lease_id.company_ids', 'in', user.estate_company_ids.ids)]</field>
+            <field name="domain_force">[('lease_id.company_id', 'in', company_ids)]</field>
             <field name="groups" eval="[(4, ref('group_real_estate_owner'))]"/>
             <field name="perm_read" eval="True"/>
             <field name="perm_write" eval="True"/>
@@ -571,7 +571,7 @@
         <record id="rule_owner_profiles" model="ir.rule">
             <field name="name">Owner: Company Profiles</field>
             <field name="model_id" ref="model_thedevkitchen_estate_profile"/>
-            <field name="domain_force">[('company_id', 'in', user.estate_company_ids.ids)]</field>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
             <field name="groups" eval="[(4, ref('group_real_estate_owner'))]"/>
             <field name="perm_read" eval="True"/>
             <field name="perm_write" eval="True"/>
@@ -583,7 +583,7 @@
         <record id="rule_manager_all_company_profiles" model="ir.rule">
             <field name="name">Manager: Company Profiles</field>
             <field name="model_id" ref="model_thedevkitchen_estate_profile"/>
-            <field name="domain_force">[('company_id', 'in', user.estate_company_ids.ids)]</field>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
             <field name="groups" eval="[(4, ref('group_real_estate_manager'))]"/>
             <field name="perm_read" eval="True"/>
             <field name="perm_write" eval="True"/>
@@ -595,7 +595,7 @@
         <record id="rule_agent_company_profiles" model="ir.rule">
             <field name="name">Agent: Company Profiles (Read Only)</field>
             <field name="model_id" ref="model_thedevkitchen_estate_profile"/>
-            <field name="domain_force">[('company_id', 'in', user.estate_company_ids.ids)]</field>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
             <field name="groups" eval="[(4, ref('group_real_estate_agent'))]"/>
             <field name="perm_read" eval="True"/>
             <field name="perm_write" eval="False"/>
@@ -607,7 +607,7 @@
         <record id="rule_receptionist_company_profiles" model="ir.rule">
             <field name="name">Receptionist: Company Profiles</field>
             <field name="model_id" ref="model_thedevkitchen_estate_profile"/>
-            <field name="domain_force">[('company_id', 'in', user.estate_company_ids.ids)]</field>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
             <field name="groups" eval="[(4, ref('group_real_estate_receptionist'))]"/>
             <field name="perm_read" eval="True"/>
             <field name="perm_write" eval="True"/>
@@ -631,7 +631,7 @@
         <record id="rule_profile_multi_company" model="ir.rule">
             <field name="name">Profile: Multi-Company Isolation</field>
             <field name="model_id" ref="model_thedevkitchen_estate_profile"/>
-            <field name="domain_force">[('company_id', 'in', user.estate_company_ids.ids)]</field>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
             <field name="groups" eval="[(4, ref('group_real_estate_user')), (4, ref('group_real_estate_manager'))]"/>
         </record>
         
