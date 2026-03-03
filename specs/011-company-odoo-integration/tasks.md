@@ -27,7 +27,7 @@
 
 **Purpose**: Clean environment preparation
 
-- [ ] T001 Run database reset to start clean: `cd 18.0 && bash reset_db.sh`
+- [X] T001 Run database reset to start clean: `cd 18.0 && bash reset_db.sh`
 
 ---
 
@@ -236,7 +236,7 @@
 - [X] T071 [US7] Verify/update `reset_db.sh` for new schema — ensure no refs to obsolete tables in `18.0/reset_db.sh`
 - [X] T072 [P] [US7] Update remaining seed/demo data files: ensure all `thedevkitchen.estate.company` refs → `res.company` with `is_real_estate=True` in `18.0/extra-addons/quicksol_estate/data/`
 - [X] T073 [US7] Update integration test shell scripts (14 files): SQL queries `thedevkitchen_estate_company` → `res_company WHERE is_real_estate`, `thedevkitchen_user_company_rel` → `res_company_users_rel`, `estate_company_ids` → `company_ids` in `integration_tests/`
-- [ ] T074 [US7] Run full reset and validate: `reset_db.sh` → module update → login → seed companies have `is_real_estate=True` → verify 8 obsolete tables do NOT exist
+- [X] T074 [US7] Run full reset and validate: `reset_db.sh` → module update → login → seed companies have `is_real_estate=True` → verify 8 obsolete tables do NOT exist
 
 **Checkpoint**: US7 complete — dev environment fully operational with new schema.
 
