@@ -50,13 +50,16 @@ echo "========================================"
 # Execute SQL against the database (via docker exec or psql)
 run_sql() {
     local sql="$1"
-    if command -v docker &>/dev/null && docker ps --format '{{.Names}}' 2>/dev/null | grep -q '18.0-db-1\|realestate_db\|_db_'; then
+    if command -v docker &>/dev/null; then
         local container
-        container=$(docker ps --format '{{.Names}}' | grep -E '18.0-db-1|realestate_db|_db_' | head -1)
-        docker exec -i "$container" psql -U "$DB_USER" -d "$DB_NAME" -t -A -c "$sql" 2>/dev/null
-    else
-        psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -t -A -c "$sql" 2>/dev/null
+        container=$(docker ps --format '{{.Names}}' | grep -iE 'db' | head -1)
+        if [ -n "$container" ]; then
+            docker exec -i "$container" psql -U "$DB_USER" -d "$DB_NAME" -t -A -c "$sql" 2>/dev/null
+            return
+        fi
     fi
+    # Fallback: try docker compose
+    docker compose -f "$(dirname "$0")/../18.0/docker-compose.yml" exec -T db psql -U "$DB_USER" -d "$DB_NAME" -t -A -c "$sql" 2>/dev/null
 }
 
 # Compute SHA-256 hex of a string
@@ -124,13 +127,17 @@ get_test_user_id() {
             INSERT INTO res_partner (name, email, active, create_date, write_date)
             VALUES ('SetPwd Test', '$email', true, NOW(), NOW())
             RETURNING id;
-        " | tr -d '[:space:]')
+        " | head -1 | tr -d '[:space:]')
+
+        local company_id
+        company_id=$(run_sql "SELECT id FROM res_company ORDER BY id LIMIT 1;" | head -1 | tr -d '[:space:]')
+        company_id="${company_id:-1}"
 
         uid=$(run_sql "
-            INSERT INTO res_users (partner_id, login, active, signup_pending, create_date, write_date)
-            VALUES ($partner_id, '$email', true, true, NOW(), NOW())
+            INSERT INTO res_users (partner_id, company_id, login, notification_type, active, signup_pending, create_date, write_date)
+            VALUES ($partner_id, $company_id, '$email', 'email', true, true, NOW(), NOW())
             RETURNING id;
-        " | tr -d '[:space:]')
+        " | head -1 | tr -d '[:space:]')
     fi
     echo "$uid"
 }
@@ -304,7 +311,7 @@ cleanup_tokens "$TEST_USER_ID"
 # ---------------------------------------------------------------------------
 echo ""
 echo "========================================"
-echo "Results: ${GREEN}${PASS} passed${NC} | ${FAIL} failed"
+echo "Results: ${PASS} tests passed | ${FAIL} failed"
 echo "========================================"
 
 [ "$FAIL" -eq 0 ]
