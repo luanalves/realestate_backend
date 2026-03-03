@@ -1,21 +1,21 @@
 #!/bin/bash
-# Feature 009 - User Story 3 (US3): Portal Dual Record E2E Test
-# Test scenarios for portal user creation with dual record (res.users + real.estate.tenant)
+# Feature 009/010 - US3: Portal Profile Creation and Invite Flow E2E Test
+# Updated: 2026-03-03 — Migrated from real.estate.tenant to thedevkitchen.estate.profile
+# Context: Feature 010 removed real.estate.tenant (ADR-024 Profile Unification).
+#          Portal users are now thedevkitchen.estate.profile with profile_type=9 (tenant).
 #
 # Scenarios:
-# 1. Agent invites portal tenant with all required fields (201 + tenant_id)
-# 2. Verify real.estate.tenant record exists with correct partner_id linkage
-# 3. Portal invite missing phone (400)
-# 4. Portal invite missing birthdate (400)
-# 5. Portal invite missing company_id (400)
-# 6. Portal invite with existing document for unlinked tenant (409)
-# 7. Portal user set-password and login (success)
-# 8. Verify portal user has portal group only
-# 9. Verify tenant record has correct company isolation
+# 1. Profile creation missing birthdate (400)
+# 2. Profile creation missing document (400)
+# 3. Create tenant profile + invite with profile_id (201)
+# 4. Verify thedevkitchen.estate.profile record exists with correct data
+# 5. Verify portal user belongs to correct company
+# 6. Verify portal user has portal group only
+# 7. Duplicate document on same company+type (409)
+# 8. Portal user set-password and login (success)
 #
 # Author: TheDevKitchen
-# Date: 2026-02-16
-# ADRs: ADR-003 (Testing Standards), ADR-011 (Security), ADR-017 (Multi-tenancy)
+# ADRs: ADR-003 (Testing Standards), ADR-011 (Security), ADR-017 (Multi-tenancy), ADR-024 (Profile Unification)
 
 set -e
 
@@ -39,6 +39,9 @@ TESTS_RUN=0
 TESTS_PASSED=0
 TESTS_FAILED=0
 
+RUN_ID="$(date +%s)"
+CPF_COUNTER=0
+
 # Helper functions
 log_info() {
     echo -e "${GREEN}[INFO]${NC} $1"
@@ -50,6 +53,34 @@ log_error() {
 
 log_warning() {
     echo -e "${YELLOW}[WARN]${NC} $1"
+}
+
+next_cpf() {
+    CPF_COUNTER=$((CPF_COUNTER + 1))
+    python3 -c "
+import random, time
+random.seed(int(time.time() * 1000) + $CPF_COUNTER + $RANDOM)
+def gen():
+    nums = [random.randint(0,9) for _ in range(9)]
+    s = sum((10-i)*d for i,d in enumerate(nums))
+    d1 = 0 if (11-(s%11))>=10 else (11-(s%11))
+    nums.append(d1)
+    s = sum((11-i)*d for i,d in enumerate(nums))
+    d2 = 0 if (11-(s%11))>=10 else (11-(s%11))
+    nums.append(d2)
+    cpf = ''.join(map(str,nums))
+    if len(set(cpf))==1: return None
+    return cpf
+result = None
+while not result:
+    result = gen()
+print(result)
+"
+}
+
+next_email() {
+    local prefix="$1"
+    echo "portal_test_${prefix}_${RUN_ID}@example.com"
 }
 
 test_scenario() {
@@ -107,25 +138,17 @@ assert_sql_result() {
 
 cleanup_test_data() {
     log_info "Cleaning up test data..."
-    
-    # SQL cleanup script
+
     docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF
-        -- Delete test tenants
-        DELETE FROM real_estate_tenant WHERE email LIKE 'portal_test_%@example.com';
-        
-        -- Delete test users
-        DELETE FROM res_users WHERE login LIKE 'portal_test_%@example.com';
-        
-        -- Delete test partners
-        DELETE FROM res_partner WHERE email LIKE 'portal_test_%@example.com';
-        
-        -- Delete test tokens
-        DELETE FROM thedevkitchen_password_token 
+        DELETE FROM thedevkitchen_password_token
         WHERE user_id IN (
             SELECT id FROM res_users WHERE login LIKE 'portal_test_%@example.com'
         );
+        DELETE FROM thedevkitchen_estate_profile WHERE email LIKE 'portal_test_%@example.com';
+        DELETE FROM res_users WHERE login LIKE 'portal_test_%@example.com';
+        DELETE FROM res_partner WHERE email LIKE 'portal_test_%@example.com';
 EOF
-    
+
     log_info "Cleanup completed"
 }
 
@@ -154,90 +177,118 @@ OAUTH_RESPONSE=$(curl -s -X POST "$API_BASE/auth/token" \
 
 BEARER_TOKEN=$(echo "$OAUTH_RESPONSE" | jq -r '.access_token // empty')
 
+if [ -z "$BEARER_TOKEN" ]; then
+    log_error "Failed to obtain OAuth token"
+    echo "Response: $OAUTH_RESPONSE"
+    exit 1
+fi
+
 LOGIN_RESPONSE=$(curl -s -X POST "$API_BASE/users/login" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -d '{
-        "login": "'"$TEST_USER_OWNER"'",
-        "password": "'"$TEST_PASSWORD_OWNER"'"
-    }')
+    -d "{
+        \"login\": \"$TEST_USER_OWNER\",
+        \"password\": \"$TEST_PASSWORD_OWNER\"
+    }")
 
 SESSION_ID=$(echo "$LOGIN_RESPONSE" | jq -r '.session_id // empty')
 AGENT_COMPANY_ID=$(echo "$LOGIN_RESPONSE" | jq -r '.user.default_company_id // empty')
 
-if [ -z "$BEARER_TOKEN" ] || [ -z "$SESSION_ID" ]; then
-    log_error "Failed to authenticate as Owner. Please ensure TEST_USER_OWNER/TEST_PASSWORD_OWNER are valid in 18.0/.env"
+if [ -z "$SESSION_ID" ] || [ -z "$AGENT_COMPANY_ID" ]; then
+    log_error "Failed to authenticate as Owner. Check TEST_USER_OWNER/TEST_PASSWORD_OWNER in 18.0/.env"
+    echo "Login response: $LOGIN_RESPONSE"
     exit 1
 fi
 
 log_info "Owner authentication successful (Company ID: $AGENT_COMPANY_ID)"
 
 # ============================================================
-# Test 1: Portal invite missing phone (400)
+# Test 1: Profile creation missing birthdate → 400
 # ============================================================
-test_scenario "Portal invite missing phone returns 400"
+test_scenario "Profile creation missing birthdate returns 400"
 
-MISSING_PHONE_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/invite" \
+MISSING_BIRTHDATE_PROFILE_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/profiles" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
     -H "X-Openerp-Session-Id: $SESSION_ID" \
     -H "X-Company-ID: $AGENT_COMPANY_ID" \
-    -d '{
-        "name": "Portal Test Missing Phone",
-        "email": "portal_test_missing_phone@example.com",
-        "document": "52998224725",
-        "profile": "portal",
-        "birthdate": "1990-01-01"
-    }')
+    -d "{
+        \"profile_type_id\": 9,
+        \"company_id\": $AGENT_COMPANY_ID,
+        \"name\": \"Portal Test Missing Birthdate\",
+        \"document\": \"$(next_cpf)\",
+        \"email\": \"$(next_email missing_birthdate)\",
+        \"phone\": \"+5511999887766\"
+    }")
 
-MISSING_PHONE_BODY=$(echo "$MISSING_PHONE_RESPONSE" | sed '$d')
-MISSING_PHONE_STATUS=$(echo "$MISSING_PHONE_RESPONSE" | tail -n 1)
-
-assert_status 400 "$MISSING_PHONE_STATUS" "Portal invite without phone rejected"
+MISSING_BIRTHDATE_STATUS=$(echo "$MISSING_BIRTHDATE_PROFILE_RESPONSE" | tail -n 1)
+assert_status 400 "$MISSING_BIRTHDATE_STATUS" "Profile without birthdate rejected"
 
 # ============================================================
-# Test 2: Portal invite missing birthdate (400)
+# Test 2: Profile creation missing document → 400
 # ============================================================
-test_scenario "Portal invite missing birthdate returns 400"
+test_scenario "Profile creation missing document returns 400"
 
-MISSING_BIRTHDATE_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/invite" \
+MISSING_DOC_PROFILE_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/profiles" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
     -H "X-Openerp-Session-Id: $SESSION_ID" \
     -H "X-Company-ID: $AGENT_COMPANY_ID" \
-    -d '{
-        "name": "Portal Test Missing Birthdate",
-        "email": "portal_test_missing_birthdate@example.com",
-        "document": "69103252614",
-        "profile": "portal",
-        "phone": "+5511999887766"
-    }')
+    -d "{
+        \"profile_type_id\": 9,
+        \"company_id\": $AGENT_COMPANY_ID,
+        \"name\": \"Portal Test Missing Document\",
+        \"email\": \"$(next_email missing_doc)\",
+        \"phone\": \"+5511999887766\",
+        \"birthdate\": \"1990-01-01\"
+    }")
 
-MISSING_BIRTHDATE_BODY=$(echo "$MISSING_BIRTHDATE_RESPONSE" | sed '$d')
-MISSING_BIRTHDATE_STATUS=$(echo "$MISSING_BIRTHDATE_RESPONSE" | tail -n 1)
-
-assert_status 400 "$MISSING_BIRTHDATE_STATUS" "Portal invite without birthdate rejected"
+MISSING_DOC_STATUS=$(echo "$MISSING_DOC_PROFILE_RESPONSE" | tail -n 1)
+assert_status 400 "$MISSING_DOC_STATUS" "Profile without document rejected"
 
 # ============================================================
-# Test 3: Agent invites portal tenant with all required fields (201)
+# Test 3: Create tenant profile + invite with profile_id (201)
 # ============================================================
-test_scenario "Agent invites portal tenant with all required fields"
+test_scenario "Create tenant profile and invite with profile_id"
 
+TENANT_EMAIL="$(next_email tenant)"
+TENANT_DOCUMENT="$(next_cpf)"
+
+# Step 3a: Create the tenant profile
+PROFILE_CREATE_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/profiles" \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $BEARER_TOKEN" \
+    -H "X-Openerp-Session-Id: $SESSION_ID" \
+    -H "X-Company-ID: $AGENT_COMPANY_ID" \
+    -d "{
+        \"profile_type_id\": 9,
+        \"company_id\": $AGENT_COMPANY_ID,
+        \"name\": \"Portal Test Tenant\",
+        \"document\": \"$TENANT_DOCUMENT\",
+        \"email\": \"$TENANT_EMAIL\",
+        \"phone\": \"+5511988776655\",
+        \"birthdate\": \"1985-05-15\",
+        \"occupation\": \"Software Engineer\"
+    }")
+
+PROFILE_CREATE_BODY=$(echo "$PROFILE_CREATE_RESPONSE" | sed '$d')
+PROFILE_CREATE_STATUS=$(echo "$PROFILE_CREATE_RESPONSE" | tail -n 1)
+
+assert_status 201 "$PROFILE_CREATE_STATUS" "Tenant profile created"
+assert_field "$PROFILE_CREATE_BODY" "id" "Profile ID returned"
+
+TENANT_PROFILE_ID=$(echo "$PROFILE_CREATE_BODY" | jq -r '.id')
+log_info "Tenant profile created with ID: $TENANT_PROFILE_ID"
+
+# Step 3b: Invite the profile
 PORTAL_INVITE_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/invite" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
     -H "X-Openerp-Session-Id: $SESSION_ID" \
     -H "X-Company-ID: $AGENT_COMPANY_ID" \
-    -d '{
-        "name": "Portal Test Tenant",
-        "email": "portal_test_tenant@example.com",
-        "document": "88228168039",
-        "profile": "portal",
-        "phone": "+5511988776655",
-        "birthdate": "1985-05-15",
-        "company_id": '"$AGENT_COMPANY_ID"',
-        "occupation": "Software Engineer"
-    }')
+    -d "{
+        \"profile_id\": $TENANT_PROFILE_ID
+    }")
 
 PORTAL_INVITE_BODY=$(echo "$PORTAL_INVITE_RESPONSE" | sed '$d')
 PORTAL_INVITE_STATUS=$(echo "$PORTAL_INVITE_RESPONSE" | tail -n 1)
@@ -246,65 +297,46 @@ assert_status 201 "$PORTAL_INVITE_STATUS" "Portal tenant invite created"
 assert_field "$PORTAL_INVITE_BODY" "data.id" "User ID returned"
 assert_field "$PORTAL_INVITE_BODY" "data.email" "Email field present"
 assert_field "$PORTAL_INVITE_BODY" "data.profile" "Profile field present"
-assert_field "$PORTAL_INVITE_BODY" "data.tenant_id" "Tenant ID returned"
+assert_field "$PORTAL_INVITE_BODY" "data.profile_id" "Profile ID returned"
 
 PORTAL_USER_ID=$(echo "$PORTAL_INVITE_BODY" | jq -r '.data.id')
-TENANT_ID=$(echo "$PORTAL_INVITE_BODY" | jq -r '.data.tenant_id')
-log_info "Portal user created with ID: $PORTAL_USER_ID, Tenant ID: $TENANT_ID"
+RETURNED_PROFILE_ID=$(echo "$PORTAL_INVITE_BODY" | jq -r '.data.profile_id')
+log_info "Portal user created with ID: $PORTAL_USER_ID, Profile ID: $RETURNED_PROFILE_ID"
 
 # ============================================================
-# Test 4: Verify real.estate.tenant record exists
+# Test 4: Verify thedevkitchen.estate.profile record exists
 # ============================================================
-test_scenario "Verify real.estate.tenant record exists with correct linkage"
+test_scenario "Verify thedevkitchen.estate.profile record exists with correct data"
 
-# Check tenant record exists
 assert_sql_result \
-    "SELECT COUNT(*) FROM real_estate_tenant WHERE id = $TENANT_ID;" \
+    "SELECT COUNT(*) FROM thedevkitchen_estate_profile WHERE id = $TENANT_PROFILE_ID;" \
     "1" \
-    "Tenant record exists"
-
-# Check partner_id linkage
-USER_PARTNER_ID=$(docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate -t -c \
-    "SELECT partner_id FROM res_users WHERE id = $PORTAL_USER_ID;" | xargs)
-
-TENANT_PARTNER_ID=$(docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate -t -c \
-    "SELECT partner_id FROM real_estate_tenant WHERE id = $TENANT_ID;" | xargs)
-
-log_info "User partner_id: $USER_PARTNER_ID, Tenant partner_id: $TENANT_PARTNER_ID"
+    "Profile record exists in DB"
 
 assert_sql_result \
-    "SELECT CASE WHEN $USER_PARTNER_ID = $TENANT_PARTNER_ID THEN 'true' ELSE 'false' END;" \
-    "true" \
-    "User and tenant share same partner_id"
+    "SELECT document FROM thedevkitchen_estate_profile WHERE id = $TENANT_PROFILE_ID;" \
+    "$TENANT_DOCUMENT" \
+    "Profile document matches"
 
-# Check tenant document
 assert_sql_result \
-    "SELECT document FROM real_estate_tenant WHERE id = $TENANT_ID;" \
-    "88228168039" \
-    "Tenant document matches invite data"
+    "SELECT TRIM(email) FROM thedevkitchen_estate_profile WHERE id = $TENANT_PROFILE_ID;" \
+    "$TENANT_EMAIL" \
+    "Profile email matches"
 
-# Check tenant phone
 assert_sql_result \
-    "SELECT phone FROM real_estate_tenant WHERE id = $TENANT_ID;" \
+    "SELECT TRIM(phone) FROM thedevkitchen_estate_profile WHERE id = $TENANT_PROFILE_ID;" \
     "+5511988776655" \
-    "Tenant phone matches invite data"
+    "Profile phone matches"
 
-# Check tenant birthdate
 assert_sql_result \
-    "SELECT birthdate::text FROM real_estate_tenant WHERE id = $TENANT_ID;" \
+    "SELECT birthdate::text FROM thedevkitchen_estate_profile WHERE id = $TENANT_PROFILE_ID;" \
     "1985-05-15" \
-    "Tenant birthdate matches invite data"
-
-# Check tenant occupation
-assert_sql_result \
-    "SELECT occupation FROM real_estate_tenant WHERE id = $TENANT_ID;" \
-    "Software Engineer" \
-    "Tenant occupation matches invite data"
+    "Profile birthdate matches"
 
 # ============================================================
 # Test 5: Verify portal user has correct company
 # ============================================================
-test_scenario "Verify portal user has correct company"
+test_scenario "Verify portal user belongs to owner's company"
 
 assert_sql_result \
     "SELECT company_id FROM res_users WHERE id = $PORTAL_USER_ID;" \
@@ -312,62 +344,50 @@ assert_sql_result \
     "Portal user belongs to owner's company"
 
 # ============================================================
-# Test 6: Verify portal user has portal group only
+# Test 6: Verify portal user has portal group
 # ============================================================
-test_scenario "Verify portal user has portal group only"
+test_scenario "Verify portal user has portal group assigned"
 
-# Get portal group ID by XML ID used in quicksol_estate
+# Invite controller assigns base.group_portal (Odoo standard portal)
 PORTAL_GROUP_ID=$(docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate -t -c \
-    "SELECT res_id FROM ir_model_data WHERE model = 'res.groups' AND module = 'quicksol_estate' AND name = 'group_real_estate_portal_user';" | xargs)
+    "SELECT res_id FROM ir_model_data WHERE model = 'res.groups' AND module = 'base' AND name = 'group_portal';" | xargs)
 
 log_info "Portal group ID: $PORTAL_GROUP_ID"
 
-# Check user has portal group
 assert_sql_result \
     "SELECT COUNT(*) FROM res_groups_users_rel WHERE gid = $PORTAL_GROUP_ID AND uid = $PORTAL_USER_ID;" \
     "1" \
     "User has portal group assigned"
 
 # ============================================================
-# Test 7: Portal invite with existing document for unlinked tenant (409)
+# Test 7: Duplicate profile (same document+company+type) returns 409
 # ============================================================
-test_scenario "Portal invite with existing document for unlinked tenant returns 409"
+test_scenario "Duplicate profile creation (same document+company+type) returns 409"
 
-# First, create an unlinked tenant in database (tenant without res.users)
-docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF
-    INSERT INTO res_partner (name, email, phone, company_id, create_date, write_date)
-    VALUES ('Unlinked Tenant Partner', 'portal_test_unlinked@example.com', '+5511999887766', $AGENT_COMPANY_ID, NOW(), NOW())
-    RETURNING id;
-    
-    INSERT INTO real_estate_tenant (partner_id, name, document, email, phone, birthdate, active, create_date, write_date)
-    SELECT id, 'Unlinked Tenant', '52998224725', 'portal_test_unlinked@example.com', '+5511999887766', '1990-01-01', TRUE, NOW(), NOW()
-    FROM res_partner WHERE email = 'portal_test_unlinked@example.com';
-EOF
-
-# Try to invite with same document
-EXISTING_DOC_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/invite" \
+DUPLICATE_PROFILE_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/profiles" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
     -H "X-Openerp-Session-Id: $SESSION_ID" \
     -H "X-Company-ID: $AGENT_COMPANY_ID" \
-    -d '{
-        "name": "Another Portal User",
-        "email": "portal_test_another@example.com",
-        "document": "52998224725",
-        "profile": "portal",
-        "phone": "+5511988775544",
-        "birthdate": "1992-03-20",
-        "company_id": 1
-    }')
+    -d "{
+        \"profile_type_id\": 9,
+        \"company_id\": $AGENT_COMPANY_ID,
+        \"name\": \"Portal Test Tenant Duplicate\",
+        \"document\": \"$TENANT_DOCUMENT\",
+        \"email\": \"$(next_email dup)\",
+        \"phone\": \"+5511988775544\",
+        \"birthdate\": \"1992-03-20\"
+    }")
 
-EXISTING_DOC_STATUS=$(echo "$EXISTING_DOC_RESPONSE" | tail -n 1)
+DUPLICATE_PROFILE_STATUS=$(echo "$DUPLICATE_PROFILE_RESPONSE" | tail -n 1)
+assert_status 409 "$DUPLICATE_PROFILE_STATUS" "Duplicate profile document+company+type rejected"
 
-assert_status 409 "$EXISTING_DOC_STATUS" "Duplicate document for existing tenant rejected"
-
+# ============================================================
+# Test 8: Portal user set-password succeeds
+# ============================================================
 log_info "Simulating set-password flow for portal user..."
 
-# Generate known token for portal user
-RAW_PORTAL_TOKEN="portal-invite-token-$(date +%s)"
+RAW_PORTAL_TOKEN=$(python3 -c 'import uuid; print(uuid.uuid4().hex)')
 PORTAL_TOKEN_HASH=$(echo -n "$RAW_PORTAL_TOKEN" | shasum -a 256 | awk '{print $1}')
 
 docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF
@@ -389,18 +409,20 @@ PORTAL_SET_PASSWORD_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/au
     }")
 
 PORTAL_SET_PASSWORD_STATUS=$(echo "$PORTAL_SET_PASSWORD_RESPONSE" | tail -n 1)
-
 assert_status 200 "$PORTAL_SET_PASSWORD_STATUS" "Portal user set-password successful"
 
+# ============================================================
+# Test 9: Portal user login after set-password
+# ============================================================
 test_scenario "Portal user login after set-password succeeds"
 
 PORTAL_LOGIN_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/login" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -d '{
-        "login": "portal_test_tenant@example.com",
-        "password": "portalpassword123"
-    }')
+    -d "{
+        \"login\": \"$TENANT_EMAIL\",
+        \"password\": \"portalpassword123\"
+    }")
 
 PORTAL_LOGIN_BODY=$(echo "$PORTAL_LOGIN_RESPONSE" | sed '$d')
 PORTAL_LOGIN_STATUS=$(echo "$PORTAL_LOGIN_RESPONSE" | tail -n 1)
@@ -415,7 +437,7 @@ assert_field "$PORTAL_LOGIN_BODY" "user.email" "User email returned"
 # ============================================================
 echo ""
 echo "=========================================="
-echo "Test Summary"
+echo "Test Summary - US9-S3 Portal Dual Record"
 echo "=========================================="
 echo "Tests Run:    $TESTS_RUN scenarios"
 echo -e "Tests Passed: ${GREEN}$TESTS_PASSED assertions${NC}"
@@ -427,8 +449,9 @@ cleanup_test_data
 
 # Exit with appropriate code
 if [ $TESTS_FAILED -gt 0 ]; then
+    echo -e "${RED}❌ TEST FAILED: US9-S3 Portal Profile and Invite Flow${NC}"
     exit 1
 else
-    log_info "All tests passed! ✓"
+    echo -e "${GREEN}✅ TEST PASSED: US9-S3 Portal Profile and Invite Flow${NC}"
     exit 0
 fi
