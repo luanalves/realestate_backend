@@ -60,6 +60,11 @@ fi
 
 echo "✅ Admin login successful (UID: $ADMIN_UID)"
 
+# Pre-cleanup: nullify CNPJ from previous run to avoid UniqueViolation
+docker compose -f "${SCRIPT_DIR}/../18.0/docker-compose.yml" exec -T db \
+    psql -U odoo -d realestate -c \
+    "UPDATE res_company SET cnpj = NULL WHERE cnpj = '12.345.999/0001-90';" > /dev/null 2>&1 || true
+
 # Step 2: Create Company A (via JSON-RPC)
 echo ""
 echo "Step 2: Creating Company A..."
