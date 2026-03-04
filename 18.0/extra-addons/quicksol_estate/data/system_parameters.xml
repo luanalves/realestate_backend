@@ -6,5 +6,13 @@
             <field name="key">quicksol_estate.prospector_commission_percentage</field>
             <field name="value">0.30</field>
         </record>
+
+        <!--
+            iap.endpoint é injetado diretamente via psql ANTES da instalação
+            (apontando para http://127.0.0.1:1) para que o partner_autocomplete
+            falhe imediatamente por "connection refused" ao tentar enriquecer
+            dados de empresa, evitando timeout de 30-60s por registro.
+            Ver: scripts/install_modules.sh ou comandos de setup do ambiente.
+        -->
     </data>
 </odoo>

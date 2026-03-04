@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <data noupdate="1">
+    <!-- tracking_disable impede o partner_autocomplete de disparar chamadas IAP ao criar empresas -->
+    <data noupdate="1" context="{'tracking_disable': True, 'no_recompute': True}">
         <!--
             SEED: Imobiliária Seed — Ambiente de Testes
             ============================================================

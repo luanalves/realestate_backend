@@ -80,6 +80,9 @@ RUN pip3 install --break-system-packages --ignore-installed \
 # Install Celery client for async task dispatch (Odoo → RabbitMQ)
 RUN pip3 install --break-system-packages celery[redis]==5.3.4
 
+# Install Brazilian document validation library (required by thedevkitchen_user_onboarding)
+RUN pip3 install --break-system-packages validate_docbr
+
 # Install Python development and code quality tools
 RUN pip3 install --break-system-packages \
     flake8==7.1.1 \

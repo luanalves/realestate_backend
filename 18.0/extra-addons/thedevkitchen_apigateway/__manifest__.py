@@ -36,7 +36,6 @@ Technical Details:
         'web',
         'mail',
         'bus',
-        'partner_autocomplete',
     ],
     'external_dependencies': {
         'python': [
