@@ -2,7 +2,7 @@
 
 **Feature Branch**: `011-company-odoo-integration`  
 **Created**: 2025-03-02  
-**Status**: Draft  
+**Status**: Approved  
 **Input**: "Integrar modulo de imobiliaria com company do framework Odoo, para que cada imobiliaria seja uma company diferente, e os usuários sejam associados a essas companies (atualmente não tem associação entre usuários e imobiliarias)"
 
 ## Problema Atual (Análise do Codebase)
@@ -206,6 +206,8 @@ O modelo `thedevkitchen.estate.company` deixa de existir. Em seu lugar, `res.com
 4. **Given** duas companies com CNPJs diferentes, **When** uma tenta usar um CNPJ já existente, **Then** constraint de unicidade impede a operação.
 5. **Given** o código anterior usava `env['thedevkitchen.estate.company']`, **When** o código atualizado usa `env['res.company']`, **Then** os mesmos dados e funcionalidades estão disponíveis (sem modelo intermediário).
 6. **Given** a tabela `thedevkitchen_estate_company` existia no banco, **When** o reset é executado, **Then** a tabela não é mais criada — os dados estão em `res_company`.
+7. **Given** GET /api/v1/states, **When** resposta retornada, **Then** contém 27 estados brasileiros provenientes de `res.country.state`, com shape idêntico ao endpoint pré-migração.
+8. **Given** POST /api/v1/companies com `zip_code='01234-567'`, **When** GET /api/v1/companies/:id, **Then** resposta contém `zip_code='01234-567'` (round-trip validado — mapeamento `zip_code`↔`zip` transparente).
 
 ---
 
@@ -267,6 +269,7 @@ O middleware atual consulta `user.estate_company_ids` e seta `request.company_do
 3. **Given** admin (`base.group_system`), **When** qualquer `X-Company-ID`, **Then** bypass mantido.
 4. **Given** `X-Company-ID` inexistente, **When** requisição recebida, **Then** retorna 404.
 5. **Given** middleware seta contexto, **When** controllers fazem ORM calls, **Then** `self.env.company` reflete a empresa do header.
+6. **Given** `X-Company-ID` = ID de `res.company` válida com `is_real_estate=False`, **When** requisição recebida, **Then** middleware retorna 403 (company existe mas não é imobiliária).
 
 ---
 
@@ -499,7 +502,7 @@ Todos os scripts em `integration_tests/` que enviam payloads com `thedevkitchen.
 
 ### Functional Requirements
 
-- **FR-001**: `res.company` DEVE ser estendido via `_inherit` com campos imobiliários prefixados (`is_real_estate`, `cnpj`, `creci`, `legal_name`, `foundation_date`), adicionados diretamente na tabela `res_company`. O campo `is_real_estate` (Boolean, default=False) DEVE ser o discriminador para identificar companies que são imobiliárias.
+- **FR-001**: `res.company` DEVE ser estendido via `_inherit` com campos imobiliários (`is_real_estate`, `cnpj`, `creci`, `legal_name`, `foundation_date`, `description`), adicionados diretamente na tabela `res_company`. O campo `is_real_estate` (Boolean, default=False) DEVE ser o discriminador para identificar companies que são imobiliárias. Companies criadas via API imobiliária DEVEM ter `is_real_estate=True` auto-setado pelo controller, independentemente do corpo da requisição.
 - **FR-002**: O modelo standalone `thedevkitchen.estate.company` DEVE ser completamente eliminado — nenhum `_name = 'thedevkitchen.estate.company'` pode existir no código.
 - **FR-003**: A tabela `thedevkitchen_estate_company` DEVE ser eliminada. As 6 tabelas M2M associadas DEVEM ser eliminadas.
 - **FR-004**: Todos os campos genéricos redundantes (`name`, `email`, `phone`, etc.) DEVEM ser eliminados — `res.company` já os possui nativamente.
@@ -508,10 +511,10 @@ Todos os scripts em `integration_tests/` que enviam payloads com `thedevkitchen.
 - **FR-007**: Cada modelo de negócio que referenciava `thedevkitchen.estate.company` DEVE usar `company_id = Many2one('res.company')` (M2O). Todos os campos M2M `company_ids` em modelos de negócio (property, lease, sale, lead, agent) DEVEM ser eliminados e substituídos por M2O `company_id`. Cada registro pertence a exatamente uma company. Modelos afetados: `real.estate.property`, `real.estate.lease`, `real.estate.sale`, `real.estate.lead`, `real.estate.agent`, `real.estate.commission.rule`, `real.estate.commission.transaction`, `thedevkitchen.estate.profile`, `real.estate.property.assignment`.
 - **FR-008**: Todas as record rules em `record_rules.xml` DEVEM usar o domínio nativo `[('company_id', 'in', company_ids)]`. Nenhuma referência a `user.estate_company_ids` pode permanecer.
 - **FR-009**: O middleware `@require_company` DEVE: (a) validar `X-Company-ID` contra `user.company_ids` nativo, (b) setar contexto via `request.update_env(company=...)`, (c) manter bypass para admin.
-- **FR-010**: Os controllers que retornam companies no payload DEVEM manter o mesmo formato de resposta JSON, obtendo dados via `company_ids` nativo.
+- **FR-010**: Os controllers que retornam companies no payload DEVEM manter o mesmo formato de resposta JSON, obtendo dados via `company_ids` nativo. O campo `zip_code` da API DEVE ser mapeado bidirecional para o campo `zip` nativo de `res.company` — consumidores da API nunca veem o campo `zip` interno.
 - **FR-011**: O controller `invite_controller.py` DEVE associar novos usuários via `company_ids` nativo.
 - **FR-012**: O observer `user_company_validator_observer.py` DEVE validar writes em `company_ids` nativo.
-- **FR-013**: Constraints de unicidade DEVEM ser mantidas: `UNIQUE(cnpj)` na tabela `res_company`.
+- **FR-013**: Constraints de unicidade DEVEM ser mantidas: `UNIQUE(cnpj)` na tabela `res_company`. Violações de unicidade do CNPJ DEVEM retornar HTTP 400 com `{'success': false, 'error': {'code': 'cnpj_duplicate', 'message': 'CNPJ já cadastrado'}}` — NOT 500. O controller DEVE capturar `ValidationError` e `IntegrityError` e converter para resposta estruturada.
 - **FR-014**: Os endpoints existentes DEVEM manter os mesmos contratos de entrada/saída — zero breaking changes para consumidores da API.
 - **FR-015**: O reset/migração DEVE ser automatizado via `reset_db.sh` + module update.
 - **FR-016**: 6 ADRs DEVEM ser atualizadas para refletir a nova arquitetura (ADR-004, 008, 009, 019, 020, 024).
@@ -568,3 +571,4 @@ Todos os scripts em `integration_tests/` que enviam payloads com `thedevkitchen.
 - **SC-012**: 6 ADRs atualizadas sem referências obsoletas.
 - **SC-013**: KB-07 contém seção sobre padrões de herança Odoo.
 - **SC-014**: Reset do banco + module update completa sem erros.
+- **SC-015**: A `constitution.md` Principle IV contém referência a `company_ids` nativo, sem referências a `estate_company_ids`. Amendment v1.4.1 PATCH refletido.

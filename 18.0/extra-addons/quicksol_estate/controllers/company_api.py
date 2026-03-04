@@ -3,7 +3,7 @@ import json
 import logging
 from odoo import http
 from odoo.http import request
-from odoo.exceptions import AccessError, ValidationError
+from odoo.exceptions import AccessError, ValidationError, UserError
 from .utils.auth import require_jwt
 from .utils.response import error_response, success_response
 from odoo.addons.thedevkitchen_apigateway.middleware import require_session, require_company
@@ -138,9 +138,19 @@ class CompanyApiController(http.Controller):
             
             return request.make_json_response(response, status=status)
             
-        except ValidationError as e:
-            _logger.warning(f"Validation error creating company: {str(e)}")
-            return error_response(400, str(e))
+        except (ValidationError, UserError) as e:
+            err_msg = str(e)
+            _logger.warning(f"Validation error creating company: {err_msg}")
+            # CHK037: CNPJ uniqueness violation MUST return structured 400, not 500
+            if 'cnpj' in err_msg.lower() or 'unique' in err_msg.lower():
+                return request.make_json_response({
+                    'success': False,
+                    'error': {
+                        'code': 'cnpj_duplicate',
+                        'message': 'CNPJ já cadastrado'
+                    }
+                }, status=400)
+            return error_response(400, err_msg)
         except Exception as e:
             _logger.error(f"Error creating company: {str(e)}", exc_info=True)
             return error_response(500, 'Internal server error')
@@ -400,9 +410,19 @@ class CompanyApiController(http.Controller):
             
             return request.make_json_response(response, status=status)
             
-        except ValidationError as e:
-            _logger.warning(f"Validation error updating company {company_id}: {str(e)}")
-            return error_response(400, str(e))
+        except (ValidationError, UserError) as e:
+            err_msg = str(e)
+            _logger.warning(f"Validation error updating company {company_id}: {err_msg}")
+            # CHK037: CNPJ uniqueness violation MUST return structured 400, not 500
+            if 'cnpj' in err_msg.lower() or 'unique' in err_msg.lower():
+                return request.make_json_response({
+                    'success': False,
+                    'error': {
+                        'code': 'cnpj_duplicate',
+                        'message': 'CNPJ já cadastrado'
+                    }
+                }, status=400)
+            return error_response(400, err_msg)
         except Exception as e:
             _logger.error(f"Error updating company {company_id}: {str(e)}", exc_info=True)
             return error_response(500, 'Internal server error')
