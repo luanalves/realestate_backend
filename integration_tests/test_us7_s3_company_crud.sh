@@ -39,10 +39,13 @@ if [ $? -ne 0 ]; then
 fi
 
 echo -e "${GREEN}✓ Authentication successful (JWT: ${#ACCESS_TOKEN} chars, UID: ${ADMIN_UID})${NC}"
-# Pre-cleanup: nullify CNPJs from previous run to avoid UNIQUE constraint violations
+# Pre-cleanup: nullify CNPJs and company names from previous run to avoid UNIQUE constraint violations
 docker compose -f "${SCRIPT_DIR}/../18.0/docker-compose.yml" exec -T db \
     psql -U odoo -d realestate -c \
     "UPDATE res_company SET cnpj = NULL WHERE cnpj IN ('78.904.055/7501-12', '34.028.316/0001-03');" > /dev/null 2>&1 || true
+docker compose -f "${SCRIPT_DIR}/../18.0/docker-compose.yml" exec -T db \
+    psql -U odoo -d realestate -c \
+    "UPDATE res_company SET name = 'deleted_' || id || '_' || name, active = false WHERE name IN ('Test Real Estate Company', 'Updated Real Estate Company', 'Duplicate Company', 'Invalid CNPJ Company', 'Invalid Email Company', 'Company To Delete');" > /dev/null 2>&1 || true
 # Note: From here on, use:
 # -H "Authorization: Bearer ${ACCESS_TOKEN}" for JWT
 # -b ${SESSION_COOKIE_FILE} for session cookie
