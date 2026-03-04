@@ -96,14 +96,14 @@
 
 ## Acceptance Criteria Quality
 
-- [ ] ℹ️ CHK023 — SC-005 states "100% dos usuários com acesso a imobiliárias possuem as res.company correspondentes em company_ids nativo" — is the verification method specified (SQL query, ORM check, test assertion)? [Measurability, Spec §SC-005]
-  > **MINOR GAP.** Verification command not specified. Recommend adding to spec: `SELECT u.login FROM res_users u LEFT JOIN res_company_users_rel rel ON rel.user_id = u.id WHERE rel.cid IS NULL AND u.active = True` (should return 0 rows for users without companies). Quickstart has partial checks but not this one.
+- [x] ✅ CHK023 — SC-005 states "100% dos usuários com acesso a imobiliárias possuem as res.company correspondentes em company_ids nativo" — is the verification method specified (SQL query, ORM check, test assertion)? [Measurability, Spec §SC-005]
+  > **RESOLVED.** SQL verification command added to SC-005: `SELECT u.login FROM res_users u LEFT JOIN res_company_users_rel rel ON rel.user_id = u.id WHERE rel.cid IS NULL AND u.active = True` — deve retornar 0 linhas.
 
-- [ ] ℹ️ CHK024 — SC-007 states "100% de eficácia em testes de isolamento" — which specific test suite/scenarios constitute this 100%? Is the test inventory enumerated? [Measurability, Spec §SC-007]
-  > **MINOR GAP.** The test suite is US3 acceptance scenarios (5 scenarios) + integration tests `test_us3_s*.sh`. SC-007 should reference: "US3 acceptance scenarios (1-5) verified by test_us3_s1 through test_us3_s5 integration scripts." 
+- [x] ✅ CHK024 — SC-007 states "100% de eficácia em testes de isolamento" — which specific test suite/scenarios constitute this 100%? Is the test inventory enumerated? [Measurability, Spec §SC-007]
+  > **RESOLVED.** SC-007 now references `integration_tests/test_us3_s1.sh` ~ `test_us3_s5.sh` como suite de validação.
 
-- [ ] ℹ️ CHK025 — SC-012 states "6 ADRs atualizadas sem referências obsoletas" — is the verification method clear (grep command, manual review, CI check)? [Measurability, Spec §SC-012]
-  > **MINOR GAP.** Recommend adding verification command: `grep -r 'estate_company_ids\|thedevkitchen\.estate\.company' docs/ knowledge_base/` should return 0 results. Not currently in spec.
+- [x] ✅ CHK025 — SC-012 states "6 ADRs atualizadas sem referências obsoletas" — is the verification method clear (grep command, manual review, CI check)? [Measurability, Spec §SC-012]
+  > **RESOLVED.** Grep de verificação adicionado ao SC-012: `grep -r 'estate_company_ids\|thedevkitchen\.estate\.company' docs/ knowledge_base/` deve retornar 0 resultados.
 
 - [x] CHK026 — Are SC-002, SC-003, SC-004 (table non-existence) verifiable via a single automated check, and is that check specified? [Measurability, Spec §SC-002/003/004]
   > **PASS — Validated live.** Quickstart §Commands Cheat Sheet has `SELECT tablename FROM pg_tables WHERE tablename LIKE 'thedevkitchen_company_%'`. Agent ran full verification: `SELECT tablename FROM pg_tables WHERE tablename IN (all 8 tables)` → **0 rows returned**. All 8 obsolete tables confirmed absent from DB. SC-002/003/004 verified ✅.
@@ -209,8 +209,8 @@
 - [x] CHK053 — Are all 7 user stories traceable to specific tasks, and do task dependencies match the story dependency graph? [Traceability, tasks.md §Dependencies]
   > **PASS.** tasks.md has explicit dependency graph with ASCII art and per-story dependency table. All 7 stories map to phases. Dependencies (US1+US2 → US3, US2 → US4, US3+US4 → US5, US2→ US6, US1-5 → US7) are documented and consistent with implementation order.
 
-- [ ] ℹ️ CHK054 — Is the contracts/company-api.md referenced by FRs, or does it exist independently? Should FR-014 explicitly reference the contracts document? [Traceability, Spec §FR-014]
-  > **MINOR GAP.** FR-014 states "zero breaking changes" but doesn't cite contracts/company-api.md. This means a reviewer of FR-014 alone won't know where to find the definition of "no change." Add to FR-014: "See contracts/company-api.md for the field mapping table and per-endpoint before/after documentation."
+- [x] ✅ CHK054 — Is the contracts/company-api.md referenced by FRs, or does it exist independently? Should FR-014 explicitly reference the contracts document? [Traceability, Spec §FR-014]
+  > **RESOLVED.** FR-014 agora cita `contracts/company-api.md` diretamente: "Ver `contracts/company-api.md` para a tabela de mapeamento de campos e documentação before/after por endpoint."
 
 ---
 
@@ -221,13 +221,13 @@
 | Requirement Completeness | 9 | 9 | 0 | 0 |
 | Requirement Clarity | 7 | 7 | 0 | 0 |
 | Requirement Consistency | 6 | 5 | 0 | 1 (CHK018) |
-| Acceptance Criteria Quality | 6 | 3 | 0 | 3 (CHK023, CHK024, CHK025) |
+| Acceptance Criteria Quality | 6 | 6 | 0 | 0 |
 | Scenario Coverage | 6 | 6 | 0 | 0 |
 | Edge Case Coverage | 6 | 6 | 0 | 0 |
 | Non-Functional Requirements | 5 | 5 | 0 | 0 |
 | Dependencies & Assumptions | 5 | 5 | 0 | 0 |
-| Traceability | 4 | 3 | 0 | 1 (CHK054) |
-| **TOTAL** | **54** | **49** | **0** | **5** |
+| Traceability | 4 | 4 | 0 | 0 |
+| **TOTAL** | **54** | **53** | **0** | **1** |
 
 ### ✅ All 9 Required Spec Fixes — RESOLVED
 
@@ -243,13 +243,9 @@
 | 8 | CHK031 | US1-SC8 added for `zip_code` round-trip |
 | 9 | CHK037 | FR-013 updated + `company_api.py` fixed (HTTP 400) |
 
-### ℹ️ Minor Gaps (5 items — acknowledged, non-blocking)
+### ℹ️ Minor Gaps (1 item restante — não-bloqueante)
 
-- **CHK018**: File count difference (77 vs 82) between spec and tasks.md — likely rounding
-- **CHK023**: SQL verification command for SC-005 not in spec
-- **CHK024**: `test_us3_s*.sh` not referenced from SC-007
-- **CHK025**: Grep commands not in spec SC section (but in tasks.md)
-- **CHK054**: FR-014 doesn't cite contracts/company-api.md
+- **CHK018**: Discrepância de contagem de arquivos entre spec e tasks.md (≷1 arquivo) — não material; "77" não aparece mais no spec.md (header já diz "82 arquivos")
 
 ---
 

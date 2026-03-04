@@ -515,7 +515,7 @@ Todos os scripts em `integration_tests/` que enviam payloads com `thedevkitchen.
 - **FR-011**: O controller `invite_controller.py` DEVE associar novos usuários via `company_ids` nativo.
 - **FR-012**: O observer `user_company_validator_observer.py` DEVE validar writes em `company_ids` nativo.
 - **FR-013**: Constraints de unicidade DEVEM ser mantidas: `UNIQUE(cnpj)` na tabela `res_company`. Violações de unicidade do CNPJ DEVEM retornar HTTP 400 com `{'success': false, 'error': {'code': 'cnpj_duplicate', 'message': 'CNPJ já cadastrado'}}` — NOT 500. O controller DEVE capturar `ValidationError` e `IntegrityError` e converter para resposta estruturada.
-- **FR-014**: Os endpoints existentes DEVEM manter os mesmos contratos de entrada/saída — zero breaking changes para consumidores da API.
+- **FR-014**: Os endpoints existentes DEVEM manter os mesmos contratos de entrada/saída — zero breaking changes para consumidores da API. Ver `contracts/company-api.md` para a tabela de mapeamento de campos e documentação before/after por endpoint.
 - **FR-015**: O reset/migração DEVE ser automatizado via `reset_db.sh` + module update.
 - **FR-016**: 6 ADRs DEVEM ser atualizadas para refletir a nova arquitetura (ADR-004, 008, 009, 019, 020, 024).
 - **FR-017**: KB-07 DEVE ser atualizada com documentação sobre padrões de herança do Odoo.
@@ -561,14 +561,14 @@ Todos os scripts em `integration_tests/` que enviam payloads com `thedevkitchen.
 - **SC-002**: A tabela `thedevkitchen_estate_company` NÃO EXISTE no banco de dados.
 - **SC-003**: As 6 tabelas M2M custom NÃO EXISTEM no banco de dados.
 - **SC-004**: A tabela `thedevkitchen_user_company_rel` NÃO EXISTE no banco.
-- **SC-005**: 100% dos usuários com acesso a imobiliárias possuem as `res.company` correspondentes em `company_ids` nativo.
+- **SC-005**: 100% dos usuários com acesso a imobiliárias possuem as `res.company` correspondentes em `company_ids` nativo. Verificação: `SELECT u.login FROM res_users u LEFT JOIN res_company_users_rel rel ON rel.user_id = u.id WHERE rel.cid IS NULL AND u.active = True` — deve retornar 0 linhas.
 - **SC-006**: Todas as 15+ record rules usam `[('company_id', 'in', company_ids)]` — nenhuma referencia `user.estate_company_ids`.
-- **SC-007**: Isolamento multi-tenant: 100% de eficácia em testes de isolamento entre imobiliárias.
+- **SC-007**: Isolamento multi-tenant: 100% de eficácia em testes de isolamento entre imobiliárias. Validado pelos scripts `integration_tests/test_us3_s1.sh` ~ `test_us3_s5.sh`.
 - **SC-008**: Todos os endpoints mantêm mesmo formato de resposta JSON — zero breaking changes.
 - **SC-009**: Middleware usa `request.update_env(company=...)` e valida contra `company_ids` nativo.
 - **SC-010**: 0 ocorrências de `thedevkitchen.estate.company` no código Python/XML como `_name` ou comodel.
 - **SC-011**: 0 ocorrências de `estate_company_ids` como campo stored em `res.users`.
-- **SC-012**: 6 ADRs atualizadas sem referências obsoletas.
+- **SC-012**: 6 ADRs atualizadas sem referências obsoletas. Verificação: `grep -r 'estate_company_ids\|thedevkitchen\.estate\.company' docs/ knowledge_base/` deve retornar 0 resultados.
 - **SC-013**: KB-07 contém seção sobre padrões de herança Odoo.
 - **SC-014**: Reset do banco + module update completa sem erros.
 - **SC-015**: A `constitution.md` Principle IV contém referência a `company_ids` nativo, sem referências a `estate_company_ids`. Amendment v1.4.1 PATCH refletido.
