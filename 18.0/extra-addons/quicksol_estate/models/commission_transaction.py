@@ -36,7 +36,7 @@ class RealEstateCommissionTransaction(models.Model):
     )
     
     company_id = fields.Many2one(
-        'thedevkitchen.estate.company',
+        'res.company',
         'Real Estate Company',
         required=True,
         related='agent_id.company_id',

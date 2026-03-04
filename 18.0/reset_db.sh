@@ -91,9 +91,57 @@ docker compose exec -T db psql -U "$DB_USER" postgres \
 success "Banco '$DB_NAME' criado."
 
 # ---------------------------------------------------------------------------
-# 3. Instala módulos (carrega seeds, sem demo data do Odoo core)
+# 3. Instala módulos (3 etapas para evitar deadlock IAP)
 # ---------------------------------------------------------------------------
-info "Instalando módulos: $MODULES"
+# Workaround: O método iap.account.get() abre um cursor secundário durante
+# o registry rebuild. Se o cursor principal estiver fazendo ALTER TABLE
+# (adicionando colunas customizadas em res_users/res_company), o cursor
+# secundário fica bloqueado tentando ler res_users → deadlock permanente.
+#
+# Solução: instalar dependências IAP primeiro, pré-criar contas IAP, e só
+# então instalar os módulos customizados.
+# ---------------------------------------------------------------------------
+
+# 3a. Instala dependências core (mail, portal, iap, partner_autocomplete)
+IAP_DEPS="mail,portal,iap,partner_autocomplete"
+info "Etapa 1/3: Instalando dependências IAP: $IAP_DEPS"
+
+docker compose run --rm \
+    -e CELERY_BROKER_URL=amqp://guest:guest@rabbitmq:5672/ \
+    -e CELERY_RESULT_BACKEND=redis://redis:6379/2 \
+    odoo \
+    odoo \
+        -d "$DB_NAME" \
+        -i "$IAP_DEPS" \
+        --without-demo=all \
+        --stop-after-init \
+        --log-level=warn
+
+success "Dependências IAP instaladas."
+
+# 3b. Pré-cria contas IAP para evitar deadlock no registry rebuild
+info "Etapa 2/3: Pré-criando contas IAP..."
+
+docker compose exec -T db psql -U "$DB_USER" "$DB_NAME" <<'SQL'
+-- Cria contas IAP com tokens dummy para cada serviço sem conta
+INSERT INTO iap_account (service_id, account_token, service_locked,
+                         warning_threshold, create_uid, write_uid,
+                         create_date, write_date)
+SELECT s.id, md5(random()::text), false, 0, 1, 1, now(), now()
+FROM iap_service s
+WHERE s.id NOT IN (SELECT service_id FROM iap_account WHERE service_id IS NOT NULL);
+
+-- Vincula contas à empresa padrão (company 1)
+INSERT INTO iap_account_res_company_rel (iap_account_id, res_company_id)
+SELECT a.id, 1
+FROM iap_account a
+WHERE a.id NOT IN (SELECT iap_account_id FROM iap_account_res_company_rel);
+SQL
+
+success "Contas IAP pré-criadas."
+
+# 3c. Instala módulos customizados
+info "Etapa 3/3: Instalando módulos customizados: $MODULES"
 info "Este processo pode levar de 3 a 8 minutos..."
 
 docker compose run --rm \

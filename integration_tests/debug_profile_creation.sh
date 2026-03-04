@@ -18,7 +18,7 @@ LOGIN=$(curl -s -X POST "http://localhost:8069/api/v1/users/login" \
   -d "{\"login\": \"$TEST_USER_OWNER\", \"password\": \"$TEST_PASSWORD_OWNER\"}")
 
 SESSION_ID=$(echo "$LOGIN" | jq -r '.session_id')
-COMPANY_ID=$(echo "$LOGIN" | jq -r '.user.main_estate_company_id')
+COMPANY_ID=$(echo "$LOGIN" | jq -r '.user.company_id')
 
 echo "Session ID: $SESSION_ID"
 echo "Company ID: $COMPANY_ID"

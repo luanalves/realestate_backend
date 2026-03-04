@@ -28,30 +28,52 @@ rm -f cookies.txt response.json
 TIMESTAMP=$(date +%Y%m%d%H%M%S)
 COMPANY_NAME="Company_US6S1_${TIMESTAMP}"
 RECEPTIONIST_LOGIN="receptionist.us6s1.${TIMESTAMP}@company.com"
+RECEPTIONIST_GROUP_ID=20   # group_real_estate_receptionist
 
-# Generate valid CNPJ
+# Generate dynamic valid CNPJ
 CNPJ=$(python3 << 'PYTHON_EOF'
-def calc_cnpj_digit(cnpj, weights):
+import random, time
+random.seed(int(time.time() * 1000) % 999999999)
+def calc_digit(cnpj, weights):
     s = sum(int(d) * w for d, w in zip(cnpj, weights))
-    remainder = s % 11
-    return '0' if remainder < 2 else str(11 - remainder)
+    r = s % 11
+    return '0' if r < 2 else str(11 - r)
+base = ''.join([str(random.randint(0,9)) for _ in range(8)])
+branch = '0001'
+w1 = [5,4,3,2,9,8,7,6,5,4,3,2]
+w2 = [6,5,4,3,2,9,8,7,6,5,4,3,2]
+p = base + branch
+d1 = calc_digit(p, w1)
+p += d1
+d2 = calc_digit(p, w2)
+print(f"{base[:2]}.{base[2:5]}.{base[5:]}/{branch}-{d1}{d2}")
+PYTHON_EOF
+)
 
-base = "77889900"
-branch = "0001"
-cnpj_partial = base + branch
-w1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
-d1 = calc_cnpj_digit(cnpj_partial, w1)
-cnpj_partial += d1
-w2 = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
-d2 = calc_cnpj_digit(cnpj_partial, w2)
-cnpj = f"{base[:2]}.{base[2:5]}.{base[5:]}/{branch}-{d1}{d2}"
-print(cnpj)
+# Generate valid CPF for tenant profile
+CPF_TENANT=$(python3 << 'PYTHON_EOF'
+import random, time
+random.seed(int(time.time() * 1000 + 31337) % 999999999)
+def calc_cpf(base):
+    w1 = range(10, 1, -1)
+    s1 = sum(int(d)*w for d,w in zip(base, w1)) % 11
+    d1 = 0 if s1 < 2 else 11 - s1
+    w2 = range(11, 1, -1)
+    s2 = sum(int(d)*w for d,w in zip(base + str(d1), w2)) % 11
+    d2 = 0 if s2 < 2 else 11 - s2
+    return base + str(d1) + str(d2)
+for _ in range(200):
+    b = ''.join([str(random.randint(0,9)) for _ in range(9)])
+    if len(set(b)) > 1:
+        print(calc_cpf(b))
+        break
 PYTHON_EOF
 )
 
 echo "Test data:"
 echo "  Company: $COMPANY_NAME (CNPJ: $CNPJ)"
 echo "  Receptionist: $RECEPTIONIST_LOGIN"
+echo "  Tenant CPF: $CPF_TENANT"
 echo ""
 
 ################################################################################
@@ -84,7 +106,7 @@ fi
 
 echo "✓ Admin logged in (UID: $ADMIN_UID)"
 
-# Create company
+# Create company with is_real_estate=true
 COMPANY_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
     -H "Content-Type: application/json" \
     -b cookies.txt \
@@ -92,11 +114,12 @@ COMPANY_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
         \"params\": {
-            \"model\": \"thedevkitchen.estate.company\",
+            \"model\": \"res.company\",
             \"method\": \"create\",
             \"args\": [{
                 \"name\": \"$COMPANY_NAME\",
-                \"cnpj\": \"$CNPJ\"
+                \"cnpj\": \"$CNPJ\",
+                \"is_real_estate\": true
             }],
             \"kwargs\": {}
         },
@@ -104,11 +127,13 @@ COMPANY_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
     }")
 
 COMPANY_ID=$(echo "$COMPANY_RESPONSE" | jq -r '.result // empty')
+if [ -z "$COMPANY_ID" ] || [ "$COMPANY_ID" == "null" ]; then
+    echo "❌ Company creation failed: $(echo "$COMPANY_RESPONSE" | jq -r '.error.data.message // empty')"
+    exit 1
+fi
 echo "✓ Company created: ID=$COMPANY_ID"
 
 # Create receptionist user
-RECEPTIONIST_GROUP_ID=19
-
 RECEPTIONIST_USER_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
     -H "Content-Type: application/json" \
     -b cookies.txt \
@@ -123,7 +148,8 @@ RECEPTIONIST_USER_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"login\": \"$RECEPTIONIST_LOGIN\",
                 \"password\": \"receptionist123\",
                 \"groups_id\": [[6, 0, [$RECEPTIONIST_GROUP_ID]]],
-                \"estate_company_ids\": [[6, 0, [$COMPANY_ID]]]
+                \"company_id\": $COMPANY_ID,
+                \"company_ids\": [[6, 0, [$COMPANY_ID]]]
             }],
             \"kwargs\": {}
         },
@@ -181,7 +207,7 @@ STATE_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
         \"params\": {
-            \"model\": \"real.estate.state\",
+            \"model\": \"res.country.state\",
             \"method\": \"search_read\",
             \"args\": [[]],
             \"kwargs\": {
@@ -217,7 +243,7 @@ PROPERTY_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"area\": 80.0,
                 \"price\": 300000.0,
                 \"property_status\": \"available\",
-                \"company_ids\": [[6, 0, [$COMPANY_ID]]]
+                \"company_id\": $COMPANY_ID
             }],
             \"kwargs\": {}
         },
@@ -226,6 +252,43 @@ PROPERTY_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
 
 PROPERTY_ID=$(echo "$PROPERTY_RESPONSE" | jq -r '.result // empty')
 echo "✓ Property created for leasing: ID=$PROPERTY_ID"
+
+# Create tenant profile (as admin)
+# real.estate.tenant was removed in Feature 010; lease now uses profile_id
+# Tenant = thedevkitchen.estate.profile with profile_type_id=9
+TENANT_PROFILE_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
+    -H "Content-Type: application/json" \
+    -b cookies.txt \
+    -d "{
+        \"jsonrpc\": \"2.0\",
+        \"method\": \"call\",
+        \"params\": {
+            \"model\": \"thedevkitchen.estate.profile\",
+            \"method\": \"create\",
+            \"args\": [{
+                \"profile_type_id\": 9,
+                \"company_id\": $COMPANY_ID,
+                \"name\": \"Tenant US6S1 ${TIMESTAMP}\",
+                \"document\": \"$CPF_TENANT\",
+                \"email\": \"tenant.us6s1.${TIMESTAMP}@example.com\",
+                \"phone\": \"+5511987654321\",
+                \"birthdate\": \"1985-01-01\"
+            }],
+            \"kwargs\": {}
+        },
+        \"id\": 8
+    }")
+
+TENANT_PROFILE_ID=$(echo "$TENANT_PROFILE_RESPONSE" | jq -r '.result // empty')
+TENANT_PROFILE_ERROR=$(echo "$TENANT_PROFILE_RESPONSE" | jq -r '.error.data.message // empty')
+if [ -n "$TENANT_PROFILE_ERROR" ]; then
+    echo "❌ Tenant profile creation failed: $TENANT_PROFILE_ERROR"
+    exit 1
+elif [ -z "$TENANT_PROFILE_ID" ] || [ "$TENANT_PROFILE_ID" == "null" ]; then
+    echo "❌ Tenant profile creation returned no ID"
+    exit 1
+fi
+echo "✓ Tenant profile created: ID=$TENANT_PROFILE_ID (profile_type=9/tenant)"
 
 ################################################################################
 # Step 2: Receptionist Login
@@ -255,52 +318,11 @@ RECEPTIONIST_SESSION_UID=$(echo "$RECEPTIONIST_LOGIN_RESPONSE" | jq -r '.result.
 echo "✓ Receptionist logged in: UID=$RECEPTIONIST_SESSION_UID"
 
 ################################################################################
-# Step 3: Receptionist Creates Tenant
+# Step 3: Receptionist Creates Lease (profile_id replaces removed tenant_id)
 ################################################################################
 echo ""
 echo "=========================================="
-echo "Step 3: Receptionist creates tenant"
-echo "=========================================="
-
-TENANT_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
-    -H "Content-Type: application/json" \
-    -b cookies.txt \
-    -d "{
-        \"jsonrpc\": \"2.0\",
-        \"method\": \"call\",
-        \"params\": {
-            \"model\": \"real.estate.tenant\",
-            \"method\": \"create\",
-            \"args\": [{
-                \"name\": \"Tenant US6S1\",
-                \"email\": \"tenant.us6s1.${TIMESTAMP}@example.com\",
-                \"phone\": \"11987654321\",
-                \"company_ids\": [[6, 0, [$COMPANY_ID]]]
-            }],
-            \"kwargs\": {}
-        },
-        \"id\": 9
-    }")
-
-TENANT_ID=$(echo "$TENANT_RESPONSE" | jq -r '.result // empty')
-TENANT_ERROR=$(echo "$TENANT_RESPONSE" | jq -r '.error.data.message // empty')
-
-if [ -n "$TENANT_ERROR" ]; then
-    echo "❌ Receptionist cannot create tenant: $TENANT_ERROR"
-    exit 1
-elif [ -n "$TENANT_ID" ] && [ "$TENANT_ID" != "null" ]; then
-    echo "✓ Tenant created: ID=$TENANT_ID"
-else
-    echo "❌ Failed to create tenant"
-    exit 1
-fi
-
-################################################################################
-# Step 4: Receptionist Creates Lease
-################################################################################
-echo ""
-echo "=========================================="
-echo "Step 4: Receptionist creates lease"
+echo "Step 3: Receptionist creates lease"
 echo "=========================================="
 
 LEASE_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
@@ -314,11 +336,11 @@ LEASE_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
             \"method\": \"create\",
             \"args\": [{
                 \"property_id\": $PROPERTY_ID,
-                \"tenant_id\": $TENANT_ID,
+                \"profile_id\": $TENANT_PROFILE_ID,
                 \"rent_amount\": 3000.0,
                 \"start_date\": \"2026-02-01\",
                 \"end_date\": \"2027-02-01\",
-                \"company_ids\": [[6, 0, [$COMPANY_ID]]]
+                \"company_id\": $COMPANY_ID
             }],
             \"kwargs\": {}
         },
@@ -339,11 +361,11 @@ else
 fi
 
 ################################################################################
-# Step 5: Receptionist Reads Leases
+# Step 4: Receptionist Reads Leases
 ################################################################################
 echo ""
 echo "=========================================="
-echo "Step 5: Receptionist reads leases"
+echo "Step 4: Receptionist reads leases"
 echo "=========================================="
 
 LEASES_READ_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
@@ -357,7 +379,7 @@ LEASES_READ_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
             \"method\": \"search_read\",
             \"args\": [[[\"id\", \"=\", $LEASE_ID]]],
             \"kwargs\": {
-                \"fields\": [\"property_id\", \"tenant_id\", \"rent_amount\"]
+                \"fields\": [\"property_id\", \"profile_id\", \"rent_amount\"]
             }
         },
         \"id\": 11
@@ -373,11 +395,11 @@ else
 fi
 
 ################################################################################
-# Step 6: Receptionist Updates Lease
+# Step 5: Receptionist Updates Lease
 ################################################################################
 echo ""
 echo "=========================================="
-echo "Step 6: Receptionist updates lease"
+echo "Step 5: Receptionist updates lease"
 echo "=========================================="
 
 LEASE_UPDATE_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
@@ -411,11 +433,11 @@ else
 fi
 
 ################################################################################
-# Step 7: Receptionist Can Read Properties (Read-Only)
+# Step 6: Receptionist Can Read Properties (Read-Only)
 ################################################################################
 echo ""
 echo "=========================================="
-echo "Step 7: Receptionist reads properties"
+echo "Step 6: Receptionist reads properties"
 echo "=========================================="
 
 PROPERTIES_READ_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
@@ -453,8 +475,8 @@ echo "✅ TEST PASSED: US6-S1 Receptionist Lease Management"
 echo "=========================================="
 echo ""
 echo "Summary:"
-echo "  - ✓ Receptionist can create tenants"
-echo "  - ✓ Receptionist can create leases"
+echo "  - ✓ Admin created tenant profile (thedevkitchen.estate.profile type=9)"
+echo "  - ✓ Receptionist can create leases (using profile_id)"
 echo "  - ✓ Receptionist can read leases"
 echo "  - ✓ Receptionist can update leases"
 echo "  - ✓ Receptionist can read properties (read-only)"

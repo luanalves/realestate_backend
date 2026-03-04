@@ -28,13 +28,13 @@ class TestAgentPerformance(TransactionCase):
         super(TestAgentPerformance, self).setUp()
         
         # Create two companies for isolation testing
-        self.company_a = self.env['thedevkitchen.estate.company'].create({
+        self.company_a = self.env['res.company'].create({
             'name': 'Imobiliária A Performance',
             'cnpj': '12.345.678/0001-95',
             'active': True,
         })
         
-        self.company_b = self.env['thedevkitchen.estate.company'].create({
+        self.company_b = self.env['res.company'].create({
             'name': 'Imobiliária B Performance',
             'cnpj': '98.765.432/0001-98',
             'active': True,

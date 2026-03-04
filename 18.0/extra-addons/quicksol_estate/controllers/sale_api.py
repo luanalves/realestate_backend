@@ -1,17 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Sale API Controller — Feature 008
 
-Provides 5 REST endpoints for sale management:
-  GET    /api/v1/sales              — Paginated list with filters
-  POST   /api/v1/sales              — Create sale (+ property→sold)
-  GET    /api/v1/sales/<id>         — Detail with property+agent info
-  PUT    /api/v1/sales/<id>         — Update (non-cancelled only)
-  POST   /api/v1/sales/<id>/cancel  — Cancel with reason (revert property)
-
-Reference: owner_api.py, company_api.py patterns
-FRs covered: FR-021..FR-029, FR-030..FR-034, FR-037
-"""
 import json
 import logging
 from odoo import http, fields as odoo_fields
@@ -42,13 +30,13 @@ class SaleApiController(http.Controller):
         user = request.env.user
         if user.has_group('base.group_system'):
             return None
-        return user.estate_company_ids.ids
+        return user.company_ids.ids
 
     def _get_agent_property_ids(self, user, company_ids):
         """Get property IDs assigned to agent (transitive RBAC per R3)."""
         agent = request.env['real.estate.agent'].sudo().search([
             ('user_id', '=', user.id),
-            ('company_ids', 'in', company_ids),
+            ('company_id', 'in', company_ids),
         ], limit=1)
         if not agent:
             return []
@@ -91,7 +79,6 @@ class SaleApiController(http.Controller):
             'buyer_phone': sale.buyer_phone or None,
             'buyer_email': sale.buyer_email or None,
             'company_id': sale.company_id.id if sale.company_id else None,
-            'company_ids': sale.company_ids.ids,
             'agent_id': sale.agent_id.id if sale.agent_id else None,
             'agent_name': sale.agent_id.name if sale.agent_id else None,
             'lead_id': sale.lead_id.id if sale.lead_id else None,
@@ -138,7 +125,7 @@ class SaleApiController(http.Controller):
 
             # Company isolation (FR-030)
             if company_ids is not None:
-                domain.append(('company_ids', 'in', company_ids))
+                domain.append(('company_id', 'in', company_ids))
 
             # Optional filters
             if kwargs.get('property_id'):
@@ -231,11 +218,11 @@ class SaleApiController(http.Controller):
             if not prop.exists():
                 return error_response(404, 'Property not found')
             if company_ids is not None:
-                if not any(cid in company_ids for cid in prop.company_ids.ids):
+                if prop.company_id.id not in company_ids:
                     return error_response(404, 'Property not found')
 
             # Validate company_id is accessible
-            company = request.env['thedevkitchen.estate.company'].sudo().browse(data['company_id'])
+            company = request.env['res.company'].sudo().browse(data['company_id'])
             if not company.exists() or not company.active:
                 return error_response(404, 'Company not found')
             if company_ids is not None and data['company_id'] not in company_ids:
@@ -246,7 +233,7 @@ class SaleApiController(http.Controller):
                 agent = request.env['real.estate.agent'].sudo().browse(data['agent_id'])
                 if not agent.exists():
                     return error_response(404, 'Agent not found')
-                if not any(cid in agent.company_ids.ids for cid in [data['company_id']]):
+                if agent.company_id.id != data['company_id']:
                     resp, code = util_error(
                         'Agent does not belong to the specified company',
                         status_code=400,
@@ -257,7 +244,6 @@ class SaleApiController(http.Controller):
             sale_vals = {
                 'property_id': data['property_id'],
                 'company_id': data['company_id'],
-                'company_ids': [(6, 0, [data['company_id']])],
                 'buyer_name': data['buyer_name'].strip(),
                 'sale_date': data['sale_date'],
                 'sale_price': data['sale_price'],
@@ -311,7 +297,7 @@ class SaleApiController(http.Controller):
 
             # Company isolation
             if company_ids is not None:
-                if not any(cid in company_ids for cid in sale.company_ids.ids):
+                if sale.company_id.id not in company_ids:
                     return error_response(404, 'Sale not found')
 
             # Agent RBAC
@@ -355,7 +341,7 @@ class SaleApiController(http.Controller):
 
             # Company isolation
             if company_ids is not None:
-                if not any(cid in company_ids for cid in sale.company_ids.ids):
+                if sale.company_id.id not in company_ids:
                     return error_response(404, 'Sale not found')
 
             # Parse body first (needed to check reactivation intent)
@@ -440,7 +426,7 @@ class SaleApiController(http.Controller):
 
             # Company isolation
             if company_ids is not None:
-                if not any(cid in company_ids for cid in sale.company_ids.ids):
+                if sale.company_id.id not in company_ids:
                     return error_response(404, 'Sale not found')
 
             # Already cancelled

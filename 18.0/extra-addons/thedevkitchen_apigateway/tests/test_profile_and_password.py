@@ -148,14 +148,14 @@ class TestProfileUpdate(TransactionCase):
         _logger.info("✓ Profile update restricted to own user")
 
     def test_company_not_updatable_via_profile(self):
-        """Test that estate_company_ids cannot be updated via profile endpoint"""
-        original_companies = [c.id for c in self.admin_user.estate_company_ids]
+        """Test that company_ids cannot be updated via profile endpoint"""
+        original_companies = [c.id for c in self.admin_user.company_ids]
         
         # Attempting to change companies should not work
         # (API layer should reject this in whitelist validation)
-        current_companies = [c.id for c in self.admin_user.estate_company_ids]
+        current_companies = [c.id for c in self.admin_user.company_ids]
         self.assertEqual(current_companies, original_companies)
-        _logger.info("✓ estate_company_ids protected from profile update")
+        _logger.info("✓ company_ids protected from profile update")
 
     def test_name_not_updatable_via_profile(self):
         """Test that name is not in the updatable fields"""
@@ -175,7 +175,7 @@ class TestProfileUpdate(TransactionCase):
             'email': self.admin_user.email or self.admin_user.login,
             'phone': self.admin_user.phone or '',
             'mobile': self.admin_user.mobile or '',
-            'companies': [c.id for c in self.admin_user.estate_company_ids],
+            'companies': [c.id for c in self.admin_user.company_ids],
             'default_company_id': self.admin_user.company_id.id if self.admin_user.company_id else None
         }
         

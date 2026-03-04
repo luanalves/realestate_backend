@@ -61,7 +61,7 @@ LOGIN_A=$(curl -s -X POST "$BASE_URL/api/v1/users/login" \
   -d "{\"login\": \"$TEST_USER_OWNER\", \"password\": \"$TEST_PASSWORD_OWNER\"}")
 
 SESSION_A=$(echo "$LOGIN_A" | jq -r '.session_id // empty')
-COMPANY_A=$(echo "$LOGIN_A" | jq -r '.user.main_estate_company_id // empty')
+COMPANY_A=$(echo "$LOGIN_A" | jq -r '.user.company_id // empty')
 
 if [ -z "$SESSION_A" ] || [ "$COMPANY_A" == "null" ]; then
   echo "ERROR: Owner A login failed"
@@ -79,7 +79,7 @@ LOGIN_B=$(curl -s -X POST "$BASE_URL/api/v1/users/login" \
   -d "{\"login\": \"$TEST_USER_OWNER_B\", \"password\": \"$TEST_PASSWORD_OWNER_B\"}")
 
 SESSION_B=$(echo "$LOGIN_B" | jq -r '.session_id // empty')
-COMPANY_B=$(echo "$LOGIN_B" | jq -r '.user.main_estate_company_id // empty')
+COMPANY_B=$(echo "$LOGIN_B" | jq -r '.user.company_id // empty')
 
 if [ -z "$SESSION_B" ] || [ "$COMPANY_B" == "null" ]; then
   echo "ERROR: Owner B login failed"

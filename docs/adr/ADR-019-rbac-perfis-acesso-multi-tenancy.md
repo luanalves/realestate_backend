@@ -8,7 +8,7 @@ Aceito
 O sistema precisa atender diferentes papéis dentro de imobiliárias em um ambiente **multi-tenancy** (multi-imobiliária), onde:
 
 - **Múltiplas imobiliárias** compartilham a mesma infraestrutura
-- **Cada usuário** pode estar vinculado a uma ou mais imobiliárias via `estate_company_ids`
+- **Cada usuário** pode estar vinculado a uma ou mais imobiliárias via `company_ids`
 - **Isolamento de dados** deve ser garantido entre imobiliárias (ADR-008)
 - **Diferentes perfis** têm responsabilidades e níveis de acesso distintos
 
@@ -43,7 +43,7 @@ O sistema precisa atender diferentes papéis dentro de imobiliárias em um ambie
 ### Fase 1 - MVP (Lançamento)
 - **9 perfis pré-definidos** via `res.groups` do Odoo
 - **Permissões fixas** via record rules, ACLs e field-level security
-- **Segurança multi-tenant** garantida por record rules baseadas em `estate_company_ids`
+- **Segurança multi-tenant** garantida por record rules baseadas em `company_ids`
 - **Sem customização** de permissões por imobiliária (perfis padronizados)
 
 ### Fase 2 - Pós-lançamento (Condicional)
@@ -82,7 +82,7 @@ O sistema precisa atender diferentes papéis dentro de imobiliárias em um ambie
 - Configurar integrações externas
 - Visualizar relatórios e dashboards
 
-**Record Rule**: Acesso a registros de `estate_company_ids` onde está vinculado
+**Record Rule**: Acesso a registros de `company_ids` onde está vinculado
 
 **Jornada:**
 1. SaaS Admin cria conta e vincula à nova imobiliária
@@ -129,7 +129,7 @@ O sistema precisa atender diferentes papéis dentro de imobiliárias em um ambie
 - Gerar relatórios de desempenho
 - **NÃO** criar/excluir usuários (apenas Owner)
 
-**Record Rule**: `[('company_ids', 'in', user.estate_company_ids.ids)]`
+**Record Rule**: `[('company_ids', 'in', user.company_ids.ids)]`
 
 ---
 
@@ -157,7 +157,7 @@ O sistema precisa atender diferentes papéis dentro de imobiliárias em um ambie
     '|',
     ('agent_id.user_id', '=', user.id),
     ('assignment_ids.agent_id.user_id', '=', user.id),
-    ('company_ids', 'in', user.estate_company_ids.ids)
+    ('company_ids', 'in', user.company_ids.ids)
 ]
 ```
 
@@ -186,7 +186,7 @@ O sistema precisa atender diferentes papéis dentro de imobiliárias em um ambie
 ```python
 [
     ('prospector_id.user_id', '=', user.id),
-    ('company_ids', 'in', user.estate_company_ids.ids)
+    ('company_ids', 'in', user.company_ids.ids)
 ]
 ```
 
@@ -214,7 +214,7 @@ O sistema precisa atender diferentes papéis dentro de imobiliárias em um ambie
 - Gestão de chaves (modelo futuro: `real.estate.key`)
 - **NÃO** editar comissões ou leads
 
-**Record Rule**: `[('company_ids', 'in', user.estate_company_ids.ids)]` (leitura ampla)
+**Record Rule**: `[('company_ids', 'in', user.company_ids.ids)]` (leitura ampla)
 
 ---
 
@@ -235,7 +235,7 @@ O sistema precisa atender diferentes papéis dentro de imobiliárias em um ambie
 - Gerar relatórios de faturamento
 - **NÃO** editar propriedades ou leads
 
-**Record Rule**: `[('company_ids', 'in', user.estate_company_ids.ids)]`
+**Record Rule**: `[('company_ids', 'in', user.company_ids.ids)]`
 
 ---
 
@@ -255,7 +255,7 @@ O sistema precisa atender diferentes papéis dentro de imobiliárias em um ambie
 - Adicionar pareceres jurídicos (comentários/notas)
 - **NÃO** editar valores ou comissões
 
-**Record Rule**: `[('company_ids', 'in', user.estate_company_ids.ids)]`
+**Record Rule**: `[('company_ids', 'in', user.company_ids.ids)]`
 
 ---
 
@@ -295,7 +295,7 @@ quicksol_estate/
 ├── models/
 │   ├── property.py             # Adicionar campo prospector_id
 │   ├── commission_rule.py      # Lógica split captador/corretor
-│   └── res_users.py            # Já existe (estate_company_ids)
+│   └── res_users.py            # Já existe (company_ids)
 └── data/
     └── default_groups.xml      # Dados iniciais (opcional)
 ```
@@ -329,7 +329,7 @@ base.group_portal (Odoo portal - acesso externo)
         '|',
             ('agent_id.user_id', '=', user.id),
             ('assignment_ids.agent_id.user_id', '=', user.id),
-        ('company_ids', 'in', user.estate_company_ids.ids)
+        ('company_ids', 'in', user.company_ids.ids)
     ]</field>
     <field name="groups" eval="[(4, ref('group_real_estate_agent'))]"/>
 </record>
@@ -352,8 +352,8 @@ access_property_prospector,access_property_prospector,model_real_estate_property
 ### 1. Cadastro da Imobiliária (SaaS Admin)
 
 ```
-1. SaaS Admin cria registro em thedevkitchen.estate.company
-2. Cria usuário Owner e vincula via estate_company_ids
+1. SaaS Admin cria registro em res.company
+2. Cria usuário Owner e vincula via company_ids
 3. Owner recebe credenciais e faz primeiro login
 ```
 
@@ -370,7 +370,7 @@ Owner acessa: Configurações > Usuários
 
 Sistema automaticamente:
 ├── Cria res.users
-├── Atribui estate_company_ids = [Imobiliária ABC]
+├── Atribui company_ids = [Imobiliária ABC]
 └── Aplica record rules de Corretor
 ```
 
@@ -430,7 +430,7 @@ res.users
 | **Interface web** | Grupos nativos | UI dedicada roles |
 | **Gestão temporal** | ❌ Manual | ✅ Automático |
 | **Múltiplos roles** | ❌ Via grupos | ✅ Nativo |
-| **Multi-empresa** | ✅ Via `estate_company_ids` | ✅ Via `company_id` |
+| **Multi-empresa** | ✅ Via `company_ids` | ✅ Via `company_id` |
 | **Auditoria** | ❌ Manual | ✅ Built-in |
 | **Performance** | ⚡ Rápido | 🐢 Overhead (cron) |
 | **Dependências** | Zero | +1 módulo externo |
@@ -511,7 +511,7 @@ def migrate_groups_to_roles(env):
 class EstateRoleCustomization(models.Model):
     _name = 'quicksol.estate.role.customization'
     
-    company_id = fields.Many2one('thedevkitchen.estate.company')
+    company_id = fields.Many2one('res.company')
     group_id = fields.Many2one('res.groups')  # ref aos grupos existentes
     
     # Apenas configuração de UI

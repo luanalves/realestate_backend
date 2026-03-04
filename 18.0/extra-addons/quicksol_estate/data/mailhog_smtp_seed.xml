@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- MailHog SMTP (ambiente de testes) -->
+        <!-- Roteia todos os emails do Odoo para o MailHog em vez de um SMTP real. -->
+        <!-- UI: http://localhost:8025 -->
+        <!-- Requerido por: test_us9_us10_full_onboarding_all_profiles.sh -->
+
+        <record id="mailhog_test_smtp" model="ir.mail_server">
+            <field name="name">MailHog (Test)</field>
+            <field name="smtp_host">mailhog</field>
+            <field name="smtp_port">1025</field>
+            <field name="smtp_encryption">none</field>
+            <field name="smtp_authentication">login</field>
+            <field name="active">True</field>
+            <field name="sequence">1</field>
+        </record>
+
+    </data>
+</odoo>

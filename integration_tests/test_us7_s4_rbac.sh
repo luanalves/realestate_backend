@@ -32,7 +32,8 @@ echo "============================================"
 
 # Step 1: Get full authentication (JWT + session)
 echo "Step 1: Getting authentication (OAuth2 + session)..."
-get_full_auth
+# Pass Owner credentials directly (company creation requires Owner role)
+get_full_auth "owner@seed.com.br" "seed123"
 
 if [ $? -ne 0 ]; then
   echo -e "${RED}✗ Failed to authenticate${NC}"
@@ -40,6 +41,13 @@ if [ $? -ne 0 ]; then
 fi
 
 echo -e "${GREEN}✓ Authentication successful (JWT: ${#ACCESS_TOKEN} chars, UID: ${ADMIN_UID})${NC}"
+# Pre-cleanup: nullify CNPJs and company names from previous run to avoid UNIQUE constraint violations
+docker compose -f "${SCRIPT_DIR}/../18.0/docker-compose.yml" exec -T db \
+    psql -U odoo -d realestate -c \
+    "UPDATE res_company SET cnpj = NULL WHERE cnpj IN ('45.674.055/7501-14', '23.454.055/7501-76');" > /dev/null 2>&1 || true
+docker compose -f "${SCRIPT_DIR}/../18.0/docker-compose.yml" exec -T db \
+    psql -U odoo -d realestate -c \
+    "UPDATE res_company SET name = 'deleted_' || id || '_' || name, active = false WHERE name IN ('RBAC Test Company', 'Admin Full Access Company');" > /dev/null 2>&1 || true
 ADMIN_TOKEN="$ACCESS_TOKEN"
 
 # Step 2: Create a company for testing

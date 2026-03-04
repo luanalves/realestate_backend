@@ -7,18 +7,8 @@ import re
 
 
 class BaseRealEstateTest(unittest.TestCase):
-    """
-    Base class for Real Estate unit tests with comprehensive mocking.
-    
-    This class provides:
-    - Mock Odoo environment and models
-    - Common test data
-    - Helper methods for creating mock records
-    - Utilities for testing validations and business logic
-    """
-    
+
     def setUp(self):
-        """Setup common mocks and test data for all tests"""
         super().setUp()
         
         # Mock Odoo environment
@@ -51,8 +41,9 @@ class BaseRealEstateTest(unittest.TestCase):
             'cnpj': '12.345.678/0001-90',
             'address': 'Test Address, 123',
             'city': 'São Paulo',
-            'state_id': cls.env['real.estate.state'].search([('code', '=', 'SP')], limit=1).id,
-            'zip_code': '01234-567',
+            'state_id': 1,  # Feature 011: native res.country.state
+            'zip': '01234-567',
+            'is_real_estate': True,
             'active': True,
             'property_count': 5,
             'agent_count': 3,
@@ -66,8 +57,8 @@ class BaseRealEstateTest(unittest.TestCase):
             'name': 'Test User',
             'login': 'testuser',
             'email': 'test@user.com',
-            'estate_company_ids': [1],
-            'main_estate_company_id': 1
+            'company_ids': [1],
+            'company_id': 1
         }
         
         # Agent test data
@@ -141,7 +132,7 @@ class BaseRealEstateTest(unittest.TestCase):
         
         # Company model mock
         self.company_model = Mock()
-        self.company_model._name = 'thedevkitchen.estate.company'
+        self.company_model._name = 'res.company'
         self.company_model.create = Mock()
         self.company_model.search = Mock()
         self.company_model.browse = Mock()
@@ -159,7 +150,7 @@ class BaseRealEstateTest(unittest.TestCase):
     def _get_model_mock(self, model_name):
         """Return appropriate model mock based on model name"""
         model_mapping = {
-            'thedevkitchen.estate.company': self.company_model,
+            'res.company': self.company_model,
             'real.estate.agent': self.agent_model,
             'real.estate.tenant': Mock(),
             'real.estate.property': Mock(),
@@ -170,17 +161,7 @@ class BaseRealEstateTest(unittest.TestCase):
         return model_mapping.get(model_name, Mock())
     
     def create_mock_record(self, model_name, data, methods=None):
-        """
-        Create a mock record with specified data and methods.
-        
-        Args:
-            model_name (str): Name of the Odoo model
-            data (dict): Field data for the record
-            methods (dict): Optional custom methods to add
-            
-        Returns:
-            Mock: Configured mock record
-        """
+
         record = Mock()
         
         # Add data as attributes
@@ -208,16 +189,7 @@ class BaseRealEstateTest(unittest.TestCase):
         return record
     
     def create_mock_recordset(self, model_name, records_data):
-        """
-        Create a mock recordset with multiple records.
-        
-        Args:
-            model_name (str): Name of the Odoo model
-            records_data (list): List of data dicts for each record
-            
-        Returns:
-            Mock: Configured mock recordset
-        """
+
         records = []
         for data in records_data:
             records.append(self.create_mock_record(model_name, data))
@@ -237,28 +209,14 @@ class BaseRealEstateTest(unittest.TestCase):
         return ValidationError(message)
     
     def assert_validation_error(self, callable_obj, *args, **kwargs):
-        """
-        Helper to assert that a ValidationError is raised.
-        
-        Args:
-            callable_obj: Function/method to call
-            *args: Arguments for the callable
-            **kwargs: Keyword arguments for the callable
-        """
+
         from odoo.exceptions import ValidationError
         
         with self.assertRaises(ValidationError):
             callable_obj(*args, **kwargs)
     
     def assert_no_validation_error(self, callable_obj, *args, **kwargs):
-        """
-        Helper to assert that no ValidationError is raised.
-        
-        Args:
-            callable_obj: Function/method to call
-            *args: Arguments for the callable  
-            **kwargs: Keyword arguments for the callable
-        """
+
         from odoo.exceptions import ValidationError
         
         try:
@@ -267,16 +225,7 @@ class BaseRealEstateTest(unittest.TestCase):
             self.fail("ValidationError was raised when it shouldn't have been")
     
     def mock_email_validation(self, email, should_be_valid=True):
-        """
-        Mock email validation behavior for testing.
-        
-        Args:
-            email (str): Email to validate
-            should_be_valid (bool): Whether email should be considered valid
-            
-        Returns:
-            bool: True if email passes validation
-        """
+
         if should_be_valid:
             # Simple email regex for testing
             pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
@@ -285,16 +234,7 @@ class BaseRealEstateTest(unittest.TestCase):
             return False
     
     def mock_cnpj_validation(self, cnpj, should_be_valid=True):
-        """
-        Mock CNPJ validation behavior for testing.
-        
-        Args:
-            cnpj (str): CNPJ to validate
-            should_be_valid (bool): Whether CNPJ should be considered valid
-            
-        Returns:
-            bool: True if CNPJ passes validation
-        """
+
         if should_be_valid:
             # Remove formatting
             clean_cnpj = re.sub(r'[^\d]', '', cnpj)
@@ -303,16 +243,7 @@ class BaseRealEstateTest(unittest.TestCase):
             return False
     
     def mock_date_validation(self, start_date, end_date):
-        """
-        Mock date validation for lease dates.
-        
-        Args:
-            start_date (date): Start date
-            end_date (date): End date
-            
-        Returns:
-            bool: True if dates are valid (end > start)
-        """
+
         if start_date and end_date:
             return end_date > start_date
         return True  # Allow None dates

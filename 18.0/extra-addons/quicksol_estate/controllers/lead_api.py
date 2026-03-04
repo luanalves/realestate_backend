@@ -1,17 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Lead API Controller
 
-RESTful API endpoints for lead management with agent isolation,
-multi-tenant support, and pipeline state tracking.
-
-Author: Quicksol Technologies
-Date: 2026-01-29
-Branch: 006-lead-management
-ADRs: ADR-005 (OpenAPI), ADR-007 (HATEOAS), ADR-008 (Multi-tenancy),
-      ADR-011 (Security), ADR-015 (Soft-delete)
-FRs: FR-001 to FR-047 (see specs/006-lead-management/spec.md)
-"""
 
 import json
 import logging
@@ -35,35 +23,7 @@ class LeadApiController(http.Controller):
     @require_session
     @require_company
     def list_leads(self, **kwargs):
-        """
-        List leads with pagination and filtering (FR-019, FR-024, FR-031, FR-039 to FR-047).
-        
-        Query Parameters:
-            Basic Filters:
-            - state: Filter by state (new/contacted/qualified/won/lost)
-            - agent_id: Filter by agent (managers only)
-            - search: Free-text search across name, phone, email
-            - active: Filter by active status ('true', 'false', 'all')
-            
-            Advanced Filters (Phase 6):
-            - budget_min: Minimum budget (filter leads with budget_max >= value)
-            - budget_max: Maximum budget (filter leads with budget_min <= value)
-            - bedrooms: Number of bedrooms needed
-            - property_type_id: Property type interest ID
-            - location: Location preference (partial match)
-            - last_activity_before: Date filter (YYYY-MM-DD, leads with no activity since this date)
-            
-            Sorting:
-            - sort_by: Field name to sort by (default: create_date)
-            - sort_order: 'asc' or 'desc' (default: desc)
-            
-            Pagination:
-            - limit: Number of records to return (default: 20, max: 100)
-            - offset: Number of records to skip (default: 0)
-            
-        Returns:
-            JSON object with lead list and pagination metadata
-        """
+
         try:
             user = request.env.user
             
@@ -225,15 +185,7 @@ class LeadApiController(http.Controller):
     @require_session
     @require_company
     def export_leads_csv(self, **kwargs):
-        """
-        Export filtered leads to CSV (FR-028, FR-048).
-        
-        Accepts same query parameters as list_leads endpoint.
-        Respects multi-tenancy and agent isolation.
-        
-        Returns:
-            CSV file download with lead data
-        """
+
         try:
             import csv
             import io
@@ -348,29 +300,7 @@ class LeadApiController(http.Controller):
     @require_session
     @require_company
     def create_lead(self, **kwargs):
-        """
-        Create new lead (FR-001, FR-002, FR-003, FR-004, FR-005).
-        
-        Request Body (JSON):
-            - name: Lead title (required, max 100 chars)
-            - phone: Phone number (optional, max 20 chars)
-            - email: Email address (optional, max 120 chars)
-            - partner_id: Contact ID (optional)
-            - state: Initial state (optional, default: 'new')
-            - budget_min: Minimum budget (optional, BRL)
-            - budget_max: Maximum budget (optional, BRL)
-            - property_type_interest: Property type ID (optional)
-            - location_preference: Location preference (optional, max 200 chars)
-            - bedrooms_needed: Number of bedrooms (optional)
-            - min_area: Minimum area m² (optional)
-            - max_area: Maximum area m² (optional)
-            - property_interest: Property of interest ID (optional)
-            - first_contact_date: First contact date (optional, YYYY-MM-DD)
-            - expected_closing_date: Expected closing date (optional, YYYY-MM-DD)
-            
-        Returns:
-            JSON object with created lead
-        """
+
         try:
             # Parse JSON body
             body_data = json.loads(request.httprequest.data.decode('utf-8'))
@@ -379,7 +309,7 @@ class LeadApiController(http.Controller):
             if not body_data.get('name'):
                 return error_response('Field "name" is required', 400, 'VALIDATION_ERROR')
             
-            # Build lead values (agent_id and company_ids auto-assigned via defaults)
+            # Build lead values (agent_id and company_id auto-assigned via defaults)
             lead_vals = {
                 'name': body_data['name'],
             }
@@ -452,15 +382,7 @@ class LeadApiController(http.Controller):
     @require_session
     @require_company
     def get_lead(self, lead_id, **kwargs):
-        """
-        Get lead details (FR-020, FR-025, FR-032, FR-035).
-        
-        Query Parameters:
-            - include_activities (string, optional): 'true' to include recent activities
-        
-        Returns:
-            JSON object with full lead details
-        """
+
         try:
             Lead = request.env['real.estate.lead']
             lead = Lead.sudo().browse(lead_id)
@@ -493,14 +415,7 @@ class LeadApiController(http.Controller):
     @require_session
     @require_company
     def update_lead(self, lead_id, **kwargs):
-        """
-        Update lead (FR-007, FR-008, FR-009, FR-021, FR-022).
-        
-        Request Body (JSON): Same fields as create_lead (all optional)
-        
-        Returns:
-            JSON object with updated lead
-        """
+
         try:
             Lead = request.env['real.estate.lead']
             lead = Lead.sudo().browse(lead_id)
@@ -539,10 +454,10 @@ class LeadApiController(http.Controller):
                     return error_response(f'Agent with ID {new_agent_id} not found', 404, 'AGENT_NOT_FOUND')
                 
                 # Check if new agent belongs to at least one of the lead's companies
-                lead_company_ids = set(lead.company_ids.ids)
-                agent_company_ids = set(new_agent.company_ids.ids)
+                lead_company_id = lead.company_id.id if lead.company_id else None
+                agent_company_id = new_agent.company_id.id if new_agent.company_id else None
                 
-                if not lead_company_ids.intersection(agent_company_ids):
+                if lead_company_id != agent_company_id:
                     return error_response(
                         f'Agent {new_agent.name} does not belong to any of the lead\'s companies',
                         400,
@@ -605,12 +520,7 @@ class LeadApiController(http.Controller):
     @require_session
     @require_company
     def delete_lead(self, lead_id, **kwargs):
-        """
-        Archive lead (soft delete) (FR-018b).
-        
-        Returns:
-            204 No Content on success
-        """
+
         try:
             Lead = request.env['real.estate.lead']
             lead = Lead.sudo().browse(lead_id)
@@ -640,15 +550,7 @@ class LeadApiController(http.Controller):
     @require_session
     @require_company
     def convert_lead(self, lead_id, **kwargs):
-        """
-        Convert lead to sale (FR-010, FR-011, FR-012, FR-013, FR-014).
-        
-        Request Body (JSON):
-            - property_id: Property ID to link to sale (required)
-            
-        Returns:
-            JSON object with conversion result
-        """
+
         try:
             Lead = request.env['real.estate.lead']
             lead = Lead.sudo().browse(lead_id)
@@ -701,15 +603,7 @@ class LeadApiController(http.Controller):
     @require_session
     @require_company
     def reopen_lead(self, lead_id, **kwargs):
-        """
-        Reopen lost lead (FR-018a).
-        
-        Request Body (JSON):
-            - reason: Reason for reopening (optional)
-            
-        Returns:
-            JSON object with reopened lead
-        """
+
         try:
             Lead = request.env['real.estate.lead']
             lead = Lead.sudo().browse(lead_id)
@@ -745,23 +639,7 @@ class LeadApiController(http.Controller):
     @require_session
     @require_company
     def lead_statistics(self, **kwargs):
-        """
-        Get lead statistics for managers/owners (T090, T091, FR-028).
-        
-        Query Parameters:
-            - date_from: Filter leads created from this date (YYYY-MM-DD)
-            - date_to: Filter leads created until this date (YYYY-MM-DD)
-            - agent_id: Filter by specific agent (optional)
-            
-        Returns:
-            JSON object with lead statistics:
-            {
-                "total": int,
-                "by_status": {"new": int, "contacted": int, ...},
-                "by_agent": [{"agent_id": int, "agent_name": str, "count": int}],
-                "conversion_rate": float (percentage)
-            }
-        """
+
         try:
             user = request.env.user
             
@@ -849,7 +727,7 @@ class LeadApiController(http.Controller):
             'partner_name': lead.partner_id.name if lead.partner_id else None,
             'agent_id': lead.agent_id.id if lead.agent_id else None,
             'agent_name': lead.agent_id.name if lead.agent_id else None,
-            'company_ids': lead.company_ids.ids if lead.company_ids else [],
+            'company_id': lead.company_id.id if lead.company_id else None,
             'budget_min': lead.budget_min,
             'budget_max': lead.budget_max,
             'property_type_interest': lead.property_type_interest.name if lead.property_type_interest else None,
@@ -915,21 +793,7 @@ class LeadApiController(http.Controller):
     @require_jwt
     @require_session
     def log_activity(self, lead_id, **kwargs):
-        """
-        Log a new activity for a lead (FR-033).
-        
-        Creates a chatter message for activities like calls, emails, or meetings.
-        
-        Request Body:
-            - body (string, required): Activity description/notes
-            - activity_type (string, optional): Type of activity ('call', 'email', 'meeting', 'note')
-            
-        Returns:
-            201: Activity created successfully
-            400: Invalid request
-            403: Access denied
-            404: Lead not found
-        """
+
         try:
             body = kwargs.get('body', '').strip()
             if not body:
@@ -1011,20 +875,7 @@ class LeadApiController(http.Controller):
     @require_jwt
     @require_session
     def list_activities(self, lead_id, **kwargs):
-        """
-        List all activities for a lead (FR-034).
-        
-        Returns chatter messages with activity information.
-        
-        Query Parameters:
-            - limit (int, optional): Number of activities to return (default: 20, max: 100)
-            - offset (int, optional): Pagination offset (default: 0)
-            
-        Returns:
-            200: Activities list
-            403: Access denied
-            404: Lead not found
-        """
+
         try:
             limit = int(kwargs.get('limit', 20))
             offset = int(kwargs.get('offset', 0))
@@ -1117,24 +968,7 @@ class LeadApiController(http.Controller):
     @require_jwt
     @require_session
     def schedule_activity(self, lead_id, **kwargs):
-        """
-        Schedule a future activity with deadline/reminder (FR-036).
-        
-        Creates a scheduled activity using Odoo's mail.activity system.
-        
-        Request Body:
-            - summary (string, required): Activity summary/title
-            - note (string, optional): Detailed activity notes
-            - activity_type_id (int, optional): Activity type ID (default: 'To Do')
-            - date_deadline (string, required): Deadline date (YYYY-MM-DD format)
-            - user_id (int, optional): Assigned user (defaults to current user)
-            
-        Returns:
-            201: Activity scheduled successfully
-            400: Invalid request
-            403: Access denied
-            404: Lead not found
-        """
+
         try:
             summary = kwargs.get('summary', '').strip()
             if not summary:
@@ -1263,18 +1097,7 @@ class LeadApiController(http.Controller):
     @require_jwt
     @require_session
     def create_filter(self, **kwargs):
-        """
-        Save a new search filter (FR-048, T149).
-        
-        Request Body:
-            - name (string, required): Filter name (e.g., "High-value Centro leads")
-            - filter_params (object, required): Filter criteria (same params as list_leads)
-            - is_shared (boolean, optional): Share with company users (default: false)
-            
-        Returns:
-            201: Filter created successfully
-            400: Invalid request
-        """
+
         try:
             name = kwargs.get('name', '').strip()
             if not name:
@@ -1329,15 +1152,7 @@ class LeadApiController(http.Controller):
     @require_jwt
     @require_session
     def list_filters(self, **kwargs):
-        """
-        List user's saved filters (FR-048, T150).
-        
-        Query Parameters:
-            - include_shared (string, optional): 'true' to include shared filters
-            
-        Returns:
-            200: Filters list
-        """
+
         try:
             include_shared = kwargs.get('include_shared', 'false').lower() == 'true'
             
@@ -1395,14 +1210,7 @@ class LeadApiController(http.Controller):
     @require_jwt
     @require_session
     def delete_filter(self, filter_id, **kwargs):
-        """
-        Delete a saved filter (FR-048, T151).
-        
-        Returns:
-            200: Filter deleted successfully
-            403: Access denied (not owner)
-            404: Filter not found
-        """
+
         try:
             Filter = request.env['real.estate.lead.filter']
             filter_record = Filter.browse(filter_id)

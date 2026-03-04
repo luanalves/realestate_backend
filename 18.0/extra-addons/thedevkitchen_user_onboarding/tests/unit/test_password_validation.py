@@ -41,7 +41,7 @@ class TestPasswordValidation(TransactionCase):
                 "name": "Test Password User",
                 "email": "test@password.com",
                 "signup_pending": True,
-                "estate_company_ids": [(6, 0, [self.company.id])],
+                "company_ids": [(6, 0, [self.company.id])],
             }
         )
 

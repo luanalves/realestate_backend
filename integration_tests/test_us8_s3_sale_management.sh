@@ -74,7 +74,56 @@ echo ""
 
 TIMESTAMP=$(date +%s)
 
-# ──────────────── STEP 2: Get a valid property + company ────────────────
+# ──────────────── STEP 1.5: Seed test property ────────────────
+# Ensure at least one property exists in company 5 (Imobiliária Seed)
+echo -e "${BLUE}STEP 1.5${NC}: Seeding test property for company 5 if needed..."
+_US8_ADMIN_COOKIE="/tmp/odoo_us8_admin_$$.txt"
+
+# Admin login for seeding
+curl -s -X POST "${BASE_URL}/web/session/authenticate" \
+    -H "Content-Type: application/json" \
+    -c "${_US8_ADMIN_COOKIE}" \
+    -d '{"jsonrpc":"2.0","method":"call","params":{"db":"realestate","login":"admin","password":"admin"}}' > /dev/null 2>&1
+
+# Get reference data
+_US8_PROP_TYPE=$(curl -s -X POST "${BASE_URL}/web/dataset/call_kw" \
+    -H "Content-Type: application/json" \
+    -b "${_US8_ADMIN_COOKIE}" \
+    -d '{"jsonrpc":"2.0","method":"call","id":1,"params":{"model":"real.estate.property.type","method":"search_read","args":[[]],"kwargs":{"fields":["id"],"limit":1}}}' | jq -r '.result[0].id // 1')
+
+_US8_LOC_TYPE=$(curl -s -X POST "${BASE_URL}/web/dataset/call_kw" \
+    -H "Content-Type: application/json" \
+    -b "${_US8_ADMIN_COOKIE}" \
+    -d '{"jsonrpc":"2.0","method":"call","id":2,"params":{"model":"real.estate.location.type","method":"search_read","args":[[]],"kwargs":{"fields":["id"],"limit":1}}}' | jq -r '.result[0].id // 1')
+
+_US8_STATE=$(curl -s -X POST "${BASE_URL}/web/dataset/call_kw" \
+    -H "Content-Type: application/json" \
+    -b "${_US8_ADMIN_COOKIE}" \
+    -d '{"jsonrpc":"2.0","method":"call","id":3,"params":{"model":"res.country.state","method":"search_read","args":[[["country_id.code","=","BR"]]],"kwargs":{"fields":["id"],"limit":1}}}' | jq -r '.result[0].id // 71')
+
+# Check if company 5 has properties
+_US8_COUNT=$(curl -s -X POST "${BASE_URL}/web/dataset/call_kw" \
+    -H "Content-Type: application/json" \
+    -b "${_US8_ADMIN_COOKIE}" \
+    -d '{"jsonrpc":"2.0","method":"call","id":4,"params":{"model":"real.estate.property","method":"search_count","args":[[["company_id","=",5]]],"kwargs":{}}}' | jq -r '.result // 0')
+
+if [ "${_US8_COUNT:-0}" -eq 0 ] 2>/dev/null; then
+    _US8_PROP_ID=$(curl -s -X POST "${BASE_URL}/web/dataset/call_kw" \
+        -H "Content-Type: application/json" \
+        -b "${_US8_ADMIN_COOKIE}" \
+        -d "{\"jsonrpc\":\"2.0\",\"method\":\"call\",\"id\":5,\"params\":{\"model\":\"real.estate.property\",\"method\":\"create\",\"args\":[{\"name\":\"US8S3 Test Property ${TIMESTAMP}\",\"property_type_id\":${_US8_PROP_TYPE},\"location_type_id\":${_US8_LOC_TYPE},\"state_id\":${_US8_STATE},\"company_id\":5,\"zip_code\":\"01310-100\",\"city\":\"São Paulo\",\"street\":\"Av. Paulista\",\"street_number\":\"100\",\"num_rooms\":2,\"num_bathrooms\":1,\"num_parking\":1,\"area\":80.0,\"price\":500000.0,\"property_status\":\"available\"}],\"kwargs\":{}}}" | jq -r '.result // empty')
+
+    if [ -n "$_US8_PROP_ID" ] && [ "$_US8_PROP_ID" != "null" ]; then
+        echo -e "${GREEN}✓${NC} Test property created: ID=${_US8_PROP_ID}"
+    else
+        echo -e "${YELLOW}⚠${NC} Could not create test property, test may fail"
+    fi
+else
+    echo -e "${GREEN}✓${NC} Company 5 already has ${_US8_COUNT} properties"
+fi
+rm -f "${_US8_ADMIN_COOKIE}"
+echo ""
+
 echo -e "${BLUE}STEP 2${NC}: Finding a valid property and company..."
 
 PROPERTY_LIST=$(curl -s -X GET "${BASE_URL}/api/v1/properties?offset=0&limit=5&company_ids=${COMPANY_IDS}" \

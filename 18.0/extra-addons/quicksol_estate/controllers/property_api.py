@@ -59,9 +59,9 @@ class PropertyApiController(http.Controller):
             
             # Company filter using validated company_ids
             if len(requested_company_ids) == 1:
-                domain.append(('company_ids', 'in', requested_company_ids))
+                domain.append(('company_id', '=', requested_company_ids[0]))
             else:
-                domain.append(('company_ids', 'in', requested_company_ids))
+                domain.append(('company_id', 'in', requested_company_ids))
             
             # Optional filters
             if kwargs.get('property_type_id'):
@@ -302,12 +302,20 @@ class PropertyApiController(http.Controller):
                 if field in data and data[field] is not None:
                     property_vals[field] = data[field]
             
-            # Handle Many2many fields
+            # Handle company field (M2O)
             if 'company_ids' in data:
-                property_vals['company_ids'] = [(6, 0, data['company_ids'])]
-            elif user.company_ids:
-                # Assign to user's companies by default
-                property_vals['company_ids'] = [(6, 0, user.company_ids.ids)]
+                cids = data['company_ids']
+                if isinstance(cids, list) and cids:
+                    if isinstance(cids[0], (tuple, list)):
+                        property_vals['company_id'] = cids[0][2][0] if cids[0][2] else False
+                    else:
+                        property_vals['company_id'] = cids[0]
+                elif isinstance(cids, int):
+                    property_vals['company_id'] = cids
+            elif 'company_id' in data:
+                property_vals['company_id'] = data['company_id']
+            elif user.company_id:
+                property_vals['company_id'] = user.company_id.id
             
             if 'tag_ids' in data:
                 property_vals['tag_ids'] = [(6, 0, data['tag_ids'])]
@@ -343,7 +351,7 @@ class PropertyApiController(http.Controller):
                         return error_response(400, "State ID does not exist. Please verify the state_id.", 'foreign_key_violation')
                     elif "real_estate_property_building" in error_str:
                         return error_response(400, "Building ID does not exist. Please verify the building_id.", 'foreign_key_violation')
-                    elif "thedevkitchen_estate_company" in error_str:
+                    elif "res_company" in error_str:
                         return error_response(400, "One or more company IDs do not exist. Please verify the company_ids.", 'foreign_key_violation')
                     else:
                         return error_response(400, "Invalid reference ID. One or more related records do not exist.", 'foreign_key_violation')
@@ -395,7 +403,7 @@ class PropertyApiController(http.Controller):
                     return error_response(400, "State ID does not exist. Please verify the state_id.", 'foreign_key_violation')
                 elif "real_estate_property_building" in error_msg:
                     return error_response(400, "Building ID does not exist. Please verify the building_id.", 'foreign_key_violation')
-                elif "thedevkitchen_estate_company" in error_msg:
+                elif "res_company" in error_msg:
                     return error_response(400, "One or more company IDs do not exist. Please verify the company_ids.", 'foreign_key_violation')
                 else:
                     return error_response(400, "Invalid reference ID. One or more related records do not exist.", 'foreign_key_violation')
@@ -426,7 +434,7 @@ class PropertyApiController(http.Controller):
                     return error_response(400, "State ID does not exist. Please verify the state_id.", 'foreign_key_violation')
                 elif "real_estate_property_building" in error_str:
                     return error_response(400, "Building ID does not exist. Please verify the building_id.", 'foreign_key_violation')
-                elif "thedevkitchen_estate_company" in error_str:
+                elif "res_company" in error_str:
                     return error_response(400, "One or more company IDs do not exist. Please verify the company_ids.", 'foreign_key_violation')
                 else:
                     return error_response(400, "Invalid reference ID. One or more related records do not exist.", 'foreign_key_violation')

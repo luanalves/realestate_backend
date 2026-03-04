@@ -58,7 +58,7 @@ class BaseCompanyTest(unittest.TestCase):
         Create a mock Odoo record with the given data.
         
         Args:
-            model_name: The Odoo model name (e.g., 'thedevkitchen.estate.company')
+            model_name: The Odoo model name (e.g., 'res.company')
             data: Dictionary of field values
             
         Returns:

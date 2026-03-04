@@ -97,13 +97,14 @@ next_email() {
 cleanup_test_data() {
     log_info "Cleaning up test data..."
     docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF
-        DELETE FROM res_users WHERE login LIKE 'rbac_test_%@example.com' OR login LIKE 'rbac_bootstrap_%@example.com';
-        DELETE FROM res_partner WHERE email LIKE 'rbac_test_%@example.com' OR email LIKE 'rbac_bootstrap_%@example.com';
         DELETE FROM thedevkitchen_password_token
         WHERE user_id IN (
             SELECT id FROM res_users
             WHERE login LIKE 'rbac_test_%@example.com' OR login LIKE 'rbac_bootstrap_%@example.com'
         );
+        DELETE FROM thedevkitchen_estate_profile WHERE email LIKE 'rbac_test_%@example.com' OR email LIKE 'rbac_bootstrap_%@example.com';
+        DELETE FROM res_users WHERE login LIKE 'rbac_test_%@example.com' OR login LIKE 'rbac_bootstrap_%@example.com';
+        DELETE FROM res_partner WHERE email LIKE 'rbac_test_%@example.com' OR email LIKE 'rbac_bootstrap_%@example.com';
 EOF
     log_info "Cleanup completed"
 }
@@ -151,6 +152,21 @@ login_user() {
     echo "$session_id|$company_id"
 }
 
+get_profile_type_id() {
+    case "$1" in
+        owner)        echo 10 ;;  # property_owner
+        director)     echo 2  ;;
+        manager)      echo 3  ;;
+        agent)        echo 4  ;;
+        prospector)   echo 5  ;;
+        receptionist) echo 6  ;;
+        financial)    echo 7  ;;
+        legal)        echo 8  ;;
+        portal)       echo 9  ;;  # tenant
+        *)            echo 3  ;;
+    esac
+}
+
 invite_user() {
     local jwt="$1"
     local session_id="$2"
@@ -161,39 +177,62 @@ invite_user() {
     local document="$7"
     local expected_status="$8"
 
-    local payload
-    if [ "$profile" = "portal" ]; then
-        payload="{
+    local profile_type_id
+    profile_type_id=$(get_profile_type_id "$profile")
+
+    # Step 1: Create profile
+    local profile_response
+    profile_response=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/profiles" \
+        -H "Content-Type: application/json" \
+        -H "Authorization: Bearer $jwt" \
+        -H "X-Openerp-Session-Id: $session_id" \
+        -d "{
             \"name\": \"$name\",
-            \"email\": \"$email\",
-            \"document\": \"$document\",
-            \"profile\": \"portal\",
             \"company_id\": $company_id,
-            \"phone\": \"+5511988776655\",
-            \"birthdate\": \"1990-01-01\",
-            \"occupation\": \"Tenant\"
-        }"
-    else
-        payload="{
-            \"name\": \"$name\",
-            \"email\": \"$email\",
             \"document\": \"$document\",
-            \"profile\": \"$profile\"
-        }"
+            \"email\": \"$email\",
+            \"phone\": \"+5511988776655\",
+            \"birthdate\": \"1990-01-15\",
+            \"profile_type_id\": $profile_type_id
+        }")
+
+    local profile_body profile_http
+    profile_body="$(echo "$profile_response" | sed '$d')"
+    profile_http="$(echo "$profile_response" | tail -n 1)"
+
+    # If profile creation failed (RBAC denial), use that status for assertion
+    if [ "$profile_http" -ge 400 ] 2>/dev/null; then
+        BODY="$profile_body"
+        STATUS="$profile_http"
+        assert_status "$expected_status" "$STATUS" "Invite $profile by $name (profile RBAC)"
+        LAST_USER_ID=""
+        return
     fi
 
+    local profile_id
+    profile_id=$(echo "$profile_body" | jq -r '.id // empty')
+    if [ -z "$profile_id" ] || [ "$profile_id" = "null" ]; then
+        log_error "Profile creation returned $profile_http but no ID"
+        BODY="$profile_body"
+        STATUS="${profile_http:-500}"
+        assert_status "$expected_status" "$STATUS" "Invite $profile by $name (no profile ID)"
+        LAST_USER_ID=""
+        return
+    fi
+
+    # Step 2: Invite using profile_id
     local response
     response=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/invite" \
         -H "Content-Type: application/json" \
         -H "Authorization: Bearer $jwt" \
         -H "X-Openerp-Session-Id: $session_id" \
         -H "X-Company-ID: $company_id" \
-        -d "$payload")
+        -d "{\"profile_id\": $profile_id}")
 
     split_body_and_status "$response"
     assert_status "$expected_status" "$STATUS" "Invite $profile by $name"
 
-    if [ "$STATUS" -eq 201 ]; then
+    if [ "$STATUS" -eq 201 ] || [ "$STATUS" -eq 200 ]; then
         LAST_USER_ID=$(echo "$BODY" | jq -r '.data.id // empty')
     else
         LAST_USER_ID=""
@@ -204,7 +243,8 @@ set_password_for_invited_user() {
     local user_id="$1"
     local password="$2"
 
-    local raw_token="s4-${user_id}-${RUN_ID}-$(date +%s%N)"
+    local raw_token
+    raw_token=$(python3 -c 'import uuid; print(uuid.uuid4().hex)')
     local token_hash
     token_hash=$(printf "%s" "$raw_token" | shasum -a 256 | awk '{print $1}')
 

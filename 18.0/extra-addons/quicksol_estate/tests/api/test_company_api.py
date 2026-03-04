@@ -17,7 +17,7 @@ class TestCreateCompany(HttpCase):
     
     Business Rule (T028):
     - Owner can create Company with valid CNPJ
-    - Company automatically links to creator's estate_company_ids
+    - Company automatically links to creator's company_ids
     - CNPJ must be unique (including soft-deleted)
     - Email and phone format validated
     - Returns 201 with HATEOAS links
@@ -38,7 +38,7 @@ class TestCreateCompany(HttpCase):
             'password': 'testpass123',
             'email': 'testowner@test.com',
             'groups_id': [(6, 0, [cls.group_owner.id])],
-            'estate_company_ids': [],  # Initially no companies
+            'company_ids': [],  # Initially no companies
         })
         
         # Create Manager user
@@ -48,7 +48,7 @@ class TestCreateCompany(HttpCase):
             'password': 'testpass456',
             'email': 'testmanager@test.com',
             'groups_id': [(6, 0, [cls.group_manager.id])],
-            'estate_company_ids': [],
+            'company_ids': [],
         })
 
     def _get_jwt_token(self, login, password):
@@ -66,7 +66,7 @@ class TestCreateCompany(HttpCase):
         return result.get('access_token') or result.get('token')
 
     def test_01_owner_creates_company_auto_linkage(self):
-        """Owner creates Company and is automatically linked via estate_company_ids"""
+        """Owner creates Company and is automatically linked via company_ids"""
         token = self._get_jwt_token('test_owner', 'testpass123')
         
         response = self.url_open(
@@ -93,7 +93,7 @@ class TestCreateCompany(HttpCase):
         
         # Verify Owner is auto-linked to the company
         self.owner_user.invalidate_recordset()
-        self.assertIn(company_id, self.owner_user.estate_company_ids.ids,
+        self.assertIn(company_id, self.owner_user.company_ids.ids,
                      "Owner should be auto-linked to created company")
 
     def test_02_company_with_valid_cnpj(self):
@@ -244,7 +244,7 @@ class TestCreateCompany(HttpCase):
         self.assertIn('self', data['links'], "Should have 'self' link")
 
     def test_08_company_list_multi_tenancy(self):
-        """GET /companies returns only companies from user's estate_company_ids"""
+        """GET /companies returns only companies from user's company_ids"""
         token = self._get_jwt_token('test_owner', 'testpass123')
         
         # Create company (auto-linked to owner)
@@ -380,7 +380,7 @@ class TestCreateCompany(HttpCase):
                      "Should return 200 or 204 for successful delete")
         
         # Verify soft delete (active=False)
-        company = self.env['thedevkitchen.estate.company'].browse(company_id)
+        company = self.env['res.company'].browse(company_id)
         self.assertFalse(company.active, "Company should be soft-deleted (active=False)")
 
 
@@ -405,7 +405,7 @@ class TestManagerReadOnly(HttpCase):
         cls.group_manager = cls.env.ref('quicksol_estate.group_real_estate_manager')
         
         # Create test company
-        cls.test_company = cls.env['thedevkitchen.estate.company'].create({
+        cls.test_company = cls.env['res.company'].create({
             'name': 'Manager Test Company',
             'cnpj': '20202020000202',
             'email': 'manager@testcompany.com',
@@ -419,7 +419,7 @@ class TestManagerReadOnly(HttpCase):
             'password': 'manager123',
             'email': 'rbac_manager@test.com',
             'groups_id': [(6, 0, [cls.group_manager.id])],
-            'estate_company_ids': [(6, 0, [cls.test_company.id])],
+            'company_ids': [(6, 0, [cls.test_company.id])],
         })
         
         # Create Owner user for comparison
@@ -429,7 +429,7 @@ class TestManagerReadOnly(HttpCase):
             'password': 'owner123',
             'email': 'rbac_owner@test.com',
             'groups_id': [(6, 0, [cls.group_owner.id])],
-            'estate_company_ids': [(6, 0, [cls.test_company.id])],
+            'company_ids': [(6, 0, [cls.test_company.id])],
         })
 
     def _get_token(self, login, password):

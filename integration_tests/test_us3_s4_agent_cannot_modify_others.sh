@@ -99,6 +99,12 @@ fi
 
 echo "✅ Admin login successful (UID: $ADMIN_UID)"
 
+# Pre-cleanup: nullify CNPJ from previous run to avoid UNIQUE constraint violations
+_CLEANUP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+docker compose -f "${_CLEANUP_DIR}/../18.0/docker-compose.yml" exec -T db \
+    psql -U odoo -d realestate -c \
+    "UPDATE res_company SET cnpj = NULL WHERE cnpj LIKE '13.579.246/0001-%';" > /dev/null 2>&1 || true
+
 ################################################################################
 # Step 2: Create Company and Agents
 ################################################################################
@@ -112,7 +118,7 @@ COMPANY_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
         \"params\": {
-            \"model\": \"thedevkitchen.estate.company\",
+            \"model\": \"res.company\",
             \"method\": \"create\",
             \"args\": [{
                 \"name\": \"$COMPANY_NAME\",
@@ -145,7 +151,8 @@ AGENT_A_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"name\": \"Agent A US3S4\",
                 \"login\": \"$AGENT_A_LOGIN\",
                 \"password\": \"agent123\",
-                \"estate_company_ids\": [[6, 0, [$COMPANY_ID]]],
+                \"company_id\": $COMPANY_ID,
+                \"company_ids\": [[6, 0, [$COMPANY_ID]]],
                 \"groups_id\": [[6, 0, [23]]]
             }],
             \"kwargs\": {}
@@ -169,10 +176,10 @@ def calc_cpf_digit(cpf, weights):
     remainder = s % 11
     return '0' if remainder < 2 else str(11 - remainder)
 
-base = "12312312"
+base = "123123128"
 d1 = calc_cpf_digit(base, range(10, 1, -1))
 d2 = calc_cpf_digit(base + d1, range(11, 1, -1))
-cpf = f"{base[0:3]}.{base[3:6]}.{base[6:8]}{d1}-{d2}"
+cpf = f"{base[0:3]}.{base[3:6]}.{base[6:9]}-{d1}{d2}"
 print(cpf)
 PYTHON_EOF
 )
@@ -190,7 +197,7 @@ AGENT_A_RECORD_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"name\": \"Agent A US3S4\",
                 \"user_id\": $AGENT_A_UID,
                 \"cpf\": \"$CPF_A\",
-                \"company_ids\": [[6, 0, [$COMPANY_ID]]]
+                \"company_id\": $COMPANY_ID
             }],
             \"kwargs\": {}
         },
@@ -220,7 +227,8 @@ AGENT_B_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"name\": \"Agent B US3S4\",
                 \"login\": \"$AGENT_B_LOGIN\",
                 \"password\": \"agent123\",
-                \"estate_company_ids\": [[6, 0, [$COMPANY_ID]]],
+                \"company_id\": $COMPANY_ID,
+                \"company_ids\": [[6, 0, [$COMPANY_ID]]],
                 \"groups_id\": [[6, 0, [23]]]
             }],
             \"kwargs\": {}
@@ -244,10 +252,10 @@ def calc_cpf_digit(cpf, weights):
     remainder = s % 11
     return '0' if remainder < 2 else str(11 - remainder)
 
-base = "98798798"
+base = "987987989"
 d1 = calc_cpf_digit(base, range(10, 1, -1))
 d2 = calc_cpf_digit(base + d1, range(11, 1, -1))
-cpf = f"{base[0:3]}.{base[3:6]}.{base[6:8]}{d1}-{d2}"
+cpf = f"{base[0:3]}.{base[3:6]}.{base[6:9]}-{d1}{d2}"
 print(cpf)
 PYTHON_EOF
 )
@@ -265,7 +273,7 @@ AGENT_B_RECORD_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"name\": \"Agent B US3S4\",
                 \"user_id\": $AGENT_B_UID,
                 \"cpf\": \"$CPF_B\",
-                \"company_ids\": [[6, 0, [$COMPANY_ID]]]
+                \"company_id\": $COMPANY_ID
             }],
             \"kwargs\": {}
         },
@@ -330,7 +338,7 @@ STATE_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
         \"params\": {
-            \"model\": \"real.estate.state\",
+            \"model\": \"res.country.state\",
             \"method\": \"search_read\",
             \"args\": [[]],
             \"kwargs\": {\"limit\": 1, \"fields\": [\"id\", \"name\"]}
@@ -384,7 +392,7 @@ PROPERTY_A_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"street\": \"Avenida Paulista\",
                 \"street_number\": \"1000\",
                 \"area\": 100.0,
-                \"company_ids\": [[6, 0, [$COMPANY_ID]]]
+                \"company_id\": $COMPANY_ID
             }],
             \"kwargs\": {}
         },
@@ -422,7 +430,7 @@ PROPERTY_B_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"street\": \"Avenida Paulista\",
                 \"street_number\": \"2000\",
                 \"area\": 120.0,
-                \"company_ids\": [[6, 0, [$COMPANY_ID]]]
+                \"company_id\": $COMPANY_ID
             }],
             \"kwargs\": {}
         },

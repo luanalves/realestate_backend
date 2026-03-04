@@ -124,7 +124,7 @@ COMPANY_A_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
         \"params\": {
-            \"model\": \"thedevkitchen.estate.company\",
+            \"model\": \"res.company\",
             \"method\": \"create\",
             \"args\": [{
                 \"name\": \"$COMPANY_A_NAME\",
@@ -153,7 +153,7 @@ COMPANY_B_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
         \"params\": {
-            \"model\": \"thedevkitchen.estate.company\",
+            \"model\": \"res.company\",
             \"method\": \"create\",
             \"args\": [{
                 \"name\": \"$COMPANY_B_NAME\",
@@ -189,7 +189,8 @@ MANAGER_A_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"login\": \"$MANAGER_A_LOGIN\",
                 \"password\": \"manager123\",
                 \"groups_id\": [[6, 0, [17]]],
-                \"estate_company_ids\": [[6, 0, [$COMPANY_A_ID]]]
+                \"company_id\": $COMPANY_A_ID,
+                \"company_ids\": [[6, 0, [$COMPANY_A_ID]]]
             }],
             \"kwargs\": {}
         },
@@ -221,7 +222,8 @@ MANAGER_B_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"login\": \"$MANAGER_B_LOGIN\",
                 \"password\": \"manager123\",
                 \"groups_id\": [[6, 0, [17]]],
-                \"estate_company_ids\": [[6, 0, [$COMPANY_B_ID]]]
+                \"company_id\": $COMPANY_B_ID,
+                \"company_ids\": [[6, 0, [$COMPANY_B_ID]]]
             }],
             \"kwargs\": {}
         },
@@ -282,7 +284,7 @@ STATE_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
     "jsonrpc": "2.0",
     "method": "call",
     "params": {
-      "model": "real.estate.state",
+      "model": "res.country.state",
       "method": "search_read",
       "args": [[]],
       "kwargs": {"fields": ["id", "name"], "limit": 1}
@@ -323,7 +325,7 @@ for i in 1 2; do
             \"area\": $((80 + i * 10)).0,
             \"price\": $((300000 + i * 50000)).0,
             \"property_status\": \"available\",
-            \"company_ids\": [[6, 0, [$COMPANY_A_ID]]]
+            \"company_id\": $COMPANY_A_ID
           }],
           \"kwargs\": {}
         },
@@ -364,7 +366,7 @@ for i in 1 2; do
             \"area\": $((70 + i * 10)).0,
             \"price\": $((250000 + i * 40000)).0,
             \"property_status\": \"available\",
-            \"company_ids\": [[6, 0, [$COMPANY_B_ID]]]
+            \"company_id\": $COMPANY_B_ID
           }],
           \"kwargs\": {}
         },
@@ -458,7 +460,7 @@ MANAGER_A_COMPANIES_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
         \"params\": {
-            \"model\": \"thedevkitchen.estate.company\",
+            \"model\": \"res.company\",
             \"method\": \"search_read\",
             \"args\": [[]],
             \"kwargs\": {

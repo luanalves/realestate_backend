@@ -12,13 +12,13 @@ class TestPropertyAPI(HttpCase):
         super().setUpClass()
         
         # Create test company (using valid CNPJ numbers)
-        cls.company = cls.env['thedevkitchen.estate.company'].create({
+        cls.company = cls.env['res.company'].create({
             'name': 'Test Real Estate Company',
             'cnpj': '11.222.333/0001-81',  # Valid CNPJ
             'email': 'test@realestate.com'
         })
         
-        cls.company2 = cls.env['thedevkitchen.estate.company'].create({
+        cls.company2 = cls.env['res.company'].create({
             'name': 'Other Real Estate Company',
             'cnpj': '34.028.316/0001-03',  # Valid CNPJ
             'email': 'other@realestate.com'
@@ -35,7 +35,7 @@ class TestPropertyAPI(HttpCase):
                 cls.env.ref('base.group_user').id,
                 cls.env.ref('quicksol_estate.group_real_estate_manager').id
             ])],
-            'estate_company_ids': [(6, 0, [cls.company.id])]
+            'company_ids': [(6, 0, [cls.company.id])]
         })
         
         cls.user_normal = cls.env['res.users'].with_context(no_reset_password=True).create({
@@ -46,7 +46,7 @@ class TestPropertyAPI(HttpCase):
                 cls.env.ref('base.group_user').id,
                 cls.env.ref('quicksol_estate.group_real_estate_user').id
             ])],
-            'estate_company_ids': [(6, 0, [cls.company.id])]
+            'company_ids': [(6, 0, [cls.company.id])]
         })
         
         cls.agent_user = cls.env['res.users'].with_context(no_reset_password=True).create({
@@ -57,7 +57,7 @@ class TestPropertyAPI(HttpCase):
                 cls.env.ref('base.group_user').id,
                 cls.env.ref('quicksol_estate.group_real_estate_agent').id
             ])],
-            'estate_company_ids': [(6, 0, [cls.company.id])]
+            'company_ids': [(6, 0, [cls.company.id])]
         })
         
         cls.portal_user = cls.env['res.users'].with_context(no_reset_password=True).create({
@@ -91,9 +91,9 @@ class TestPropertyAPI(HttpCase):
         })
         
         # Get test state and location type
-        cls.state_sp = cls.env['real.estate.state'].search([('code', '=', 'SP')], limit=1)
+        cls.state_sp = cls.env['res.country.state'].search([('code', '=', 'SP')], limit=1)
         if not cls.state_sp:
-            cls.state_sp = cls.env['real.estate.state'].create({
+            cls.state_sp = cls.env['res.country.state'].create({
                 'name': 'São Paulo',
                 'code': 'SP',
                 'country_id': cls.env.ref('base.br').id
@@ -364,7 +364,7 @@ class TestPropertyAPI(HttpCase):
         from odoo.addons.quicksol_estate.controllers.property_api import _validate_property_access
         
         # Give manager_user access to both companies
-        self.manager_user.estate_company_ids = [(6, 0, [self.company.id, self.company2.id])]
+        self.manager_user.company_ids = [(6, 0, [self.company.id, self.company2.id])]
         
         # Should now have access to company2's property
         has_access, error = _validate_property_access(self.property_company2, self.manager_user, 'read')
@@ -411,7 +411,7 @@ class TestPropertyAPIHTTP(HttpCase):
         super().setUpClass()
         
         # Create company
-        cls.company = cls.env['thedevkitchen.estate.company'].create({
+        cls.company = cls.env['res.company'].create({
             'name': 'HTTP Test Company',
             'cnpj': '11.222.333/0001-81',
             'email': 'httptest@company.com'
@@ -423,9 +423,9 @@ class TestPropertyAPIHTTP(HttpCase):
         })
         
         # Create state
-        cls.state_sp = cls.env['real.estate.state'].search([('code', '=', 'SP')], limit=1)
+        cls.state_sp = cls.env['res.country.state'].search([('code', '=', 'SP')], limit=1)
         if not cls.state_sp:
-            cls.state_sp = cls.env['real.estate.state'].create({
+            cls.state_sp = cls.env['res.country.state'].create({
                 'name': 'São Paulo',
                 'code': 'SP',
                 'country_id': cls.env.ref('base.br').id

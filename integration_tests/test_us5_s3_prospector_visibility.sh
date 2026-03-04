@@ -42,7 +42,8 @@ def calc_cnpj_digit(cnpj, weights):
     remainder = s % 11
     return '0' if remainder < 2 else str(11 - remainder)
 
-base = "55667788"
+import time
+base = str((int(time.time()) + 3) % 100000000).zfill(8)
 branch = "0001"
 cnpj_partial = base + branch
 w1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
@@ -99,7 +100,7 @@ COMPANY_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
         \"params\": {
-            \"model\": \"thedevkitchen.estate.company\",
+            \"model\": \"res.company\",
             \"method\": \"create\",
             \"args\": [{
                 \"name\": \"$COMPANY_NAME\",
@@ -144,7 +145,8 @@ PROSPECTOR1_USER_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"login\": \"$PROSPECTOR1_LOGIN\",
                 \"password\": \"prospector123\",
                 \"groups_id\": [[6, 0, [$PROSPECTOR_GROUP_ID]]],
-                \"estate_company_ids\": [[6, 0, [$COMPANY_ID]]]
+                \"company_id\": $COMPANY_ID,
+                \"company_ids\": [[6, 0, [$COMPANY_ID]]]
             }],
             \"kwargs\": {}
         },
@@ -161,10 +163,10 @@ def calc_cpf_digit(cpf, weights):
     remainder = s % 11
     return '0' if remainder < 2 else str(11 - remainder)
 
-base = "33344455"
+base = "333444556"
 d1 = calc_cpf_digit(base, range(10, 1, -1))
 d2 = calc_cpf_digit(base + d1, range(11, 1, -1))
-cpf = f"{base[0:3]}.{base[3:6]}.{base[6:8]}{d1}-{d2}"
+cpf = f"{base[0:3]}.{base[3:6]}.{base[6:9]}-{d1}{d2}"
 print(cpf)
 PYTHON_EOF
 )
@@ -182,7 +184,7 @@ PROSPECTOR1_AGENT_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"name\": \"Prospector 1 US5S3\",
                 \"user_id\": $PROSPECTOR1_UID,
                 \"cpf\": \"$CPF_PROSPECTOR1\",
-                \"company_ids\": [[6, 0, [$COMPANY_ID]]]
+                \"company_id\": $COMPANY_ID
             }],
             \"kwargs\": {}
         },
@@ -207,7 +209,8 @@ PROSPECTOR2_USER_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"login\": \"$PROSPECTOR2_LOGIN\",
                 \"password\": \"prospector123\",
                 \"groups_id\": [[6, 0, [$PROSPECTOR_GROUP_ID]]],
-                \"estate_company_ids\": [[6, 0, [$COMPANY_ID]]]
+                \"company_id\": $COMPANY_ID,
+                \"company_ids\": [[6, 0, [$COMPANY_ID]]]
             }],
             \"kwargs\": {}
         },
@@ -224,10 +227,10 @@ def calc_cpf_digit(cpf, weights):
     remainder = s % 11
     return '0' if remainder < 2 else str(11 - remainder)
 
-base = "66677788"
+base = "666777889"
 d1 = calc_cpf_digit(base, range(10, 1, -1))
 d2 = calc_cpf_digit(base + d1, range(11, 1, -1))
-cpf = f"{base[0:3]}.{base[3:6]}.{base[6:8]}{d1}-{d2}"
+cpf = f"{base[0:3]}.{base[3:6]}.{base[6:9]}-{d1}{d2}"
 print(cpf)
 PYTHON_EOF
 )
@@ -245,7 +248,7 @@ PROSPECTOR2_AGENT_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"name\": \"Prospector 2 US5S3\",
                 \"user_id\": $PROSPECTOR2_UID,
                 \"cpf\": \"$CPF_PROSPECTOR2\",
-                \"company_ids\": [[6, 0, [$COMPANY_ID]]]
+                \"company_id\": $COMPANY_ID
             }],
             \"kwargs\": {}
         },
@@ -312,7 +315,7 @@ STATE_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
         \"params\": {
-            \"model\": \"real.estate.state\",
+            \"model\": \"res.country.state\",
             \"method\": \"search_read\",
             \"args\": [[]],
             \"kwargs\": {
@@ -357,7 +360,7 @@ for i in 1 2 3; do
                     \"area\": 100.0,
                     \"price\": 400000.0,
                     \"property_status\": \"available\",
-                    \"company_ids\": [[6, 0, [$COMPANY_ID]]],
+                    \"company_id\": $COMPANY_ID,
                     \"prospector_id\": $PROSPECTOR1_AGENT_ID
                 }],
                 \"kwargs\": {}
@@ -392,7 +395,7 @@ for i in 1 2; do
                     \"area\": 90.0,
                     \"price\": 350000.0,
                     \"property_status\": \"available\",
-                    \"company_ids\": [[6, 0, [$COMPANY_ID]]],
+                    \"company_id\": $COMPANY_ID,
                     \"prospector_id\": $PROSPECTOR2_AGENT_ID
                 }],
                 \"kwargs\": {}

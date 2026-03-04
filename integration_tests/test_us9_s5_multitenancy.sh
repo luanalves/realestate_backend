@@ -38,6 +38,9 @@ TESTS_RUN=0
 TESTS_PASSED=0
 TESTS_FAILED=0
 
+RUN_ID="$(date +%s)"
+CPF_COUNTER=0
+
 # Helper functions
 log_info() {
     echo -e "${GREEN}[INFO]${NC} $1"
@@ -49,6 +52,34 @@ log_error() {
 
 log_warning() {
     echo -e "${YELLOW}[WARN]${NC} $1"
+}
+
+next_cpf() {
+    CPF_COUNTER=$((CPF_COUNTER + 1))
+    python3 -c "
+import random, time
+random.seed(int(time.time() * 1000) + $CPF_COUNTER + $RANDOM)
+def gen():
+    nums = [random.randint(0,9) for _ in range(9)]
+    s = sum((10-i)*d for i,d in enumerate(nums))
+    d1 = 0 if (11-(s%11))>=10 else (11-(s%11))
+    nums.append(d1)
+    s = sum((11-i)*d for i,d in enumerate(nums))
+    d2 = 0 if (11-(s%11))>=10 else (11-(s%11))
+    nums.append(d2)
+    cpf = ''.join(map(str,nums))
+    if len(set(cpf))==1: return None
+    return cpf
+result = None
+while not result:
+    result = gen()
+print(result)
+"
+}
+
+next_email() {
+    local prefix="$1"
+    echo "mt_test_${prefix}_${RUN_ID}@example.com"
 }
 
 test_scenario() {
@@ -106,31 +137,22 @@ assert_sql_result() {
 
 cleanup_test_data() {
     log_info "Cleaning up test data..."
-    
-    # SQL cleanup script
+
     docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF
-        -- Delete test users
-        DELETE FROM res_users WHERE login LIKE 'mt_test_%@example.com';
-        
-        -- Delete test partners
-        DELETE FROM res_partner WHERE email LIKE 'mt_test_%@example.com';
-        
-        -- Delete test tokens
-        DELETE FROM thedevkitchen_password_token 
+        DELETE FROM thedevkitchen_password_token
         WHERE user_id IN (
             SELECT id FROM res_users WHERE login LIKE 'mt_test_%@example.com'
         );
-        
-        -- Delete test sessions
+        DELETE FROM thedevkitchen_estate_profile WHERE email LIKE 'mt_test_%@example.com';
         DELETE FROM thedevkitchen_api_session
         WHERE user_id IN (
             SELECT id FROM res_users WHERE login LIKE 'mt_test_%@example.com'
         );
-        
-        -- Delete test tenants
-        DELETE FROM real_estate_tenant WHERE email LIKE 'mt_test_%@example.com';
+        DELETE FROM res_users WHERE login LIKE 'mt_test_%@example.com';
+        DELETE FROM res_partner WHERE email LIKE 'mt_test_%@example.com';
 EOF
-    
+
+    rm -f /tmp/us9s5_admin_cookies.txt
     log_info "Cleanup completed"
 }
 
@@ -232,52 +254,79 @@ log_info "Owner A authenticated (Company: $OWNER_A_COMPANY)"
 COMPANY_A_ID=$OWNER_A_COMPANY
 
 # ============================================================
-# Setup: Create Owner B (Company B) via SQL
+# Setup: Create Owner B (Company B) via Odoo admin RPC
 # ============================================================
-log_info "Creating Owner B for Company B..."
+log_info "Creating Owner B for Company B via admin RPC..."
 
-# Create partner for Owner B
-docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF
-    -- Create partner
-    INSERT INTO res_partner (name, email, company_id, create_date, write_date, is_company)
-    VALUES ('MT Test Owner B', 'mt_test_owner_b@example.com', $COMPANY_B_ID, NOW(), NOW(), FALSE)
-    ON CONFLICT (email) DO NOTHING;
-    
-    -- Create user
-    INSERT INTO res_users (login, password, partner_id, company_id, active, create_date, write_date)
-    SELECT 
-        'mt_test_owner_b@example.com',
-        crypt('ownerb123', gen_salt('bf')),
-        p.id,
-        $COMPANY_B_ID,
-        TRUE,
-        NOW(),
-        NOW()
-    FROM res_partner p
-    WHERE p.email = 'mt_test_owner_b@example.com'
-    ON CONFLICT (login) DO NOTHING;
-    
-    -- Get user ID and assign profile
-    UPDATE res_users 
-    SET thedevkitchen_profile = 'owner'
-    WHERE login = 'mt_test_owner_b@example.com';
-EOF
+# Step 1: Admin session login
+ADMIN_DB="${POSTGRES_DB:-realestate}"
+ADMIN_AUTH=$(curl -s -c /tmp/us9s5_admin_cookies.txt -X POST "$BASE_URL/web/session/authenticate" \
+    -H "Content-Type: application/json" \
+    -d "{
+        \"jsonrpc\": \"2.0\",
+        \"method\": \"call\",
+        \"params\": {
+            \"db\": \"$ADMIN_DB\",
+            \"login\": \"admin\",
+            \"password\": \"admin\"
+        },
+        \"id\": 1
+    }")
 
-# Login as Owner B
-OWNER_B_LOGIN=$(curl -s -X POST "$API_BASE/users/login" \
+ADMIN_UID=$(echo "$ADMIN_AUTH" | jq -r '.result.uid // empty')
+if [ -z "$ADMIN_UID" ] || [ "$ADMIN_UID" = "null" ]; then
+    log_error "Admin login failed. Ensure admin/admin credentials are valid."
+    exit 1
+fi
+log_info "Admin authenticated (UID: $ADMIN_UID)"
+
+# Step 2: Create Owner B user via call_kw
+OWNER_B_EMAIL="$(next_email owner_b)"
+OWNER_B_CREATE_RESP=$(curl -s -b /tmp/us9s5_admin_cookies.txt -X POST "$BASE_URL/web/dataset/call_kw" \
+    -H "Content-Type: application/json" \
+    -d "{
+        \"jsonrpc\": \"2.0\",
+        \"method\": \"call\",
+        \"params\": {
+            \"model\": \"res.users\",
+            \"method\": \"create\",
+            \"args\": [{
+                \"name\": \"MT Test Owner B\",
+                \"login\": \"$OWNER_B_EMAIL\",
+                \"password\": \"ownerb123\",
+                \"groups_id\": [[6, 0, [19]]],
+                \"company_id\": $COMPANY_B_ID,
+                \"company_ids\": [[6, 0, [$COMPANY_B_ID]]]
+            }],
+            \"kwargs\": {}
+        },
+        \"id\": 1
+    }")
+
+OWNER_B_USER_ID=$(echo "$OWNER_B_CREATE_RESP" | jq -r '.result // empty')
+
+if [ -z "$OWNER_B_USER_ID" ] || [ "$OWNER_B_USER_ID" = "null" ]; then
+    log_error "Failed to create Owner B via admin RPC. Response: $OWNER_B_CREATE_RESP"
+    cleanup_test_data
+    exit 1
+fi
+log_info "Owner B user created (ID: $OWNER_B_USER_ID)"
+
+# Login as Owner B via our API
+OWNER_B_LOGIN_RESP=$(curl -s -X POST "$API_BASE/users/login" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -d '{
-        "login": "mt_test_owner_b@example.com",
-        "password": "ownerb123"
-    }')
+    -d "{
+        \"login\": \"$OWNER_B_EMAIL\",
+        \"password\": \"ownerb123\"
+    }")
 
 OWNER_B_JWT="$BEARER_TOKEN"
-OWNER_B_SESSION=$(echo "$OWNER_B_LOGIN" | jq -r '.session_id // empty')
-OWNER_B_COMPANY=$(echo "$OWNER_B_LOGIN" | jq -r '.user.default_company_id // empty')
+OWNER_B_SESSION=$(echo "$OWNER_B_LOGIN_RESP" | jq -r '.session_id // empty')
+OWNER_B_COMPANY=$(echo "$OWNER_B_LOGIN_RESP" | jq -r '.user.default_company_id // empty')
 
-if [ -z "$OWNER_B_JWT" ] || [ -z "$OWNER_B_SESSION" ]; then
-    log_error "Failed to authenticate as Owner B"
+if [ -z "$OWNER_B_SESSION" ]; then
+    log_error "Failed to authenticate as Owner B. Response: $OWNER_B_LOGIN_RESP"
     cleanup_test_data
     exit 1
 fi
@@ -292,19 +341,39 @@ COMPANY_B_ID=$OWNER_B_COMPANY
 # ============================================================
 test_scenario "Owner A invites user to Company A successfully"
 
+MANAGER_A_EMAIL="$(next_email manager_a)"
+MANAGER_A_DOCUMENT="$(next_cpf)"
+
+# Create manager profile in Company A
+PROFILE_A_RESP=$(curl -s -X POST "$API_BASE/profiles" \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $OWNER_A_JWT" \
+    -H "X-Openerp-Session-Id: $OWNER_A_SESSION" \
+    -H "X-Company-ID: $COMPANY_A_ID" \
+    -d "{
+        \"profile_type_id\": 3,
+        \"company_id\": $COMPANY_A_ID,
+        \"name\": \"MT Test Manager A\",
+        \"document\": \"$MANAGER_A_DOCUMENT\",
+        \"email\": \"$MANAGER_A_EMAIL\",
+        \"birthdate\": \"1990-01-01\"
+    }")
+
+MANAGER_A_PROFILE_ID=$(echo "$PROFILE_A_RESP" | jq -r '.id')
+if [ -z "$MANAGER_A_PROFILE_ID" ] || [ "$MANAGER_A_PROFILE_ID" = "null" ]; then
+    log_error "Failed to create Manager A profile. Response: $PROFILE_A_RESP"
+fi
+
 INVITE_A_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/invite" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $OWNER_A_JWT" \
     -H "X-Openerp-Session-Id: $OWNER_A_SESSION" \
     -H "X-Company-ID: $COMPANY_A_ID" \
-    -d '{
-        "name": "MT Test Manager A",
-        "email": "mt_test_manager_a@example.com",
-        "document": "52998224725",
-        "profile": "manager"
-    }')
+    -d "{
+        \"profile_id\": $MANAGER_A_PROFILE_ID
+    }")
 
-INVITE_A_BODY=$(echo "$INVITE_A_RESPONSE" | head -n -1)
+INVITE_A_BODY=$(echo "$INVITE_A_RESPONSE" | sed '$d')
 INVITE_A_STATUS=$(echo "$INVITE_A_RESPONSE" | tail -n 1)
 
 assert_status 201 "$INVITE_A_STATUS" "Owner A can invite to Company A"
@@ -326,19 +395,36 @@ assert_sql_result \
 # ============================================================
 test_scenario "Owner B invites user to Company B successfully"
 
+MANAGER_B_EMAIL="$(next_email manager_b)"
+MANAGER_B_DOCUMENT="$(next_cpf)"
+
+# Create manager profile in Company B
+PROFILE_B_RESP=$(curl -s -X POST "$API_BASE/profiles" \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $OWNER_B_JWT" \
+    -H "X-Openerp-Session-Id: $OWNER_B_SESSION" \
+    -H "X-Company-ID: $COMPANY_B_ID" \
+    -d "{
+        \"profile_type_id\": 3,
+        \"company_id\": $COMPANY_B_ID,
+        \"name\": \"MT Test Manager B\",
+        \"document\": \"$MANAGER_B_DOCUMENT\",
+        \"email\": \"$MANAGER_B_EMAIL\",
+        \"birthdate\": \"1990-01-01\"
+    }")
+
+MANAGER_B_PROFILE_ID=$(echo "$PROFILE_B_RESP" | jq -r '.id')
+
 INVITE_B_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/invite" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $OWNER_B_JWT" \
     -H "X-Openerp-Session-Id: $OWNER_B_SESSION" \
     -H "X-Company-ID: $COMPANY_B_ID" \
-    -d '{
-        "name": "MT Test Manager B",
-        "email": "mt_test_manager_b@example.com",
-        "document": "16899535009",
-        "profile": "manager"
-    }')
+    -d "{
+        \"profile_id\": $MANAGER_B_PROFILE_ID
+    }")
 
-INVITE_B_BODY=$(echo "$INVITE_B_RESPONSE" | head -n -1)
+INVITE_B_BODY=$(echo "$INVITE_B_RESPONSE" | sed '$d')
 INVITE_B_STATUS=$(echo "$INVITE_B_RESPONSE" | tail -n 1)
 
 assert_status 201 "$INVITE_B_STATUS" "Owner B can invite to Company B"
@@ -360,11 +446,12 @@ assert_sql_result \
 # ============================================================
 test_scenario "Owner A cannot resend invite for User B (cross-company isolation)"
 
-RESEND_CROSS_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/$USER_B_ID/resend-invite" \
+RESEND_CROSS_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/resend-invite" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $OWNER_A_JWT" \
     -H "X-Openerp-Session-Id: $OWNER_A_SESSION" \
-    -H "X-Company-ID: $COMPANY_A_ID")
+    -H "X-Company-ID: $COMPANY_A_ID" \
+    -d "{\"user_id\": $USER_B_ID}")
 
 RESEND_CROSS_STATUS=$(echo "$RESEND_CROSS_RESPONSE" | tail -n 1)
 
@@ -375,8 +462,8 @@ assert_status 404 "$RESEND_CROSS_STATUS" "Cross-company resend blocked"
 # ============================================================
 log_info "Generating invite token for User A..."
 
-RAW_TOKEN_A="invite-token-a-$(date +%s)"
-TOKEN_HASH_A=$(echo -n "$RAW_TOKEN_A" | sha256sum | awk '{print $1}')
+RAW_TOKEN_A=$(python3 -c 'import uuid; print(uuid.uuid4().hex)')
+TOKEN_HASH_A=$(echo -n "$RAW_TOKEN_A" | shasum -a 256 | awk '{print $1}')
 
 docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF
     UPDATE thedevkitchen_password_token
@@ -416,27 +503,41 @@ assert_status 200 "$SET_PASSWORD_A_STATUS" "User A token works for User A"
 # ============================================================
 test_scenario "Portal user belongs to correct company"
 
+PORTAL_A_EMAIL="$(next_email portal_a)"
+PORTAL_A_DOCUMENT="$(next_cpf)"
+
+# Create tenant profile in Company A
+PORTAL_A_PROFILE_RESP=$(curl -s -X POST "$API_BASE/profiles" \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $OWNER_A_JWT" \
+    -H "X-Openerp-Session-Id: $OWNER_A_SESSION" \
+    -H "X-Company-ID: $COMPANY_A_ID" \
+    -d "{
+        \"profile_type_id\": 9,
+        \"company_id\": $COMPANY_A_ID,
+        \"name\": \"MT Test Portal A\",
+        \"document\": \"$PORTAL_A_DOCUMENT\",
+        \"email\": \"$PORTAL_A_EMAIL\",
+        \"phone\": \"+5511988776655\",
+        \"birthdate\": \"1990-01-01\"
+    }")
+
+PORTAL_A_PROFILE_ID=$(echo "$PORTAL_A_PROFILE_RESP" | jq -r '.id')
+
 PORTAL_A_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/invite" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $OWNER_A_JWT" \
     -H "X-Openerp-Session-Id: $OWNER_A_SESSION" \
     -H "X-Company-ID: $COMPANY_A_ID" \
-    -d '{
-        "name": "MT Test Portal A",
-        "email": "mt_test_portal_a@example.com",
-        "document": "39053344705",
-        "profile": "portal",
-        "phone": "+5511988776655",
-        "birthdate": "1990-01-01",
-        "company_id": '"$COMPANY_A_ID"'
-    }')
+    -d "{
+        \"profile_id\": $PORTAL_A_PROFILE_ID
+    }")
 
-PORTAL_A_BODY=$(echo "$PORTAL_A_RESPONSE" | head -n -1)
+PORTAL_A_BODY=$(echo "$PORTAL_A_RESPONSE" | sed '$d')
 PORTAL_A_STATUS=$(echo "$PORTAL_A_RESPONSE" | tail -n 1)
 
 assert_status 201 "$PORTAL_A_STATUS" "Portal user created in Company A"
 PORTAL_A_USER_ID=$(echo "$PORTAL_A_BODY" | jq -r '.data.id')
-PORTAL_A_TENANT_ID=$(echo "$PORTAL_A_BODY" | jq -r '.data.tenant_id')
 
 # Verify portal user belongs to Company A
 assert_sql_result \
@@ -444,28 +545,28 @@ assert_sql_result \
     "$COMPANY_A_ID" \
     "Portal user belongs to Company A"
 
-# Verify tenant belongs to Company A
+# Verify tenant profile belongs to Company A
 assert_sql_result \
-    "SELECT company_id FROM real_estate_tenant WHERE id = $PORTAL_A_TENANT_ID;" \
+    "SELECT company_id FROM thedevkitchen_estate_profile WHERE id = $PORTAL_A_PROFILE_ID;" \
     "$COMPANY_A_ID" \
-    "Portal tenant belongs to Company A"
+    "Portal profile record belongs to Company A"
 
 # ============================================================
-# Test 9: API session belongs to correct company
+# Test 8: API session belongs to correct company (via user join)
 # ============================================================
 test_scenario "API sessions are company-isolated"
 
-# Verify Owner A session belongs to Company A
+# Verify Owner A session user belongs to Company A
 assert_sql_result \
-    "SELECT company_id FROM thedevkitchen_api_session WHERE session_id = '$OWNER_A_SESSION';" \
+    "SELECT ru.company_id FROM thedevkitchen_api_session s JOIN res_users ru ON ru.id = s.user_id WHERE s.session_id = '$OWNER_A_SESSION' LIMIT 1;" \
     "$COMPANY_A_ID" \
-    "Owner A session belongs to Company A"
+    "Owner A session user belongs to Company A"
 
-# Verify Owner B session belongs to Company B
+# Verify Owner B session user belongs to Company B
 assert_sql_result \
-    "SELECT company_id FROM thedevkitchen_api_session WHERE session_id = '$OWNER_B_SESSION';" \
+    "SELECT ru.company_id FROM thedevkitchen_api_session s JOIN res_users ru ON ru.id = s.user_id WHERE s.session_id = '$OWNER_B_SESSION' LIMIT 1;" \
     "$COMPANY_B_ID" \
-    "Owner B session belongs to Company B"
+    "Owner B session user belongs to Company B"
 
 # ============================================================
 # Test 10: List invites shows only same-company users
@@ -497,8 +598,9 @@ cleanup_test_data
 
 # Exit with appropriate code
 if [ $TESTS_FAILED -gt 0 ]; then
+    echo -e "${RED}❌ TEST FAILED: US9-S5 Multi-Tenancy Isolation${NC}"
     exit 1
 else
-    log_info "All tests passed! ✓"
+    echo -e "${GREEN}✅ TEST PASSED: US9-S5 Multi-Tenancy Isolation${NC}"
     exit 0
 fi

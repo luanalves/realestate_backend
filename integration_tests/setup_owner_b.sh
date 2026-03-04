@@ -41,7 +41,7 @@ BEGIN
     -- Create user
     INSERT INTO res_users (
         login, password, partner_id, company_id, active, notification_type,
-        main_estate_company_id, create_date, write_date, create_uid, write_uid
+        company_id, create_date, write_date, create_uid, write_uid
     ) VALUES (
         'owner2@example.com',
         '$PASSWORD_HASH',
@@ -54,7 +54,7 @@ BEGIN
     ) RETURNING id INTO v_user_id;
     
     -- Associate with estate company via Many2many
-    INSERT INTO thedevkitchen_user_company_rel (user_id, company_id)
+    INSERT INTO res_company_users_rel (user_id, company_id)
     VALUES (v_user_id, 2)
     ON CONFLICT DO NOTHING;
     
@@ -87,13 +87,13 @@ END \$\$;
 SELECT 
     u.id as user_id,
     u.login,
-    u.main_estate_company_id,
+    u.company_id,
     ec.name as estate_company,
     p.id as profile_id,
     pt.code as profile_type,
     CASE WHEN gur.uid IS NOT NULL THEN 'YES' ELSE 'NO' END AS has_owner_group
 FROM res_users u
-LEFT JOIN thedevkitchen_estate_company ec ON u.main_estate_company_id = ec.id
+LEFT JOIN res_company ec ON u.company_id = ec.id
 LEFT JOIN thedevkitchen_estate_profile p ON p.partner_id = u.partner_id
 LEFT JOIN thedevkitchen_profile_type pt ON p.profile_type_id = pt.id
 LEFT JOIN (

@@ -15,7 +15,7 @@ class TestUserCompanyValidatorObserver(TransactionCase):
     def setUpClass(cls):
         super().setUpClass()
         
-        cls.Company = cls.env['thedevkitchen.estate.company']
+        cls.Company = cls.env['res.company']
         cls.User = cls.env['res.users']
         cls.EventBus = cls.env['quicksol.event.bus']
         cls.Observer = cls.env['quicksol.observer.user.company.validator']
@@ -39,7 +39,7 @@ class TestUserCompanyValidatorObserver(TransactionCase):
             'login': 'owner_a@observer.test',
             'email': 'owner_a@observer.test',
             'groups_id': [(6, 0, [cls.owner_group.id])],
-            'estate_company_ids': [(6, 0, [cls.company_a.id])],
+            'company_ids': [(6, 0, [cls.company_a.id])],
         })
     
     def test_observer_can_handle_user_before_create(self):
@@ -60,7 +60,7 @@ class TestUserCompanyValidatorObserver(TransactionCase):
         vals = {
             'name': 'Test User',
             'login': 'test@test.com',
-            'estate_company_ids': [(6, 0, [self.company_a.id])],
+            'company_ids': [(6, 0, [self.company_a.id])],
         }
         
         data = {
@@ -75,7 +75,7 @@ class TestUserCompanyValidatorObserver(TransactionCase):
         vals = {
             'name': 'Invalid User',
             'login': 'invalid@test.com',
-            'estate_company_ids': [(6, 0, [self.company_b.id])],
+            'company_ids': [(6, 0, [self.company_b.id])],
         }
         
         data = {
@@ -95,7 +95,7 @@ class TestUserCompanyValidatorObserver(TransactionCase):
         vals = {
             'name': 'Admin Created User',
             'login': 'admin_user@test.com',
-            'estate_company_ids': [(6, 0, [self.company_b.id])],
+            'company_ids': [(6, 0, [self.company_b.id])],
         }
         
         data = {
@@ -108,7 +108,7 @@ class TestUserCompanyValidatorObserver(TransactionCase):
     def test_observer_handles_odoo_many2many_command_format_6(self):
         """T035.4: Observer correctly extracts company IDs from [(6, 0, [...])] format."""
         vals = {
-            'estate_company_ids': [(6, 0, [self.company_a.id, self.company_b.id])],
+            'company_ids': [(6, 0, [self.company_a.id, self.company_b.id])],
         }
         
         company_ids = self.Observer._extract_company_ids(vals)
@@ -118,7 +118,7 @@ class TestUserCompanyValidatorObserver(TransactionCase):
     def test_observer_handles_odoo_many2many_command_format_4(self):
         """T035.5: Observer correctly extracts company IDs from [(4, id)] format."""
         vals = {
-            'estate_company_ids': [(4, self.company_a.id)],
+            'company_ids': [(4, self.company_a.id)],
         }
         
         company_ids = self.Observer._extract_company_ids(vals)
@@ -141,5 +141,5 @@ class TestUserCompanyValidatorObserver(TransactionCase):
                 'name': 'Should Fail',
                 'login': 'fail@test.com',
                 'email': 'fail@test.com',
-                'estate_company_ids': [(6, 0, [self.company_b.id])],
+                'company_ids': [(6, 0, [self.company_b.id])],
             })

@@ -288,3 +288,44 @@ for partner in partners:
 - [Odoo Programming Guidelines](https://www.odoo.com/documentation/19.0/contributing/development/coding_guidelines.html#programming-in-odoo)
 - [Security Pitfalls](https://www.odoo.com/documentation/19.0/developer/reference/backend/security.html#reference-security-pitfalls)
 - [Scheduled Actions](https://www.odoo.com/documentation/19.0/developer/reference/backend/actions.html#reference-actions-cron)
+
+## Apêndice: `_inherit` Best Practices (Feature 011)
+
+### `_inherit` vs `_inherits` vs `_name` + `_inherit`
+
+| Pattern | Usage | DB Effect |
+|---------|-------|-----------|
+| `_inherit = 'res.company'` (no `_name`) | Add fields/methods to existing model | Adds columns to existing table |
+| `_name = 'new.model'` + `_inherit = 'res.company'` | Create new model copying from base | New table with copied schema |
+| `_inherits = {'res.partner': 'partner_id'}` | Delegation inheritance | New table with FK to parent |
+
+### `is_real_estate` Discriminator Pattern
+
+When extending a native Odoo model (e.g., `res.company`) with domain-specific logic, use a Boolean discriminator field to distinguish your records from native ones:
+
+```python
+class ResCompany(models.Model):
+    _inherit = 'res.company'
+
+    is_real_estate = fields.Boolean(default=False)
+    cnpj = fields.Char(size=18, copy=False)
+    creci = fields.Char()
+```
+
+**Filtering**: Always include `('is_real_estate', '=', True)` in domains when listing real estate companies.
+
+**Record rules**: Add `is_real_estate` to company-self rules so non-RE companies are excluded:
+```xml
+<field name="domain_force">[('is_real_estate','=',True),('id','in',company_ids)]</field>
+```
+
+**Middleware**: The `require_company` decorator filters `user.company_ids` by `is_real_estate` and sets `request.user_company_ids` for controller use.
+
+### Migration: M2M → M2O for Company Fields
+
+When migrating from `company_ids = Many2many(...)` to `company_id = Many2one('res.company', ...)`:
+- Update all domain filters: `('company_ids', 'in', ids)` → `('company_id', 'in', ids)`
+- Update serialization: `record.company_ids.ids` → `record.company_id.id`
+- Update creation vals: remove `company_ids: [(6, 0, [id])]`, use `company_id: id`
+- Keep `user.company_ids` (native M2M on `res.users`)
+

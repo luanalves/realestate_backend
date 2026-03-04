@@ -65,7 +65,7 @@ Property Form Sections:
         # Data files (sequences and master data)
         'data/profile_type_data.xml',  # Feature 010: Profile type lookup table (9 RBAC types)
         'data/location_types.xml',
-        'data/states.xml',
+        # states.xml removed: Feature 011 — use native res.country.state
         'data/property_data.xml',
         'data/amenity_data.xml',
         'data/company_seed.xml',  # Feature 007: Real Estate Companies seed data (REATIVADO)
@@ -74,6 +74,7 @@ Property Form Sections:
         'data/agent_seed.xml',  # Feature 007: Agent seed data (REATIVADO)
         'data/seed_test_company.xml',  # Seed: Imobiliária Seed + todos os perfis para testes
         'data/oauth2_seed.xml',  # Feature 007: OAuth2 test client (REATIVADO)
+        'data/mailhog_smtp_seed.xml',  # Test infra: MailHog SMTP (mailhog:1025) para captura de emails nos testes
         'data/api_endpoints.xml',
         'data/user_auth_endpoints_data.xml',
         'data/system_parameters.xml',

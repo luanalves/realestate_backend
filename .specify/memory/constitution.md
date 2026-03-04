@@ -130,7 +130,7 @@ All features expose RESTful APIs with:
 
 ### IV. Multi-Tenancy by Design (NON-NEGOTIABLE)
 Complete data isolation per real estate company (ADR-008):
-- Users belong to one or more `estate_company_ids`
+- Users belong to one or more `company_ids`
 - All queries filtered by company context via `@require_company`
 - Creation/update operations validate company ownership
 - Record Rules enforce isolation in Odoo Web UI

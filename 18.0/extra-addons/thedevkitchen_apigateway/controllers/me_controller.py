@@ -36,7 +36,7 @@ class MeController(http.Controller):
                     'phone': c.phone or '',
                     'website': c.website or ''
                 }
-                for c in getattr(user, 'estate_company_ids', [])
+                for c in getattr(user, 'company_ids', user.env['res.company']).filtered(lambda c: c.is_real_estate)
             ]
 
             user_data = {
@@ -47,7 +47,7 @@ class MeController(http.Controller):
                 'phone': user.phone or '',
                 'mobile': user.mobile or '',
                 'companies': companies,
-                'default_company_id': user.main_estate_company_id.id if hasattr(user, 'main_estate_company_id') and user.main_estate_company_id else None,
+                'default_company_id': user.company_id.id if hasattr(user, 'company_id') and user.company_id else None,
                 'is_admin': user.has_group('base.group_system'),
                 'active': user.active
             }

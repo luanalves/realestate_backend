@@ -60,6 +60,11 @@ fi
 
 echo "✅ Admin login successful (UID: $ADMIN_UID)"
 
+# Pre-cleanup: nullify CNPJs from previous run to avoid UniqueViolation
+docker compose -f "${SCRIPT_DIR}/../18.0/docker-compose.yml" exec -T db \
+    psql -U odoo -d realestate -c \
+    "UPDATE res_company SET cnpj = NULL WHERE cnpj IN ('11.222.999/0001-30', '55.666.777/0001-81');" > /dev/null 2>&1 || true
+
 # Step 2: Create Company A
 echo ""
 echo "Step 2: Creating Company A..."
@@ -70,11 +75,11 @@ COMPANY_A_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
         \"params\": {
-            \"model\": \"thedevkitchen.estate.company\",
+            \"model\": \"res.company\",
             \"method\": \"create\",
             \"args\": [{
                 \"name\": \"Company A - MT Test ${TIMESTAMP}\",
-                \"cnpj\": \"11.222.333/0001-81\",
+                \"cnpj\": \"11.222.999/0001-30\",
                 \"creci\": \"CRECI-SP 11111\"
             }],
             \"kwargs\": {}
@@ -101,7 +106,7 @@ COMPANY_B_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
         \"params\": {
-            \"model\": \"thedevkitchen.estate.company\",
+            \"model\": \"res.company\",
             \"method\": \"create\",
             \"args\": [{
                 \"name\": \"Company B - MT Test ${TIMESTAMP}\",
@@ -139,8 +144,9 @@ OWNER_A_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"login\": \"$OWNER_A_LOGIN\",
                 \"password\": \"owner123\",
                 \"groups_id\": [[6, 0, [19]]],
-                \"estate_company_ids\": [[6, 0, [$COMPANY_A_ID]]],
-                \"main_estate_company_id\": $COMPANY_A_ID
+                \"company_id\": $COMPANY_A_ID,
+                \"company_ids\": [[6, 0, [$COMPANY_A_ID]]],
+                \"company_id\": $COMPANY_A_ID
             }],
             \"kwargs\": {}
         },
@@ -173,8 +179,9 @@ OWNER_B_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"login\": \"$OWNER_B_LOGIN\",
                 \"password\": \"owner123\",
                 \"groups_id\": [[6, 0, [19]]],
-                \"estate_company_ids\": [[6, 0, [$COMPANY_B_ID]]],
-                \"main_estate_company_id\": $COMPANY_B_ID
+                \"company_id\": $COMPANY_B_ID,
+                \"company_ids\": [[6, 0, [$COMPANY_B_ID]]],
+                \"company_id\": $COMPANY_B_ID
             }],
             \"kwargs\": {}
         },
@@ -226,7 +233,7 @@ OWNER_A_COMPANIES=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
         \"params\": {
-            \"model\": \"thedevkitchen.estate.company\",
+            \"model\": \"res.company\",
             \"method\": \"search_read\",
             \"args\": [[], [\"id\", \"name\"]],
             \"kwargs\": {}
@@ -291,7 +298,7 @@ OWNER_B_COMPANIES=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
         \"params\": {
-            \"model\": \"thedevkitchen.estate.company\",
+            \"model\": \"res.company\",
             \"method\": \"search_read\",
             \"args\": [[], [\"id\", \"name\"]],
             \"kwargs\": {}

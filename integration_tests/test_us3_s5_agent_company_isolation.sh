@@ -38,7 +38,8 @@ def calc_cnpj_digit(cnpj, weights):
     remainder = s % 11
     return '0' if remainder < 2 else str(11 - remainder)
 
-base = "24681357"
+import time
+base = str((int(time.time()) + 11) % 100000000).zfill(8)
 branch = "0001"
 cnpj_partial = base + branch
 w1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
@@ -57,7 +58,8 @@ def calc_cnpj_digit(cnpj, weights):
     remainder = s % 11
     return '0' if remainder < 2 else str(11 - remainder)
 
-base = "86420975"
+import time
+base = str((int(time.time()) + 17) % 100000000).zfill(8)
 branch = "0001"
 cnpj_partial = base + branch
 w1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
@@ -118,7 +120,7 @@ COMPANY_A_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
         \"params\": {
-            \"model\": \"thedevkitchen.estate.company\",
+            \"model\": \"res.company\",
             \"method\": \"create\",
             \"args\": [{
                 \"name\": \"$COMPANY_A_NAME\",
@@ -139,7 +141,7 @@ COMPANY_B_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
         \"params\": {
-            \"model\": \"thedevkitchen.estate.company\",
+            \"model\": \"res.company\",
             \"method\": \"create\",
             \"args\": [{
                 \"name\": \"$COMPANY_B_NAME\",
@@ -172,7 +174,8 @@ AGENT_A_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"name\": \"Agent A US3S5\",
                 \"login\": \"$AGENT_A_LOGIN\",
                 \"password\": \"agent123\",
-                \"estate_company_ids\": [[6, 0, [$COMPANY_A_ID]]],
+                \"company_id\": $COMPANY_A_ID,
+                \"company_ids\": [[6, 0, [$COMPANY_A_ID]]],
                 \"groups_id\": [[6, 0, [23]]]
             }],
             \"kwargs\": {}
@@ -182,6 +185,19 @@ AGENT_A_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
 
 AGENT_A_UID=$(echo "$AGENT_A_RESPONSE" | jq -r '.result // empty')
 echo "✅ Agent A created: UID=$AGENT_A_UID (assigned to Company A)"
+
+CPF_AGENT_A=$(python3 << 'CPFEOF'
+def calc_cpf_digit(cpf, weights):
+    s = sum(int(d) * w for d, w in zip(cpf, weights))
+    remainder = s % 11
+    return '0' if remainder < 2 else str(11 - remainder)
+import time
+base = str((int(time.time()) + 31) % 1000000000).zfill(9)
+d1 = calc_cpf_digit(base, range(10, 1, -1))
+d2 = calc_cpf_digit(base + d1, range(11, 1, -1))
+print(f"{base[0:3]}.{base[3:6]}.{base[6:9]}-{d1}{d2}")
+CPFEOF
+)
 
 # Create real.estate.agent record for Agent A
 AGENT_A_RECORD_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
@@ -196,8 +212,8 @@ AGENT_A_RECORD_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
             \"args\": [{
                 \"name\": \"Agent A US3S5\",
                 \"user_id\": $AGENT_A_UID,
-                \"cpf\": \"111.222.333-44\",
-                \"company_ids\": [[6, 0, [$COMPANY_A_ID]]]
+                \"cpf\": \"$CPF_AGENT_A\",
+                \"company_id\": $COMPANY_A_ID
             }],
             \"kwargs\": {}
         },
@@ -220,7 +236,8 @@ AGENT_B_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"name\": \"Agent B US3S5\",
                 \"login\": \"$AGENT_B_LOGIN\",
                 \"password\": \"agent123\",
-                \"estate_company_ids\": [[6, 0, [$COMPANY_B_ID]]],
+                \"company_id\": $COMPANY_B_ID,
+                \"company_ids\": [[6, 0, [$COMPANY_B_ID]]],
                 \"groups_id\": [[6, 0, [23]]]
             }],
             \"kwargs\": {}
@@ -230,6 +247,19 @@ AGENT_B_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
 
 AGENT_B_UID=$(echo "$AGENT_B_RESPONSE" | jq -r '.result // empty')
 echo "✅ Agent B created: UID=$AGENT_B_UID (assigned to Company B)"
+
+CPF_AGENT_B=$(python3 << 'CPFEOF'
+def calc_cpf_digit(cpf, weights):
+    s = sum(int(d) * w for d, w in zip(cpf, weights))
+    remainder = s % 11
+    return '0' if remainder < 2 else str(11 - remainder)
+import time
+base = str((int(time.time()) + 37) % 1000000000).zfill(9)
+d1 = calc_cpf_digit(base, range(10, 1, -1))
+d2 = calc_cpf_digit(base + d1, range(11, 1, -1))
+print(f"{base[0:3]}.{base[3:6]}.{base[6:9]}-{d1}{d2}")
+CPFEOF
+)
 
 # Create real.estate.agent record for Agent B
 AGENT_B_RECORD_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
@@ -244,8 +274,8 @@ AGENT_B_RECORD_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
             \"args\": [{
                 \"name\": \"Agent B US3S5\",
                 \"user_id\": $AGENT_B_UID,
-                \"cpf\": \"555.666.777-88\",
-                \"company_ids\": [[6, 0, [$COMPANY_B_ID]]]
+                \"cpf\": \"$CPF_AGENT_B\",
+                \"company_id\": $COMPANY_B_ID
             }],
             \"kwargs\": {}
         },
@@ -313,7 +343,7 @@ STATE_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
         \"params\": {
-            \"model\": \"real.estate.state\",
+            \"model\": \"res.country.state\",
             \"method\": \"search_read\",
             \"args\": [[]],
             \"kwargs\": {
@@ -357,7 +387,7 @@ for i in 1 2 3; do
                     \"area\": 80.0,
                     \"price\": 300000.0,
                     \"property_status\": \"available\",
-                    \"company_ids\": [[6, 0, [$COMPANY_A_ID]]],
+                    \"company_id\": $COMPANY_A_ID,
                     \"agent_id\": $AGENT_A_ID
                 }],
                 \"kwargs\": {}
@@ -394,7 +424,7 @@ for i in 1 2; do
                     \"area\": 150.0,
                     \"price\": 500000.0,
                     \"property_status\": \"available\",
-                    \"company_ids\": [[6, 0, [$COMPANY_B_ID]]],
+                    \"company_id\": $COMPANY_B_ID,
                     \"agent_id\": $AGENT_B_ID
                 }],
                 \"kwargs\": {}
@@ -449,7 +479,7 @@ AGENT_A_PROPS=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
             \"method\": \"search_read\",
             \"args\": [[]],
             \"kwargs\": {
-                \"fields\": [\"id\", \"name\", \"company_ids\", \"agent_id\"]
+                \"fields\": [\"id\", \"name\", \"company_id\", \"agent_id\"]
             }
         },
         \"id\": 12
@@ -469,7 +499,7 @@ fi
 # Verify all visible properties belong to Company A
 ALL_FROM_COMPANY_A=true
 for prop_id in $AGENT_A_PROPS_IDS; do
-    COMPANY_OF_PROP=$(echo "$AGENT_A_PROPS" | jq -r ".result[] | select(.id == $prop_id) | .company_ids[0] // empty")
+    COMPANY_OF_PROP=$(echo "$AGENT_A_PROPS" | jq -r ".result[] | select(.id == $prop_id) | .company_id[0] // empty")
     if [ "$COMPANY_OF_PROP" != "$COMPANY_A_ID" ]; then
         ALL_FROM_COMPANY_A=false
         echo "⚠️  Property $prop_id not from Company A (company: $COMPANY_OF_PROP)"
@@ -555,7 +585,7 @@ AGENT_B_PROPS=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
             \"method\": \"search_read\",
             \"args\": [[]],
             \"kwargs\": {
-                \"fields\": [\"id\", \"name\", \"company_ids\", \"agent_id\"]
+                \"fields\": [\"id\", \"name\", \"company_id\", \"agent_id\"]
             }
         },
         \"id\": 15
@@ -573,7 +603,7 @@ fi
 AGENT_B_PROPS_IDS=$(echo "$AGENT_B_PROPS" | jq -r '.result[].id')
 ALL_FROM_COMPANY_B=true
 for prop_id in $AGENT_B_PROPS_IDS; do
-    COMPANY_OF_PROP=$(echo "$AGENT_B_PROPS" | jq -r ".result[] | select(.id == $prop_id) | .company_ids[0] // empty")
+    COMPANY_OF_PROP=$(echo "$AGENT_B_PROPS" | jq -r ".result[] | select(.id == $prop_id) | .company_id[0] // empty")
     if [ "$COMPANY_OF_PROP" != "$COMPANY_B_ID" ]; then
         ALL_FROM_COMPANY_B=false
     fi

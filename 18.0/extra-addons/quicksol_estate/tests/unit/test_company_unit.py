@@ -24,7 +24,7 @@ class TestCompanyUnit(BaseCompanyTest):
         
         # Create mock company with relationships
         self.company_with_relations = self.create_mock_record(
-            'thedevkitchen.estate.company',
+            'res.company',
             {
                 **self.mock_company_data,
                 'property_ids': [1, 2, 3],
@@ -49,7 +49,7 @@ class TestCompanyUnit(BaseCompanyTest):
         }
         
         # Act
-        company = self.create_mock_record('thedevkitchen.estate.company', company_data)
+        company = self.create_mock_record('res.company', company_data)
         
         # Assert
         self.assertEqual(company.name, 'Premium Real Estate')
@@ -68,7 +68,7 @@ class TestCompanyUnit(BaseCompanyTest):
             {'id': 3, 'name': 'Property 3'}
         ]
         
-        company = self.create_mock_record('thedevkitchen.estate.company', {
+        company = self.create_mock_record('res.company', {
             'name': 'Test Company',
             'property_ids': mock_properties
         })
@@ -88,7 +88,7 @@ class TestCompanyUnit(BaseCompanyTest):
             {'id': 2, 'name': 'Agent 2'}
         ]
         
-        company = self.create_mock_record('thedevkitchen.estate.company', {
+        company = self.create_mock_record('res.company', {
             'name': 'Test Company', 
             'agent_ids': mock_agents
         })
@@ -103,7 +103,7 @@ class TestCompanyUnit(BaseCompanyTest):
         """Test computed field for lease count"""
         
         # Arrange
-        company = self.create_mock_record('thedevkitchen.estate.company', {
+        company = self.create_mock_record('res.company', {
             'name': 'Test Company',
             'lease_ids': [{'id': 1, 'start_date': date(2024, 1, 1)}]
         })
@@ -118,7 +118,7 @@ class TestCompanyUnit(BaseCompanyTest):
         """Test computed field for sale count"""
         
         # Arrange
-        company = self.create_mock_record('thedevkitchen.estate.company', {
+        company = self.create_mock_record('res.company', {
             'name': 'Test Company',
             'sale_ids': [{'id': 1, 'sale_date': date(2024, 6, 15)}]
         })
@@ -150,7 +150,7 @@ class TestCompanyUnit(BaseCompanyTest):
         for raw_cnpj, expected_formatted in test_cases:
             with self.subTest(cnpj=raw_cnpj):
                 # Act - Create mock company record and simulate CNPJ formatting
-                company = self.create_mock_record('thedevkitchen.estate.company', {
+                company = self.create_mock_record('res.company', {
                     'name': 'Test Company',
                     'cnpj': raw_cnpj
                 })
@@ -174,7 +174,7 @@ class TestCompanyUnit(BaseCompanyTest):
         for invalid_cnpj in invalid_cnpjs:
             with self.subTest(cnpj=invalid_cnpj):
                 # Arrange
-                company = self.create_mock_record('thedevkitchen.estate.company', {
+                company = self.create_mock_record('res.company', {
                     'name': 'Test Company',
                     'cnpj': invalid_cnpj
                 })
@@ -301,7 +301,7 @@ class TestCompanyUnit(BaseCompanyTest):
         """Test default values are properly set"""
         
         # Arrange & Act
-        company = self.create_mock_record('thedevkitchen.estate.company', {
+        company = self.create_mock_record('res.company', {
             'name': 'Test Company'
             # Not setting active field to test default
         })
@@ -317,7 +317,7 @@ class TestCompanyUnit(BaseCompanyTest):
         """Test company name display"""
         
         # Arrange
-        company = self.create_mock_record('thedevkitchen.estate.company', {
+        company = self.create_mock_record('res.company', {
             'name': 'Premium Real Estate Solutions'
         })
         
@@ -332,7 +332,7 @@ class TestCompanyUnit(BaseCompanyTest):
         """Test Many2many relationships with other models"""
         
         # Arrange
-        company = self.create_mock_record('thedevkitchen.estate.company', {
+        company = self.create_mock_record('res.company', {
             'name': 'Relationship Test Company'
         })
         
@@ -361,12 +361,12 @@ class TestCompanyBusinessLogic(BaseCompanyTest):
         """Test filtering of active companies"""
         
         # Arrange
-        active_company = self.create_mock_record('thedevkitchen.estate.company', {
+        active_company = self.create_mock_record('res.company', {
             'name': 'Active Company',
             'active': True
         })
         
-        inactive_company = self.create_mock_record('thedevkitchen.estate.company', {
+        inactive_company = self.create_mock_record('res.company', {
             'name': 'Inactive Company', 
             'active': False
         })
@@ -383,7 +383,7 @@ class TestCompanyBusinessLogic(BaseCompanyTest):
         """Test data integrity constraints"""
         
         # Arrange & Act
-        company = self.create_mock_record('thedevkitchen.estate.company', {
+        company = self.create_mock_record('res.company', {
             'name': 'Data Integrity Test',
             'email': 'test@integrity.com',
             'phone': '+55 11 9999-8888'

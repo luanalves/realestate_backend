@@ -15,7 +15,7 @@ class TestRBACPortal(TransactionCase):
     def setUpClass(cls):
         super().setUpClass()
         
-        cls.Company = cls.env['thedevkitchen.estate.company']
+        cls.Company = cls.env['res.company']
         cls.Property = cls.env['real.estate.property']
         cls.Sale = cls.env['real.estate.sale']
         cls.Lease = cls.env['real.estate.lease']
@@ -63,7 +63,7 @@ class TestRBACPortal(TransactionCase):
         cls.property_type = cls.env['real.estate.property.type'].create({
             'name': 'Apartment',
         })
-        cls.state = cls.env['real.estate.state'].create({
+        cls.state = cls.env['res.country.state'].create({
             'name': 'São Paulo',
             'code': 'SP',
         })

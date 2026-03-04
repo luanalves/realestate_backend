@@ -2636,7 +2636,7 @@
                 }
               ]
             },
-            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\n**IMPORTANT:** For GET requests, session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in body.\n\nList all companies the user has access to. Returns only companies in user's estate_company_ids."
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active\n\n**IMPORTANT:** For GET requests, session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in body.\n\nList all companies the user has access to. Returns only companies in user's company_ids."
           }
         },
         {

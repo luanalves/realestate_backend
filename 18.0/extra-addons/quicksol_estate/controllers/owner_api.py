@@ -78,6 +78,7 @@ class OwnerApiController(http.Controller):
             owner_group = request.env.ref('quicksol_estate.group_real_estate_owner')
             
             # Prepare user data (T015)
+            default_company = request.env.company
             user_vals = {
                 'name': data['name'],
                 'login': data['email'],
@@ -85,7 +86,8 @@ class OwnerApiController(http.Controller):
                 'password': data['password'],
                 'cpf': data['cpf'],
                 'groups_id': [(6, 0, [owner_group.id])],  # Assign group_real_estate_owner
-                'estate_company_ids': [(6, 0, [])],  # FR-009: Start with no companies
+                'company_id': default_company.id,
+                'company_ids': [(6, 0, [default_company.id])],  # FR-009: Start with default company
             }
             
             # Optional fields
@@ -105,7 +107,7 @@ class OwnerApiController(http.Controller):
                 'cpf': new_owner.cpf,
                 'phone': new_owner.phone,
                 'mobile': new_owner.mobile,
-                'company_count': len(new_owner.estate_company_ids),
+                'company_count': len(new_owner.company_ids),
                 'companies': []
             }
             
@@ -164,23 +166,23 @@ class OwnerApiController(http.Controller):
                 return error_response(400, 'Missing required field: company_id')
             
             # Get company
-            company = request.env['thedevkitchen.estate.company'].sudo().browse(company_id)
+            company = request.env['res.company'].sudo().browse(company_id)
             
             if not company.exists() or not company.active:
                 return error_response(404, 'Company not found')
             
             # RBAC Check (FR-020): User must be Owner of target company
             if not user.has_group('base.group_system'):
-                if company_id not in user.estate_company_ids.ids:
+                if company_id not in user.company_ids.ids:
                     return error_response(403, 'You can only link Owners to your own companies')
             
             # Check if already linked
-            if company_id in owner.estate_company_ids.ids:
+            if company_id in owner.company_ids.ids:
                 return error_response(409, f"Owner already linked to company '{company.name}'")
             
             # Link owner to company
             owner.write({
-                'estate_company_ids': [(4, company_id)]  # Add to Many2many
+                'company_ids': [(4, company_id)]  # Add to Many2many
             })
             
             # Response
@@ -188,8 +190,8 @@ class OwnerApiController(http.Controller):
                 'id': owner.id,
                 'name': owner.name,
                 'email': owner.email,
-                'company_count': len(owner.estate_company_ids),
-                'companies': [{'id': c.id, 'name': c.name} for c in owner.estate_company_ids]
+                'company_count': len(owner.company_ids),
+                'companies': [{'id': c.id, 'name': c.name} for c in owner.company_ids]
             }
             
             links = build_hateoas_links('/api/v1/owners', owner_id, {'companies': '/companies'})
@@ -229,25 +231,25 @@ class OwnerApiController(http.Controller):
                 return error_response(404, 'Owner not found')
             
             # Get company
-            company = request.env['thedevkitchen.estate.company'].sudo().browse(company_id)
+            company = request.env['res.company'].sudo().browse(company_id)
             
             if not company.exists():
                 return error_response(404, 'Company not found')
             
             # RBAC Check (FR-020)
             if not user.has_group('base.group_system'):
-                if company_id not in user.estate_company_ids.ids:
+                if company_id not in user.company_ids.ids:
                     return error_response(403, 'You can only unlink Owners from your own companies')
             
             # Check if owner is linked to company
-            if company_id not in owner.estate_company_ids.ids:
+            if company_id not in owner.company_ids.ids:
                 return error_response(404, f"Owner not linked to company '{company.name}'")
             
             # Last Owner Protection (FR-031)
             # Count active owners of this company (excluding current owner)
             active_owners_count = request.env['res.users'].sudo().search_count([
                 ('groups_id', 'in', [owner_group.id]),
-                ('estate_company_ids', 'in', [company_id]),
+                ('company_ids', 'in', [company_id]),
                 ('active', '=', True),
                 ('id', '!=', owner_id)
             ])
@@ -260,7 +262,7 @@ class OwnerApiController(http.Controller):
             
             # Unlink owner from company
             owner.write({
-                'estate_company_ids': [(3, company_id)]  # Remove from Many2many
+                'company_ids': [(3, company_id)]  # Remove from Many2many
             })
             
             # Response
@@ -268,8 +270,8 @@ class OwnerApiController(http.Controller):
                 'id': owner.id,
                 'name': owner.name,
                 'email': owner.email,
-                'company_count': len(owner.estate_company_ids),
-                'companies': [{'id': c.id, 'name': c.name} for c in owner.estate_company_ids]
+                'company_count': len(owner.company_ids),
+                'companies': [{'id': c.id, 'name': c.name} for c in owner.company_ids]
             }
             
             links = build_hateoas_links('/api/v1/owners', owner_id)

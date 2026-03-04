@@ -79,7 +79,7 @@
                                 </group>
                                 <group>
                                     <field name="agent_id"/>
-                                    <field name="company_ids" widget="many2many_tags"/>
+                                    <field name="company_id"/>
                                 </group>
                             </group>
                             
@@ -435,7 +435,7 @@
                 <field name="num_bathrooms" optional="hide"/>
                 <field name="owner_id" optional="show"/>
                 <field name="agent_id" optional="show"/>
-                <field name="company_ids" widget="many2many_tags" optional="hide"/>
+                <field name="company_id" optional="hide"/>
                 <field name="for_sale" widget="boolean" optional="hide"/>
                 <field name="for_rent" widget="boolean" optional="hide"/>
             </list>

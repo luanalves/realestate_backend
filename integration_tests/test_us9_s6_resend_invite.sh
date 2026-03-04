@@ -104,17 +104,20 @@ cleanup_test_data() {
     
     # SQL cleanup script
     docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF
-        -- Delete test users
-        DELETE FROM res_users WHERE login LIKE 'resend_test_%@example.com';
-        
-        -- Delete test partners
-        DELETE FROM res_partner WHERE email LIKE 'resend_test_%@example.com';
-        
         -- Delete test tokens
         DELETE FROM thedevkitchen_password_token 
         WHERE user_id IN (
             SELECT id FROM res_users WHERE login LIKE 'resend_test_%@example.com'
         );
+        
+        -- Delete test profiles
+        DELETE FROM thedevkitchen_estate_profile WHERE email LIKE 'resend_test_%@example.com';
+        
+        -- Delete test users
+        DELETE FROM res_users WHERE login LIKE 'resend_test_%@example.com';
+        
+        -- Delete test partners
+        DELETE FROM res_partner WHERE email LIKE 'resend_test_%@example.com';
 EOF
     
     log_info "Cleanup completed"
@@ -163,24 +166,68 @@ fi
 
 log_info "Authentication successful"
 
+# Generate unique CPFs for this test run
+RESEND_CPF1=$(python3 -c "
+import time, random
+base = str((int(time.time()) + random.randint(1,99999) + 300) % 1000000000).zfill(9)
+def d(cpf, w):
+    s = sum(int(c)*w for c,w in zip(cpf,w))
+    r = s%11
+    return '0' if r<2 else str(11-r)
+d1 = d(base, range(10,1,-1))
+d2 = d(base+d1, range(11,1,-1))
+print(base+d1+d2)
+")
+RESEND_CPF2=$(python3 -c "
+import time, random
+base = str((int(time.time()) + random.randint(100000,199999) + 500) % 1000000000).zfill(9)
+def d(cpf, w):
+    s = sum(int(c)*w for c,w in zip(cpf,w))
+    r = s%11
+    return '0' if r<2 else str(11-r)
+d1 = d(base, range(10,1,-1))
+d2 = d(base+d1, range(11,1,-1))
+print(base+d1+d2)
+")
+
 # ============================================================
 # Test 1: Resend invite to pending user → 200 with new token
 # ============================================================
 test_scenario "Resend invite to pending user returns 200 with new token and invalidates old token"
 
-# Step 1: Create a pending user via invite
+# Step 1: Create a pending user via profile + invite
 log_info "  Step 1: Creating pending user..."
+
+# Create profile first
+PROFILE_RESPONSE=$(curl -s -X POST "$API_BASE/profiles" \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $BEARER_TOKEN" \
+    -H "X-Openerp-Session-Id: $SESSION_ID" \
+    -d "{
+        \"name\": \"Resend Test Agent\",
+        \"company_id\": $OWNER_COMPANY_ID,
+        \"document\": \"$RESEND_CPF1\",
+        \"email\": \"resend_test_agent@example.com\",
+        \"phone\": \"+5511988776655\",
+        \"birthdate\": \"1990-01-15\",
+        \"profile_type_id\": 4
+    }")
+
+PROFILE_ID=$(echo "$PROFILE_RESPONSE" | jq -r '.id // empty')
+if [ -z "$PROFILE_ID" ] || [ "$PROFILE_ID" = "null" ]; then
+    log_error "Failed to create profile for resend test"
+    echo "Response: $PROFILE_RESPONSE"
+    cleanup_test_data
+    exit 1
+fi
+
+# Invite using profile_id
 INVITE_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/invite" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
     -H "X-Openerp-Session-Id: $SESSION_ID" \
     -H "X-Company-ID: $OWNER_COMPANY_ID" \
-    -d '{
-        "name": "Resend Test Agent",
-        "email": "resend_test_agent@example.com",
-        "document": "52998224725",
-        "profile": "agent"
-    }')
+    -d "{\"profile_id\": $PROFILE_ID}")
 
 INVITE_BODY=$(echo "$INVITE_RESPONSE" | sed '$d')
 INVITE_STATUS=$(echo "$INVITE_RESPONSE" | tail -n 1)
@@ -204,11 +251,12 @@ sleep 2
 
 # Step 2: Resend invite
 log_info "  Step 2: Resending invite..."
-RESEND_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/$USER_ID/resend-invite" \
+RESEND_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/resend-invite" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
     -H "X-Openerp-Session-Id: $SESSION_ID" \
-    -H "X-Company-ID: $OWNER_COMPANY_ID")
+    -H "X-Company-ID: $OWNER_COMPANY_ID" \
+    -d "{\"user_id\": $USER_ID}")
 
 RESEND_BODY=$(echo "$RESEND_RESPONSE" | sed '$d')
 RESEND_STATUS=$(echo "$RESEND_RESPONSE" | tail -n 1)
@@ -258,18 +306,29 @@ test_scenario "Resend invite to active user returns 400 with forgot-password sug
 # Step 1: Create and activate a user
 log_info "  Step 1: Creating and activating user..."
 
-# Create pending user
+# Create pending user via profile + invite
+ACTIVE_PROFILE_RESPONSE=$(curl -s -X POST "$API_BASE/profiles" \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $BEARER_TOKEN" \
+    -H "X-Openerp-Session-Id: $SESSION_ID" \
+    -d "{
+        \"name\": \"Resend Test Active\",
+        \"company_id\": $OWNER_COMPANY_ID,
+        \"document\": \"$RESEND_CPF2\",
+        \"email\": \"resend_test_active@example.com\",
+        \"phone\": \"+5511988776655\",
+        \"birthdate\": \"1990-01-15\",
+        \"profile_type_id\": 4
+    }")
+
+ACTIVE_PROFILE_ID=$(echo "$ACTIVE_PROFILE_RESPONSE" | jq -r '.id // empty')
+
 ACTIVE_INVITE_RESPONSE=$(curl -s -X POST "$API_BASE/users/invite" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
     -H "X-Openerp-Session-Id: $SESSION_ID" \
     -H "X-Company-ID: $OWNER_COMPANY_ID" \
-    -d '{
-        "name": "Resend Test Active",
-        "email": "resend_test_active@example.com",
-        "document": "98765432100",
-        "profile": "agent"
-    }')
+    -d "{\"profile_id\": $ACTIVE_PROFILE_ID}")
 
 ACTIVE_USER_ID=$(echo "$ACTIVE_INVITE_RESPONSE" | jq -r '.data.id // empty')
 
@@ -281,11 +340,12 @@ log_info "  Created and activated user ID: $ACTIVE_USER_ID"
 
 # Step 2: Try to resend invite to active user
 log_info "  Step 2: Attempting to resend invite to active user..."
-ACTIVE_RESEND_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/$ACTIVE_USER_ID/resend-invite" \
+ACTIVE_RESEND_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/resend-invite" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
     -H "X-Openerp-Session-Id: $SESSION_ID" \
-    -H "X-Company-ID: $OWNER_COMPANY_ID")
+    -H "X-Company-ID: $OWNER_COMPANY_ID" \
+    -d "{\"user_id\": $ACTIVE_USER_ID}")
 
 ACTIVE_RESEND_BODY=$(echo "$ACTIVE_RESEND_RESPONSE" | sed '$d')
 ACTIVE_RESEND_STATUS=$(echo "$ACTIVE_RESEND_RESPONSE" | tail -n 1)
@@ -312,11 +372,12 @@ test_scenario "Resend invite to user from different company returns 404"
 log_info "  Testing with non-existent user ID (simulates other company)..."
 
 FOREIGN_USER_ID=999999
-OTHER_COMPANY_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/$FOREIGN_USER_ID/resend-invite" \
+OTHER_COMPANY_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/users/resend-invite" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
     -H "X-Openerp-Session-Id: $SESSION_ID" \
-    -H "X-Company-ID: $OWNER_COMPANY_ID")
+    -H "X-Company-ID: $OWNER_COMPANY_ID" \
+    -d "{\"user_id\": $FOREIGN_USER_ID}")
 
 OTHER_COMPANY_BODY=$(echo "$OTHER_COMPANY_RESPONSE" | sed '$d')
 OTHER_COMPANY_STATUS=$(echo "$OTHER_COMPANY_RESPONSE" | tail -n 1)

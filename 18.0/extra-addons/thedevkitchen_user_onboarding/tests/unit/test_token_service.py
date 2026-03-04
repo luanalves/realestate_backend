@@ -44,7 +44,7 @@ class TestTokenService(TransactionCase):
                 "name": "Token Test User",
                 "email": "token@test.com",
                 "signup_pending": True,
-                "estate_company_ids": [(6, 0, [self.company.id])],
+                "company_ids": [(6, 0, [self.company.id])],
             }
         )
 

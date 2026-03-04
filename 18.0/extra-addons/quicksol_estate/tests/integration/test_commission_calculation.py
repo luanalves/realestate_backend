@@ -28,14 +28,14 @@ class TestCommissionCalculation(TransactionCase):
         super().setUp()
         
         # Create companies with valid CNPJs
-        self.company_a = self.env['thedevkitchen.estate.company'].create({
+        self.company_a = self.env['res.company'].create({
             'name': 'Imobiliária Alpha',
             'cnpj': '12.345.678/0001-95',  # Valid CNPJ with check digits
             'street': 'Rua Alpha, 100',
             'city': 'São Paulo',
         })
         
-        self.company_b = self.env['thedevkitchen.estate.company'].create({
+        self.company_b = self.env['res.company'].create({
             'name': 'Imobiliária Beta',
             'cnpj': '98.765.432/0001-98',  # Valid CNPJ with check digits
             'street': 'Rua Beta, 200',

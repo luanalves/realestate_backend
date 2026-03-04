@@ -2,21 +2,23 @@
 from odoo.http import request
 
 
-def error_response(status_code, message, error_type='error'):
-    """
-    Helper to return standardized JSON error response.
-    
-    Args:
-        status_code: HTTP status code (400, 401, 404, 500, etc.)
-        message: Error message to display
-        error_type: Type of error (default: 'error')
-        
-    Returns:
-        JSON response with error details
-        
-    Example:
-        return error_response(404, 'Property not found')
-    """
+def error_response(arg1, arg2=None, arg3='error'):
+
+    # Detect argument order by finding which arg is an int
+    if isinstance(arg1, int):
+        status_code, message, error_type = arg1, str(arg2), str(arg3)
+    elif isinstance(arg2, int):
+        status_code, message, error_type = arg2, str(arg1), str(arg3)
+    elif isinstance(arg3, int):
+        status_code, message, error_type = arg3, str(arg2), str(arg1)
+    else:
+        # Fallback: arg1=status_code (might be numeric string), arg2=message
+        try:
+            status_code = int(arg1)
+            message, error_type = str(arg2), str(arg3)
+        except (ValueError, TypeError):
+            status_code, message, error_type = 500, str(arg1), str(arg2 or 'error')
+
     return request.make_json_response({
         'error': error_type,
         'message': message,
@@ -25,17 +27,5 @@ def error_response(status_code, message, error_type='error'):
 
 
 def success_response(data, status_code=200):
-    """
-    Helper to return standardized JSON success response.
-    
-    Args:
-        data: Data to return (dict, list, etc.)
-        status_code: HTTP status code (default: 200)
-        
-    Returns:
-        JSON response with data
-        
-    Example:
-        return success_response({'id': 1, 'name': 'Property'}, 201)
-    """
+
     return request.make_json_response(data, status=status_code)

@@ -6,15 +6,7 @@ from datetime import date
 
 
 class BaseCompanyTest(unittest.TestCase):
-    """
-    Base class for Company model unit tests.
-    
-    Provides:
-    - Company-specific test data and mocks
-    - Helper methods for company testing scenarios
-    - CNPJ validation utilities
-    """
-    
+
     def setUp(self):
         super().setUp()
         
@@ -32,8 +24,9 @@ class BaseCompanyTest(unittest.TestCase):
             'cnpj': '12.345.678/0001-90',
             'address': 'Test Address, 123',
             'city': 'São Paulo',
-            'state_id': cls.env['real.estate.state'].search([('code', '=', 'SP')], limit=1).id,
-            'zip_code': '01234-567',
+            'state_id': 1,  # Feature 011: native res.country.state
+            'zip': '01234-567',
+            'is_real_estate': True,
             'active': True,
             'property_count': 5,
             'agent_count': 3,
@@ -65,7 +58,7 @@ class BaseCompanyTest(unittest.TestCase):
         for key, value in company_data.items():
             setattr(company, key, value)
         
-        company._name = 'thedevkitchen.estate.company'
+        company._name = 'res.company'
         company.exists = Mock(return_value=company)
         company.ensure_one = Mock(return_value=None)
         

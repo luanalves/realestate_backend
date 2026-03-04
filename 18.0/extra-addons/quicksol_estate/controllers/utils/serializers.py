@@ -2,19 +2,7 @@
 
 
 def serialize_property(property_record):
-    """
-    Converts a real.estate.property record to JSON dict.
-    
-    Args:
-        property_record: real.estate.property record
-        
-    Returns:
-        dict: JSON-serializable dictionary with property details
-        
-    Example:
-        property = env['real.estate.property'].browse(1)
-        data = serialize_property(property)
-    """
+
     if not property_record:
         return None
     
@@ -35,8 +23,8 @@ def serialize_property(property_record):
             'email': property_record.agent_id.email or ''
         } if property_record.agent_id else None,
         'company': {
-            'id': property_record.company_ids[0].id if property_record.company_ids else None,
-            'name': property_record.company_ids[0].name if property_record.company_ids else None
+            'id': property_record.company_id.id if property_record.company_id else None,
+            'name': property_record.company_id.name if property_record.company_id else None
         },
         'address': {
             'street': property_record.street or '',
@@ -70,22 +58,7 @@ def serialize_property(property_record):
 
 
 def validate_property_access(property_record, user, operation='read'):
-    """
-    Validates if user has access to the property based on security groups.
-    
-    Args:
-        property_record: real.estate.property record
-        user: res.users record
-        operation: 'read', 'write', 'delete'
-        
-    Returns:
-        tuple: (bool, str) - (has_access, error_message)
-        
-    Example:
-        has_access, error = validate_property_access(property, request.env.user, 'write')
-        if not has_access:
-            return error_response(403, error)
-    """
+
     # Admin has full access
     if user.has_group('base.group_system'):
         return True, None
@@ -93,9 +66,9 @@ def validate_property_access(property_record, user, operation='read'):
     # Manager: access to properties of their companies
     if user.has_group('quicksol_estate.group_real_estate_manager'):
         user_companies = set(user.company_ids.ids)
-        property_companies = set(property_record.company_ids.ids)
+        property_company = property_record.company_id.id if property_record.company_id else None
         
-        if property_companies & user_companies:
+        if property_company and property_company in user_companies:
             return True, None
         return False, 'Property does not belong to your companies'
     
@@ -114,9 +87,9 @@ def validate_property_access(property_record, user, operation='read'):
             return False, 'Users cannot delete properties'
         
         user_companies = set(user.company_ids.ids)
-        property_companies = set(property_record.company_ids.ids)
+        property_company = property_record.company_id.id if property_record.company_id else None
         
-        if property_companies & user_companies:
+        if property_company and property_company in user_companies:
             return True, None
         return False, 'Property does not belong to your companies'
     

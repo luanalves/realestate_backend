@@ -297,7 +297,7 @@ class TestCnpjValidations(BaseValidationTest):
         for raw_cnpj, expected_formatted in self.valid_cnpjs:
             with self.subTest(cnpj=raw_cnpj):
                 # Arrange
-                company = self.create_mock_record('thedevkitchen.estate.company', {
+                company = self.create_mock_record('res.company', {
                     'name': 'Test Company',
                     'cnpj': raw_cnpj
                 })
@@ -321,7 +321,7 @@ class TestCnpjValidations(BaseValidationTest):
         for cnpj in self.invalid_cnpjs:
             with self.subTest(cnpj=cnpj):
                 # Arrange
-                company = self.create_mock_record('thedevkitchen.estate.company', {
+                company = self.create_mock_record('res.company', {
                     'name': 'Test Company',
                     'cnpj': cnpj
                 })
@@ -348,7 +348,7 @@ class TestCnpjValidations(BaseValidationTest):
         for cnpj in formatted_cnpjs:
             with self.subTest(cnpj=cnpj):
                 # Arrange
-                company = self.create_mock_record('thedevkitchen.estate.company', {
+                company = self.create_mock_record('res.company', {
                     'name': 'Test Company',
                     'cnpj': cnpj
                 })
@@ -369,7 +369,7 @@ class TestCnpjValidations(BaseValidationTest):
         for empty_val in empty_values:
             with self.subTest(empty_value=empty_val):
                 # Arrange
-                company = self.create_mock_record('thedevkitchen.estate.company', {
+                company = self.create_mock_record('res.company', {
                     'name': 'Test Company',
                     'cnpj': empty_val
                 })
@@ -400,7 +400,7 @@ class TestFieldRequiredValidations(BaseValidationTest):
         
         # Test with all required fields
         valid_data = {'name': 'Test Company'}
-        company = self.create_mock_record('thedevkitchen.estate.company', valid_data)
+        company = self.create_mock_record('res.company', valid_data)
         self.assertTrue(company.name, "Company name should be present")
         
         # Test missing required field - use actual Odoo validation if available
@@ -408,7 +408,7 @@ class TestFieldRequiredValidations(BaseValidationTest):
             # Real Odoo validation test
             invalid_data = {'email': 'test@company.com'}  # Missing required 'name'
             with self.assertRaises(ValidationError):
-                self.env['thedevkitchen.estate.company'].create(invalid_data)
+                self.env['res.company'].create(invalid_data)
         else:
             # Fallback for mock-based testing
             invalid_data = {'email': 'test@company.com'}  # Missing required 'name'

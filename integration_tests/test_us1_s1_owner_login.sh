@@ -60,6 +60,11 @@ fi
 
 echo "✅ Admin login successful (UID: $ADMIN_UID)"
 
+# Pre-cleanup: nullify CNPJ from previous run to avoid UniqueViolation
+docker compose -f "${SCRIPT_DIR}/../18.0/docker-compose.yml" exec -T db \
+    psql -U odoo -d realestate -c \
+    "UPDATE res_company SET cnpj = NULL WHERE cnpj = '12.345.999/0001-90';" > /dev/null 2>&1 || true
+
 # Step 2: Create Company A (via JSON-RPC)
 echo ""
 echo "Step 2: Creating Company A..."
@@ -70,11 +75,11 @@ COMPANY_A_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
         \"jsonrpc\": \"2.0\",
         \"method\": \"call\",
         \"params\": {
-            \"model\": \"thedevkitchen.estate.company\",
+            \"model\": \"res.company\",
             \"method\": \"create\",
             \"args\": [{
                 \"name\": \"Company A - RBAC Test ${TIMESTAMP}\",
-                \"cnpj\": \"12.345.678/0001-95\",
+                \"cnpj\": \"12.345.999/0001-90\",
                 \"creci\": \"CRECI-SP 99999\"
             }],
             \"kwargs\": {}
@@ -109,8 +114,9 @@ OWNER_USER_RESPONSE=$(curl -s -X POST "$BASE_URL/web/dataset/call_kw" \
                 \"login\": \"$OWNER_LOGIN\",
                 \"password\": \"owner123\",
                 \"groups_id\": [[6, 0, [19]]],
-                \"estate_company_ids\": [[6, 0, [$COMPANY_A_ID]]],
-                \"main_estate_company_id\": $COMPANY_A_ID
+                \"company_id\": $COMPANY_A_ID,
+                \"company_ids\": [[6, 0, [$COMPANY_A_ID]]],
+                \"company_id\": $COMPANY_A_ID
             }],
             \"kwargs\": {}
         },

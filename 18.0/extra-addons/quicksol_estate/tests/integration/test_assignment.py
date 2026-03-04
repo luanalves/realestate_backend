@@ -16,18 +16,18 @@ class TestAgentPropertyAssignment(TransactionCase):
         super().setUp()
         
         # Get or create test companies
-        self.company_a = self.env['thedevkitchen.estate.company'].search([('name', '=', 'Company A Test')], limit=1)
+        self.company_a = self.env['res.company'].search([('name', '=', 'Company A Test')], limit=1)
         if not self.company_a:
-            self.company_a = self.env['thedevkitchen.estate.company'].create({
+            self.company_a = self.env['res.company'].create({
                 'name': 'Company A Test',
                 'cnpj': '12.345.678/0001-95',
                 'email': 'companya@test.com',
                 'phone': '+55 11 1111-1111',
             })
         
-        self.company_b = self.env['thedevkitchen.estate.company'].search([('name', '=', 'Company B Test')], limit=1)
+        self.company_b = self.env['res.company'].search([('name', '=', 'Company B Test')], limit=1)
         if not self.company_b:
-            self.company_b = self.env['thedevkitchen.estate.company'].create({
+            self.company_b = self.env['res.company'].create({
                 'name': 'Company B Test',
                 'cnpj': '98.765.432/0001-98',
                 'email': 'companyb@test.com',
@@ -77,7 +77,7 @@ class TestAgentPropertyAssignment(TransactionCase):
             'company_ids': [(6, 0, [self.company_a.id])],
             'property_type_id': self.property_type_house.id,
             'location_type_id': self.location_type_urban.id,
-            'state_id': self.env['real.estate.state'].search([], limit=1).id,
+            'state_id': self.env['res.country.state'].search([], limit=1).id,
             'price': 250000.00,
             'area': 100.0,
             'num_rooms': 3,
@@ -94,7 +94,7 @@ class TestAgentPropertyAssignment(TransactionCase):
             'company_ids': [(6, 0, [self.company_b.id])],
             'property_type_id': self.property_type_apartment.id,
             'location_type_id': self.location_type_urban.id,
-            'state_id': self.env['real.estate.state'].search([], limit=1).id,
+            'state_id': self.env['res.country.state'].search([], limit=1).id,
             'price': 180000.00,
             'area': 75.0,
             'num_rooms': 2,
@@ -170,7 +170,7 @@ class TestAgentPropertyAssignment(TransactionCase):
             'company_ids': [(6, 0, [self.company_a.id])],
             'property_type_id': self.env['real.estate.property.type'].search([], limit=1).id,
             'location_type_id': self.env['real.estate.location.type'].search([], limit=1).id,
-            'state_id': self.env['real.estate.state'].search([], limit=1).id,
+            'state_id': self.env['res.country.state'].search([], limit=1).id,
             'price': 300000.00,
             'area': 120.0,
             'num_rooms': 4,

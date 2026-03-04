@@ -15,7 +15,7 @@ class TestProspectorAutoAssignObserver(TransactionCase):
     def setUpClass(cls):
         super().setUpClass()
         
-        cls.Company = cls.env['thedevkitchen.estate.company']
+        cls.Company = cls.env['res.company']
         cls.Property = cls.env['real.estate.property']
         cls.Agent = cls.env['real.estate.agent']
         cls.User = cls.env['res.users']
@@ -35,7 +35,7 @@ class TestProspectorAutoAssignObserver(TransactionCase):
             'login': 'prospector_obs@test.com',
             'email': 'prospector_obs@test.com',
             'groups_id': [(6, 0, [cls.prospector_group.id])],
-            'estate_company_ids': [(6, 0, [cls.company_a.id])],
+            'company_ids': [(6, 0, [cls.company_a.id])],
         })
         
         cls.prospector_agent = cls.Agent.create({
@@ -51,7 +51,7 @@ class TestProspectorAutoAssignObserver(TransactionCase):
             'login': 'manager_obs@test.com',
             'email': 'manager_obs@test.com',
             'groups_id': [(6, 0, [cls.manager_group.id])],
-            'estate_company_ids': [(6, 0, [cls.company_a.id])],
+            'company_ids': [(6, 0, [cls.company_a.id])],
         })
         
         cls.observer = ProspectorAutoAssignObserver()
@@ -126,7 +126,7 @@ class TestProspectorAutoAssignObserver(TransactionCase):
             'login': 'prospector_no_agent@test.com',
             'email': 'prospector_no_agent@test.com',
             'groups_id': [(6, 0, [self.prospector_group.id])],
-            'estate_company_ids': [(6, 0, [self.company_a.id])],
+            'company_ids': [(6, 0, [self.company_a.id])],
         })
         
         vals = {

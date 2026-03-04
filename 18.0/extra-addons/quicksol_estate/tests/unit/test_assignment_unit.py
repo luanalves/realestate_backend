@@ -257,16 +257,16 @@ class TestAssignmentDefaultCompany(unittest.TestCase):
         self.assertEqual(company_id, 10)
         
     def test_default_company_from_user(self):
-        """Default company from user's estate_default_company_id"""
+        """Default company from user's company_id"""
         # Arrange
         user = MagicMock()
-        user.estate_default_company_id = 20
+        user.company_id = 20
         context = {}
         
         # Act
         company_id = context.get('default_company_id')
-        if not company_id and hasattr(user, 'estate_default_company_id'):
-            company_id = user.estate_default_company_id
+        if not company_id and hasattr(user, 'company_id'):
+            company_id = user.company_id
             
         # Assert
         self.assertEqual(company_id, 20)
@@ -275,7 +275,7 @@ class TestAssignmentDefaultCompany(unittest.TestCase):
         """Default company falls back to first company in database"""
         # Arrange
         context = {}
-        user = MagicMock(spec=[])  # No estate_default_company_id
+        user = MagicMock(spec=[])  # No company_id
         first_company = MagicMock()
         first_company.id = 1
         available_companies = [first_company]

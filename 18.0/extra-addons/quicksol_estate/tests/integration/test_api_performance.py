@@ -49,8 +49,8 @@ class TestAgentAPIPerformance(HttpCase):
             ])],
         })
         
-        # Set estate_default_company_id for multi-tenancy
-        cls.user.estate_default_company_id = cls.company
+        # Set company_id for multi-tenancy
+        cls.user.company_id = cls.company
         
         # Create OAuth2 application for authentication
         cls.oauth_app = cls.env['oauth.application'].sudo().create({

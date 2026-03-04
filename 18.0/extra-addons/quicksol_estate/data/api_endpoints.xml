@@ -1490,7 +1490,7 @@ Returns: Owner object with id, name, email, cpf, phone, mobile, company_count, c
 
 **Security:**
 - Requires JWT + Session + Company authentication
-- Multi-tenancy: User can only access leases from companies in their `estate_company_ids`
+- Multi-tenancy: User can only access leases from companies in their `company_ids`
 - Agents: Transitive RBAC — only see leases on their assigned properties
 
 **State Machine — Lease Status:**
@@ -1894,7 +1894,7 @@ Returns: Owner object with id, name, email, cpf, phone, mobile, company_count, c
 
 **Security:**
 - Requires JWT + Session + Company authentication
-- Multi-tenancy: User can only access sales from companies in their `estate_company_ids`
+- Multi-tenancy: User can only access sales from companies in their `company_ids`
 - Agents: Transitive RBAC — only see sales on their assigned properties
 
 **Query Parameters:**

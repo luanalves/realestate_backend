@@ -3,7 +3,7 @@ import json
 import logging
 from odoo import http
 from odoo.http import request
-from odoo.exceptions import AccessError, ValidationError
+from odoo.exceptions import AccessError, ValidationError, UserError
 from .utils.auth import require_jwt
 from .utils.response import error_response, success_response
 from odoo.addons.thedevkitchen_apigateway.middleware import require_session, require_company
@@ -56,7 +56,7 @@ class CompanyApiController(http.Controller):
                 data['cnpj'] = format_cnpj(data['cnpj'])
                 
                 # Check CNPJ uniqueness (FR-025, T030) - including soft-deleted
-                existing_company = request.env['thedevkitchen.estate.company'].sudo().search([
+                existing_company = request.env['res.company'].sudo().search([
                     ('cnpj', '=', data['cnpj'])
                 ], limit=1)
                 
@@ -76,12 +76,17 @@ class CompanyApiController(http.Controller):
             # Prepare company data
             company_vals = {
                 'name': data['name'],
+                'is_real_estate': True,  # Feature 011: discriminator flag
             }
+            
+            # Feature 011: zip_code (API) ↔ zip (res.company)
+            if 'zip_code' in data and data['zip_code'] is not None:
+                company_vals['zip'] = data['zip_code']
             
             # Optional fields
             optional_fields = [
                 'cnpj', 'creci', 'legal_name', 'email', 'phone', 'mobile',
-                'website', 'street', 'street2', 'city', 'state_id', 'zip_code',
+                'website', 'street', 'street2', 'city', 'state_id',
                 'country_id', 'foundation_date', 'description'
             ]
             
@@ -90,12 +95,12 @@ class CompanyApiController(http.Controller):
                     company_vals[field] = data[field]
             
             # Create company
-            new_company = request.env['thedevkitchen.estate.company'].sudo().create(company_vals)
+            new_company = request.env['res.company'].sudo().create(company_vals)
             
-            # Auto-linkage (FR-016, T031): Add company to creator's estate_company_ids
+            # Auto-linkage (FR-016, T031): Add company to creator's company_ids
             if not user.has_group('base.group_system'):  # Skip for admin
                 user.sudo().write({
-                    'estate_company_ids': [(4, new_company.id)]
+                    'company_ids': [(4, new_company.id)]
                 })
             
             # Build response with HATEOAS links
@@ -133,9 +138,19 @@ class CompanyApiController(http.Controller):
             
             return request.make_json_response(response, status=status)
             
-        except ValidationError as e:
-            _logger.warning(f"Validation error creating company: {str(e)}")
-            return error_response(400, str(e))
+        except (ValidationError, UserError) as e:
+            err_msg = str(e)
+            _logger.warning(f"Validation error creating company: {err_msg}")
+            # CHK037: CNPJ uniqueness violation MUST return structured 400, not 500
+            if 'cnpj' in err_msg.lower() or 'unique' in err_msg.lower():
+                return request.make_json_response({
+                    'success': False,
+                    'error': {
+                        'code': 'cnpj_duplicate',
+                        'message': 'CNPJ já cadastrado'
+                    }
+                }, status=400)
+            return error_response(400, err_msg)
         except Exception as e:
             _logger.error(f"Error creating company: {str(e)}", exc_info=True)
             return error_response(500, 'Internal server error')
@@ -160,21 +175,22 @@ class CompanyApiController(http.Controller):
             if page < 1 or page_size < 1:
                 return error_response(400, 'Page and page_size must be positive integers')
             
-            # Multi-tenancy filter (FR-037)
+            # Multi-tenancy filter (FR-037) + Feature 011: is_real_estate filter
             if user.has_group('base.group_system'):
-                domain = [('active', '=', True)]
+                domain = [('is_real_estate', '=', True), ('active', '=', True)]
             else:
                 domain = [
-                    ('id', 'in', user.estate_company_ids.ids),
+                    ('id', 'in', user.company_ids.ids),
+                    ('is_real_estate', '=', True),
                     ('active', '=', True)
                 ]
             
             # Count total
-            total = request.env['thedevkitchen.estate.company'].sudo().search_count(domain)
+            total = request.env['res.company'].sudo().search_count(domain)
             
             # Get paginated results
             offset = (page - 1) * page_size
-            companies = request.env['thedevkitchen.estate.company'].sudo().search(
+            companies = request.env['res.company'].sudo().search(
                 domain,
                 limit=page_size,
                 offset=offset,
@@ -228,14 +244,14 @@ class CompanyApiController(http.Controller):
             user = request.env.user
             
             # Get company
-            company = request.env['thedevkitchen.estate.company'].sudo().browse(company_id)
+            company = request.env['res.company'].sudo().browse(company_id)
             
             if not company.exists() or not company.active:
                 return error_response(404, 'Company not found')
             
             # Multi-tenancy check (FR-039: return 404 for inaccessible)
             if not user.has_group('base.group_system'):
-                if company_id not in user.estate_company_ids.ids:
+                if company_id not in user.company_ids.ids:
                     return error_response(404, 'Company not found')
             
             # Serialize company
@@ -254,12 +270,12 @@ class CompanyApiController(http.Controller):
                 'city': company.city,
                 'state_id': company.state_id.id if company.state_id else None,
                 'state': company.state_id.name if company.state_id else None,
-                'zip_code': company.zip_code,
+                'zip_code': company.zip,  # Feature 011: zip (res.company) → zip_code (API)
                 'foundation_date': company.foundation_date.isoformat() if company.foundation_date else None,
                 'description': company.description,
                 'property_count': company.property_count,
                 'agent_count': company.agent_count,
-                'tenant_count': company.tenant_count,
+                'owner_count': company.owner_count,
                 'lease_count': company.lease_count,
             }
             
@@ -297,14 +313,14 @@ class CompanyApiController(http.Controller):
             user = request.env.user
             
             # Get company
-            company = request.env['thedevkitchen.estate.company'].sudo().browse(company_id)
+            company = request.env['res.company'].sudo().browse(company_id)
             
             if not company.exists() or not company.active:
                 return error_response(404, 'Company not found')
             
             # RBAC Check: User must be Owner of this company or Admin
             if not user.has_group('base.group_system'):
-                if company_id not in user.estate_company_ids.ids:
+                if company_id not in user.company_ids.ids:
                     return error_response(404, 'Company not found')
                 
                 # Verify user is Owner (not just Manager/Agent)
@@ -333,7 +349,7 @@ class CompanyApiController(http.Controller):
                 formatted_cnpj = format_cnpj(data['cnpj'])
                 
                 # Check uniqueness (excluding current company)
-                existing = request.env['thedevkitchen.estate.company'].sudo().search([
+                existing = request.env['res.company'].sudo().search([
                     ('cnpj', '=', formatted_cnpj),
                     ('id', '!=', company_id)
                 ], limit=1)
@@ -353,10 +369,14 @@ class CompanyApiController(http.Controller):
                     return error_response(400, f"Invalid CRECI format: {data['creci']}")
                 update_vals['creci'] = data['creci']
             
+            # Feature 011: zip_code (API) → zip (res.company)
+            if 'zip_code' in data:
+                update_vals['zip'] = data['zip_code']
+            
             # Other optional fields
             optional_fields = [
                 'legal_name', 'phone', 'mobile', 'website', 'street', 'street2',
-                'city', 'state_id', 'zip_code', 'country_id', 'foundation_date',
+                'city', 'state_id', 'country_id', 'foundation_date',
                 'description'
             ]
             
@@ -390,9 +410,19 @@ class CompanyApiController(http.Controller):
             
             return request.make_json_response(response, status=status)
             
-        except ValidationError as e:
-            _logger.warning(f"Validation error updating company {company_id}: {str(e)}")
-            return error_response(400, str(e))
+        except (ValidationError, UserError) as e:
+            err_msg = str(e)
+            _logger.warning(f"Validation error updating company {company_id}: {err_msg}")
+            # CHK037: CNPJ uniqueness violation MUST return structured 400, not 500
+            if 'cnpj' in err_msg.lower() or 'unique' in err_msg.lower():
+                return request.make_json_response({
+                    'success': False,
+                    'error': {
+                        'code': 'cnpj_duplicate',
+                        'message': 'CNPJ já cadastrado'
+                    }
+                }, status=400)
+            return error_response(400, err_msg)
         except Exception as e:
             _logger.error(f"Error updating company {company_id}: {str(e)}", exc_info=True)
             return error_response(500, 'Internal server error')
@@ -408,14 +438,14 @@ class CompanyApiController(http.Controller):
             user = request.env.user
             
             # Get company
-            company = request.env['thedevkitchen.estate.company'].sudo().browse(company_id)
+            company = request.env['res.company'].sudo().browse(company_id)
             
             if not company.exists() or not company.active:
                 return error_response(404, 'Company not found')
             
             # RBAC Check
             if not user.has_group('base.group_system'):
-                if company_id not in user.estate_company_ids.ids:
+                if company_id not in user.company_ids.ids:
                     return error_response(404, 'Company not found')
                 
                 if not user.has_group('quicksol_estate.group_real_estate_owner'):
@@ -446,17 +476,17 @@ class CompanyApiController(http.Controller):
             user = request.env.user
             
             # Validate company exists and is active
-            company = request.env['thedevkitchen.estate.company'].sudo().browse(company_id)
+            company = request.env['res.company'].sudo().browse(company_id)
             
             if not company.exists() or not company.active:
                 return error_response(404, 'Company not found')
             
             # Multi-tenancy validation (ADR-008): User must have access to company
             if not user.has_group('base.group_system'):
-                if company_id not in user.estate_company_ids.ids:
+                if company_id not in user.company_ids.ids:
                     _logger.warning(
                         f'User {user.login} (id={user.id}) attempted to access properties of '
-                        f'unauthorized company {company_id}. Allowed: {user.estate_company_ids.ids}'
+                        f'unauthorized company {company_id}. Allowed: {user.company_ids.ids}'
                     )
                     return error_response(404, 'Company not found')
             
@@ -470,9 +500,9 @@ class CompanyApiController(http.Controller):
             if page < 1 or page_size < 1:
                 return error_response(400, 'Page and page_size must be positive integers')
             
-            # Build base domain (company filter)
+            # Build base domain (company filter — Feature 011: M2O)
             domain = [
-                ('company_ids', 'in', [company_id]),
+                ('company_id', '=', company_id),
                 ('active', '=', True)
             ]
             

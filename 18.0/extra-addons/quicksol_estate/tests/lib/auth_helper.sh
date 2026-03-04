@@ -27,7 +27,7 @@ get_oauth_token() {
         return 1
     fi
     
-    local oauth_response=$(curl -s -X POST "${base_url}/api/v1/auth/token" \
+    local oauth_response=$(curl -s --max-time 30 -X POST "${base_url}/api/v1/auth/token" \
         -H "Content-Type: application/json" \
         -d "{\"grant_type\":\"client_credentials\",\"client_id\":\"${client_id}\",\"client_secret\":\"${client_secret}\"}")
     
@@ -69,7 +69,7 @@ user_login() {
         return 1
     fi
     
-    local login_response=$(curl -s -X POST "${base_url}/api/v1/users/login" \
+    local login_response=$(curl -s --max-time 30 -X POST "${base_url}/api/v1/users/login" \
         -H "Authorization: Bearer ${oauth_token}" \
         -H "Content-Type: application/json" \
         -d "{\"email\":\"${email}\",\"password\":\"${password}\"}")
@@ -137,7 +137,7 @@ make_api_request() {
         return 1
     fi
     
-    local curl_cmd="curl -s -X ${method} ${base_url}${endpoint}"
+    local curl_cmd="curl -s --max-time 30 -X ${method} ${base_url}${endpoint}"
     curl_cmd="${curl_cmd} -H \"Authorization: Bearer ${OAUTH_TOKEN}\""
     curl_cmd="${curl_cmd} -H \"X-Openerp-Session-Id: ${USER_SESSION_ID}\""
     curl_cmd="${curl_cmd} -H \"Content-Type: application/json\""

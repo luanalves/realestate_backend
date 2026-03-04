@@ -311,12 +311,18 @@ def require_company(func):
             request.user_company_ids = []  # Admin has access to all companies
             return func(*args, **kwargs)
 
-        if not user.estate_company_ids:
-            _logger.warning(f'User {user.login} has no companies')
+        # Feature 011: Use native company_ids, filter by is_real_estate
+        re_companies = user.company_ids.filtered(lambda c: c.is_real_estate)
+        if not re_companies:
+            _logger.warning(f'User {user.login} has no real estate companies')
             return _error_response(403, 'no_company', 'User has no company access')
 
-        request.company_domain = [('company_ids', 'in', user.estate_company_ids.ids)]
-        request.user_company_ids = user.estate_company_ids.ids
+        request.company_domain = [('company_id', 'in', re_companies.ids)]
+        request.user_company_ids = re_companies.ids
+
+        # Set Odoo company context to user's current company if it's a RE company
+        if user.company_id and user.company_id.is_real_estate:
+            request.update_env(context={'allowed_company_ids': [user.company_id.id]})
 
         return func(*args, **kwargs)
 

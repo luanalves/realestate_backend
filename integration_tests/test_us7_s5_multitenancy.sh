@@ -19,6 +19,38 @@ source "${SCRIPT_DIR}/lib/get_auth_headers.sh"
 
 BASE_URL="${BASE_URL:-http://localhost:8069}"
 
+# Generate dynamic CNPJ with valid check digits
+generate_cnpj() {
+  local base="$1"
+  python3 -c "
+b='${base}'[:8]; br='0001'; d=b+br
+w1=[5,4,3,2,9,8,7,6,5,4,3,2]; s=sum(int(d[i])*w1[i] for i in range(12)); r=s%11; d1=0 if r<2 else 11-r
+d+=str(d1)
+w2=[6]+w1; s=sum(int(d[i])*w2[i] for i in range(13)); r=s%11; d2=0 if r<2 else 11-r
+d+=str(d2)
+print(d)
+"
+}
+
+# Generate dynamic CPF with valid check digits
+generate_cpf() {
+  local base="$1"
+  python3 -c "
+b='${base}'[:9]
+s=sum(int(b[i])*(10-i) for i in range(9)); r=s%11; d1=0 if r<2 else 11-r
+s=sum(int(b[i])*(11-i) for i in range(9))+d1*2; r=s%11; d2=0 if r<2 else 11-r
+print(f'{b[:3]}.{b[3:6]}.{b[6:9]}-{d1}{d2}')
+"
+}
+
+# Generate unique document bases using timestamp
+TS_DOC=$(date +%s)
+CNPJ_A=$(generate_cnpj "$(printf '%08d' $(( (TS_DOC % 90000000) + 10000100 )) )")
+CNPJ_B=$(generate_cnpj "$(printf '%08d' $(( (TS_DOC % 90000000) + 10000101 )) )")
+CPF_OWNER_A=$(generate_cpf "$(printf '%09d' $(( (TS_DOC % 900000000) + 100000100 )) )")
+CPF_OWNER_B=$(generate_cpf "$(printf '%09d' $(( (TS_DOC % 900000000) + 100000101 )) )")
+CPF_OWNER_C=$(generate_cpf "$(printf '%09d' $(( (TS_DOC % 900000000) + 100000102 )) )")
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -31,7 +63,8 @@ echo "============================================"
 
 # Step 1: Get full authentication (JWT + session)
 echo "Step 1: Getting authentication (OAuth2 + session)..."
-get_full_auth
+# Pass Owner credentials directly (company creation requires Owner role)
+get_full_auth "owner@seed.com.br" "seed123"
 
 if [ $? -ne 0 ]; then
   echo -e "${RED}✗ Failed to authenticate${NC}"
@@ -40,6 +73,11 @@ fi
 
 echo -e "${GREEN}✓ Authentication successful (JWT: ${#ACCESS_TOKEN} chars, UID: ${ADMIN_UID})${NC}"
 ADMIN_TOKEN="$ACCESS_TOKEN"
+
+# Pre-cleanup: remove companies with static names from previous runs (name has UNIQUE constraint)
+docker compose -f "${SCRIPT_DIR}/../18.0/docker-compose.yml" exec -T db \
+    psql -U odoo -d realestate -c \
+    "UPDATE res_company SET name = 'deleted_' || id || '_' || name, active = false WHERE name IN ('Multi-Tenancy Company A', 'Multi-Tenancy Company B');" > /dev/null 2>&1 || true
 
 # Step 2: Create Company A
 echo ""
@@ -50,10 +88,11 @@ COMPANY_A_RESPONSE=$(curl -s -X POST "${BASE_URL}/api/v1/companies" \
   -b ${SESSION_COOKIE_FILE} \
   -d '{
     "name": "Multi-Tenancy Company A",
-    "cnpj": "65434055750154",
+    "cnpj": "'"$CNPJ_A"'",
     "email": "companya@multitenancy.com",
     "phone": "11444555666"
   }')
+
 
 COMPANY_A_ID=$(echo "$COMPANY_A_RESPONSE" | jq -r '.data.id // empty')
 
@@ -73,7 +112,7 @@ COMPANY_B_RESPONSE=$(curl -s -X POST "${BASE_URL}/api/v1/companies" \
   -b ${SESSION_COOKIE_FILE} \
   -d '{
     "name": "Multi-Tenancy Company B",
-    "cnpj": "19874055750158",
+    "cnpj": "'"$CNPJ_B"'",
     "email": "companyb@multitenancy.com",
     "phone": "11555666777"
   }')
@@ -87,17 +126,21 @@ fi
 
 echo -e "${GREEN}✓ Company B created: ID=${COMPANY_B_ID}${NC}"
 
+TIMESTAMP=$(date +%s)
+
 # Step 4: Create Owner for Company A only
 echo ""
 echo "Step 4: Creating Owner A (linked only to Company A)..."
 OWNER_A_RESPONSE=$(curl -s -X POST "${BASE_URL}/api/v1/owners" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+  -b ${SESSION_COOKIE_FILE} \
   -d "{
-    \"name\": \"Owner A\",
-    \"email\": \"ownera@multitenancy.com\",
+    \"name\": \"Owner A ${TIMESTAMP}\",
+    \"email\": \"ownera${TIMESTAMP}@multitenancy.com\",
     \"password\": \"ownerA123\",
-    \"phone\": \"11666777888\"
+    \"phone\": \"11666777888\",
+    \"cpf\": \"${CPF_OWNER_A}\"
   }")
 
 OWNER_A_ID=$(echo "$OWNER_A_RESPONSE" | jq -r '.data.id // empty')
@@ -133,11 +176,13 @@ echo "Step 5: Creating Owner B (linked only to Company B)..."
 OWNER_B_RESPONSE=$(curl -s -X POST "${BASE_URL}/api/v1/owners" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+  -b ${SESSION_COOKIE_FILE} \
   -d "{
-    \"name\": \"Owner B\",
-    \"email\": \"ownerb@multitenancy.com\",
+    \"name\": \"Owner B ${TIMESTAMP}\",
+    \"email\": \"ownerb${TIMESTAMP}@multitenancy.com\",
     \"password\": \"ownerB123\",
-    \"phone\": \"11777888999\"
+    \"phone\": \"11777888999\",
+    \"cpf\": \"${CPF_OWNER_B}\"
   }")
 
 OWNER_B_ID=$(echo "$OWNER_B_RESPONSE" | jq -r '.data.id // empty')
@@ -180,7 +225,8 @@ echo -e "${GREEN}✓ Using OAuth token for Owner A${NC}"
 echo ""
 echo "Test 1 (T055): Owner A tries to access Company B → 404"
 OWNER_A_ACCESS_B=$(curl -s -w "\n%{http_code}" -X GET "${BASE_URL}/api/v1/companies/${COMPANY_B_ID}" \
-  -H "Authorization: Bearer ${OWNER_A_TOKEN}")
+  -H "Authorization: Bearer ${OWNER_A_TOKEN}" \
+  -b ${SESSION_COOKIE_FILE})
 
 HTTP_CODE=$(echo "$OWNER_A_ACCESS_B" | tail -n 1)
 
@@ -196,7 +242,8 @@ fi
 echo ""
 echo "Test 2 (T054): Owner A tries to access Owner B → 404"
 OWNER_A_ACCESS_OWNER_B=$(curl -s -w "\n%{http_code}" -X GET "${BASE_URL}/api/v1/owners/${OWNER_B_ID}" \
-  -H "Authorization: Bearer ${OWNER_A_TOKEN}")
+  -H "Authorization: Bearer ${OWNER_A_TOKEN}" \
+  -b ${SESSION_COOKIE_FILE})
 
 HTTP_CODE=$(echo "$OWNER_A_ACCESS_OWNER_B" | tail -n 1)
 
@@ -210,7 +257,8 @@ fi
 echo ""
 echo "Test 3: Owner A can access own Company A → 200"
 OWNER_A_ACCESS_A=$(curl -s -w "\n%{http_code}" -X GET "${BASE_URL}/api/v1/companies/${COMPANY_A_ID}" \
-  -H "Authorization: Bearer ${OWNER_A_TOKEN}")
+  -H "Authorization: Bearer ${OWNER_A_TOKEN}" \
+  -b ${SESSION_COOKIE_FILE})
 
 HTTP_CODE=$(echo "$OWNER_A_ACCESS_A" | tail -n 1)
 
@@ -226,11 +274,13 @@ echo "Step 7: Creating Owner C (linked to both Company A and B)..."
 OWNER_C_RESPONSE=$(curl -s -X POST "${BASE_URL}/api/v1/owners" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+  -b ${SESSION_COOKIE_FILE} \
   -d "{
-    \"name\": \"Owner C Multi-Company\",
-    \"email\": \"ownerc@multitenancy.com\",
+    \"name\": \"Owner C Multi-Company ${TIMESTAMP}\",
+    \"email\": \"ownerc${TIMESTAMP}@multitenancy.com\",
     \"password\": \"ownerC123\",
-    \"phone\": \"11888999000\"
+    \"phone\": \"11888999000\",
+    \"cpf\": \"${CPF_OWNER_C}\"
   }")
 
 OWNER_C_ID=$(echo "$OWNER_C_RESPONSE" | jq -r '.data.id // empty')
@@ -243,12 +293,18 @@ fi
 echo -e "${GREEN}✓ Owner C created: ID=${OWNER_C_ID}${NC}"
 
 # Link Owner C to Company A
-curl -s -X POST "${BASE_URL}/api/v1/owners/${OWNER_C_ID}/companies/${COMPANY_A_ID}/link" \
-  -H "Authorization: Bearer ${ADMIN_TOKEN}" > /dev/null
+curl -s -X POST "${BASE_URL}/api/v1/owners/${OWNER_C_ID}/companies" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+  -b ${SESSION_COOKIE_FILE} \
+  -d "{ \"company_id\": ${COMPANY_A_ID} }" > /dev/null
 
 # Link Owner C to Company B
-curl -s -X POST "${BASE_URL}/api/v1/owners/${OWNER_C_ID}/companies/${COMPANY_B_ID}/link" \
-  -H "Authorization: Bearer ${ADMIN_TOKEN}" > /dev/null
+curl -s -X POST "${BASE_URL}/api/v1/owners/${OWNER_C_ID}/companies" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+  -b ${SESSION_COOKIE_FILE} \
+  -d "{ \"company_id\": ${COMPANY_B_ID} }" > /dev/null
 
 echo -e "${GREEN}✓ Owner C linked to both companies${NC}"
 
@@ -259,9 +315,10 @@ OWNER_C_TOKEN="$ADMIN_TOKEN"
 echo ""
 echo "Test 4 (T056): Owner C sees Owners from both companies..."
 OWNER_C_LIST=$(curl -s -X GET "${BASE_URL}/api/v1/owners" \
-  -H "Authorization: Bearer ${OWNER_C_TOKEN}")
+  -H "Authorization: Bearer ${OWNER_C_TOKEN}" \
+  -b ${SESSION_COOKIE_FILE})
 
-OWNER_C_COUNT=$(echo "$OWNER_C_LIST" | jq '.data | length')
+OWNER_C_COUNT=$(echo "$OWNER_C_LIST" | jq '.data | length // 0' 2>/dev/null || echo "0")
 
 if [ "$OWNER_C_COUNT" -ge 3 ]; then
   echo -e "${GREEN}✓ Owner C sees multiple Owners (count: ${OWNER_C_COUNT})${NC}"
@@ -273,10 +330,12 @@ fi
 echo ""
 echo "Test 5: Owner C can access both companies..."
 OWNER_C_ACCESS_A=$(curl -s -w "\n%{http_code}" -X GET "${BASE_URL}/api/v1/companies/${COMPANY_A_ID}" \
-  -H "Authorization: Bearer ${OWNER_C_TOKEN}" | tail -n 1)
+  -H "Authorization: Bearer ${OWNER_C_TOKEN}" \
+  -b ${SESSION_COOKIE_FILE} | tail -n 1)
 
 OWNER_C_ACCESS_B=$(curl -s -w "\n%{http_code}" -X GET "${BASE_URL}/api/v1/companies/${COMPANY_B_ID}" \
-  -H "Authorization: Bearer ${OWNER_C_TOKEN}" | tail -n 1)
+  -H "Authorization: Bearer ${OWNER_C_TOKEN}" \
+  -b ${SESSION_COOKIE_FILE} | tail -n 1)
 
 if [ "$OWNER_C_ACCESS_A" = "200" ] && [ "$OWNER_C_ACCESS_B" = "200" ]; then
   echo -e "${GREEN}✓ Owner C can access both Company A and B${NC}"
@@ -288,9 +347,10 @@ fi
 echo ""
 echo "Test 6: Admin bypass verification..."
 ADMIN_OWNERS=$(curl -s -X GET "${BASE_URL}/api/v1/owners" \
-  -H "Authorization: Bearer ${ADMIN_TOKEN}")
+  -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+  -b ${SESSION_COOKIE_FILE})
 
-ADMIN_OWNER_COUNT=$(echo "$ADMIN_OWNERS" | jq '.data | length')
+ADMIN_OWNER_COUNT=$(echo "$ADMIN_OWNERS" | jq '.data | length // 0' 2>/dev/null || echo "0")
 
 if [ "$ADMIN_OWNER_COUNT" -ge 3 ]; then
   echo -e "${GREEN}✓ Admin sees all Owners (count: ${ADMIN_OWNER_COUNT})${NC}"

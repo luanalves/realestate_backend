@@ -77,7 +77,7 @@ class PasswordService:
         self.token_service.invalidate_previous_tokens(user.id, 'reset')
         
         # Generate new reset token
-        company = user.estate_company_ids[0] if user.estate_company_ids else None
+        company = user.company_ids[0] if user.company_ids else None
         raw_token, token_record = self.token_service.generate_token(
             user=user,
             token_type='reset',

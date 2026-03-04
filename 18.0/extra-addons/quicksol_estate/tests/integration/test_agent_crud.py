@@ -23,7 +23,7 @@ class TestAgentCRUD(TransactionCase):
         super(TestAgentCRUD, self).setUp()
         
         # Get or create companies for multi-tenancy testing
-        Company = self.env['thedevkitchen.estate.company']
+        Company = self.env['res.company']
         self.company_a = Company.search([('name', '=', 'Company A')], limit=1)
         if not self.company_a:
             self.company_a = Company.create({'name': 'Company A'})
@@ -246,7 +246,7 @@ class TestAgentUpdate(TransactionCase):
         super(TestAgentUpdate, self).setUp()
         
         # Get or create company
-        Company = self.env['thedevkitchen.estate.company']
+        Company = self.env['res.company']
         self.company = Company.search([], limit=1)
         if not self.company:
             self.company = Company.create({'name': 'Test Company'})
@@ -271,7 +271,7 @@ class TestAgentUpdate(TransactionCase):
     
     def test_update_agent_cross_company_forbidden(self):
         """T035: Prevent updating company_id (security constraint)"""
-        Company = self.env['thedevkitchen.estate.company']
+        Company = self.env['res.company']
         other_company = Company.create({'name': 'Other Company'})
         
         # Direct write should work but is not recommended via API

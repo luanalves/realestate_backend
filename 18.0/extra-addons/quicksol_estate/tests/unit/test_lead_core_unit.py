@@ -30,8 +30,8 @@ class TestLeadDefaultValues(unittest.TestCase):
         self.env = MagicMock()
         self.env.uid = 1
         self.env.user = MagicMock()
-        self.env.user.estate_company_ids = MagicMock()
-        self.env.user.estate_company_ids.ids = [1, 2]
+        self.env.user.company_ids = MagicMock()
+        self.env.user.company_ids.ids = [1, 2]
         
     def test_default_agent_id_with_linked_agent(self):
         """Agent with linked user returns agent ID"""
@@ -66,9 +66,9 @@ class TestLeadDefaultValues(unittest.TestCase):
         self.assertFalse(result)
         
     def test_default_company_ids_returns_user_companies(self):
-        """Default company_ids returns user's estate_company_ids"""
+        """Default company_ids returns user's company_ids"""
         # Act - simulate _default_company_ids logic
-        result = self.env.user.estate_company_ids.ids
+        result = self.env.user.company_ids.ids
         
         # Assert
         self.assertEqual(result, [1, 2])
@@ -76,10 +76,10 @@ class TestLeadDefaultValues(unittest.TestCase):
     def test_default_company_ids_empty_for_user_without_companies(self):
         """User without estate companies returns empty list"""
         # Arrange
-        self.env.user.estate_company_ids.ids = []
+        self.env.user.company_ids.ids = []
         
         # Act
-        result = self.env.user.estate_company_ids.ids
+        result = self.env.user.company_ids.ids
         
         # Assert
         self.assertEqual(result, [])

@@ -123,14 +123,14 @@ cleanup_test_data() {
             SELECT id FROM res_users WHERE login LIKE 'reset_test_%@example.com'
         );
 
+        -- Delete test profiles
+        DELETE FROM thedevkitchen_estate_profile WHERE email LIKE 'reset_test_%@example.com';
+
         -- Delete test users
         DELETE FROM res_users WHERE login LIKE 'reset_test_%@example.com';
 
         -- Delete test partners by email
         DELETE FROM res_partner WHERE email LIKE 'reset_test_%@example.com';
-
-        -- Delete test partners by CPF (fallback)
-        DELETE FROM res_partner WHERE vat = '88228168039';
 EOF
     
     log_info "Cleanup completed"
@@ -174,25 +174,55 @@ OWNER_LOGIN=$(curl -s -X POST "$API_BASE/users/login" \
 OWNER_SESSION=$(echo "$OWNER_LOGIN" | jq -r '.session_id // empty')
 OWNER_COMPANY_ID=$(echo "$OWNER_LOGIN" | jq -r '.user.default_company_id // empty')
 
-# Create test user
+# Create test user via profile + invite
+FORGOT_CPF=$(python3 -c "
+import time, random
+base = str((int(time.time()) + random.randint(1,99999) + 700) % 1000000000).zfill(9)
+def d(cpf, w):
+    s = sum(int(c)*w for c,w in zip(cpf,w))
+    r = s%11
+    return '0' if r<2 else str(11-r)
+d1 = d(base, range(10,1,-1))
+d2 = d(base+d1, range(11,1,-1))
+print(base+d1+d2)
+")
+
+# Create profile first
+PROFILE_RESPONSE=$(curl -s -X POST "$API_BASE/profiles" \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $BEARER_TOKEN" \
+    -H "X-Openerp-Session-Id: $OWNER_SESSION" \
+    -d "{
+        \"name\": \"Reset Test User\",
+        \"company_id\": $OWNER_COMPANY_ID,
+        \"document\": \"$FORGOT_CPF\",
+        \"email\": \"reset_test_user@example.com\",
+        \"phone\": \"+5511988776655\",
+        \"birthdate\": \"1990-01-15\",
+        \"profile_type_id\": 4
+    }")
+
+PROFILE_ID=$(echo "$PROFILE_RESPONSE" | jq -r '.id // empty')
+if [ -z "$PROFILE_ID" ] || [ "$PROFILE_ID" = "null" ]; then
+    log_error "Failed to create profile: $PROFILE_RESPONSE"
+    cleanup_test_data
+    exit 1
+fi
+
+# Invite using profile_id
 TEST_USER_RESPONSE=$(curl -s -X POST "$API_BASE/users/invite" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
     -H "X-Openerp-Session-Id: $OWNER_SESSION" \
     -H "X-Company-ID: $OWNER_COMPANY_ID" \
-    -d '{
-        "name": "Reset Test User",
-        "email": "reset_test_user@example.com",
-        "document": "88228168039",
-        "profile": "agent"
-    }')
+    -d "{\"profile_id\": $PROFILE_ID}")
 
 echo "[DEBUG] Invite response: $TEST_USER_RESPONSE"
 TEST_USER_ID=$(echo "$TEST_USER_RESPONSE" | jq -r '.data.id')
 log_info "Test user created with ID: $TEST_USER_ID"
 
 # Configure known invite token hash and set password through public endpoint
-RAW_INVITE_TOKEN="invite-token-$(date +%s)"
+RAW_INVITE_TOKEN=$(python3 -c 'import uuid; print(uuid.uuid4().hex)')
 INVITE_TOKEN_HASH=$(echo -n "$RAW_INVITE_TOKEN" | shasum -a 256 | awk '{print $1}')
 
 docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF
@@ -302,7 +332,7 @@ assert_sql_result \
 log_info "Simulating reset password with mismatched passwords..."
 
 # Generate known token for testing
-RAW_RESET_TOKEN="reset-token-$(date +%s)"
+RAW_RESET_TOKEN=$(python3 -c 'import uuid; print(uuid.uuid4().hex)')
 RESET_TOKEN_HASH=$(echo -n "$RAW_RESET_TOKEN" | shasum -a 256 | awk '{print $1}')
 
 docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF
@@ -450,7 +480,7 @@ curl -s -X POST "$API_BASE/auth/forgot-password" \
     }' > /dev/null
 
 # Generate expired token
-EXPIRED_RAW_TOKEN="expired-reset-token-$(date +%s)"
+EXPIRED_RAW_TOKEN=$(python3 -c 'import uuid; print(uuid.uuid4().hex)')
 EXPIRED_TOKEN_HASH=$(echo -n "$EXPIRED_RAW_TOKEN" | shasum -a 256 | awk '{print $1}')
 
 docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF
@@ -482,7 +512,7 @@ test_scenario "Reset password with non-existent token returns 404"
 NONEXISTENT_TOKEN_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/auth/reset-password" \
     -H "Content-Type: application/json" \
     -d '{
-        "token": "nonexistent-token-12345",
+        "token": "aaaaaaaabbbbbbbbccccccccdddddddd",
         "password": "password123",
         "confirm_password": "password123"
     }')

@@ -263,7 +263,7 @@ class InviteController(http.Controller):
                 request.env["res.users"]
                 .sudo()
                 .search(
-                    [("id", "=", user_id), ("estate_company_ids", "in", [company_id])],
+                    [("id", "=", user_id), ("company_ids", "in", [company_id])],
                     limit=1,
                 )
             )
@@ -307,7 +307,7 @@ class InviteController(http.Controller):
                 request.env["thedevkitchen.email.link.settings"].sudo().get_settings()
             )
             company = (
-                request.env["thedevkitchen.estate.company"].sudo().browse(company_id)
+                request.env["res.company"].sudo().browse(company_id)
             )
             raw_token, token_record = token_service.generate_token(
                 user=user,
