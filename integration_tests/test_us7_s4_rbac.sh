@@ -41,6 +41,10 @@ if [ $? -ne 0 ]; then
 fi
 
 echo -e "${GREEN}✓ Authentication successful (JWT: ${#ACCESS_TOKEN} chars, UID: ${ADMIN_UID})${NC}"
+# Pre-cleanup: nullify CNPJs from previous run to avoid UNIQUE constraint violations
+docker compose -f "${SCRIPT_DIR}/../18.0/docker-compose.yml" exec -T db \
+    psql -U odoo -d realestate -c \
+    "UPDATE res_company SET cnpj = NULL WHERE cnpj IN ('45.674.055/7501-14', '23.454.055/7501-76');" > /dev/null 2>&1 || true
 ADMIN_TOKEN="$ACCESS_TOKEN"
 
 # Step 2: Create a company for testing

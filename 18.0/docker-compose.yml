@@ -64,7 +64,6 @@ services:
       CELERY_RESULT_BACKEND: redis://redis:6379/2
     volumes:
       - odoo18-data:/var/lib/odoo
-      - ./filestore:/var/lib/odoo/filestore
       - ./extra-addons:/mnt/extra-addons
       # Configuração customizada habilitada:
       - ./odoo.conf:/etc/odoo/odoo.conf:ro

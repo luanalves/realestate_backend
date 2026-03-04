@@ -74,6 +74,11 @@ fi
 echo -e "${GREEN}✓ Authentication successful (JWT: ${#ACCESS_TOKEN} chars, UID: ${ADMIN_UID})${NC}"
 ADMIN_TOKEN="$ACCESS_TOKEN"
 
+# Pre-cleanup: remove companies with static names from previous runs (name has UNIQUE constraint)
+docker compose -f "${SCRIPT_DIR}/../18.0/docker-compose.yml" exec -T db \
+    psql -U odoo -d realestate -c \
+    "UPDATE res_company SET name = 'deleted_' || id || '_' || name, active = false WHERE name IN ('Multi-Tenancy Company A', 'Multi-Tenancy Company B');" > /dev/null 2>&1 || true
+
 # Step 2: Create Company A
 echo ""
 echo "Step 2: Creating Company A..."
@@ -87,6 +92,7 @@ COMPANY_A_RESPONSE=$(curl -s -X POST "${BASE_URL}/api/v1/companies" \
     "email": "companya@multitenancy.com",
     "phone": "11444555666"
   }')
+
 
 COMPANY_A_ID=$(echo "$COMPANY_A_RESPONSE" | jq -r '.data.id // empty')
 

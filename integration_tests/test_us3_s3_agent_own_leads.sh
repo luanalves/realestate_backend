@@ -99,6 +99,12 @@ fi
 
 echo "✅ Admin login successful (UID: $ADMIN_UID)"
 
+# Pre-cleanup: nullify CNPJ from previous run to avoid UNIQUE constraint violations
+_CLEANUP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+docker compose -f "${_CLEANUP_DIR}/../18.0/docker-compose.yml" exec -T db \
+    psql -U odoo -d realestate -c \
+    "UPDATE res_company SET cnpj = NULL WHERE cnpj LIKE '99.887.766/0001-%';" > /dev/null 2>&1 || true
+
 ################################################################################
 # Step 2: Create Company and Agents
 ################################################################################
