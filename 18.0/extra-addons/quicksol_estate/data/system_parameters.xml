@@ -1,18 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <data noupdate="1">
+    <data noupdate="0">
         <!-- System Parameter: Prospector Commission Split Percentage -->
         <record id="prospector_commission_percentage" model="ir.config_parameter">
             <field name="key">quicksol_estate.prospector_commission_percentage</field>
             <field name="value">0.30</field>
         </record>
-
-        <!--
-            iap.endpoint é injetado diretamente via psql ANTES da instalação
-            (apontando para http://127.0.0.1:1) para que o partner_autocomplete
-            falhe imediatamente por "connection refused" ao tentar enriquecer
-            dados de empresa, evitando timeout de 30-60s por registro.
-            Ver: scripts/install_modules.sh ou comandos de setup do ambiente.
-        -->
     </data>
 </odoo>
