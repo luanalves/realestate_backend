@@ -88,6 +88,11 @@ RUN pip3 install --break-system-packages \
     pylint==3.3.1 \
     mypy==1.13.0
 
+# Install gosu for privilege dropping in entrypoint
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends gosu \
+    && rm -rf /var/lib/apt/lists/*
+
 # Copy entrypoint script and Odoo configuration file
 COPY ./entrypoint.sh /
 COPY ./odoo.conf /etc/odoo/
@@ -106,8 +111,8 @@ ENV ODOO_RC /etc/odoo/odoo.conf
 
 COPY wait-for-psql.py /usr/local/bin/wait-for-psql.py
 
-# Set default user when running the container
-USER odoo
+# Run as root so entrypoint can fix volume permissions before dropping to odoo
+# USER odoo  <-- intentionally removed; entrypoint drops privileges via gosu
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["odoo"]

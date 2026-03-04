@@ -2,6 +2,14 @@
 
 set -e
 
+# Fix volume permissions: when a Docker named volume is created on a new host,
+# the directory is owned by root. The odoo process runs as the 'odoo' user,
+# so we chown here (while still root) and then drop privileges via gosu.
+if [ "$(id -u)" = '0' ]; then
+    chown -R odoo:odoo /var/lib/odoo /mnt/extra-addons 2>/dev/null || true
+    exec gosu odoo "$0" "$@"
+fi
+
 if [ -v PASSWORD_FILE ]; then
     PASSWORD="$(< $PASSWORD_FILE)"
 fi
