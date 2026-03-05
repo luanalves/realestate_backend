@@ -39,11 +39,13 @@ docker compose exec db psql -U odoo -d realestate
 
 ### Acessos
 
-- **Odoo Web**: http://localhost:8069
+- **Odoo Web**: http://odoo.localhost
 - **PostgreSQL**: localhost:5432
 - **Database**: `realestate`
 - **Usuário padrão**: `admin`
 - **Senha padrão**: `admin`
+
+> Os subdomínios `*.localhost` funcionam automaticamente em qualquer browser moderno sem editar `/etc/hosts`.
 
 ### Desenvolvimento
 
@@ -56,8 +58,16 @@ Os módulos customizados devem ser adicionados no diretório `18.0/extra-addons/
 
 ## 🔌 Acessos aos Componentes Docker
 
+> **Reverse Proxy:** O ambiente utiliza [Caddy](https://caddyserver.com/) como reverse proxy na porta `80`.
+> Todos os subdomínios `*.localhost` resolvem automaticamente para `127.0.0.1` sem necessidade de configurar `/etc/hosts`.
+
+### Caddy (Reverse Proxy)
+- **Porta:** `80`
+- **Configuração:** `18.0/Caddyfile`
+- **Reload sem restart:** `docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile`
+
 ### Odoo Web Application
-- **URL:** http://localhost:8069
+- **URL:** http://odoo.localhost
 - **Usuário:** `admin`
 - **Senha:** `admin`
 
@@ -76,14 +86,14 @@ Os módulos customizados devem ser adicionados no diretório `18.0/extra-addons/
 - **CLI Access:** `docker compose exec redis redis-cli`
 
 ### RabbitMQ (Message Broker)
-- **Management UI:** http://localhost:15672
+- **Management UI:** http://rabbitmq.localhost
 - **Username:** `odoo`
 - **Password:** `odoo_rabbitmq_secret_2026`
-- **AMQP Port:** `5672` (para conexões de aplicação)
+- **AMQP Port:** `5672` (mantido para conexões diretas de aplicação)
 - **Purpose:** Gerenciamento de filas Celery
 
 ### Flower (Celery Monitoring)
-- **URL:** http://localhost:5555
+- **URL:** http://flower.localhost
 - **Username:** `admin`
 - **Password:** `flower_admin_2026`
 - **Purpose:** Monitoramento em tempo real dos workers Celery
@@ -96,7 +106,7 @@ Os módulos customizados devem ser adicionados no diretório `18.0/extra-addons/
 
 ### MailHog (Email Testing - Development)
 - **SMTP Server:** `mailhog:1025` (configurar no Odoo)
-- **Web UI:** http://localhost:8025
+- **Web UI:** http://mailhog.localhost
 - **Purpose:** Captura todos os emails enviados sem enviá-los realmente
 - **Usage:** Ideal para testar fluxos de email (convites, password reset, notificações)
 - **Configuration:** Settings > Technical > Email > Outgoing Mail Servers
@@ -111,18 +121,18 @@ Os módulos customizados devem ser adicionados no diretório `18.0/extra-addons/
 ## � Documentação da API (Swagger/OpenAPI)
 
 ### Swagger UI (Interface Interativa)
-- **URL:** http://localhost:8069/api/docs
+- **URL:** http://odoo.localhost/api/docs
 - **Descrição:** Interface gráfica interativa para explorar e testar os endpoints da API
 - **Autenticação:** Não requer autenticação para visualizar (endpoints protegidos requerem token Bearer)
 
 ### OpenAPI Specification (JSON)
-- **URL:** http://localhost:8069/api/v1/openapi.json
+- **URL:** http://odoo.localhost/api/v1/openapi.json
 - **Descrição:** Especificação OpenAPI 3.0 em formato JSON gerada dinamicamente
 - **Uso:** Importar em ferramentas como Postman, Insomnia ou geradores de código
 
 ### Como usar a documentação Swagger
 
-1. **Visualizar endpoints:** Acesse http://localhost:8069/api/docs
+1. **Visualizar endpoints:** Acesse http://odoo.localhost/api/docs
 2. **Obter token de autenticação:** Use o endpoint `/api/v1/oauth/token` com suas credenciais
 3. **Autorizar:** Clique em "Authorize" no Swagger UI e insira o token no formato `Bearer {seu_token}`
 4. **Testar endpoints:** Clique em "Try it out" em qualquer endpoint para testar diretamente
