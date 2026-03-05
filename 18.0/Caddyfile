@@ -1,0 +1,34 @@
+# Caddy reverse proxy — roteamento por subdomínio para ambiente local
+# Todos os subdomínios *.localhost resolvem para 127.0.0.1 automaticamente
+# sem necessidade de editar /etc/hosts.
+# O prefixo http:// desabilita o redirect automático para HTTPS.
+
+# Odoo — http://odoo.localhost
+http://odoo.localhost {
+    # Longpolling e WebSocket → porta 8072
+    handle /websocket* {
+        reverse_proxy odoo:8072
+    }
+    handle /longpolling* {
+        reverse_proxy odoo:8072
+    }
+    # Demais rotas → porta 8069
+    handle {
+        reverse_proxy odoo:8069
+    }
+}
+
+# RabbitMQ Management UI — http://rabbitmq.localhost
+http://rabbitmq.localhost {
+    reverse_proxy rabbitmq:15672
+}
+
+# Flower (Celery monitor) — http://flower.localhost
+http://flower.localhost {
+    reverse_proxy flower:5555
+}
+
+# MailHog Web UI — http://mailhog.localhost
+http://mailhog.localhost {
+    reverse_proxy mailhog:8025
+}

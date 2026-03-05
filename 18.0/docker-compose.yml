@@ -1,4 +1,17 @@
 services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: caddy
+    ports:
+      - "80:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      - odoo-net
+    restart: unless-stopped
+
   db:
     image: postgres:16-alpine
     container_name: db
@@ -47,10 +60,11 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    ports:
-      - "8069:8069"   # HTTP
-      - "8071:8071"   # XML-RPCs
-      - "8072:8072"   # longpolling
+    # Portas diretas desabilitadas — acesso via Caddy (http://odoo.localhost)
+    # ports:
+    #   - "8069:8069"   # HTTP
+    #   - "8071:8071"   # XML-RPCs
+    #   - "8072:8072"   # longpolling
     working_dir: /usr/bin
     environment:
       HOST: ${DB_HOST}
@@ -75,8 +89,9 @@ services:
     container_name: rabbitmq
     env_file: .env
     ports:
-      - "5672:5672"   # AMQP protocol
-      - "15672:15672" # Management UI (http://localhost:15672)
+      - "5672:5672"   # AMQP protocol (mantido para acesso direto)
+      # Management UI via Caddy: http://rabbitmq.localhost
+      # - "15672:15672"
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
@@ -178,8 +193,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    ports:
-      - "5555:5555"  # UI: http://localhost:5555
+    # Porta direta desabilitada — acesso via Caddy: http://flower.localhost
     command: celery --broker=amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672// flower --port=5555
     environment:
       CELERY_BROKER_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672//
@@ -208,8 +222,9 @@ services:
       mailhog_mongo:
         condition: service_healthy
     ports:
-      - "1025:1025"  # SMTP server
-      - "8025:8025"  # Web UI: http://localhost:8025
+      - "1025:1025"  # SMTP server (mantido para envio de e-mails)
+      # Web UI via Caddy: http://mailhog.localhost
+      # - "8025:8025"
     command: ["-storage=mongodb", "-mongo-uri=mailhog_mongo:27017", "-mongo-db=mailhog", "-mongo-coll=messages"]
     networks:
       - odoo-net
@@ -225,6 +240,8 @@ volumes:
   odoo18-redis:
   rabbitmq-data:
   mailhog-mongo-data:
+  caddy-data:
+  caddy-config:
 
 networks:
   odoo-net:
