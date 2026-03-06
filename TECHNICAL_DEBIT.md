@@ -1,6 +1,6 @@
 - criar teste e2e para validar se o menu imobiliario esta ativo, validar se o menu técnico esta aparecendo
 - usar uuid para identificar imóveis ao invés de id sequencial (rotas ainda usam `<int:property_id>`)
-- Integrar modulo de imobiliaria com company do framework Odoo, para que cada imobiliaria seja uma company diferente, e os usuários sejam associados a essas companies (atualmente não tem associação entre usuários e imobiliarias)
+
 - usuários administradores não devem acessar as api's dos usuários finais, somente usuários de imobiliarias devem poder fazer login e logout
 - validar se tem arquivos duplicados no repositório e remover /opt/homebrew/var/www/realestate/odoo-docker/18.0/extra-addons/quicksol_estate/tests/api
 - Configurar cors nos endpoints, mas a configuração deve ser dinamica via interface web do backoffice menu technical (atualmente usa `cors='*'` estático em todos os endpoints)

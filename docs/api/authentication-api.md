@@ -38,9 +38,7 @@ https://{domain}/odoo?debug=1
 
 Faça login com o usuário **admin**.
 
-<!-- SCREENSHOT: tela de login do Odoo com URL contendo ?debug=1 -->
-> 📸 _[inserir print aqui]_
-
+![tela de login do Odoo com URL contendo ?debug=1](../img/fase1.png)
 ---
 
 ### Passo 2 — Navegar até Api Gateway → Oauth Applications
@@ -53,8 +51,7 @@ Acesse:
 Technical → Api Gateway → Oauth Applications
 ```
 
-<!-- SCREENSHOT: menu Technical expandido mostrando "Api Gateway > Oauth Applications" -->
-> 📸 _[inserir print aqui]_
+![Menu Technical → Api Gateway → Oauth Applications](../img/fase2.png)
 
 ---
 
@@ -71,8 +68,7 @@ Preencha os campos:
 
 Após preencher, clique em **Save**.
 
-<!-- SCREENSHOT: formulário de criação da aplicação OAuth2 com os campos preenchidos -->
-> 📸 _[inserir print aqui]_
+![Formulário de criação da aplicação OAuth2 com os campos preenchidos](../img/fase3.png)
 
 ---
 
@@ -82,8 +78,7 @@ Após salvar, o Odoo exibirá o `client_id` e o `client_secret` gerados para a a
 
 > ⚠️ **Atenção:** o `client_secret` é exibido **apenas uma vez**. Copie e armazene em local seguro antes de sair da página.
 
-<!-- SCREENSHOT: registro salvo exibindo client_id e client_secret -->
-> 📸 _[inserir print aqui]_
+![Registro salvo exibindo client_id e client_secret](../img/fase4.png)
 
 Use esses valores no endpoint de geração de token:
 
