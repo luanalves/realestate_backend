@@ -251,20 +251,15 @@ class RealEstateCommissionRule(models.Model):
     
     # ==================== CRUD OVERRIDES ====================
     
-    @api.model
-    def create(self, vals):
+    @api.model_create_multi
+    def create(self, vals_list):
         """Override create to auto-set company_id from agent if not provided"""
-        # Auto-set company from agent if not specified
-        if 'agent_id' in vals and 'company_id' not in vals:
-            agent = self.env['real.estate.agent'].browse(vals['agent_id'])
-            if agent and agent.company_id:
-                vals['company_id'] = agent.company_id.id
-        
-        rule = super().create(vals)
-        # Commission rule creation is automatically tracked by mail.thread
-        # via tracking=True on relevant fields (agent_id, transaction_type, etc.)
-        
-        return rule
+        for vals in vals_list:
+            if 'agent_id' in vals and 'company_id' not in vals:
+                agent = self.env['real.estate.agent'].browse(vals['agent_id'])
+                if agent and agent.company_id:
+                    vals['company_id'] = agent.company_id.id
+        return super().create(vals_list)
     
     def write(self, vals):
         """Override write to prevent company_id changes"""

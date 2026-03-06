@@ -176,23 +176,21 @@ class Profile(models.Model):
                 )
 
     # ===== Methods =====
-    @api.model
     def write(self, vals):
         """Override write to update updated_at timestamp."""
         vals['updated_at'] = fields.Datetime.now()
         return super(Profile, self).write(vals)
 
-    @api.model
-    def create(self, vals):
+    @api.model_create_multi
+    def create(self, vals_list):
         """Override create to auto-create partner if needed."""
-        # Auto-create partner_id if not provided (for portal/system access bridge)
-        if not vals.get('partner_id') and vals.get('name') and vals.get('email'):
-            partner = self.env['res.partner'].sudo().create({
-                'name': vals['name'],
-                'email': vals['email'],
-                'phone': vals.get('phone'),
-                'mobile': vals.get('mobile'),
-            })
-            vals['partner_id'] = partner.id
-        
-        return super(Profile, self).create(vals)
+        for vals in vals_list:
+            if not vals.get('partner_id') and vals.get('name') and vals.get('email'):
+                partner = self.env['res.partner'].sudo().create({
+                    'name': vals['name'],
+                    'email': vals['email'],
+                    'phone': vals.get('phone'),
+                    'mobile': vals.get('mobile'),
+                })
+                vals['partner_id'] = partner.id
+        return super(Profile, self).create(vals_list)

@@ -434,37 +434,33 @@ class RealEstateAgent(models.Model):
                 if not self.company_id or self.company_id not in user_companies:
                     self.company_id = user_companies[0]
     
-    @api.model
-    def create(self, vals):
+    @api.model_create_multi
+    def create(self, vals_list):
         """Override create to sync user data and handle company_ids from user"""
-        # Feature 010: If profile_id is provided, sync cadastral data from profile (T14)
-        # Uses setdefault() to allow explicit values to take precedence
-        if vals.get('profile_id'):
-            profile = self.env['thedevkitchen.estate.profile'].sudo().browse(vals['profile_id'])
-            if profile.exists():
-                # Sync cadastral fields using setdefault (don't override explicit values)
-                vals.setdefault('name', profile.name)
-                vals.setdefault('cpf', profile.document)  # document → cpf
-                vals.setdefault('email', profile.email)
-                vals.setdefault('phone', profile.phone)
-                vals.setdefault('mobile', profile.mobile)
-                vals.setdefault('company_id', profile.company_id.id)
-                if profile.hire_date:
-                    vals.setdefault('hire_date', profile.hire_date)
-        
-        # If user_id is provided, sync data from user
-        if vals.get('user_id'):
-            user = self.env['res.users'].browse(vals['user_id'])
-            
-            # Sync company from user's native company_ids
-            if user.company_ids:
-                # Set company_id if not explicitly provided (use first company)
-                if 'company_id' not in vals:
+        for vals in vals_list:
+            # Feature 010: If profile_id is provided, sync cadastral data from profile (T14)
+            # Uses setdefault() to allow explicit values to take precedence
+            if vals.get('profile_id'):
+                profile = self.env['thedevkitchen.estate.profile'].sudo().browse(vals['profile_id'])
+                if profile.exists():
+                    # Sync cadastral fields using setdefault (don't override explicit values)
+                    vals.setdefault('name', profile.name)
+                    vals.setdefault('cpf', profile.document)  # document → cpf
+                    vals.setdefault('email', profile.email)
+                    vals.setdefault('phone', profile.phone)
+                    vals.setdefault('mobile', profile.mobile)
+                    vals.setdefault('company_id', profile.company_id.id)
+                    if profile.hire_date:
+                        vals.setdefault('hire_date', profile.hire_date)
+
+            # If user_id is provided, sync data from user
+            if vals.get('user_id'):
+                user = self.env['res.users'].browse(vals['user_id'])
+                # Sync company from user's native company_ids
+                if user.company_ids and 'company_id' not in vals:
                     vals['company_id'] = user.company_ids[0].id
-        
-        agent = super().create(vals)
-        
-        return agent
+
+        return super().create(vals_list)
     
     def write(self, vals):
         """Override write to maintain synchronization"""

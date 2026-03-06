@@ -125,15 +125,15 @@ class AgentPropertyAssignment(models.Model):
     
     # ==================== CRUD OVERRIDES ====================
     
-    @api.model
-    def create(self, vals):
+    @api.model_create_multi
+    def create(self, vals_list):
         """Override create to auto-set company from agent"""
-        if 'agent_id' in vals and 'company_id' not in vals:
-            agent = self.env['real.estate.agent'].browse(vals['agent_id'])
-            if agent.company_id:
-                vals['company_id'] = agent.company_id.id
-        
-        return super().create(vals)
+        for vals in vals_list:
+            if 'agent_id' in vals and 'company_id' not in vals:
+                agent = self.env['real.estate.agent'].browse(vals['agent_id'])
+                if agent.company_id:
+                    vals['company_id'] = agent.company_id.id
+        return super().create(vals_list)
     
     def write(self, vals):
         """Prevent changing agent or property after creation"""

@@ -117,14 +117,12 @@ class PropertyDocument(models.Model):
             if document.file and document.file_name:
                 FileValidator.validate_document(document.file, document.file_name)
 
-    @api.model
-    def create(self, vals):
+    @api.model_create_multi
+    def create(self, vals_list):
         """Garante que property_id seja preenchido do contexto"""
-        if not vals.get('property_id') and self._context.get('default_property_id'):
-            vals['property_id'] = self._context.get('default_property_id')
-        
-        # Validação: property_id é obrigatório
-        if not vals.get('property_id'):
-            raise ValidationError('O documento deve estar associado a uma propriedade.')
-        
-        return super(PropertyDocument, self).create(vals)
+        for vals in vals_list:
+            if not vals.get('property_id') and self._context.get('default_property_id'):
+                vals['property_id'] = self._context.get('default_property_id')
+            if not vals.get('property_id'):
+                raise ValidationError('O documento deve estar associado a uma propriedade.')
+        return super(PropertyDocument, self).create(vals_list)

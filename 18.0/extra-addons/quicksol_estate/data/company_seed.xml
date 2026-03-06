@@ -14,7 +14,6 @@
             <field name="email">contato@quicksol.com.br</field>
             <field name="phone">(11) 3456-7890</field>
             <field name="mobile">(11) 98765-4321</field>
-            <field name="website">https://quicksol.com.br</field>
             <field name="street">Av. Paulista, 1000</field>
             <field name="street2">15º andar</field>
             <field name="city">São Paulo</field>
@@ -32,7 +31,6 @@
             <field name="email">contato@urbanproperties.com.br</field>
             <field name="phone">(21) 2345-6789</field>
             <field name="mobile">(21) 98888-7777</field>
-            <field name="website">https://urbanproperties.com.br</field>
             <field name="street">Av. Atlântica, 500</field>
             <field name="city">Rio de Janeiro</field>
             <field name="zip">22010-000</field>
@@ -49,7 +47,6 @@
             <field name="email">contato@luxurygroup.com.br</field>
             <field name="phone">(11) 3333-4444</field>
             <field name="mobile">(11) 99999-8888</field>
-            <field name="website">https://luxurygroup.com.br</field>
             <field name="street">Rua Oscar Freire, 2000</field>
             <field name="city">São Paulo</field>
             <field name="zip">01426-001</field>

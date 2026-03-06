@@ -279,29 +279,24 @@ class RealEstateCommissionTransaction(models.Model):
     
     # ==================== CRUD OVERRIDES ====================
     
-    @api.model
-    def create(self, vals):
+    @api.model_create_multi
+    def create(self, vals_list):
         """Override create to enforce immutability and create rule snapshot"""
-        # If rule_snapshot not provided, create it from rule_id
-        if 'rule_id' in vals and 'rule_snapshot' not in vals:
-            rule = self.env['real.estate.commission.rule'].browse(vals['rule_id'])
-            if rule:
-                vals['rule_snapshot'] = json.dumps({
-                    'percentage': rule.percentage,
-                    'fixed_amount': rule.fixed_amount,
-                    'structure_type': rule.structure_type,
-                    'transaction_type': rule.transaction_type,
-                    'min_value': rule.min_value,
-                    'max_value': rule.max_value,
-                    'valid_from': str(rule.valid_from) if rule.valid_from else None,
-                    'valid_until': str(rule.valid_until) if rule.valid_until else None,
-                })
-        
-        transaction = super().create(vals)
-        # Commission transaction creation is automatically tracked by mail.thread
-        # via tracking=True on relevant fields (agent_id, commission_amount, etc.)
-        
-        return transaction
+        for vals in vals_list:
+            if 'rule_id' in vals and 'rule_snapshot' not in vals:
+                rule = self.env['real.estate.commission.rule'].browse(vals['rule_id'])
+                if rule:
+                    vals['rule_snapshot'] = json.dumps({
+                        'percentage': rule.percentage,
+                        'fixed_amount': rule.fixed_amount,
+                        'structure_type': rule.structure_type,
+                        'transaction_type': rule.transaction_type,
+                        'min_value': rule.min_value,
+                        'max_value': rule.max_value,
+                        'valid_from': str(rule.valid_from) if rule.valid_from else None,
+                        'valid_until': str(rule.valid_until) if rule.valid_until else None,
+                    })
+        return super().create(vals_list)
     
     def write(self, vals):
         """Override write to prevent modification of critical fields after creation"""
