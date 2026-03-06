@@ -9,6 +9,7 @@
 
 ## Sumário
 
+- [Pré-requisito: Criar Aplicação OAuth2 no Odoo](#0-pré-requisito-criar-aplicação-oauth2-no-odoo)
 - [Autenticação OAuth2](#1-autenticação-oauth2)
 - [Login e Sessão](#2-login-e-sessão)
 - [Gerenciamento de Senha (autenticado)](#3-gerenciamento-de-senha-autenticado)
@@ -18,6 +19,83 @@
 - [Usuário Autenticado](#7-usuário-autenticado)
 - [Headers Padrão](#headers-padrão)
 - [Códigos de Erro](#códigos-de-erro)
+
+---
+
+## 0. Pré-requisito: Criar Aplicação OAuth2 no Odoo
+
+Antes de usar qualquer endpoint autenticado, é necessário criar uma **Aplicação OAuth2** no painel administrativo do Odoo para obter o `client_id` e o `client_secret`.
+
+---
+
+### Passo 1 — Acessar o Odoo em modo debug com usuário admin
+
+Acesse a aplicação pelo navegador adicionando o parâmetro `?debug=1` na URL:
+
+```
+https://{domain}/odoo?debug=1
+```
+
+Faça login com o usuário **admin**.
+
+<!-- SCREENSHOT: tela de login do Odoo com URL contendo ?debug=1 -->
+> 📸 _[inserir print aqui]_
+
+---
+
+### Passo 2 — Navegar até Api Gateway → Oauth Applications
+
+Com o modo debug ativo, o menu **Technical** ficará disponível na barra de navegação superior.
+
+Acesse:
+
+```
+Technical → Api Gateway → Oauth Applications
+```
+
+<!-- SCREENSHOT: menu Technical expandido mostrando "Api Gateway > Oauth Applications" -->
+> 📸 _[inserir print aqui]_
+
+---
+
+### Passo 3 — Criar nova aplicação (New)
+
+Na listagem de aplicações, clique em **New** para criar uma nova aplicação OAuth2.
+
+Preencha os campos:
+
+| Campo | Valor sugerido |
+|---|---|
+| **Name** | Nome da sua aplicação (ex: `Postman - Dev`) |
+| **Active** | ✅ marcado |
+
+Após preencher, clique em **Save**.
+
+<!-- SCREENSHOT: formulário de criação da aplicação OAuth2 com os campos preenchidos -->
+> 📸 _[inserir print aqui]_
+
+---
+
+### Passo 4 — Capturar Client ID e Client Secret
+
+Após salvar, o Odoo exibirá o `client_id` e o `client_secret` gerados para a aplicação.
+
+> ⚠️ **Atenção:** o `client_secret` é exibido **apenas uma vez**. Copie e armazene em local seguro antes de sair da página.
+
+<!-- SCREENSHOT: registro salvo exibindo client_id e client_secret -->
+> 📸 _[inserir print aqui]_
+
+Use esses valores no endpoint de geração de token:
+
+```json
+{
+  "grant_type": "client_credentials",
+  "client_id": "COLE_AQUI_O_CLIENT_ID",
+  "client_secret": "COLE_AQUI_O_CLIENT_SECRET"
+}
+```
+
+---
 
 ---
 
