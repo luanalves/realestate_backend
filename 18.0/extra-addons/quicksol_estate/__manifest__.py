@@ -54,7 +54,7 @@ Property Form Sections:
 """,
     'author': 'Quicksol Technologies',
     'website': 'https://quicksol.ca',
-    'depends': ['base', 'portal', 'mail', 'thedevkitchen_apigateway'],
+    'depends': ['base', 'portal', 'mail', 'thedevkitchen_apigateway', 'thedevkitchen_branding'],
     'data': [
         # Security files (must be loaded first)
         'security/groups.xml',
