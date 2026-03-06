@@ -11,7 +11,6 @@
             <field name="legal_name">QuickSol Imóveis LTDA</field>
             <field name="cnpj">12.345.678/0001-95</field>
             <field name="creci">CRECI/SP 123456</field>
-            <field name="email">contato@quicksol.com.br</field>
             <field name="phone">(11) 3456-7890</field>
             <field name="mobile">(11) 98765-4321</field>
             <field name="street">Av. Paulista, 1000</field>
@@ -28,7 +27,6 @@
             <field name="legal_name">Urban Properties Negócios Imobiliários SA</field>
             <field name="cnpj">98.765.432/0001-98</field>
             <field name="creci">CRECI/RJ 654321</field>
-            <field name="email">contato@urbanproperties.com.br</field>
             <field name="phone">(21) 2345-6789</field>
             <field name="mobile">(21) 98888-7777</field>
             <field name="street">Av. Atlântica, 500</field>
@@ -44,7 +42,6 @@
             <field name="legal_name">Luxury Group Empreendimentos LTDA</field>
             <field name="cnpj">11.222.333/0001-81</field>
             <field name="creci">CRECI/SP 789012</field>
-            <field name="email">contato@luxurygroup.com.br</field>
             <field name="phone">(11) 3333-4444</field>
             <field name="mobile">(11) 99999-8888</field>
             <field name="street">Rua Oscar Freire, 2000</field>

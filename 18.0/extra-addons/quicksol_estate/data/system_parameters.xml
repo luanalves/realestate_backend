@@ -2,9 +2,10 @@
 <odoo>
     <data noupdate="0">
         <!-- Desativa auto-enrich do partner_autocomplete para evitar timeout IAP durante instalação -->
+        <!-- IMPORTANTE: valor deve ser string vazia (falsy). '0' é truthy em Python e NÃO desativa. -->
         <record id="partner_autocomplete_enrich_auto" model="ir.config_parameter">
             <field name="key">partner_autocomplete.enrich_auto</field>
-            <field name="value">0</field>
+            <field name="value"></field>
         </record>
 
         <!-- System Parameter: Prospector Commission Split Percentage -->
