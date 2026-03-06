@@ -4,7 +4,6 @@
         <!-- Demo Companies -->
         <record id="demo_company_sp" model="res.company">
             <field name="name">QuickSol São Paulo</field>
-            <field name="email">sp@quicksol.com.br</field>
             <field name="phone">+55 11 3456-7890</field>
             <field name="street">Av. Paulista, 1000</field>
             <field name="city">São Paulo</field>
@@ -15,7 +14,6 @@
 
         <record id="demo_company_rj" model="res.company">
             <field name="name">QuickSol Rio de Janeiro</field>
-            <field name="email">rj@quicksol.com.br</field>
             <field name="phone">+55 21 2345-6789</field>
             <field name="street">Av. Atlântica, 500</field>
             <field name="city">Rio de Janeiro</field>
