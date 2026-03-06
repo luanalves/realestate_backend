@@ -25,7 +25,6 @@
             <field name="legal_name">Seed Imóveis LTDA</field>
             <field name="cnpj">55.444.333/0001-00</field>
             <field name="creci">CRECI/SP 99001</field>
-            <field name="email">contato@imobiliaria-seed.com.br</field>
             <field name="phone">+55 (11) 99000-0001</field>
             <field name="street">Rua dos Testes, 1</field>
             <field name="city">São Paulo</field>
