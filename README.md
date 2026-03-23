@@ -4,6 +4,17 @@ Backend do sistema de gestão imobiliária baseado em Odoo 18.0 com PostgreSQL.
 
 ## 🚀 Como subir o ambiente
 
+## ☁️ Deploy no Dokploy
+
+Este repositório agora possui `Dockerfile` na raiz para deploy direto no Dokploy.
+
+- **Build Type:** Dockerfile (não usar Nixpacks)
+- **Dockerfile Path:** `./Dockerfile`
+- **Porta da aplicação:** `8069`
+- **Comando de start:** padrão da imagem (`ENTRYPOINT ["/entrypoint.sh"]` + `CMD ["odoo"]`)
+
+Se o app no Dokploy estiver configurado como Nixpacks, altere para Dockerfile e faça novo deploy.
+
 ### Pré-requisitos
 
 - Docker
