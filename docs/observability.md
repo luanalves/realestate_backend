@@ -29,6 +29,7 @@ The Odoo Docker environment includes a complete observability stack with distrib
 | **TraceContextFilter** | Log-trace correlation | ✅ Active |
 | **DB Instrumentor** | PostgreSQL query tracing (Cursor.execute patch) | ✅ Active |
 | **Redis Instrumentor** | Redis command tracing | ✅ Active |
+| **Celery Instrumentor** | Task dispatch/execution tracing | ✅ Active |
 
 ## Configuration
 
@@ -144,6 +145,64 @@ The standard `opentelemetry-instrumentation-psycopg2` patches `psycopg2.connect(
 
 # Find HTTP requests with SQL children
 {service.name="odoo-development" && span.http.method="GET"} >> {span.db.system="postgresql"}
+```
+
+## Phase 3: Celery Task Tracing
+
+### How It Works
+
+Celery tasks (async events dispatched via EventBus → RabbitMQ) are traced end-to-end using OpenTelemetry's `CeleryInstrumentor`. The instrumentation runs on both sides:
+
+1. **Odoo side (client)**: When `apply_async()` is called, the instrumentor injects `traceparent` into the task message headers
+2. **Worker side (server)**: The worker extracts the trace context and creates a child span for the task execution
+
+```
+POST /api/v1/properties (HTTP span - Odoo)
+  ├─ INSERT real_estate_property (SQL span - Odoo)
+  ├─ EventBus.emit_async: property.created (span - Odoo)
+  │   └─ apply_async → RabbitMQ (traceparent injected)
+  │
+  └─ [async, 5-10s later]
+      └─ process_event_task (Celery span - celery-audit-worker)
+          └─ XML-RPC: observer.handle_async (span - worker)
+```
+
+### Architecture
+
+Each Celery worker runs as a **separate service** with its own OpenTelemetry TracerProvider:
+
+| Worker | Service Name | Queue | Concurrency |
+|--------|-------------|-------|-------------|
+| Commission | `celery-commission-worker` | `commission_events` | 2 |
+| Audit | `celery-audit-worker` | `audit_events` | 1 |
+| Notification | `celery-notification-worker` | `notification_events` | 1 |
+
+### Configuration
+
+Workers inherit OTEL configuration via `docker-compose.yml` environment variables:
+
+```yaml
+environment:
+  OTEL_ENABLED: true
+  OTEL_SERVICE_NAME: celery-audit-worker
+  OTEL_EXPORTER_OTLP_ENDPOINT: tempo:4317
+  OTEL_EXPORTER_OTLP_INSECURE: true
+```
+
+### Querying Celery Traces in Grafana
+
+```traceql
+# Find all Celery task spans
+{service.name=~"celery-.*"}
+
+# Find slow tasks (> 5 seconds)
+{service.name=~"celery-.*" && duration > 5s}
+
+# End-to-end: HTTP request that triggered an async task
+{service.name="odoo-development"} >> {service.name=~"celery-.*"}
+
+# Failed tasks
+{service.name=~"celery-.*" && status=error}
 ```
 
 ## Grafana Dashboards

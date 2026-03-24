@@ -122,6 +122,13 @@ services:
       ODOO_PASSWORD: admin
       CELERY_BROKER_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672//
       CELERY_RESULT_BACKEND: redis://redis:6379/2
+      # OpenTelemetry - Distributed Tracing
+      OTEL_ENABLED: ${OTEL_ENABLED:-true}
+      OTEL_SERVICE_NAME: celery-commission-worker
+      OTEL_SERVICE_VERSION: ${OTEL_SERVICE_VERSION:-18.0}
+      OTEL_DEPLOYMENT_ENVIRONMENT: ${OTEL_DEPLOYMENT_ENVIRONMENT:-development}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-tempo:4317}
+      OTEL_EXPORTER_OTLP_INSECURE: ${OTEL_EXPORTER_OTLP_INSECURE:-true}
     networks:
       - odoo-net
     restart: unless-stopped
@@ -148,6 +155,13 @@ services:
       ODOO_PASSWORD: admin
       CELERY_BROKER_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672//
       CELERY_RESULT_BACKEND: redis://redis:6379/2
+      # OpenTelemetry - Distributed Tracing
+      OTEL_ENABLED: ${OTEL_ENABLED:-true}
+      OTEL_SERVICE_NAME: celery-audit-worker
+      OTEL_SERVICE_VERSION: ${OTEL_SERVICE_VERSION:-18.0}
+      OTEL_DEPLOYMENT_ENVIRONMENT: ${OTEL_DEPLOYMENT_ENVIRONMENT:-development}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-tempo:4317}
+      OTEL_EXPORTER_OTLP_INSECURE: ${OTEL_EXPORTER_OTLP_INSECURE:-true}
     networks:
       - odoo-net
     restart: unless-stopped
@@ -174,6 +188,13 @@ services:
       ODOO_PASSWORD: admin
       CELERY_BROKER_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672//
       CELERY_RESULT_BACKEND: redis://redis:6379/2
+      # OpenTelemetry - Distributed Tracing
+      OTEL_ENABLED: ${OTEL_ENABLED:-true}
+      OTEL_SERVICE_NAME: celery-notification-worker
+      OTEL_SERVICE_VERSION: ${OTEL_SERVICE_VERSION:-18.0}
+      OTEL_DEPLOYMENT_ENVIRONMENT: ${OTEL_DEPLOYMENT_ENVIRONMENT:-development}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-tempo:4317}
+      OTEL_EXPORTER_OTLP_INSECURE: ${OTEL_EXPORTER_OTLP_INSECURE:-true}
     networks:
       - odoo-net
     restart: unless-stopped

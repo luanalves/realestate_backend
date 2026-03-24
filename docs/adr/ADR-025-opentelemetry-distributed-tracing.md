@@ -280,10 +280,12 @@ $ curl "http://localhost:3200/api/search?tags=service.name%3Dodoo-development"
 > Odoo creates database connections at boot (before the module loads).
 > The Cursor.execute monkey-patch approach works with all connections.
 
-### Phase 3: Celery Task Tracing (Q3 2026)
-- Instrument async tasks (email, reports)
-- Propagate trace context via RabbitMQ headers
-- Visualize end-to-end flows (HTTP → Task → Callback)
+### Phase 3: Celery Task Tracing (Completed)
+- CeleryInstrumentor on both Odoo (client) and worker (server) sides
+- Automatic trace context propagation via RabbitMQ task headers
+- Each worker has distinct `service.name` (celery-commission-worker, celery-audit-worker, celery-notification-worker)
+- Worker OTel init via `worker_init` signal (process-level, not per-task)
+- End-to-end flow: HTTP request → EventBus.emit_async → RabbitMQ → Celery task (all linked spans)
 
 ### Phase 4: Frontend Instrumentation (Q4 2026)
 - Add OpenTelemetry JS SDK
