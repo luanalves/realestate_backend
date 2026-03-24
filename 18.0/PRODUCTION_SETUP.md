@@ -4,6 +4,8 @@
 **Data:** 2026-03-24  
 **Ambiente:** Dokploy + Docker Swarm  
 
+> 📚 **Arquitetura de Observabilidade:** Ver [ADR-025: OpenTelemetry Distributed Tracing](../docs/adr/ADR-025-opentelemetry-distributed-tracing.md) para detalhes de implementação de tracing, métricas e logs.
+
 ## 📋 Índice
 
 1. [Checklist Geral](#checklist-geral)
@@ -704,6 +706,12 @@ echo "JWT_SECRET=$(openssl rand -base64 48)"
 ---
 
 ## 📊 Observabilidade & Monitoramento
+
+> 📚 **Implementação Completa:** Este projeto já possui instrumentação OpenTelemetry completa. Ver [ADR-025: OpenTelemetry Distributed Tracing](../docs/adr/ADR-025-opentelemetry-distributed-tracing.md) para:
+> - Arquitetura de tracing distribuído
+> - Configurações de produção (sampling, exporters)
+> - Dashboards pré-configurados
+> - Alertas e SLOs
 
 ### 🎯 Stack Recomendada: Grafana Observability Stack
 
