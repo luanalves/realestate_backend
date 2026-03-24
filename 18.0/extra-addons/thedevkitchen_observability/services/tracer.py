@@ -263,11 +263,57 @@ def trace_http_request(func: Callable) -> Callable:
                     if client_ip:
                         span.set_attribute("http.client_ip", client_ip)
                 
+                # ===== Phase 6: Enhanced Span Attributes =====
+                
                 # Add user context if available
                 if hasattr(request, 'session') and request.session.uid:
                     span.set_attribute("enduser.id", str(request.session.uid))
-                    if hasattr(request.env, 'user'):
-                        span.set_attribute("enduser.name", request.env.user.name or '')
+                    if hasattr(request, 'env') and hasattr(request.env, 'user'):
+                        user = request.env.user
+                        span.set_attribute("enduser.name", user.name or '')
+                        span.set_attribute("user.email", user.email or '')
+                        
+                        # User profile (RBAC role)
+                        if hasattr(user, 'profile_id') and user.profile_id:
+                            span.set_attribute("user.profile", user.profile_id.name or '')
+                
+                # Multi-tenancy attributes (company isolation)
+                if hasattr(request, 'env') and hasattr(request.env, 'company'):
+                    company = request.env.company
+                    span.set_attribute("company.id", company.id)
+                    span.set_attribute("company.name", company.name or '')
+                    
+                    # All allowed companies for this user (multi-company access)
+                    if hasattr(request.env, 'companies'):
+                        allowed_ids = ",".join(map(str, request.env.companies.ids))
+                        span.set_attribute("company.allowed_ids", allowed_ids)
+                
+                # Request metadata
+                if hasattr(request, 'httprequest'):
+                    # Content length
+                    content_length = len(request.httprequest.data or b'')
+                    if content_length > 0:
+                        span.set_attribute("http.request.content_length", content_length)
+                    
+                    # Referer (for tracking navigation flows)
+                    referer = request.httprequest.headers.get('Referer', '')
+                    if referer:
+                        span.set_attribute("http.referer", referer)
+                    
+                    # API version (extract from route)
+                    if '/api/v' in http_route:
+                        version = http_route.split('/api/')[1].split('/')[0]
+                        span.set_attribute("api.version", version)
+                
+                # Session information
+                if hasattr(request, 'session') and hasattr(request.session, 'sid'):
+                    span.set_attribute("session.id", request.session.sid)
+                    
+                    # Session age (helps identify stale sessions)
+                    if hasattr(request.session, 'creation_time'):
+                        import time
+                        session_age = int(time.time() - request.session.creation_time)
+                        span.set_attribute("session.age_seconds", session_age)
                 
                 try:
                     # Call original function

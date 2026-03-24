@@ -48,6 +48,46 @@ def _categorize_query(query_str):
     return operation, table
 
 
+def _generate_query_fingerprint(query_str):
+    """
+    Generate normalized fingerprint for grouping similar queries.
+    
+    Phase 6 Enhancement:
+    - Replace numeric literals with ?
+    - Replace string literals with ?
+    - Replace IN clauses with IN (?)
+    - Normalize whitespace
+    
+    Example:
+        "SELECT * FROM users WHERE id = 123" → "SELECT * FROM users WHERE id = ?"
+        "SELECT * FROM users WHERE id = 456" → "SELECT * FROM users WHERE id = ?"
+        (Both queries have same fingerprint for aggregation)
+    """
+    if not query_str:
+        return ''
+    
+    if isinstance(query_str, bytes):
+        query_str = query_str.decode('utf-8', errors='replace')
+    
+    # Replace IN clauses: IN (1,2,3) → IN (?)
+    fingerprint = re.sub(r'IN\s*\([^)]+\)', 'IN (?)', query_str, flags=re.IGNORECASE)
+    
+    # Replace numeric literals: 123 → ?
+    fingerprint = re.sub(r'\b\d+\b', '?', fingerprint)
+    
+    # Replace string literals: 'value' → ?
+    fingerprint = re.sub(r"'[^']*'", '?', fingerprint)
+    
+    # Replace double-quoted strings: "value" → ?
+    fingerprint = re.sub(r'"[^"]*"', '?', fingerprint)
+    
+    # Normalize whitespace
+    fingerprint = re.sub(r'\s+', ' ', fingerprint).strip()
+    
+    # Limit length to 500 chars
+    return fingerprint[:500]
+
+
 def _sanitize_query(query_str, params):
     """Replace parameter placeholders with '?' for production."""
     if not query_str:
@@ -111,6 +151,18 @@ def initialize_db_instrumentation() -> bool:
                 if table:
                     span.set_attribute('db.sql.table', table)
                 
+                # Phase 6: Enhanced query attributes
+                span.set_attribute('db.query.type', operation)
+                
+                # Query fingerprint (for grouping similar queries in Tempo/Grafana)
+                fingerprint = _generate_query_fingerprint(query_str)
+                span.set_attribute('db.query.fingerprint', fingerprint)
+                
+                # Parameter count (helps identify complex queries)
+                if params:
+                    param_count = len(params) if isinstance(params, (list, tuple)) else 1
+                    span.set_attribute('db.query.parameter_count', param_count)
+                
                 # Query statement (sanitized or raw)
                 if sanitize:
                     span.set_attribute('db.statement', _sanitize_query(query_str, params))
@@ -123,7 +175,11 @@ def initialize_db_instrumentation() -> bool:
                     
                     # Row count if available
                     if hasattr(self, '_obj') and self._obj and hasattr(self._obj, 'rowcount'):
-                        span.set_attribute('db.rowcount', self._obj.rowcount)
+                        row_count = self._obj.rowcount
+                        span.set_attribute('db.rowcount', row_count)
+                        
+                        # Phase 6: Track if query returned rows
+                        span.set_attribute('db.query.returns_rows', operation == 'SELECT' or row_count > 0)
                     
                     return result
                     

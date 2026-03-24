@@ -95,6 +95,85 @@ The `@trace_http_request` decorator automatically captures:
 - ✅ Exceptions and error details
 - ✅ W3C Trace Context propagation
 
+### Phase 6: Enhanced Span Attributes 🆕
+
+**Implemented:** March 24, 2026
+
+All HTTP spans now include rich business context for advanced filtering and analytics:
+
+#### User Context
+```
+user.id = "42"
+user.email = "agent@company.com"
+user.profile = "agent"  // RBAC role: owner, manager, agent, receptionist, etc.
+```
+
+#### Multi-Tenancy (Company Isolation)
+```
+company.id = 1
+company.name = "Real Estate Corp"
+company.allowed_ids = "1,2,3"  // All companies user has access to
+```
+
+#### Request Metadata
+```
+api.version = "v1"  // Extracted from route
+http.request.content_length = 1024  // Bytes
+http.referer = "http://localhost/properties"  // Navigation tracking
+```
+
+#### Session Information
+```
+session.id = "abc123def456"
+session.age_seconds = 3600  // Session age in seconds
+```
+
+#### Database Query Enhancements
+```
+db.query.type = "SELECT"  // SELECT, INSERT, UPDATE, DELETE, etc.
+db.query.fingerprint = "SELECT * FROM users WHERE id = ?"  // Normalized query
+db.query.parameter_count = 2  // Number of parameters
+db.query.returns_rows = true  // Whether query returned data
+```
+
+**Query Fingerprinting:** Similar queries are grouped together for analysis
+```
+"SELECT * FROM users WHERE id = 123" →  "SELECT * FROM users WHERE id = ?"
+"SELECT * FROM users WHERE id = 456" →  "SELECT * FROM users WHERE id = ?"
+```
+
+**Grafana Tempo Queries (TraceQL):**
+```traceql
+# All requests by specific user
+{user.id="42"}
+
+# All agent profile requests
+{user.profile="agent"}
+
+# All requests for Company A
+{company.id="1"}
+
+# Slow SELECT queries
+{db.query.type="SELECT" && duration>100ms}
+
+# Queries with many parameters (potential performance issue)
+{db.query.parameter_count>10}
+
+# User onboarding flow
+{api.version="v1" && http.route=~"/api/v1/auth/.*"}
+
+# Multi-company data access (user accessing multiple companies)
+{company.allowed_ids=~".*,.*"}
+```
+
+**Benefits:**
+- 🔍 Filter traces by user, company, profile for debugging
+- 📊 Analyze performance by user segments (owner vs agent vs tenant)
+- 🏢 Track multi-tenancy isolation and cross-company access
+- 🔐 Identify stale sessions (high session.age_seconds)
+- 🗄️ Optimize database queries (group by fingerprint)
+- 📈 Business analytics (API usage by company, user behavior flows)
+
 ### Manual Instrumentation
 
 For complex operations, use manual spans:
