@@ -4,6 +4,7 @@
 import logging
 from odoo import http
 from odoo.http import request
+from odoo.addons.thedevkitchen_observability.services.tracer import trace_http_request
 from ..middleware import require_jwt, require_session
 
 _logger = logging.getLogger(__name__)
@@ -14,6 +15,7 @@ class MeController(http.Controller):
     @http.route('/api/v1/me', type='http', auth='none', methods=['GET'], csrf=False, cors='*')
     @require_jwt
     @require_session
+    @trace_http_request
     def get_me(self, **kwargs):
         try:
             user = request.env.user

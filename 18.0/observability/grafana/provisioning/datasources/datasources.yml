@@ -1,0 +1,157 @@
+# =============================================================================
+# Grafana Data Sources - Provisioning
+# =============================================================================
+# Documentação: https://grafana.com/docs/grafana/latest/administration/provisioning/#data-sources
+#
+# Este arquivo configura automaticamente os data sources no Grafana:
+#   - Prometheus (métricas)
+#   - Loki (logs)
+#   - Tempo (traces/APM)
+# =============================================================================
+
+apiVersion: 1
+
+# Lista de data sources para provisionar
+datasources:
+  # ---------------------------------------------------------------------------
+  # PROMETHEUS - Métricas
+  # ---------------------------------------------------------------------------
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+    jsonData:
+      httpMethod: POST
+      timeInterval: 15s
+      queryTimeout: 60s
+      
+      # Exemplars (linkage entre métricas e traces)
+      exemplarTraceIdDestinations:
+        - name: trace_id
+          datasourceUid: tempo
+      
+      # Incremental querying
+      incrementalQuerying: true
+      incrementalQueryOverlapWindow: 10m
+      
+      # Disable metrics lookup (performance)
+      disableMetricsLookup: false
+      
+      # Custom query parameters
+      customQueryParameters: ''
+      
+      # Prometheus type
+      prometheusType: Prometheus
+      prometheusVersion: 2.48.1
+      
+      # Cache level
+      cacheLevel: High
+    
+    version: 1
+    uid: prometheus
+
+  # ---------------------------------------------------------------------------
+  # LOKI - Logs
+  # ---------------------------------------------------------------------------
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    editable: false
+    jsonData:
+      maxLines: 1000
+      timeout: 60s
+      
+      # Derived fields - extrair trace_id dos logs
+      derivedFields:
+        - datasourceUid: tempo
+          matcherRegex: "trace_id=(\\w+)"
+          name: TraceID
+          url: '$${__value.raw}'
+          urlDisplayLabel: 'View Trace'
+        
+        - datasourceUid: tempo
+          matcherRegex: "traceID=(\\w+)"
+          name: TraceID
+          url: '$${__value.raw}'
+          urlDisplayLabel: 'View Trace'
+      
+      # Alert manager
+      alertmanagerUid: ''
+    
+    version: 1
+    uid: loki
+
+  # ---------------------------------------------------------------------------
+  # TEMPO - Distributed Tracing (APM)
+  # ---------------------------------------------------------------------------
+  - name: Tempo
+    type: tempo
+    access: proxy
+    url: http://tempo:3200
+    editable: false
+    jsonData:
+      # Link traces para logs (Loki)
+      tracesToLogs:
+        datasourceUid: loki
+        tags:
+          - 'service'
+          - 'container'
+        mappedTags:
+          - key: 'service.name'
+            value: 'service'
+        mapTagNamesEnabled: true
+        spanStartTimeShift: '-1h'
+        spanEndTimeShift: '1h'
+        filterByTraceID: true
+        filterBySpanID: false
+        lokiSearch: true
+      
+      # Link traces para métricas (Prometheus)
+      tracesToMetrics:
+        datasourceUid: prometheus
+        tags:
+          - key: 'service.name'
+            value: 'service'
+        queries:
+          - name: 'Request rate'
+            query: 'sum(rate(http_requests_total{service="$${__tags}"}[5m]))'
+          - name: 'Error rate'
+            query: 'sum(rate(http_requests_total{service="$${__tags}", status=~"5.."}[5m]))'
+          - name: 'Duration'
+            query: 'histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{service="$${__tags}"}[5m])) by (le))'
+      
+      # Service graph (mostra relação entre serviços)
+      serviceMap:
+        datasourceUid: prometheus
+      
+      # Node graph (mostra trace como árvore)
+      nodeGraph:
+        enabled: true
+      
+      # Search
+      search:
+        hide: false
+      
+      # TraceQL editor
+      traceQuery:
+        timeShiftEnabled: true
+        spanStartTimeShift: '1h'
+        spanEndTimeShift: '1h'
+      
+      # Lokiのsearch
+      lokiSearch:
+        datasourceUid: loki
+    
+    version: 1
+    uid: tempo
+
+  # ---------------------------------------------------------------------------
+  # TESTDATA (para exemplos - opcional)
+  # ---------------------------------------------------------------------------
+  # - name: TestData
+  #   type: testdata
+  #   uid: testdata
+  #   editable: false

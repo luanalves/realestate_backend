@@ -1,0 +1,169 @@
+# =============================================================================
+# Loki Configuration
+# =============================================================================
+# Documentação: https://grafana.com/docs/loki/latest/configuration/
+#
+# Loki é um sistema de agregação de logs inspirado no Prometheus.
+# Este arquivo configura:
+#   - Armazenamento de logs (local filesystem)
+#   - Retenção de dados (31 dias)
+#   - Limites de ingestão
+#   - Schema de índices
+# =============================================================================
+
+# Desabilitar autenticação (uso interno apenas)
+auth_enabled: false
+
+# =============================================================================
+# SERVER - Configurações do Servidor HTTP
+# =============================================================================
+server:
+  http_listen_port: 3100
+  grpc_listen_port: 9096
+  log_level: info
+
+# =============================================================================
+# INGESTER - Componente que recebe e processa logs
+# =============================================================================
+ingester:
+  lifecycler:
+    address: 127.0.0.1
+    ring:
+      kvstore:
+        store: inmemory
+      replication_factor: 1
+    final_sleep: 0s
+  
+  # Configurações de chunks (blocos de logs)
+  chunk_idle_period: 5m       # Tempo que chunk fica idle antes de flush
+  chunk_retain_period: 30s    # Tempo para reter chunk depois do flush
+  max_chunk_age: 1h           # Idade máxima de um chunk
+  chunk_target_size: 1048576  # Tamanho alvo do chunk (1MB)
+  chunk_encoding: snappy      # Compressão (snappy, gzip, lz4, ou none)
+  
+  # Transfer de dados ao desligar
+  max_transfer_retries: 0
+
+# =============================================================================
+# SCHEMA CONFIG - Schema de armazenamento e índices
+# =============================================================================
+schema_config:
+  configs:
+    - from: 2024-01-01
+      store: boltdb-shipper
+      object_store: filesystem
+      schema: v11
+      index:
+        prefix: index_
+        period: 24h        # Novo índice a cada 24 horas
+
+# =============================================================================
+# STORAGE CONFIG - Armazenamento de chunks e índices
+# =============================================================================
+storage_config:
+  boltdb_shipper:
+    active_index_directory: /loki/index
+    cache_location: /loki/cache
+    cache_ttl: 24h
+    shared_store: filesystem
+  
+  filesystem:
+    directory: /loki/chunks
+
+# =============================================================================
+# COMPACTOR - Compacta dados antigos
+# =============================================================================
+compactor:
+  working_directory: /loki/compactor
+  shared_store: filesystem
+  compaction_interval: 10m
+  retention_enabled: true
+  retention_delete_delay: 2h
+  retention_delete_worker_count: 150
+
+# =============================================================================
+# LIMITS CONFIG - Limites de ingestão e queries
+# =============================================================================
+limits_config:
+  # Retenção de dados
+  retention_period: 744h      # 31 dias (744 horas)
+  
+  # Limites de ingestão
+  ingestion_rate_mb: 10       # MB/s por distributor
+  ingestion_burst_size_mb: 20 # Burst size
+  
+  # Limites de queries
+  max_query_length: 721h      # Máximo 30 dias de query
+  max_query_parallelism: 32   # Queries paralelas
+  max_streams_per_user: 0     # Sem limite de streams
+  max_global_streams_per_user: 5000
+  
+  # Cardinality
+  max_entries_limit_per_query: 5000
+  max_cache_freshness_per_query: 10m
+  
+  # Chunks
+  max_chunks_per_query: 2000000
+  
+  # Outros limites
+  reject_old_samples: true
+  reject_old_samples_max_age: 168h  # 7 dias
+  creation_grace_period: 10m
+  enforce_metric_name: false
+  
+  # Split queries
+  split_queries_by_interval: 30m
+
+# =============================================================================
+# CHUNK STORE CONFIG - Configurações de cache de chunks
+# =============================================================================
+chunk_store_config:
+  max_look_back_period: 744h  # 31 dias (igual à retenção)
+
+# =============================================================================
+# TABLE MANAGER - Gerencia criação e retenção de tabelas
+# =============================================================================
+table_manager:
+  retention_deletes_enabled: true
+  retention_period: 744h      # 31 dias
+
+# =============================================================================
+# QUERY RANGE - Cache de queries
+# =============================================================================
+query_range:
+  align_queries_with_step: true
+  max_retries: 5
+  cache_results: true
+  results_cache:
+    cache:
+      embedded_cache:
+        enabled: true
+        max_size_mb: 100
+
+# =============================================================================
+# FRONTEND - Query frontend (opcional)
+# =============================================================================
+frontend:
+  log_queries_longer_than: 5s
+  compress_responses: true
+
+# =============================================================================
+# QUERY SCHEDULER - Agendador de queries (opcional)
+# =============================================================================
+# query_scheduler:
+#   max_outstanding_requests_per_tenant: 256
+
+# =============================================================================
+# RULER - Regras e alertas (opcional)
+# =============================================================================
+# ruler:
+#   storage:
+#     type: local
+#     local:
+#       directory: /loki/rules
+#   rule_path: /loki/rules-temp
+#   alertmanager_url: http://alertmanager:9093
+#   ring:
+#     kvstore:
+#       store: inmemory
+#   enable_api: true

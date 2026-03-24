@@ -9,6 +9,7 @@ from odoo.addons.thedevkitchen_apigateway.middleware import (
     require_session,
     require_company,
 )
+from odoo.addons.thedevkitchen_observability.services.tracer import trace_http_request
 from ..services.invite_service import InviteService
 from ..services.token_service import PasswordTokenService
 
@@ -27,6 +28,7 @@ class InviteController(http.Controller):
     @require_jwt
     @require_session
     @require_company
+    @trace_http_request
     def invite_user(self, **kwargs):
         try:
             # Parse request body
@@ -212,6 +214,7 @@ class InviteController(http.Controller):
     @require_jwt
     @require_session
     @require_company
+    @trace_http_request
     def resend_invite(self, **kwargs):
         try:
             # Parse request body

@@ -5,6 +5,7 @@ import logging
 from datetime import datetime, timedelta
 from odoo import http
 from odoo.http import request
+from odoo.addons.thedevkitchen_observability.services.tracer import trace_http_request
 
 _logger = logging.getLogger(__name__)
 
@@ -13,6 +14,7 @@ class AuthController(http.Controller):
     """OAuth 2.0 Authentication Controller"""
 
     @http.route('/api/v1/auth/token', type='http', auth='none', methods=['POST'], csrf=False)
+    @trace_http_request
     def token(self, **kwargs):
         try:
             _logger.info("=== OAuth Token Request Started ===")
@@ -107,6 +109,7 @@ class AuthController(http.Controller):
             return self._error_response('server_error', str(e))
 
     @http.route('/api/v1/auth/revoke', type='http', auth='none', methods=['POST'], csrf=False)
+    @trace_http_request
     def revoke(self, **kwargs):
         try:
             # Accept both JSON and form data
@@ -146,6 +149,7 @@ class AuthController(http.Controller):
             return self._error_response('server_error', str(e))
 
     @http.route('/api/v1/auth/refresh', type='http', auth='none', methods=['POST'], csrf=False)
+    @trace_http_request
     def refresh(self, **kwargs):
         try:
             # Accept both JSON and form data

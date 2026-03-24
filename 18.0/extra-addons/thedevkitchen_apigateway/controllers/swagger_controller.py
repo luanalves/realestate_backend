@@ -1,20 +1,14 @@
 # -*- coding: utf-8 -*-
-"""
-Swagger/OpenAPI Controller
-
-Provides Swagger UI and OpenAPI specification dynamically generated from database
-"""
-
 import json
 from odoo import http
 from odoo.http import request
 from odoo.modules.module import get_module_resource
+from odoo.addons.thedevkitchen_observability.services.tracer import trace_http_request
 
 
 class SwaggerController(http.Controller):
-    """Swagger UI and OpenAPI specification endpoints"""
-
     @http.route('/api/docs', type='http', auth='none', methods=['GET'], csrf=False)
+    @trace_http_request
     def swagger_ui(self, **kwargs):
         """Serve Swagger UI"""
         swagger_path = get_module_resource('thedevkitchen_apigateway', 'static', 'src', 'swagger.html')
@@ -23,15 +17,8 @@ class SwaggerController(http.Controller):
         return request.make_response(content, headers=[('Content-Type', 'text/html')])
 
     @http.route('/api/v1/openapi.json', type='http', auth='none', methods=['GET'], csrf=False)
+    @trace_http_request
     def openapi_spec(self, **kwargs):
-        """
-        Generate OpenAPI 3.0 specification from registered endpoints in database
-        
-        GET /api/v1/openapi.json
-        
-        Returns:
-            OpenAPI 3.0 specification in JSON format
-        """
         # Get all registered endpoints from database
         Endpoint = request.env['thedevkitchen.api.endpoint'].sudo()
         endpoints = Endpoint.search([('active', '=', True)])

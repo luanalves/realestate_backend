@@ -1,0 +1,185 @@
+# =============================================================================
+# Promtail Configuration
+# =============================================================================
+# Documentação: https://grafana.com/docs/loki/latest/clients/promtail/configuration/
+#
+# Promtail é o agente que coleta logs e os envia para o Loki.
+# Este arquivo configura:
+#   - Descoberta automática de containers Docker
+#   - Pipeline de processamento de logs
+#   - Labels para organização
+# =============================================================================
+
+# =============================================================================
+# SERVER - Configurações do servidor Promtail
+# =============================================================================
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+  log_level: info
+
+# =============================================================================
+# POSITIONS - Arquivo para rastrear posição de leitura dos logs
+# =============================================================================
+positions:
+  filename: /tmp/positions.yaml
+
+# =============================================================================
+# CLIENTS - Onde enviar os logs (Loki)
+# =============================================================================
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+    backoff_config:
+      min_period: 500ms
+      max_period: 5m
+      max_retries: 10
+    timeout: 10s
+    tenant_id: ''
+
+# =============================================================================
+# SCRAPE CONFIGS - Configurações de coleta de logs
+# =============================================================================
+scrape_configs:
+  # ---------------------------------------------------------------------------
+  # Docker Containers - Descoberta automática via Docker API
+  # ---------------------------------------------------------------------------
+  - job_name: docker
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+        filters:
+          - name: label
+            values: ["com.docker.compose.project=180"]  # Só containers do projeto
+    
+    # Relabel: extrair labels úteis dos containers
+    relabel_configs:
+      # Nome do container
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: 'container'
+      
+      # Nome do serviço (via docker-compose)
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_service']
+        target_label: 'service'
+      
+      # Projeto docker-compose
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_project']
+        target_label: 'project'
+      
+      # ID do container
+      - source_labels: ['__meta_docker_container_id']
+        target_label: 'container_id'
+      
+      # Stream (stdout/stderr)
+      - source_labels: ['__meta_docker_container_log_stream']
+        target_label: 'stream'
+      
+      # Nome da imagem
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_image']
+        target_label: 'image'
+    
+    # Pipeline: processar cada linha de log
+    pipeline_stages:
+      # Stage 1: Parse logs do Docker (JSON)
+      - docker: {}
+      
+      # Stage 2: Detectar e parsear JSON logs (se aplicável)
+      - json:
+          expressions:
+            level: level
+            logger: logger
+            message: msg
+            timestamp: ts
+            trace_id: trace_id
+            span_id: span_id
+          source: log
+      
+      # Stage 3: Extrair level padrão de aplicações Python/Odoo
+      - regex:
+          expression: '(?P<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}) (?P<pid>\d+) (?P<level>\w+) (?P<database>\w+) (?P<logger>[\w.]+): (?P<message>.*)'
+          source: log
+      
+      # Stage 4: Normalizar level (INFO, WARNING, ERROR, etc.)
+      - labels:
+          level:
+          logger:
+          database:
+      
+      # Stage 5: Timestamp parsing (usar timestamp do log se disponível)
+      - timestamp:
+          source: timestamp
+          format: '2006-01-02 15:04:05,000'
+          fallback_formats:
+            - RFC3339
+            - RFC3339Nano
+          action_on_failure: skip
+      
+      # Stage 6: Métricas customizadas (contar erros, por exemplo)
+      - metrics:
+          error_total:
+            type: Counter
+            description: "Total de logs de erro"
+            source: level
+            config:
+              value: ERROR
+              action: inc
+      
+      # Stage 7: Drop logs desnecessários (opcional)
+      # - match:
+      #     selector: '{level="DEBUG"}'
+      #     action: drop
+      
+      # Stage 8: Adicionar labels dinâmicos
+      - labeldrop:
+          - filename
+
+  # ---------------------------------------------------------------------------
+  # System Logs - Logs do sistema operacional
+  # ---------------------------------------------------------------------------
+  - job_name: system
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: varlogs
+          __path__: /var/log/*.log
+    
+    pipeline_stages:
+      - match:
+          selector: '{job="varlogs"}'
+          stages:
+            - regex:
+                expression: '^(?P<timestamp>\w{3} \d{1,2} \d{2}:\d{2}:\d{2}) (?P<hostname>\S+) (?P<service>\S+?)(\[(?P<pid>\d+)\])?: (?P<message>.*)$'
+            - labels:
+                service:
+            - timestamp:
+                source: timestamp
+                format: 'Jan _2 15:04:05'
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL Logs (se configurado para logar em arquivo)
+  # ---------------------------------------------------------------------------
+  # - job_name: postgres
+  #   static_configs:
+  #     - targets:
+  #         - localhost
+  #       labels:
+  #         job: postgres
+  #         __path__: /var/log/postgresql/*.log
+  #   
+  #   pipeline_stages:
+  #     - regex:
+  #         expression: '^(?P<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}.\d{3} \w+) \[(?P<pid>\d+)\] (?P<level>\w+):  (?P<message>.*)$'
+  #     - labels:
+  #         level:
+  #     - timestamp:
+  #         source: timestamp
+  #         format: '2006-01-02 15:04:05.000 MST'
+
+# =============================================================================
+# LIMITS - Limites de processamento
+# =============================================================================
+limits_config:
+  readline_rate_enabled: true
+  readline_rate: 10000       # Linhas por segundo
+  readline_burst: 20000      # Burst rate

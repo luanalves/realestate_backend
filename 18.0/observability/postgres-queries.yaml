@@ -1,0 +1,280 @@
+# =============================================================================
+# PostgreSQL Exporter - Custom Queries
+# =============================================================================
+# Documentação: https://github.com/prometheus-community/postgres_exporter
+#
+# Queries customizadas para coletar métricas específicas do Odoo/PostgreSQL:
+#   - Conexões por database
+#   - Queries lentas
+#   - Tamanho de tabelas
+#   - Cache hit ratio
+#   - Locks e deadlocks
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Database Size - Tamanho de cada database
+# -----------------------------------------------------------------------------
+pg_database_size:
+  query: |
+    SELECT 
+      datname as database,
+      pg_database_size(datname) as size_bytes
+    FROM pg_database
+    WHERE datname NOT IN ('template0', 'template1')
+  metrics:
+    - database:
+        usage: "LABEL"
+        description: "Nome do database"
+    - size_bytes:
+        usage: "GAUGE"
+        description: "Tamanho do database em bytes"
+
+# -----------------------------------------------------------------------------
+# Table Size - Top 20 maiores tabelas
+# -----------------------------------------------------------------------------
+pg_table_size:
+  query: |
+    SELECT 
+      schemaname,
+      tablename,
+      pg_total_relation_size(schemaname||'.'||tablename) as total_bytes,
+      pg_relation_size(schemaname||'.'||tablename) as table_bytes,
+      pg_indexes_size(schemaname||'.'||tablename) as index_bytes
+    FROM pg_tables
+    WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
+    ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC
+    LIMIT 20
+  metrics:
+    - schemaname:
+        usage: "LABEL"
+        description: "Schema da tabela"
+    - tablename:
+        usage: "LABEL"
+        description: "Nome da tabela"
+    - total_bytes:
+        usage: "GAUGE"
+        description: "Tamanho total (tabela + índices) em bytes"
+    - table_bytes:
+        usage: "GAUGE"
+        description: "Tamanho da tabela em bytes"
+    - index_bytes:
+        usage: "GAUGE"
+        description: "Tamanho dos índices em bytes"
+
+# -----------------------------------------------------------------------------
+# Connections per Database
+# -----------------------------------------------------------------------------
+pg_stat_database_connections:
+  query: |
+    SELECT 
+      datname as database,
+      numbackends as connections,
+      xact_commit as transactions_committed,
+      xact_rollback as transactions_rolled_back,
+      blks_read as blocks_read,
+      blks_hit as blocks_hit,
+      tup_returned as tuples_returned,
+      tup_fetched as tuples_fetched,
+      tup_inserted as tuples_inserted,
+      tup_updated as tuples_updated,
+      tup_deleted as tuples_deleted,
+      conflicts as conflicts,
+      temp_files as temp_files,
+      temp_bytes as temp_bytes,
+      deadlocks as deadlocks
+    FROM pg_stat_database
+    WHERE datname NOT IN ('template0', 'template1')
+  metrics:
+    - database:
+        usage: "LABEL"
+        description: "Nome do database"
+    - connections:
+        usage: "GAUGE"
+        description: "Número de conexões ativas"
+    - transactions_committed:
+        usage: "COUNTER"
+        description: "Total de transações commitadas"
+    - transactions_rolled_back:
+        usage: "COUNTER"
+        description: "Total de transações rolled back"
+    - blocks_read:
+        usage: "COUNTER"
+        description: "Blocos lidos do disco"
+    - blocks_hit:
+        usage: "COUNTER"
+        description: "Blocos lidos da cache"
+    - tuples_returned:
+        usage: "COUNTER"
+        description: "Tuplas retornadas por queries"
+    - tuples_fetched:
+        usage: "COUNTER"
+        description: "Tuplas fetchadas"
+    - tuples_inserted:
+        usage: "COUNTER"
+        description: "Tuplas inseridas"
+    - tuples_updated:
+        usage: "COUNTER"
+        description: "Tuplas atualizadas"
+    - tuples_deleted:
+        usage: "COUNTER"
+        description: "Tuplas deletadas"
+    - conflicts:
+        usage: "COUNTER"
+        description: "Conflitos"
+    - temp_files:
+        usage: "COUNTER"
+        description: "Arquivos temporários criados"
+    - temp_bytes:
+        usage: "COUNTER"
+        description: "Bytes escritos em arquivos temporários"
+    - deadlocks:
+        usage: "COUNTER"
+        description: "Deadlocks detectados"
+
+# -----------------------------------------------------------------------------
+# Cache Hit Ratio (importante!)
+# -----------------------------------------------------------------------------
+pg_cache_hit_ratio:
+  query: |
+    SELECT 
+      datname as database,
+      CASE 
+        WHEN blks_hit + blks_read = 0 THEN 0
+        ELSE (blks_hit::float / (blks_hit + blks_read))
+      END as cache_hit_ratio
+    FROM pg_stat_database
+    WHERE datname NOT IN ('template0', 'template1')
+  metrics:
+    - database:
+        usage: "LABEL"
+        description: "Nome do database"
+    - cache_hit_ratio:
+        usage: "GAUGE"
+        description: "Cache hit ratio (0-1, ideal > 0.99)"
+
+# -----------------------------------------------------------------------------
+# Long Running Queries (> 30 segundos)
+# -----------------------------------------------------------------------------
+pg_long_running_queries:
+  query: |
+    SELECT 
+      datname as database,
+      usename as user,
+      application_name,
+      state,
+      COUNT(*) as count,
+      MAX(EXTRACT(EPOCH FROM (NOW() - query_start))) as max_duration_seconds,
+      AVG(EXTRACT(EPOCH FROM (NOW() - query_start))) as avg_duration_seconds
+    FROM pg_stat_activity
+    WHERE state != 'idle'
+      AND query NOT LIKE '%pg_stat_activity%'
+      AND NOW() - query_start > INTERVAL '30 seconds'
+    GROUP BY datname, usename, application_name, state
+  metrics:
+    - database:
+        usage: "LABEL"
+        description: "Nome do database"
+    - user:
+        usage: "LABEL"
+        description: "Usuário executando a query"
+    - application_name:
+        usage: "LABEL"
+        description: "Nome da aplicação"
+    - state:
+        usage: "LABEL"
+        description: "Estado da query"
+    - count:
+        usage: "GAUGE"
+        description: "Quantidade de queries lentas"
+    - max_duration_seconds:
+        usage: "GAUGE"
+        description: "Duração máxima em segundos"
+    - avg_duration_seconds:
+        usage: "GAUGE"
+        description: "Duração média em segundos"
+
+# -----------------------------------------------------------------------------
+# Locks - Bloqueios ativos
+# -----------------------------------------------------------------------------
+pg_locks:
+  query: |
+    SELECT 
+      l.database::text,
+      l.mode,
+      COUNT(*) as count
+    FROM pg_locks l
+    JOIN pg_database d ON l.database = d.oid
+    WHERE l.granted = true
+    GROUP BY l.database, l.mode
+  metrics:
+    - database:
+        usage: "LABEL"
+        description: "Database ID"
+    - mode:
+        usage: "LABEL"
+        description: "Lock mode"
+    - count:
+        usage: "GAUGE"
+        description: "Número de locks ativos"
+
+# -----------------------------------------------------------------------------
+# Replication Lag (se usar replicação)
+# -----------------------------------------------------------------------------
+# pg_replication_lag:
+#   query: |
+#     SELECT 
+#       client_addr as replica,
+#       EXTRACT(EPOCH FROM (NOW() - pg_last_xact_replay_timestamp())) as lag_seconds
+#     FROM pg_stat_replication
+#   metrics:
+#     - replica:
+#         usage: "LABEL"
+#         description: "Endereço da réplica"
+#     - lag_seconds:
+#         usage: "GAUGE"
+#         description: "Lag de replicação em segundos"
+
+# -----------------------------------------------------------------------------
+# Autovacuum Status (importante para Odoo)
+# -----------------------------------------------------------------------------
+pg_stat_progress_vacuum:
+  query: |
+    SELECT 
+      datname as database,
+      relid::regclass::text as table_name,
+      phase,
+      heap_blks_total,
+      heap_blks_scanned,
+      heap_blks_vacuumed,
+      index_vacuum_count,
+      max_dead_tuples,
+      num_dead_tuples
+    FROM pg_stat_progress_vacuum
+  metrics:
+    - database:
+        usage: "LABEL"
+        description: "Nome do database"
+    - table_name:
+        usage: "LABEL"
+        description: "Nome da tabela sendo vacuumizada"
+    - phase:
+        usage: "LABEL"
+        description: "Fase do vacuum"
+    - heap_blks_total:
+        usage: "GAUGE"
+        description: "Total de blocos da heap"
+    - heap_blks_scanned:
+        usage: "GAUGE"
+        description: "Blocos scanned"
+    - heap_blks_vacuumed:
+        usage: "GAUGE"
+        description: "Blocos vacuumizados"
+    - index_vacuum_count:
+        usage: "GAUGE"
+        description: "Número de vezes que índices foram vacuum"
+    - max_dead_tuples:
+        usage: "GAUGE"
+        description: "Máximo de tuplas mortas"
+    - num_dead_tuples:
+        usage: "GAUGE"
+        description: "Número atual de tuplas mortas"

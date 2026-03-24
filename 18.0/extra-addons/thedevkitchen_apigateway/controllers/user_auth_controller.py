@@ -1,5 +1,6 @@
 from odoo import http, fields
 from odoo.http import request
+from odoo.addons.thedevkitchen_observability.services.tracer import trace_http_request
 from ..services.audit_logger import AuditLogger
 from ..middleware import require_jwt, require_session
 import json
@@ -12,6 +13,7 @@ class UserAuthController(http.Controller):
 
     @http.route('/api/v1/users/login', type='http', auth='none', methods=['POST'], csrf=False, cors='*')
     @require_jwt
+    @trace_http_request
     def login(self, **kwargs):
         ip_address = request.httprequest.remote_addr
         user_agent = request.httprequest.headers.get('User-Agent', 'Unknown')
@@ -139,6 +141,7 @@ class UserAuthController(http.Controller):
     @http.route('/api/v1/users/logout', type='http', auth='none', methods=['POST'], csrf=False, cors='*')
     @require_jwt
     @require_session
+    @trace_http_request
     def logout(self, **kwargs):
     
         try:
@@ -165,6 +168,7 @@ class UserAuthController(http.Controller):
     @http.route('/api/v1/users/profile', type='http', auth='none', methods=['PATCH'], csrf=False, cors='*')
     @require_jwt
     @require_session
+    @trace_http_request
     def update_profile(self, **kwargs):
         try:
             user = request.env.user
@@ -244,6 +248,7 @@ class UserAuthController(http.Controller):
     @http.route('/api/v1/users/change-password', type='http', auth='none', methods=['POST'], csrf=False, cors='*')
     @require_jwt
     @require_session
+    @trace_http_request
     def change_password(self, **kwargs):
         try:
             # Use validated objects from @require_session decorator (ADR-011)

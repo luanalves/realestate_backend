@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TheDevKitchen Observability</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        h2 {
+            color: #764ba2;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 10px;
+            margin-top: 30px;
+        }
+        .icon {
+            font-size: 1.2em;
+        }
+        .badge {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            margin-right: 10px;
+            margin-top: 10px;
+        }
+        .feature {
+            display: flex;
+            align-items: start;
+            margin: 15px 0;
+            padding: 15px;
+            background: #f8f9ff;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        .feature-icon {
+            font-size: 1.5em;
+            margin-right: 15px;
+            min-width: 30px;
+        }
+        .code {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            overflow-x: auto;
+            margin: 20px 0;
+        }
+        .warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .success {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        ul li::before {
+            content: "✓ ";
+            color: #28a745;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>
+            <span class="icon">🔍</span>
+            TheDevKitchen Observability
+        </h1>
+        
+        <p style="font-size: 1.2em; color: #666;">
+            OpenTelemetry instrumentation for distributed tracing and APM (Application Performance Monitoring)
+        </p>
+        
+        <div>
+            <span class="badge">OpenTelemetry 1.22+</span>
+            <span class="badge">Grafana Tempo</span>
+            <span class="badge">OTLP gRPC</span>
+            <span class="badge">W3C Trace Context</span>
+        </div>
+
+        <h2>🎯 Features</h2>
+        
+        <div class="feature">
+            <div class="feature-icon">🔗</div>
+            <div>
+                <strong>Automatic HTTP Tracing</strong><br>
+                Controllers decorated with <code>@trace_http_request</code> automatically capture requests with full HTTP semantics (method, URL, status code, user info).
+            </div>
+        </div>
+
+        <div class="feature">
+            <div class="feature-icon">🌐</div>
+            <div>
+                <strong>Distributed Context Propagation</strong><br>
+                W3C Trace Context support enables tracing across microservices and external systems.
+            </div>
+        </div>
+
+        <div class="feature">
+            <div class="feature-icon">📊</div>
+            <div>
+                <strong>Grafana Integration</strong><br>
+                Seamless integration with Grafana Tempo for trace visualization, and Loki for log correlation.
+            </div>
+        </div>
+
+        <div class="feature">
+            <div class="feature-icon">🔗</div>
+            <div>
+                <strong>Log Correlation</strong><br>
+                Automatic trace_id and span_id injection in logs enables one-click navigation from logs to traces in Grafana.
+            </div>
+        </div>
+
+        <div class="feature">
+            <div class="feature-icon">⚡</div>
+            <div>
+                <strong>Performance Optimized</strong><br>
+                Batch span processor with configurable sampling (always_on, always_off, or ratio-based) for production use.
+            </div>
+        </div>
+
+        <h2>🚀 Quick Start</h2>
+
+        <div class="success">
+            <strong>Step 1: Install Dependencies</strong>
+            <div class="code">
+pip install -r extra-addons/thedevkitchen_observability/requirements.txt
+            </div>
+        </div>
+
+        <div class="success">
+            <strong>Step 2: Configure Environment</strong>
+            <div class="code">
+# Add to .env
+OTEL_ENABLED=true
+OTEL_SERVICE_NAME=odoo-production
+OTEL_EXPORTER_OTLP_ENDPOINT=tempo:4317
+OTEL_TRACES_SAMPLER=always_on
+            </div>
+        </div>
+
+        <div class="success">
+            <strong>Step 3: Install Module</strong><br>
+            Install this module via Odoo Apps interface or CLI:
+            <div class="code">
+docker compose exec odoo odoo -u thedevkitchen_observability -d realestate --stop-after-init
+            </div>
+        </div>
+
+        <div class="success">
+            <strong>Step 4: Add Decorator</strong>
+            <div class="code">
+from odoo.addons.thedevkitchen_observability.services.tracer import trace_http_request
+
+@http.route('/api/v1/users', type='http', auth='none', methods=['GET'])
+@require_jwt
+@require_session
+@trace_http_request  # 👈 Add this
+def list_users(self, **kwargs):
+    return request.make_json_response({'users': [...]})
+            </div>
+        </div>
+
+        <h2>📖 Usage Examples</h2>
+
+        <h3>Controller Tracing</h3>
+        <div class="code">
+from odoo.addons.thedevkitchen_observability.services.tracer import trace_http_request
+
+@http.route('/api/v1/properties', type='http', auth='none', methods=['POST'])
+@require_jwt
+@require_session
+@trace_http_request
+def create_property(self, **kwargs):
+    # Automatically traced with HTTP semantics
+    # trace_id is in logs, linked to Grafana Tempo
+    property_data = json.loads(request.httprequest.data)
+    property = request.env['real.estate.property'].create(property_data)
+    return request.make_json_response({'id': property.id})
+        </div>
+
+        <h3>Manual Instrumentation</h3>
+        <div class="code">
+from odoo.addons.thedevkitchen_observability.services.tracer import (
+    get_tracer,
+    add_span_attribute,
+    add_span_event,
+)
+
+def complex_calculation(self, property_id):
+    tracer = get_tracer()
+    
+    with tracer.start_as_current_span("calculate_property_value") as span:
+        span.set_attribute("property.id", property_id)
+        
+        # Add events for milestones
+        add_span_event("fetch.market.data.start")
+        market_data = self._fetch_market_data()
+        add_span_event("fetch.market.data.complete")
+        
+        # Calculate
+        value = self._calculate_value(market_data)
+        span.set_attribute("property.value", value)
+        
+        return value
+        </div>
+
+        <h2>🔗 Grafana Integration</h2>
+
+        <p>Once configured, traces appear in Grafana Tempo with full correlation:</p>
+
+        <ul>
+            <li><strong>Metrics → Traces:</strong> Click exemplars in Prometheus graphs to see related traces</li>
+            <li><strong>Logs → Traces:</strong> Click "View Trace" button in Loki to jump to Tempo</li>
+            <li><strong>Traces → Logs:</strong> Click span in Tempo to see all related logs in Loki</li>
+        </ul>
+
+        <div class="code">
+# Example TraceQL queries in Tempo:
+# Find slow requests
+{duration>1s}
+
+# Find errors
+{service.name="odoo-production" && status=error}
+
+# Search by endpoint
+{http.route="/api/v1/users"}
+        </div>
+
+        <h2>⚙️ Configuration</h2>
+
+        <table style="width:100%; border-collapse: collapse;">
+            <thead>
+                <tr style="background: #f8f9ff;">
+                    <th style="padding: 10px; text-align: left; border-bottom: 2px solid #667eea;">Variable</th>
+                    <th style="padding: 10px; text-align: left; border-bottom: 2px solid #667eea;">Default</th>
+                    <th style="padding: 10px; text-align: left; border-bottom: 2px solid #667eea;">Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td style="padding: 10px; border-bottom: 1px solid #f0f0f0;"><code>OTEL_ENABLED</code></td>
+                    <td style="padding: 10px; border-bottom: 1px solid #f0f0f0;">true</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #f0f0f0;">Enable/disable tracing</td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px; border-bottom: 1px solid #f0f0f0;"><code>OTEL_SERVICE_NAME</code></td>
+                    <td style="padding: 10px; border-bottom: 1px solid #f0f0f0;">odoo</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #f0f0f0;">Service identifier</td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px; border-bottom: 1px solid #f0f0f0;"><code>OTEL_EXPORTER_OTLP_ENDPOINT</code></td>
+                    <td style="padding: 10px; border-bottom: 1px solid #f0f0f0;">tempo:4317</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #f0f0f0;">Tempo gRPC endpoint</td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px; border-bottom: 1px solid #f0f0f0;"><code>OTEL_TRACES_SAMPLER</code></td>
+                    <td style="padding: 10px; border-bottom: 1px solid #f0f0f0;">always_on</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #f0f0f0;">Sampling: always_on, always_off, traceidratio:0.1</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>🐛 Troubleshooting</h2>
+
+        <div class="warning">
+            <strong>⚠️ Traces not appearing?</strong><br><br>
+            1. Check logs: <code>docker compose logs odoo | grep OpenTelemetry</code><br>
+            2. Verify Tempo is running: <code>docker compose -f docker-compose.observability.yml ps</code><br>
+            3. Test connectivity: <code>docker compose exec odoo nc -zv tempo 4317</code><br>
+            4. Check environment variables are set correctly
+        </div>
+
+        <h2>📚 Documentation</h2>
+
+        <p>Complete documentation is available in:</p>
+        <ul>
+            <li><strong>Module README:</strong> <code>extra-addons/thedevkitchen_observability/README.md</code></li>
+            <li><strong>Observability Stack:</strong> <code>observability/README.md</code></li>
+            <li><strong>Production Setup:</strong> <code>PRODUCTION_SETUP.md</code></li>
+        </ul>
+
+        <h2>📄 License</h2>
+        <p>LGPL-3 (same as Odoo)</p>
+
+        <hr style="margin: 40px 0; border: none; border-top: 2px solid #f0f0f0;">
+
+        <p style="text-align: center; color: #999; font-size: 0.9em;">
+            TheDevKitchen © 2024 | OpenTelemetry Instrumentation for Odoo 18.0
+        </p>
+    </div>
+</body>
+</html>

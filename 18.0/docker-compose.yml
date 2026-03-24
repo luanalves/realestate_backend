@@ -62,6 +62,15 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       CELERY_BROKER_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672//
       CELERY_RESULT_BACKEND: redis://redis:6379/2
+      # OpenTelemetry - Distributed Tracing
+      OTEL_ENABLED: ${OTEL_ENABLED:-true}
+      OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-odoo}
+      OTEL_SERVICE_VERSION: ${OTEL_SERVICE_VERSION:-18.0}
+      OTEL_DEPLOYMENT_ENVIRONMENT: ${OTEL_DEPLOYMENT_ENVIRONMENT:-development}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-tempo:4317}
+      OTEL_EXPORTER_OTLP_INSECURE: ${OTEL_EXPORTER_OTLP_INSECURE:-true}
+      OTEL_TRACES_SAMPLER: ${OTEL_TRACES_SAMPLER:-always_on}
+      OTEL_LOG_LEVEL: ${OTEL_LOG_LEVEL:-info}
     volumes:
       - odoo18-data:/var/lib/odoo
       - ./extra-addons:/mnt/extra-addons

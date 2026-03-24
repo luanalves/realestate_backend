@@ -1,0 +1,217 @@
+# =============================================================================
+# Tempo Configuration
+# =============================================================================
+# Documentação: https://grafana.com/docs/tempo/latest/configuration/
+#
+# Tempo é um sistema de distributed tracing (APM) de alta escala.
+# Este arquivo configura:
+#   - Receivers (OTLP, Jaeger, Zipkin)
+#   - Armazenamento de traces (local filesystem)
+#   - Retenção de dados
+#   - Compaction
+# =============================================================================
+
+# =============================================================================
+# SERVER - Configurações do servidor HTTP/gRPC
+# =============================================================================
+server:
+  http_listen_port: 3200
+  log_level: info
+
+# =============================================================================
+# DISTRIBUTOR - Recebe traces de aplicações
+# =============================================================================
+distributor:
+  receivers:
+    # OpenTelemetry Protocol (OTLP) - Protocolo moderno recomendado
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+    
+    # Jaeger - Protocolo Jaeger (compatibilidade)
+    jaeger:
+      protocols:
+        thrift_http:
+          endpoint: 0.0.0.0:14268
+        grpc:
+          endpoint: 0.0.0.0:14250
+    
+    # Zipkin - Protocolo Zipkin (compatibilidade)
+    zipkin:
+      endpoint: 0.0.0.0:9411
+
+# =============================================================================
+# INGESTER - Processa e armazena traces
+# =============================================================================
+ingester:
+  # Lifecycle
+  lifecycler:
+    address: 127.0.0.1
+    ring:
+      kvstore:
+        store: inmemory
+      replication_factor: 1
+    final_sleep: 0s
+  
+  # Trace handling
+  trace_idle_period: 10s       # Tempo que trace fica idle antes de flush
+  max_block_bytes: 1000000     # Tamanho máximo do bloco (1MB)
+  max_block_duration: 5m       # Duração máxima de um bloco
+  
+  # Completude de traces
+  complete_block_timeout: 15m  # Tempo para considerar bloco completo
+  
+  # Flush settings
+  flush_check_period: 10s
+  flush_op_timeout: 10s
+
+# =============================================================================
+# COMPACTOR - Compacta blocos antigos
+# =============================================================================
+compactor:
+  compaction:
+    # Compaction window - janela de tempo para compactar blocos
+    compaction_window: 1h
+    max_block_bytes: 107374182400  # 100GB
+    block_retention: 744h          # 31 dias (744 horas)
+    compacted_block_retention: 1h  # Manter blocos compactados por 1h
+    v2_in_buffer_bytes: 5242880    # 5MB
+    v2_out_buffer_bytes: 20971520  # 20MB
+    v2_prefetch_traces_count: 1000
+    # flush_size_bytes: 5242880      # 5MB (removed - not supported in v2.3.1)
+    
+    # Iterator settings
+    # iterator_buffer_size: 10000 (removed - not supported in v2.3.1)
+    max_time_per_tenant: 5m
+    
+  ring:
+    kvstore:
+      store: inmemory
+
+# =============================================================================
+# STORAGE - Armazenamento de traces
+# =============================================================================
+storage:
+  trace:
+    # Backend: local filesystem (simplicidade)
+    # Em produção avançada, considerar: s3, gcs, azure
+    backend: local
+    
+    # Write-Ahead Log (WAL) para durabilidade
+    wal:
+      path: /var/tempo/wal
+      v2_encoding: snappy  # Compressão (none, gzip, lz4, snappy, zstd)
+    
+    # Local filesystem storage
+    local:
+      path: /var/tempo/traces
+    
+    # Pool de workers
+    pool:
+      max_workers: 100
+      queue_depth: 10000
+    
+    # Cache
+    cache: none
+    
+    # Background cache (opcional)
+    background_cache:
+      writeback_goroutines: 10
+      writeback_buffer: 10000
+
+# =============================================================================
+# QUERIER - Consulta traces
+# =============================================================================
+querier:
+  frontend_worker:
+    frontend_address: localhost:9095
+    
+  max_concurrent_queries: 20
+  search:
+    # Configurações de busca
+    external_hedge_requests_at: 8s
+    external_hedge_requests_up_to: 2
+    
+    # Query timeout
+    query_timeout: 30s
+    
+    # Prefer self (buscar localmente primeiro)
+    prefer_self: 10
+
+# =============================================================================
+# QUERY FRONTEND - Frontend para queries
+# =============================================================================
+query_frontend:
+  search:
+    # Max duration para search
+    duration_slo: 5s
+    throughput_bytes_slo: 1.073741824e+09  # 1GB/s
+    
+    # Concurrency
+    concurrent_jobs: 1000
+    target_bytes_per_job: 104857600  # 100MB
+    
+    # Cache (optional - not supported in v2.3.1)
+    # cache:
+    #   memcached:
+    #     host: memcached:11211
+  
+  # Timeouts
+  max_retries: 2
+  
+  # Logging (not supported in v2.3.1)
+  # log_queries_longer_than: 10s
+
+# =============================================================================
+# METRICS GENERATOR - Gera métricas a partir de traces
+# =============================================================================
+metrics_generator:
+  # Desabilitado por padrão (opcional)
+  # storage:
+  #   path: /var/tempo/generator/wal
+  #   remote_write:
+  #     - url: http://prometheus:9090/api/v1/write
+  #       send_exemplars: true
+  
+  # Gerar métricas RED (Rate, Errors, Duration)
+  # registry:
+  #   external_labels:
+  #     source: tempo
+  #     cluster: odoo-production
+  
+  # Traces para processar
+  # traces_storage:
+  #   path: /var/tempo/generator/traces
+
+# =============================================================================
+# OVERRIDES - Overrides por tenant (multi-tenancy)
+# =============================================================================
+# overrides:
+#   # Configurações para todos os tenants (sem multi-tenancy)
+#   # defaults: (not supported in v2.3.1)
+#   # Limites de ingestão
+#   ingestion_rate_limit_bytes: 15000000  # 15MB/s
+#   ingestion_burst_size_bytes: 20000000  # 20MB burst
+#   
+#   # Limites de spans
+#   max_bytes_per_trace: 5000000  # 5MB por trace
+#   max_spans_per_trace: 100000   # 100k spans por trace
+#   
+#   # Limites de busca
+#   max_search_bytes_per_trace: 0  # Sem limite
+
+# =============================================================================
+# MEMBERLIST - Cluster membership (single instance - desabilitado)
+# =============================================================================
+memberlist:
+  abort_if_cluster_join_fails: false
+  join_members: []
+
+# =============================================================================
+# USAGE REPORT - Telemetria (opcional - desabilitar se privacy concern)
+# =============================================================================
+usage_report:
+  reporting_enabled: false

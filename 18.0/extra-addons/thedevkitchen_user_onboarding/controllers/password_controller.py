@@ -1,24 +1,10 @@
 # -*- coding: utf-8 -*-
-"""
-Password Controller
-
-Handles password-related public endpoints:
-- POST /api/v1/auth/set-password (for invite links)
-- POST /api/v1/auth/forgot-password (request reset)
-- POST /api/v1/auth/reset-password (reset with token)
-
-All endpoints are public (no authentication required).
-
-Author: TheDevKitchen
-Date: 2026-02-16
-ADRs: ADR-005 (API-First), ADR-008 (Anti-enumeration), ADR-011 (Public endpoints)
-"""
-
 import json
 import logging
 from odoo import http
 from odoo.http import request, Response
 from odoo.exceptions import ValidationError
+from odoo.addons.thedevkitchen_observability.services.tracer import trace_http_request
 from ..services.password_service import PasswordService
 from ..services.token_service import PasswordTokenService
 
@@ -35,27 +21,10 @@ class PasswordController(http.Controller):
         csrf=False,
         cors="*",
     )
+    @trace_http_request
     # public endpoint - user sets password from invite link
     def set_password(self, **kwargs):
-        """
-        POST /api/v1/auth/set-password
 
-        Set password for a user with a valid invite token.
-        Public endpoint - no authentication required.
-
-        Request Body:
-        {
-            "token": "string (required)",
-            "password": "string (required, min 8 chars)",
-            "confirm_password": "string (required, must match password)"
-        }
-
-        Returns:
-            200: Password set successfully
-            400: Validation error (password too short, mismatch, etc.)
-            404: Token not found
-            410: Token expired or already used
-        """
         try:
             data = json.loads(request.httprequest.data.decode("utf-8"))
         except (ValueError, UnicodeDecodeError):
@@ -131,25 +100,9 @@ class PasswordController(http.Controller):
         csrf=False,
         cors="*",
     )
+    @trace_http_request
     # public endpoint - request password reset link
     def forgot_password(self, **kwargs):
-        """
-        POST /api/v1/auth/forgot-password
-
-        Request password reset link (anti-enumeration: always returns 200).
-        Public endpoint - no authentication required.
-        Rate limited: 3 requests per email per hour.
-
-        Request Body:
-        {
-            "email": "string (required, valid email format)"
-        }
-
-        Returns:
-            200: Always (whether email exists or not)
-            400: Validation error (missing email, invalid format)
-            429: Rate limit exceeded
-        """
         try:
             data = json.loads(request.httprequest.data.decode("utf-8"))
         except (ValueError, UnicodeDecodeError):
@@ -191,28 +144,9 @@ class PasswordController(http.Controller):
         csrf=False,
         cors="*",
     )
+    @trace_http_request
     # public endpoint - reset password with token
     def reset_password(self, **kwargs):
-        """
-        POST /api/v1/auth/reset-password
-
-        Reset password with valid reset token.
-        Public endpoint - no authentication required.
-        Invalidates all active sessions after reset.
-
-        Request Body:
-        {
-            "token": "string (required)",
-            "password": "string (required, min 8 chars)",
-            "confirm_password": "string (required, must match password)"
-        }
-
-        Returns:
-            200: Password reset successfully
-            400: Validation error
-            404: Token not found
-            410: Token expired or already used
-        """
         try:
             data = json.loads(request.httprequest.data.decode("utf-8"))
         except (ValueError, UnicodeDecodeError):
@@ -282,11 +216,6 @@ class PasswordController(http.Controller):
     # Helper methods
 
     def _validate_token_format(self, token):
-        """Validate raw token is exactly 32 lowercase hex characters (UUID v4 hex).
-
-        Tokens are generated as ``uuid.uuid4().hex`` — always 32 lowercase hex chars.
-        Any other format is immediately rejected with 400 before touching the database.
-        """
         import re
 
         return bool(re.fullmatch(r"[a-f0-9]{32}", token))

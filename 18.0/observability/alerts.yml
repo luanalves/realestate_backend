@@ -1,0 +1,366 @@
+# =============================================================================
+# Prometheus Alert Rules
+# =============================================================================
+# Documentação: https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/
+#
+# Alertas críticos para monitorar a stack Odoo em produção.
+# Categorias:
+#   - Sistema (CPU, memória, disco)
+#   - Containers
+#   - PostgreSQL
+#   - Redis
+#   - Odoo (se expuser métricas)
+# =============================================================================
+
+groups:
+  # ===========================================================================
+  # SYSTEM - Alertas de Sistema Operacional
+  # ===========================================================================
+  - name: system
+    interval: 30s
+    rules:
+      # -------------------------------------------------------------------------
+      # Disco quase cheio (< 20% livre)
+      # -------------------------------------------------------------------------
+      - alert: DiskSpaceCritical
+        expr: |
+          (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"} * 100) < 20
+        for: 5m
+        labels:
+          severity: critical
+          category: system
+        annotations:
+          summary: "Disco quase cheio no host {{ $labels.instance }}"
+          description: "Apenas {{ $value | humanize }}% de espaço livre no disco raiz. AÇÃO URGENTE NECESSÁRIA!"
+          
+      # -------------------------------------------------------------------------
+      # Disco com warning (< 40% livre)
+      # -------------------------------------------------------------------------
+      - alert: DiskSpaceWarning
+        expr: |
+          (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"} * 100) < 40
+        for: 10m
+        labels:
+          severity: warning
+          category: system
+        annotations:
+          summary: "Espaço em disco diminuindo no host {{ $labels.instance }}"
+          description: "{{ $value | humanize }}% de espaço livre. Considere limpeza ou expansão."
+      
+      # -------------------------------------------------------------------------
+      # Memória alta (> 90% uso)
+      # -------------------------------------------------------------------------
+      - alert: HighMemoryUsage
+        expr: |
+          (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 90
+        for: 5m
+        labels:
+          severity: critical
+          category: system
+        annotations:
+          summary: "Uso de memória crítico no host {{ $labels.instance }}"
+          description: "Memória em {{ $value | humanize }}%. Possível OOM killer!"
+      
+      # -------------------------------------------------------------------------
+      # CPU alta (> 80% por 10 minutos)
+      # -------------------------------------------------------------------------
+      - alert: HighCPUUsage
+        expr: |
+          100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 10m
+        labels:
+          severity: warning
+          category: system
+        annotations:
+          summary: "CPU alta no host {{ $labels.instance }}"
+          description: "CPU em {{ $value | humanize }}% por mais de 10 minutos."
+      
+      # -------------------------------------------------------------------------
+      # Load average muito alto
+      # -------------------------------------------------------------------------
+      - alert: HighLoadAverage
+        expr: |
+          node_load15 / count(node_cpu_seconds_total{mode="idle"}) > 2
+        for: 15m
+        labels:
+          severity: warning
+          category: system
+        annotations:
+          summary: "Load average alto no host {{ $labels.instance }}"
+          description: "Load average (15min): {{ $value | humanize }}x o número de CPUs."
+
+  # ===========================================================================
+  # CONTAINERS - Alertas de Docker Containers
+  # ===========================================================================
+  - name: containers
+    interval: 30s
+    rules:
+      # -------------------------------------------------------------------------
+      # Container down (serviços críticos)
+      # -------------------------------------------------------------------------
+      - alert: ContainerDown
+        expr: |
+          up{job=~"postgres|redis|cadvisor"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          category: containers
+        annotations:
+          summary: "Container {{ $labels.job }} está DOWN"
+          description: "O serviço {{ $labels.job }} não está respondendo por mais de 1 minuto!"
+      
+      # -------------------------------------------------------------------------
+      # Container com muitos restarts (> 3 em 1 hora)
+      # -------------------------------------------------------------------------
+      - alert: ContainerHighRestartRate
+        expr: |
+          rate(container_last_seen{name!=""}[1h]) > 3
+        for: 5m
+        labels:
+          severity: warning
+          category: containers
+        annotations:
+          summary: "Container {{ $labels.name }} está reiniciando frequentemente"
+          description: "Container reiniciou {{ $value }} vezes na última hora."
+      
+      # -------------------------------------------------------------------------
+      # Container usando muita memória (> 90% do limite)
+      # -------------------------------------------------------------------------
+      - alert: ContainerHighMemory
+        expr: |
+          (container_memory_usage_bytes / container_spec_memory_limit_bytes * 100) > 90
+        for: 5m
+        labels:
+          severity: warning
+          category: containers
+        annotations:
+          summary: "Container {{ $labels.name }} usando muita memória"
+          description: "Uso de memória: {{ $value | humanize }}% do limite."
+
+  # ===========================================================================
+  # POSTGRESQL - Alertas de Database
+  # ===========================================================================
+  - name: postgresql
+    interval: 30s
+    rules:
+      # -------------------------------------------------------------------------
+      # PostgreSQL down
+      # -------------------------------------------------------------------------
+      - alert: PostgreSQLDown
+        expr: |
+          pg_up == 0
+        for: 1m
+        labels:
+          severity: critical
+          category: database
+        annotations:
+          summary: "PostgreSQL está DOWN!"
+          description: "PostgreSQL não está respondendo. Aplicação OFFLINE!"
+      
+      # -------------------------------------------------------------------------
+      # Muitas conexões (> 80% do max_connections)
+      # -------------------------------------------------------------------------
+      - alert: PostgreSQLTooManyConnections
+        expr: |
+          sum(pg_stat_activity_count) > 160
+        for: 5m
+        labels:
+          severity: warning
+          category: database
+        annotations:
+          summary: "Muitas conexões no PostgreSQL"
+          description: "{{ $value }} conexões ativas (limite: 200). Possível connection leak!"
+      
+      # -------------------------------------------------------------------------
+      # Muitas conexões CRÍTICO (> 95%)
+      # -------------------------------------------------------------------------
+      - alert: PostgreSQLConnectionsCritical
+        expr: |
+          sum(pg_stat_activity_count) > 190
+        for: 2m
+        labels:
+          severity: critical
+          category: database
+        annotations:
+          summary: "Conexões PostgreSQL CRÍTICAS!"
+          description: "{{ $value }} conexões de 200. Database pode parar de aceitar conexões!"
+      
+      # -------------------------------------------------------------------------
+      # Cache hit rate baixo (< 80%)
+      # -------------------------------------------------------------------------
+      - alert: PostgreSQLLowCacheHitRate
+        expr: |
+          avg(pg_cache_hit_ratio{database!~"template.*|postgres"}) < 0.8
+        for: 10m
+        labels:
+          severity: warning
+          category: database
+        annotations:
+          summary: "Cache hit rate baixo no PostgreSQL"
+          description: "Cache hit rate: {{ $value | humanizePercentage }}. Ideal > 99%. Considere aumentar shared_buffers."
+      
+      # -------------------------------------------------------------------------
+      # Queries lentas (média > 1s)
+      # -------------------------------------------------------------------------
+      - alert: PostgreSQLSlowQueries
+        expr: |
+          rate(pg_stat_statements_mean_time_seconds[5m]) > 1
+        for: 5m
+        labels:
+          severity: warning
+          category: database
+        annotations:
+          summary: "Queries lentas detectadas no PostgreSQL"
+          description: "Tempo médio de query: {{ $value | humanizeDuration }}. Investigue queries lentas!"
+      
+      # -------------------------------------------------------------------------
+      # Deadlocks
+      # -------------------------------------------------------------------------
+      - alert: PostgreSQLDeadlocks
+        expr: |
+          rate(pg_stat_database_deadlocks{datname!~"template.*|postgres"}[5m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+          category: database
+        annotations:
+          summary: "Deadlocks detectados no database {{ $labels.datname }}"
+          description: "{{ $value }} deadlocks por segundo. Revise lógica de transações!"
+      
+      # -------------------------------------------------------------------------
+      # Replication lag (se usar replicação)
+      # -------------------------------------------------------------------------
+      # - alert: PostgreSQLReplicationLag
+      #   expr: |
+      #     pg_replication_lag > 30
+      #   for: 5m
+      #   labels:
+      #     severity: warning
+      #     category: database
+      #   annotations:
+      #     summary: "Replication lag alto no PostgreSQL"
+      #     description: "Lag de {{ $value }}s na réplica {{ $labels.replica }}."
+
+  # ===========================================================================
+  # REDIS - Alertas de Cache
+  # ===========================================================================
+  - name: redis
+    interval: 30s
+    rules:
+      # -------------------------------------------------------------------------
+      # Redis down
+      # -------------------------------------------------------------------------
+      - alert: RedisDown
+        expr: |
+          redis_up == 0
+        for: 1m
+        labels:
+          severity: critical
+          category: cache
+        annotations:
+          summary: "Redis está DOWN!"
+          description: "Redis não está respondendo. Sessions e cache offline!"
+      
+      # -------------------------------------------------------------------------
+      # Low cache hit rate (< 70%)
+      # -------------------------------------------------------------------------
+      - alert: RedisLowHitRate
+        expr: |
+          rate(redis_keyspace_hits_total[5m]) / (rate(redis_keyspace_hits_total[5m]) + rate(redis_keyspace_misses_total[5m])) < 0.7
+        for: 10m
+        labels:
+          severity: warning
+          category: cache
+        annotations:
+          summary: "Redis cache hit rate baixo"
+          description: "Hit rate: {{ $value | humanizePercentage }}. Ideal > 80%. Cache pode estar pequeno ou TTL curto."
+      
+      # -------------------------------------------------------------------------
+      # Memória alta (> 90% maxmemory)
+      # -------------------------------------------------------------------------
+      - alert: RedisHighMemory
+        expr: |
+          (redis_memory_used_bytes / redis_memory_max_bytes * 100) > 90
+        for: 5m
+        labels:
+          severity: warning
+          category: cache
+        annotations:
+          summary: "Redis usando muita memória"
+          description: "Uso: {{ $value | humanize }}% de maxmemory. Eviction policy vai começar a dropar keys!"
+      
+      # -------------------------------------------------------------------------
+      # Rejected connections
+      # -------------------------------------------------------------------------
+      - alert: RedisRejectedConnections
+        expr: |
+          rate(redis_rejected_connections_total[5m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+          category: cache
+        annotations:
+          summary: "Redis rejeitando conexões!"
+          description: "{{ $value }} conexões rejeitadas/s. Aumente maxclients!"
+      
+      # -------------------------------------------------------------------------
+      # Muitas evicted keys (> 100/s)
+      # -------------------------------------------------------------------------
+      - alert: RedisHighEvictionRate
+        expr: |
+          rate(redis_evicted_keys_total[5m]) > 100
+        for: 5m
+        labels:
+          severity: warning
+          category: cache
+        annotations:
+          summary: "Redis evictando muitas keys"
+          description: "{{ $value }} keys evicted/s. Considere aumentar maxmemory."
+
+  # ===========================================================================
+  # OBSERVABILITY - Alertas sobre o próprio sistema de monitoramento
+  # ===========================================================================
+  - name: observability
+    interval: 60s
+    rules:
+      # -------------------------------------------------------------------------
+      # Prometheus scrape failures
+      # -------------------------------------------------------------------------
+      - alert: PrometheusScrapeFailures
+        expr: |
+          rate(prometheus_target_scrapes_exceeded_sample_limit_total[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+          category: monitoring
+        annotations:
+          summary: "Prometheus tendo problemas para scrape targets"
+          description: "Target {{ $labels.job }} excedeu sample limit."
+      
+      # -------------------------------------------------------------------------
+      # Tempo down
+      # -------------------------------------------------------------------------
+      - alert: TempoDown
+        expr: |
+          up{job="tempo"} == 0
+        for: 5m
+        labels:
+          severity: warning
+          category: monitoring
+        annotations:
+          summary: "Tempo (tracing) está down"
+          description: "Traces não estão sendo coletados!"
+      
+      # -------------------------------------------------------------------------
+      # Loki down
+      # -------------------------------------------------------------------------
+      - alert: LokiDown
+        expr: |
+          up{job="loki"} == 0
+        for: 5m
+        labels:
+          severity: warning
+          category: monitoring
+        annotations:
+          summary: "Loki (logs) está down"
+          description: "Logs não estão sendo agregados!"

@@ -1,0 +1,157 @@
+# =============================================================================
+# Prometheus Configuration
+# =============================================================================
+# Documentação: https://prometheus.io/docs/prometheus/latest/configuration/
+#
+# Este arquivo configura:
+#   - Intervalo de coleta de métricas (scrape_interval)
+#   - Targets para coleta (serviços monitorados)
+#   - Labels globais para identificação
+#   - Regras de alertas
+# =============================================================================
+
+global:
+  scrape_interval: 15s          # Coletar métricas a cada 15 segundos
+  evaluation_interval: 15s      # Avaliar regras a cada 15 segundos
+  scrape_timeout: 10s           # Timeout para coleta
+  
+  external_labels:
+    cluster: 'odoo-production'
+    environment: 'production'
+    region: 'us-east-1'
+
+# Regras de alertas (opcional - descomente se quiser usar)
+# rule_files:
+#   - 'alerts.yml'
+
+# Alertmanager (opcional - descomente se configurar Alertmanager)
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets: ['alertmanager:9093']
+
+# =============================================================================
+# SCRAPE CONFIGS - Definição dos Targets
+# =============================================================================
+scrape_configs:
+  # ---------------------------------------------------------------------------
+  # Prometheus Self-Monitoring
+  # ---------------------------------------------------------------------------
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          service: 'prometheus'
+          tier: 'monitoring'
+
+  # ---------------------------------------------------------------------------
+  # Node Exporter - Métricas do Sistema Operacional
+  # ---------------------------------------------------------------------------
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+        labels:
+          service: 'node-exporter'
+          tier: 'system'
+    metric_relabel_configs:
+      # Drop métricas desnecessárias para reduzir storage
+      - source_labels: [__name__]
+        regex: 'node_network_receive_errs_total|node_network_transmit_errs_total'
+        action: drop
+
+  # ---------------------------------------------------------------------------
+  # cAdvisor - Métricas dos Containers
+  # ---------------------------------------------------------------------------
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+        labels:
+          service: 'cadvisor'
+          tier: 'containers'
+    metric_relabel_configs:
+      # Adicionar label amigável do container
+      - source_labels: [container_label_com_docker_compose_service]
+        target_label: container_name
+      # Drop métricas de containers parados
+      - source_labels: [container_label_com_docker_compose_oneoff]
+        regex: 'True'
+        action: drop
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL Exporter - Métricas do Database
+  # ---------------------------------------------------------------------------
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+        labels:
+          service: 'postgresql'
+          tier: 'database'
+          database: 'odoo'
+
+  # ---------------------------------------------------------------------------
+  # Redis Exporter - Métricas do Cache
+  # ---------------------------------------------------------------------------
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+        labels:
+          service: 'redis'
+          tier: 'cache'
+
+  # ---------------------------------------------------------------------------
+  # Loki - Métricas do Agregador de Logs
+  # ---------------------------------------------------------------------------
+  - job_name: 'loki'
+    static_configs:
+      - targets: ['loki:3100']
+        labels:
+          service: 'loki'
+          tier: 'monitoring'
+
+  # ---------------------------------------------------------------------------
+  # Tempo - Métricas do Tracing
+  # ---------------------------------------------------------------------------
+  - job_name: 'tempo'
+    static_configs:
+      - targets: ['tempo:3200']
+        labels:
+          service: 'tempo'
+          tier: 'monitoring'
+
+  # ---------------------------------------------------------------------------
+  # Grafana - Métricas do Dashboard
+  # ---------------------------------------------------------------------------
+  - job_name: 'grafana'
+    static_configs:
+      - targets: ['grafana:3000']
+        labels:
+          service: 'grafana'
+          tier: 'monitoring'
+    metrics_path: '/metrics'
+
+  # ---------------------------------------------------------------------------
+  # Odoo - Application Metrics (se expuser endpoint /metrics)
+  # ---------------------------------------------------------------------------
+  # NOTA: Descomente quando configurar OpenTelemetry no Odoo
+  # - job_name: 'odoo'
+  #   static_configs:
+  #     - targets: ['odoo:8069']
+  #       labels:
+  #         service: 'odoo'
+  #         tier: 'application'
+  #   metrics_path: '/metrics'
+  #   scrape_interval: 30s
+
+  # ---------------------------------------------------------------------------
+  # RabbitMQ Management Plugin (se habilitado)
+  # ---------------------------------------------------------------------------
+  # - job_name: 'rabbitmq'
+  #   static_configs:
+  #     - targets: ['rabbitmq:15672']
+  #       labels:
+  #         service: 'rabbitmq'
+  #         tier: 'queue'
+  #   metrics_path: '/api/metrics'
+  #   basic_auth:
+  #     username: 'admin'
+  #     password: 'SENHA_AQUI'

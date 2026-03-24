@@ -1,0 +1,14 @@
+# OpenTelemetry Core
+opentelemetry-api>=1.22.0
+opentelemetry-sdk>=1.22.0
+
+# OTLP Exporter (gRPC for Tempo)
+opentelemetry-exporter-otlp-proto-grpc>=1.22.0
+
+# Instrumentation Base
+opentelemetry-instrumentation>=0.43b0
+
+# Optional: Automatic instrumentation for common libraries
+# opentelemetry-instrumentation-requests>=0.43b0
+# opentelemetry-instrumentation-psycopg2>=0.43b0
+# opentelemetry-instrumentation-redis>=0.43b0
