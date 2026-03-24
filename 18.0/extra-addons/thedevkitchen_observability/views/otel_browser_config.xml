@@ -1,0 +1,19 @@
+<!-- OpenTelemetry Browser Configuration -->
+<odoo>
+    <template id="otel_browser_config" name="OpenTelemetry Browser Config" inherit_id="web.layout">
+        <xpath expr="//head" position="inside">
+            <t t-set="otel_config" t-value="env['otel.config.helper'].get_browser_config()"/>
+            <script type="text/javascript">
+                // OpenTelemetry Browser Configuration
+                // These values are injected by the Odoo backend
+                window.OTEL_ENABLED = <t t-esc="otel_config['enabled']"/>;
+                window.OTEL_SERVICE_NAME = '<t t-esc="otel_config['service_name']"/>';
+                window.OTEL_SERVICE_VERSION = '<t t-esc="otel_config['service_version']"/>';
+                window.OTEL_DEPLOYMENT_ENVIRONMENT = '<t t-esc="otel_config['deployment_environment']"/>';
+                // Use Odoo proxy endpoint (resolves CORS issues)
+                // Browser sends traces to Odoo, which forwards to Tempo
+                window.OTEL_EXPORTER_OTLP_ENDPOINT = window.location.origin + '<t t-esc="otel_config['otlp_endpoint']"/>';
+            </script>
+        </xpath>
+    </template>
+</odoo>

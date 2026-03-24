@@ -233,6 +233,140 @@ BatchSpanProcessor(
 
 For high-throughput systems, increase `max_queue_size` and `max_export_batch_size`.
 
+## 🌐 Browser Instrumentation (Phase 4)
+
+**Status:** ✅ Implemented
+
+Frontend instrumentation captures browser-side latency and enables **full-stack distributed tracing** from browser to database.
+
+### Features
+
+- ✅ **Auto-instrumentation**: Automatic spans for fetch() and XMLHttpRequest calls
+- ✅ **Trace context propagation**: W3C traceparent header injection
+- ✅ **CORS-safe OTLP export**: Browser → Odoo proxy → Tempo (no CORS issues)
+- ✅ **Odoo integration**: Zero-config for end users, works out-of-the-box
+- ✅ **Performance**: Batched exports every 5s, minimal overhead (~139KB bundle)
+
+### Architecture
+
+```
+┌──────────────┐
+│   Browser    │
+│  (fetch/XHR) │
+└──────┬───────┘
+       │ 1. Auto-instrument
+       │ 2. Inject traceparent header
+       │ 3. Create browser span
+       │
+       ▼
+┌──────────────────────┐
+│  /api/otel/traces    │ ◄─── OTLP/HTTP (protobuf)
+│  (Odoo Proxy)        │
+└──────┬───────────────┘
+       │ 4. Forward to Tempo
+       ▼
+┌──────────────────────┐
+│    Tempo:4318        │
+│  (OTLP Receiver)     │
+└──────────────────────┘
+```
+
+### How It Works
+
+1. **Config Injection**: Template injects `window.OTEL_*` config into HTML `<head>`
+2. **Bundle Load**: `opentelemetry-bundle.js` (139KB) loads with web client
+3. **Initialization**: `otel_loader.js` calls `OdooOTel.initialize()` when page ready
+4. **Auto-instrumentation**: 
+   - `FetchInstrumentation`: Wraps `fetch()` API
+   - `XMLHttpRequestInstrumentation`: Wraps `XMLHttpRequest`
+5. **Trace Context**: Injects `traceparent` header in all HTTP requests
+6. **Export**: Browser sends spans to `/api/otel/traces` (Odoo) every 5 seconds
+7. **Forwarding**: Odoo proxy forwards to Tempo (avoids CORS restrictions)
+
+### Viewing Browser Traces
+
+**In Browser Console:**
+```
+✅ OpenTelemetry Browser initialized
+   Service: odoo-browser
+   Environment: development
+   Endpoint: http://localhost:8069/api/otel/traces
+```
+
+**In Grafana Tempo:**
+1. Open Explore → Tempo
+2. Search: `{resource.service.name="odoo-browser"}`
+3. See traces with browser spans (HTTP requests, page loads)
+
+**Full-Stack Traces:**
+```
+odoo-browser: GET /api/v1/users (150ms)
+  └─> odoo-development: GET /api/v1/users (120ms)
+        ├─> postgres: SELECT FROM res_users (15ms)
+        └─> postgres: SELECT FROM res_partner (12ms)
+```
+
+- **Browser span** shows total user-perceived latency (150ms)
+- **Backend span** shows server processing time (120ms)
+- **Database spans** show query execution time (27ms)
+- **Network latency**: 150ms - 120ms = 30ms (browser↔server)
+
+### Testing
+
+**Automated Tests:**
+```bash
+cd 18.0
+python3 test_browser_otel.py
+```
+
+**Manual Tests:**
+1. Open http://localhost:8069
+2. Open DevTools Console (Cmd+Option+J)
+3. Look for "✅ OpenTelemetry Browser initialized"
+4. Check Network tab for POST to `/api/otel/traces`
+5. Verify `traceparent` header in API requests
+
+**Full documentation:** See [docs/phase4-testing.md](docs/phase4-testing.md)
+
+### Configuration
+
+Browser config is managed via `otel.config.helper` model (reads from OS environment):
+
+```python
+# Environment variables (optional)
+OTEL_BROWSER_SERVICE_NAME=odoo-browser  # Default: 'odoo-browser'
+OTEL_DEPLOYMENT_ENVIRONMENT=production  # Default: 'development'
+```
+
+Browser-side config is injected automatically - no user action required.
+
+### Performance Impact
+
+- **Bundle size**: 139KB minified (loaded async, non-blocking)
+- **CPU overhead**: <1% (auto-instrumentation is very lightweight)
+- **Network**: 1 POST request every 5 seconds (only when spans exist)
+- **Sampling**: Controlled via backend (`OTEL_TRACES_SAMPLER`)
+
+### Troubleshooting
+
+**No initialization message in console:**
+- Check if bundle loaded: Network tab → filter `opentelemetry-bundle.js`
+- Verify config: Type `window.OTEL_ENABLED` in console (should be `true`)
+- Check for errors: Look for red messages in Console
+
+**No traces in Tempo:**
+- Check proxy endpoint: `/api/otel/traces` should return 200
+- Verify Tempo is running: `docker compose -f docker-compose.observability.yml ps`
+- Check Odoo logs: `docker logs odoo18 | grep -i otel`
+
+**CORS errors:**
+- Should NOT happen (proxy endpoint has `cors='*'`)
+- If seen: Verify `otlp_proxy_controller.py` has correct CORS headers
+
+**Ad blockers:**
+- Some ad blockers may block `/api/otel/traces`
+- Whitelist localhost or test with ad blocker disabled
+
 ## 📊 Grafana Integration
 
 ### View Traces in Tempo

@@ -82,7 +82,17 @@ def list_users(self, **kwargs):
             'opentelemetry-instrumentation>=0.43b0',
         ],
     },
-    'data': [],
+    'data': [
+        'views/otel_browser_config.xml',
+    ],
+    'assets': {
+        'web.assets_backend': [
+            # OpenTelemetry bundle (loaded first)
+            'thedevkitchen_observability/static/lib/opentelemetry-bundle.js',
+            # Odoo module that initializes OTel (loaded second)
+            'thedevkitchen_observability/static/src/js/otel_loader.js',
+        ],
+    },
     'installable': True,
     'application': False,
     'auto_install': False,
