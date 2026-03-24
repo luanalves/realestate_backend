@@ -328,7 +328,7 @@ class TestPhase6Integration(common.TransactionCase):
                 self.assertTrue(True)
         
         except ImportError:
-            self.skip Test("OpenTelemetry dependencies not installed")
+            self.skipTest("OpenTelemetry dependencies not installed")
 
 
 if __name__ == '__main__':
