@@ -20,6 +20,7 @@ ENV/
 # Docker/Database
 *.sql
 .env
+.env.production  # Production secrets (não versionar)
 .env.mcp  # MCP server tokens (use .env.mcp.example como template)
 .vscode/mcp.json  # Contém tokens MCP - NÃO commitar
 
