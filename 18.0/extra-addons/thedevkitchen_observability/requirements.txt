@@ -8,7 +8,7 @@ opentelemetry-exporter-otlp-proto-grpc>=1.22.0
 # Instrumentation Base
 opentelemetry-instrumentation>=0.43b0
 
-# Optional: Automatic instrumentation for common libraries
+# Automatic instrumentation for PostgreSQL, Redis, HTTP requests
+opentelemetry-instrumentation-psycopg2>=0.43b0
+opentelemetry-instrumentation-redis>=0.43b0
 # opentelemetry-instrumentation-requests>=0.43b0
-# opentelemetry-instrumentation-psycopg2>=0.43b0
-# opentelemetry-instrumentation-redis>=0.43b0

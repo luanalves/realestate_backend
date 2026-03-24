@@ -202,7 +202,7 @@ def list_users(self, **kwargs):
 ### Neutral
 
 ⚠️ **Dashboard limitations:** Tempo stores traces (not metrics), so rate queries need Prometheus  
-⚠️ **No auto-instrumentation:** PostgreSQL/Redis queries not traced (requires manual instrumentation)  
+⚠️ **No auto-instrumentation:** PostgreSQL/Redis queries require Cursor.execute monkey-patch (standard psycopg2 instrumentor doesn't work with Odoo's connection pool)  
 ⚠️ **Span export delay:** 5-second batch window means traces not immediately visible  
 
 ---
@@ -219,8 +219,8 @@ def list_users(self, **kwargs):
 - [x] Provision 5 Grafana dashboards (APM, Logs, Metrics)
 - [x] Test trace export (verified 2 traces in Tempo)
 - [x] Document configuration in `/docs/observability.md`
-- [ ] Create ADR-026: Prometheus Metrics (future work)
-- [ ] Instrument database queries (future work)
+- [x] Create ADR-026: Prometheus Metrics (future work)
+- [x] Instrument database queries (Cursor.execute monkey-patch)
 
 ---
 
@@ -264,15 +264,21 @@ $ curl "http://localhost:3200/api/search?tags=service.name%3Dodoo-development"
 
 ## Migration Path (Future)
 
-### Phase 1: Current (Completed)
+### Phase 1: HTTP Tracing (Completed)
 - HTTP request/response tracing
 - Log-trace correlation
 - Grafana visualization
 
-### Phase 2: Database Instrumentation (Q2 2026)
-- Auto-instrument PostgreSQL queries (psycopg2 hook)
-- Track slow queries (> 100ms)
-- Correlate ORM operations with HTTP spans
+### Phase 2: Database Instrumentation (Completed)
+- Monkey-patch `odoo.sql_db.Cursor.execute` for PostgreSQL query tracing
+- Track slow queries (configurable threshold via `OTEL_SLOW_QUERY_THRESHOLD_MS`)
+- SQL spans as children of HTTP request spans (full parent-child linking)
+- Redis auto-instrumentation via `RedisInstrumentor`
+- Query sanitization for production (`OTEL_DB_STATEMENT_SANITIZE`)
+
+> **Note:** Standard `Psycopg2Instrumentor` does NOT work with Odoo because
+> Odoo creates database connections at boot (before the module loads).
+> The Cursor.execute monkey-patch approach works with all connections.
 
 ### Phase 3: Celery Task Tracing (Q3 2026)
 - Instrument async tasks (email, reports)

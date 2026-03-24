@@ -27,6 +27,8 @@ The Odoo Docker environment includes a complete observability stack with distrib
 | **thedevkitchen_observability** | Core tracing infrastructure | ✅ Installed |
 | **OpenTelemetry SDK** | v1.40.0 | ✅ Configured |
 | **TraceContextFilter** | Log-trace correlation | ✅ Active |
+| **DB Instrumentor** | PostgreSQL query tracing (Cursor.execute patch) | ✅ Active |
+| **Redis Instrumentor** | Redis command tracing | ✅ Active |
 
 ## Configuration
 
@@ -38,6 +40,10 @@ OTEL_EXPORTER_OTLP_ENDPOINT=http://tempo:4317
 OTEL_SERVICE_NAME=odoo-development
 OTEL_TRACES_SAMPLER=always_on
 OTEL_RESOURCE_ATTRIBUTES=service.environment=development
+
+# Database Instrumentation (Phase 2)
+OTEL_SLOW_QUERY_THRESHOLD_MS=100          # Slow query threshold in ms (default: 100)
+OTEL_DB_STATEMENT_SANITIZE=false          # Sanitize SQL params in spans (default: true)
 ```
 
 ### Sampling Configuration
@@ -91,6 +97,54 @@ All endpoints use the `@trace_http_request` decorator:
 - `POST /api/v1/auth/set-password`
 - `POST /api/v1/auth/forgot-password`
 - `POST /api/v1/auth/reset-password`
+
+## Phase 2: Database Instrumentation
+
+### How It Works
+
+Every SQL query executed by Odoo is automatically wrapped in an OpenTelemetry span via a monkey-patch on `odoo.sql_db.Cursor.execute`. SQL spans are created as **children** of the active HTTP span, enabling full request-to-database tracing.
+
+```
+GET /api/v1/me (HTTP span - 12ms)
+  ├─ SELECT res_users (SQL span - 0.5ms)
+  ├─ SELECT res_company (SQL span - 0.3ms)
+  └─ SELECT res_partner (SQL span - 0.8ms)
+```
+
+### Why Not Psycopg2Instrumentor?
+
+The standard `opentelemetry-instrumentation-psycopg2` patches `psycopg2.connect()`, but Odoo creates database connections at boot time (before modules load). Pre-existing connections in Odoo's `ConnectionPool` are **not instrumented**. Our approach patches `Cursor.execute` which intercepts ALL queries regardless of connection age.
+
+### SQL Span Attributes
+
+| Attribute | Example | Description |
+|-----------|---------|-------------|
+| `db.system` | `postgresql` | Database system |
+| `db.name` | `realestate` | Database name |
+| `db.operation` | `SELECT`, `INSERT`, `UPDATE`, `DELETE` | SQL operation type |
+| `db.sql.table` | `res_users` | Target table |
+| `db.statement` | `SELECT id, name FROM res_users WHERE...` | Query text (sanitizable) |
+| `db.rowcount` | `5` | Number of affected rows |
+
+### Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `OTEL_SLOW_QUERY_THRESHOLD_MS` | `100` | Queries slower than this are flagged |
+| `OTEL_DB_STATEMENT_SANITIZE` | `true` | Replace `%s` params with `?` in production |
+
+### Querying SQL Traces in Grafana
+
+```traceql
+# Find slow SQL queries
+{span.db.system="postgresql" && duration > 100ms}
+
+# Find queries on a specific table
+{span.db.sql.table="res_users"}
+
+# Find HTTP requests with SQL children
+{service.name="odoo-development" && span.http.method="GET"} >> {span.db.system="postgresql"}
+```
 
 ## Grafana Dashboards
 
@@ -258,6 +312,35 @@ echo $?  # Should be 0
 ```
 
 ### TraceContextFilter not working
+
+**Check if installed:**
+```bash
+docker logs odoo18 | grep "TraceContextFilter"
+```
+
+### SQL spans not appearing
+
+**Check DB instrumentation initialization:**
+```bash
+docker logs odoo18 2>&1 | grep -E "PostgreSQL|Cursor|db_instru"
+```
+
+Expected:
+```
+✅ PostgreSQL instrumentation initialized (Odoo Cursor.execute patched): slow_query_threshold=100ms, sanitize=True
+✅ Redis instrumentation initialized
+🔍 Database instrumentation: PostgreSQL ✅, Redis ✅
+```
+
+**SQL spans are root spans (not linked to HTTP)?**
+- This should not happen with the Cursor.execute approach
+- If it does, verify `@trace_http_request` decorator is on the endpoint
+- The decorator creates the parent HTTP span; SQL spans inherit via OpenTelemetry context propagation
+
+**No SQL spans at all?**
+- Check that `OTEL_ENABLED=true` in `.env`
+- Restart Odoo after changing `.env`: `docker compose restart odoo`
+- Verify the module is loaded: `docker logs odoo18 | grep "observability"`
 
 **Check if installed:**
 ```bash
