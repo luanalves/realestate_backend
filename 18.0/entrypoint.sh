@@ -2,6 +2,19 @@
 
 set -e
 
+# Logging helper
+log() {
+    echo "[entrypoint.sh] $1"
+}
+
+log_error() {
+    echo "[entrypoint.sh] ❌ ERROR: $1" >&2
+}
+
+log_warning() {
+    echo "[entrypoint.sh] ⚠️  WARNING: $1" >&2
+}
+
 # Fix volume permissions: when a Docker named volume is created on a new host,
 # the directory is owned by root. The odoo process runs as the 'odoo' user,
 # so we chown here (while still root) and then drop privileges via gosu.
@@ -18,8 +31,31 @@ fi
 # and pass them as arguments to the odoo process if not present in the config file
 : ${HOST:=${DB_PORT_5432_TCP_ADDR:='db'}}
 : ${PORT:=${DB_PORT_5432_TCP_PORT:=5432}}
-: ${USER:=${DB_ENV_POSTGRES_USER:=${POSTGRES_USER:='odoo'}}}
-: ${PASSWORD:=${DB_ENV_POSTGRES_PASSWORD:=${POSTGRES_PASSWORD:='odoo'}}}
+: ${USER:=${DB_ENV_POSTGRES_USER:=${POSTGRES_USER:-}}}
+: ${PASSWORD:=${DB_ENV_POSTGRES_PASSWORD:=${POSTGRES_PASSWORD:-}}}
+
+# Validate critical environment variables
+log "Validating database configuration..."
+
+if [ -z "$USER" ]; then
+    log_error "Database user not configured. Set POSTGRES_USER environment variable."
+    log_error "Example: POSTGRES_USER=odoo_prod_user"
+    exit 1
+fi
+
+if [ -z "$PASSWORD" ]; then
+    log_error "Database password not configured. Set POSTGRES_PASSWORD environment variable."
+    log_error "Example: POSTGRES_PASSWORD=\$(openssl rand -base64 32)"
+    exit 1
+fi
+
+# Validate password strength (minimum 16 characters for production)
+if [ ${#PASSWORD} -lt 16 ]; then
+    log_warning "Database password is weak (${#PASSWORD} chars). Recommended: 32+ characters."
+    log_warning "Generate strong password: openssl rand -base64 32"
+fi
+
+log "✅ Database configuration validated (host=$HOST, port=$PORT, user=$USER)"
 
 DB_ARGS=()
 function check_config() {
@@ -40,18 +76,25 @@ case "$1" in
     -- | odoo)
         shift
         if [[ "$1" == "scaffold" ]] ; then
+            log "Starting Odoo scaffold command..."
             exec odoo "$@"
         else
+            log "Waiting for PostgreSQL to be ready..."
             wait-for-psql.py ${DB_ARGS[@]} --timeout=30
+            log "✅ PostgreSQL is ready. Starting Odoo..."
             exec odoo "$@" "${DB_ARGS[@]}"
         fi
         ;;
     -*)
+        log "Waiting for PostgreSQL to be ready..."
         wait-for-psql.py ${DB_ARGS[@]} --timeout=30
+        log "✅ PostgreSQL is ready. Starting Odoo..."
         exec odoo "$@" "${DB_ARGS[@]}"
         ;;
     *)
+        log "Executing custom command: $@"
         exec "$@"
 esac
 
+log_error "Failed to execute command. This line should never be reached."
 exit 1
