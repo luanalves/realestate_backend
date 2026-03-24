@@ -24,7 +24,7 @@ services:
     container_name: redis
     ports:
       - "6379:6379"  # Exposta para acesso externo (opcional)
-    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru --requirepass ${REDIS_PASSWORD}
     volumes:
       - odoo18-redis:/data
     networks:
@@ -61,7 +61,7 @@ services:
       JWT_ISSUER: ${JWT_ISSUER}
       JWT_SECRET: ${JWT_SECRET}
       CELERY_BROKER_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672//
-      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD}@redis:6379/2
       # OpenTelemetry - Distributed Tracing
       OTEL_ENABLED: ${OTEL_ENABLED:-true}
       OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-odoo}
@@ -118,10 +118,10 @@ services:
     environment:
       ODOO_URL: http://odoo:8069
       ODOO_DB: ${DB_NAME}
-      ODOO_USER: admin
-      ODOO_PASSWORD: admin
+      ODOO_USER: ${ODOO_USER}
+      ODOO_PASSWORD: ${ODOO_PASSWORD}
       CELERY_BROKER_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672//
-      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD}@redis:6379/2
       # OpenTelemetry - Distributed Tracing
       OTEL_ENABLED: ${OTEL_ENABLED:-true}
       OTEL_SERVICE_NAME: celery-commission-worker
@@ -151,10 +151,10 @@ services:
     environment:
       ODOO_URL: http://odoo:8069
       ODOO_DB: ${DB_NAME}
-      ODOO_USER: admin
-      ODOO_PASSWORD: admin
+      ODOO_USER: ${ODOO_USER}
+      ODOO_PASSWORD: ${ODOO_PASSWORD}
       CELERY_BROKER_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672//
-      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD}@redis:6379/2
       # OpenTelemetry - Distributed Tracing
       OTEL_ENABLED: ${OTEL_ENABLED:-true}
       OTEL_SERVICE_NAME: celery-audit-worker
@@ -184,10 +184,10 @@ services:
     environment:
       ODOO_URL: http://odoo:8069
       ODOO_DB: ${DB_NAME}
-      ODOO_USER: admin
-      ODOO_PASSWORD: admin
+      ODOO_USER: ${ODOO_USER}
+      ODOO_PASSWORD: ${ODOO_PASSWORD}
       CELERY_BROKER_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672//
-      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD}@redis:6379/2
       # OpenTelemetry - Distributed Tracing
       OTEL_ENABLED: ${OTEL_ENABLED:-true}
       OTEL_SERVICE_NAME: celery-notification-worker
@@ -213,7 +213,7 @@ services:
     command: celery --broker=amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672// flower --port=5555
     environment:
       CELERY_BROKER_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672//
-      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD}@redis:6379/2
       FLOWER_BASIC_AUTH: ${FLOWER_USER}:${FLOWER_PASSWORD}
     networks:
       - odoo-net
