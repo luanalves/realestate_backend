@@ -174,6 +174,7 @@ services:
       - "traefik.http.routers.${ENV_NAME}-odoo.tls=true"
       - "traefik.http.routers.${ENV_NAME}-odoo.tls.certresolver=letsencrypt"
       - "traefik.http.routers.${ENV_NAME}-odoo.priority=100"
+      - "traefik.http.routers.${ENV_NAME}-odoo.service=${ENV_NAME}-odoo"
       - "traefik.http.services.${ENV_NAME}-odoo.loadbalancer.server.port=8069"
       # Rota longpolling (WebSocket — maior prioridade)
       - "traefik.http.routers.${ENV_NAME}-odoo-lp.rule=Host(`${ODOO_DOMAIN}`) && PathPrefix(`/longpolling`)"
@@ -181,6 +182,7 @@ services:
       - "traefik.http.routers.${ENV_NAME}-odoo-lp.tls=true"
       - "traefik.http.routers.${ENV_NAME}-odoo-lp.tls.certresolver=letsencrypt"
       - "traefik.http.routers.${ENV_NAME}-odoo-lp.priority=200"
+      - "traefik.http.routers.${ENV_NAME}-odoo-lp.service=${ENV_NAME}-odoo-lp"
       - "traefik.http.services.${ENV_NAME}-odoo-lp.loadbalancer.server.port=8072"
     networks:
       - odoo-net
