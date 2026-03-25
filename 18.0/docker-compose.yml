@@ -47,6 +47,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      odoo-init:
+        condition: service_completed_successfully
     ports:
       - "8069:8069"   # HTTP
       - "8071:8071"   # XML-RPCs
@@ -55,7 +57,7 @@ services:
     environment:
       HOST: ${DB_HOST}
       PORT: ${DB_PORT}
-      USER: ${POSTGRES_USER}
+      DB_USER: ${POSTGRES_USER}
       PASSWORD: ${POSTGRES_PASSWORD}
       DB_NAME: ${DB_NAME}
       JWT_ISSUER: ${JWT_ISSUER}
@@ -78,6 +80,44 @@ services:
       - ./odoo.conf:/etc/odoo/odoo.conf:ro
     networks:
       - odoo-net
+
+  # ---------------------------------------------------------------------------
+  # odoo-init: runs BEFORE the main odoo server on every deploy.
+  #   - Fresh DB  → installs all modules + seed data + sets admin password
+  #   - Existing DB → upgrades modules + re-applies admin password
+  # restart: "no" ensures it runs once and exits; odoo waits for it via
+  # service_completed_successfully.
+  # ---------------------------------------------------------------------------
+  odoo-init:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: custom-odoo:18.0
+    container_name: odoo18-init
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      HOST: ${DB_HOST}
+      PORT: ${DB_PORT}
+      DB_USER: ${POSTGRES_USER}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      ODOO_NEW_ADMIN_PASSWORD: ${ODOO_NEW_ADMIN_PASSWORD:-}
+      ODOO_INIT_MODULES: ${ODOO_INIT_MODULES:-quicksol_estate,thedevkitchen_branding,thedevkitchen_apigateway,thedevkitchen_user_onboarding}
+    volumes:
+      - odoo18-data:/var/lib/odoo
+      - ./extra-addons:/mnt/extra-addons
+      - ./odoo.conf:/etc/odoo/odoo.conf:ro
+    command: ["bash", "/odoo-init.sh"]
+    networks:
+      - odoo-net
+    restart: "no"
 
   rabbitmq:
     image: rabbitmq:3-management-alpine

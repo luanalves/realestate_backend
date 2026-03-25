@@ -124,6 +124,11 @@ ENV ODOO_RC /etc/odoo/odoo.conf
 
 COPY wait-for-psql.py /usr/local/bin/wait-for-psql.py
 
+# Copy first-run init scripts
+COPY set_admin_password.py /usr/local/bin/set_admin_password.py
+COPY odoo-init.sh /odoo-init.sh
+RUN chmod +x /usr/local/bin/set_admin_password.py /odoo-init.sh
+
 # Run as root so entrypoint can fix volume permissions before dropping to odoo
 # USER odoo  <-- intentionally removed; entrypoint drops privileges via gosu
 
