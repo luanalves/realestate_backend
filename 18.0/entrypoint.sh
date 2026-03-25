@@ -74,12 +74,17 @@ check_config "db_port" "$PORT"
 check_config "db_user" "$DB_USER"
 check_config "db_password" "$PASSWORD"
 
+# PSQL_WAIT_ARGS: connection-only args accepted by wait-for-psql.py (no --database)
+PSQL_WAIT_ARGS=("--db_host" "$HOST" "--db_port" "$PORT" "--db_user" "$DB_USER" "--db_password" "$PASSWORD")
+
 # Support DB_NAME env var to override the db_name setting in odoo.conf.
 # In production, DB_NAME (e.g. odoo_production) differs from the dev default
 # (realestate) that is hardcoded in odoo.conf.
+# NOTE: Odoo CLI uses --database/-d, NOT --db_name (which is the conf file key).
 : ${DB_NAME:=${POSTGRES_DB:-}}
 if [ -n "${DB_NAME:-}" ]; then
-    check_config "db_name" "$DB_NAME"
+    DB_ARGS+=("--database")
+    DB_ARGS+=("$DB_NAME")
 fi
 
 # ---------------------------------------------------------------------------
@@ -128,14 +133,14 @@ case "$1" in
             exec odoo "$@"
         else
             log "Waiting for PostgreSQL to be ready..."
-            wait-for-psql.py ${DB_ARGS[@]} --timeout=30
+            wait-for-psql.py ${PSQL_WAIT_ARGS[@]} --timeout=30
             log "✅ PostgreSQL is ready. Starting Odoo..."
             exec odoo "$@" "${DB_ARGS[@]}"
         fi
         ;;
     -*)
         log "Waiting for PostgreSQL to be ready..."
-        wait-for-psql.py ${DB_ARGS[@]} --timeout=30
+        wait-for-psql.py ${PSQL_WAIT_ARGS[@]} --timeout=30
         log "✅ PostgreSQL is ready. Starting Odoo..."
         exec odoo "$@" "${DB_ARGS[@]}"
         ;;

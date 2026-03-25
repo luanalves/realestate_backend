@@ -34,3 +34,4 @@ from . import company
 from . import profile_type  # Feature 010: Profile type lookup table
 from . import profile  # Feature 010: Unified profile model
 from . import res_users
+from . import res_company_iap_patch  # prevent IAP deadlock during seed loading

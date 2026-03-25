@@ -1,13 +1,37 @@
 from celery import Celery
 from celery.signals import worker_init
+import urllib.parse
 import xmlrpc.client
 import os
 import sys
 
+
+def _build_redis_backend_url() -> str:
+    """
+    Build the Celery result backend Redis URL with the password properly
+    URL-encoded, avoiding kombu URL-parser failures when the password contains
+    characters such as '/' or '=' that YAML / Compose interpolation injects
+    without escaping (docker-compose expands ${REDIS_PASSWORD} as plain text).
+    """
+    password = os.getenv('REDIS_PASSWORD', '')
+    host = os.getenv('REDIS_HOST', 'redis')
+    port = os.getenv('REDIS_PORT', '6379')
+    db = '2'
+    if password:
+        encoded = urllib.parse.quote(password, safe='')
+        return f'redis://:{encoded}@{host}:{port}/{db}'
+    return f'redis://{host}:{port}/{db}'
+
+
+# Celery reads CELERY_RESULT_BACKEND from the environment before our backend=
+# kwarg takes effect. We replace it with a properly encoded URL so that kombu
+# does not choke on special characters (e.g. '/' or '=') in the Redis password.
+os.environ['CELERY_RESULT_BACKEND'] = _build_redis_backend_url()
+
 app = Celery(
     'odoo_events',
     broker=os.getenv('CELERY_BROKER_URL', 'amqp://odoo:password@rabbitmq:5672//'),
-    backend=os.getenv('CELERY_RESULT_BACKEND', 'redis://redis:6379/1')
+    backend=_build_redis_backend_url(),
 )
 
 # Configuração de filas
