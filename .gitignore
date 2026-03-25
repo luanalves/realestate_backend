@@ -21,11 +21,11 @@ ENV/
 *.sql
 .env
 .env.production  # Production secrets (não versionar)
+# Arquivos de ambiente por ambiente (não versionar — contêm segredos)
+18.0/.env.prod
+18.0/.env.homol
+18.0/.env.dev
 .env.mcp  # MCP server tokens (use .env.mcp.example como template)
-.env.observability.local
-.env.observability.prod
-.env.observability.homol
-.env.observability.dev
 .vscode/mcp.json  # Contém tokens MCP - NÃO commitar
 
 # Odoo filestore (imagens e arquivos anexados)
