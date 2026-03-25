@@ -31,13 +31,14 @@ fi
 # and pass them as arguments to the odoo process if not present in the config file
 : ${HOST:=${DB_PORT_5432_TCP_ADDR:='db'}}
 : ${PORT:=${DB_PORT_5432_TCP_PORT:=5432}}
-: ${USER:=${DB_ENV_POSTGRES_USER:=${POSTGRES_USER:-}}}
+# Note: using DB_USER instead of USER to avoid collision with Linux shell variable $USER
+: ${DB_USER:=${DB_ENV_POSTGRES_USER:=${POSTGRES_USER:-}}}
 : ${PASSWORD:=${DB_ENV_POSTGRES_PASSWORD:=${POSTGRES_PASSWORD:-}}}
 
 # Validate critical environment variables
 log "Validating database configuration..."
 
-if [ -z "$USER" ]; then
+if [ -z "$DB_USER" ]; then
     log_error "Database user not configured. Set POSTGRES_USER environment variable."
     log_error "Example: POSTGRES_USER=odoo_prod_user"
     exit 1
@@ -55,7 +56,7 @@ if [ ${#PASSWORD} -lt 16 ]; then
     log_warning "Generate strong password: openssl rand -base64 32"
 fi
 
-log "✅ Database configuration validated (host=$HOST, port=$PORT, user=$USER)"
+log "✅ Database configuration validated (host=$HOST, port=$PORT, user=$DB_USER)"
 
 DB_ARGS=()
 function check_config() {
@@ -69,7 +70,7 @@ function check_config() {
 }
 check_config "db_host" "$HOST"
 check_config "db_port" "$PORT"
-check_config "db_user" "$USER"
+check_config "db_user" "$DB_USER"
 check_config "db_password" "$PASSWORD"
 
 case "$1" in
