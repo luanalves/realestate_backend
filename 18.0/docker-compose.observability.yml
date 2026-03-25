@@ -112,8 +112,6 @@ services:
       - "9187:9187"
     networks:
       - odoo-net
-    depends_on:
-      - db
 
   # ===========================================================================
   # REDIS EXPORTER - Métricas do Redis
@@ -129,8 +127,6 @@ services:
       - "9121:9121"
     networks:
       - odoo-net
-    depends_on:
-      - redis
 
   # ===========================================================================
   # LOKI - Agregação de Logs
@@ -238,7 +234,7 @@ services:
       - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
     ports:
-      - "3000:3000"
+      - "3001:3000"
     networks:
       - odoo-net
     depends_on:
@@ -268,6 +264,10 @@ volumes:
 # =============================================================================
 # NETWORKS
 # =============================================================================
+# odoo-net is the main project network already created by docker-compose.yml.
+# Referenced here as external so the observability stack can reach db/redis/odoo.
+# The full Docker network name uses the main project prefix.
 networks:
   odoo-net:
     external: true
+    name: ${MAIN_PROJECT_NETWORK:-imobiliaria-backoffice-hsxgpe_odoo-net}
