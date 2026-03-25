@@ -1,0 +1,635 @@
+# =============================================================================
+# docker-compose-production.yml
+# Stack completa para ambientes de servidor (prod / homol / dev)
+# =============================================================================
+# Inclui:
+#   - Stack principal: Odoo + PostgreSQL + Redis + RabbitMQ + Celery + Flower + MailHog
+#   - Observabilidade: Prometheus + Loki + Tempo + Grafana + Exporters + Promtail
+#   - Roteamento: Traefik labels (HTTPS + Let's Encrypt via dokploy-network)
+#
+# Para desenvolvimento local use: docker-compose.yml
+#
+# IMPORTANTE: Nenhuma porta é exposta diretamente no host.
+#   Todos os acessos externos passam pelo Traefik (via domínio + HTTPS).
+#   Isso garante que múltiplos ambientes (prod, homol, dev) possam rodar no
+#   mesmo servidor sem conflito de portas.
+#
+# Variáveis obrigatórias (via .env ou painel Dokploy → Environment):
+#
+#   Banco / Redis / Fila:
+#     POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD
+#     DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
+#     REDIS_PASSWORD
+#     RABBITMQ_USER, RABBITMQ_PASSWORD
+#
+#   Odoo:
+#     JWT_ISSUER, JWT_SECRET
+#     ODOO_NEW_ADMIN_PASSWORD
+#     ODOO_INIT_MODULES
+#     ODOO_USER, ODOO_PASSWORD  (usados pelos workers Celery)
+#
+#   Celery / Flower:
+#     FLOWER_USER, FLOWER_PASSWORD
+#
+#   Domínios (Traefik):
+#     ODOO_DOMAIN        ex: torque-backoffice.thedevkitchen.com.br
+#     GRAFANA_DOMAIN     ex: grafana.torque-backoffice.thedevkitchen.com.br
+#     FLOWER_DOMAIN      ex: flower.torque-backoffice.thedevkitchen.com.br
+#     MAILHOG_DOMAIN     ex: mail.torque-backoffice.thedevkitchen.com.br
+#     RABBITMQ_DOMAIN    ex: rabbitmq.torque-backoffice.thedevkitchen.com.br
+#
+#   Grafana:
+#     GRAFANA_ADMIN_USER, GRAFANA_ADMIN_PASSWORD
+#     GRAFANA_ROOT_URL   ex: https://grafana.torque-backoffice.thedevkitchen.com.br
+#     GRAFANA_DOMAIN     (mesmo valor do domínio acima)
+#
+#   OpenTelemetry (opcionais, têm defaults):
+#     OTEL_ENABLED, OTEL_SERVICE_NAME, OTEL_SERVICE_VERSION
+#     OTEL_DEPLOYMENT_ENVIRONMENT, OTEL_EXPORTER_OTLP_ENDPOINT
+#     OTEL_EXPORTER_OTLP_INSECURE, OTEL_TRACES_SAMPLER, OTEL_LOG_LEVEL
+# =============================================================================
+
+services:
+
+  # ===========================================================================
+  # INFRAESTRUTURA
+  # ===========================================================================
+
+  db:
+    image: postgres:16-alpine
+    container_name: db
+    env_file: .env
+    # Sem ports: acessado apenas internamente via odoo-net
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - odoo18-db:/var/lib/postgresql/data
+    networks:
+      - odoo-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    # Sem ports: acessado apenas internamente via odoo-net
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - odoo18-redis:/data
+    networks:
+      - odoo-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ===========================================================================
+  # APLICAÇÃO ODOO
+  # ===========================================================================
+
+  odoo-init:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: custom-odoo:18.0
+    container_name: odoo18-init
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      HOST: ${DB_HOST}
+      PORT: ${DB_PORT}
+      DB_USER: ${POSTGRES_USER}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      ODOO_NEW_ADMIN_PASSWORD: ${ODOO_NEW_ADMIN_PASSWORD:-}
+      ODOO_INIT_MODULES: ${ODOO_INIT_MODULES:-quicksol_estate,thedevkitchen_branding,thedevkitchen_apigateway,thedevkitchen_user_onboarding}
+    volumes:
+      - odoo18-data:/var/lib/odoo
+      - ./extra-addons:/mnt/extra-addons
+      - ./odoo.conf:/etc/odoo/odoo.conf:ro
+    command: ["bash", "/odoo-init.sh"]
+    networks:
+      - odoo-net
+    restart: "no"
+
+  odoo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: custom-odoo:18.0
+    container_name: odoo18
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      odoo-init:
+        condition: service_completed_successfully
+    # Sem ports: roteamento via Traefik (odoo → :8069, longpolling → :8072)
+    working_dir: /usr/bin
+    environment:
+      HOST: ${DB_HOST}
+      PORT: ${DB_PORT}
+      DB_USER: ${POSTGRES_USER}
+      PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      JWT_ISSUER: ${JWT_ISSUER}
+      JWT_SECRET: ${JWT_SECRET}
+      CELERY_BROKER_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672//
+      CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD}@redis:6379/2
+      OTEL_ENABLED: ${OTEL_ENABLED:-true}
+      OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-odoo}
+      OTEL_SERVICE_VERSION: ${OTEL_SERVICE_VERSION:-18.0}
+      OTEL_DEPLOYMENT_ENVIRONMENT: ${OTEL_DEPLOYMENT_ENVIRONMENT:-production}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-tempo:4317}
+      OTEL_EXPORTER_OTLP_INSECURE: ${OTEL_EXPORTER_OTLP_INSECURE:-true}
+      OTEL_TRACES_SAMPLER: ${OTEL_TRACES_SAMPLER:-always_on}
+      OTEL_LOG_LEVEL: ${OTEL_LOG_LEVEL:-info}
+    volumes:
+      - odoo18-data:/var/lib/odoo
+      - ./extra-addons:/mnt/extra-addons
+      - ./odoo.conf:/etc/odoo/odoo.conf:ro
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=dokploy-network"
+      # Rota principal
+      - "traefik.http.routers.odoo.rule=Host(`${ODOO_DOMAIN}`)"
+      - "traefik.http.routers.odoo.entrypoints=websecure"
+      - "traefik.http.routers.odoo.tls=true"
+      - "traefik.http.routers.odoo.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.odoo.priority=1"
+      - "traefik.http.services.odoo.loadbalancer.server.port=8069"
+      # Rota longpolling (WebSocket — maior prioridade)
+      - "traefik.http.routers.odoo-lp.rule=Host(`${ODOO_DOMAIN}`) && PathPrefix(`/longpolling`)"
+      - "traefik.http.routers.odoo-lp.entrypoints=websecure"
+      - "traefik.http.routers.odoo-lp.tls=true"
+      - "traefik.http.routers.odoo-lp.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.odoo-lp.priority=10"
+      - "traefik.http.services.odoo-lp.loadbalancer.server.port=8072"
+    networks:
+      - odoo-net
+      - dokploy-network
+    restart: unless-stopped
+
+  # ===========================================================================
+  # MENSAGERIA
+  # ===========================================================================
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: rabbitmq
+    env_file: .env
+    # Sem ports: AMQP acessado internamente; UI de gestão via Traefik
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+      RABBITMQ_DEFAULT_VHOST: /
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=dokploy-network"
+      - "traefik.http.routers.rabbitmq.rule=Host(`${RABBITMQ_DOMAIN}`)"
+      - "traefik.http.routers.rabbitmq.entrypoints=websecure"
+      - "traefik.http.routers.rabbitmq.tls=true"
+      - "traefik.http.routers.rabbitmq.tls.certresolver=letsencrypt"
+      - "traefik.http.services.rabbitmq.loadbalancer.server.port=15672"
+    networks:
+      - odoo-net
+      - dokploy-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ===========================================================================
+  # CELERY WORKERS
+  # ===========================================================================
+
+  celery_commission_worker:
+    build:
+      context: ./celery_worker
+      dockerfile: Dockerfile
+    image: custom-celery-worker:18.0
+    container_name: celery_commission_worker
+    env_file: .env
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      odoo:
+        condition: service_started
+    command: celery -A tasks worker --loglevel=info --queues=commission_events --concurrency=2
+    environment:
+      ODOO_URL: http://odoo:8069
+      ODOO_DB: ${DB_NAME}
+      ODOO_USER: ${ODOO_USER}
+      ODOO_PASSWORD: ${ODOO_PASSWORD}
+      CELERY_BROKER_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672//
+      CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD}@redis:6379/2
+      OTEL_ENABLED: ${OTEL_ENABLED:-true}
+      OTEL_SERVICE_NAME: celery-commission-worker
+      OTEL_SERVICE_VERSION: ${OTEL_SERVICE_VERSION:-18.0}
+      OTEL_DEPLOYMENT_ENVIRONMENT: ${OTEL_DEPLOYMENT_ENVIRONMENT:-production}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-tempo:4317}
+      OTEL_EXPORTER_OTLP_INSECURE: ${OTEL_EXPORTER_OTLP_INSECURE:-true}
+    networks:
+      - odoo-net
+    restart: unless-stopped
+
+  celery_audit_worker:
+    build:
+      context: ./celery_worker
+      dockerfile: Dockerfile
+    image: custom-celery-worker:18.0
+    container_name: celery_audit_worker
+    env_file: .env
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      odoo:
+        condition: service_started
+    command: celery -A tasks worker --loglevel=info --queues=audit_events --concurrency=1
+    environment:
+      ODOO_URL: http://odoo:8069
+      ODOO_DB: ${DB_NAME}
+      ODOO_USER: ${ODOO_USER}
+      ODOO_PASSWORD: ${ODOO_PASSWORD}
+      CELERY_BROKER_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672//
+      CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD}@redis:6379/2
+      OTEL_ENABLED: ${OTEL_ENABLED:-true}
+      OTEL_SERVICE_NAME: celery-audit-worker
+      OTEL_SERVICE_VERSION: ${OTEL_SERVICE_VERSION:-18.0}
+      OTEL_DEPLOYMENT_ENVIRONMENT: ${OTEL_DEPLOYMENT_ENVIRONMENT:-production}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-tempo:4317}
+      OTEL_EXPORTER_OTLP_INSECURE: ${OTEL_EXPORTER_OTLP_INSECURE:-true}
+    networks:
+      - odoo-net
+    restart: unless-stopped
+
+  celery_notification_worker:
+    build:
+      context: ./celery_worker
+      dockerfile: Dockerfile
+    image: custom-celery-worker:18.0
+    container_name: celery_notification_worker
+    env_file: .env
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      odoo:
+        condition: service_started
+    command: celery -A tasks worker --loglevel=info --queues=notification_events --concurrency=1
+    environment:
+      ODOO_URL: http://odoo:8069
+      ODOO_DB: ${DB_NAME}
+      ODOO_USER: ${ODOO_USER}
+      ODOO_PASSWORD: ${ODOO_PASSWORD}
+      CELERY_BROKER_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672//
+      CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD}@redis:6379/2
+      OTEL_ENABLED: ${OTEL_ENABLED:-true}
+      OTEL_SERVICE_NAME: celery-notification-worker
+      OTEL_SERVICE_VERSION: ${OTEL_SERVICE_VERSION:-18.0}
+      OTEL_DEPLOYMENT_ENVIRONMENT: ${OTEL_DEPLOYMENT_ENVIRONMENT:-production}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-tempo:4317}
+      OTEL_EXPORTER_OTLP_INSECURE: ${OTEL_EXPORTER_OTLP_INSECURE:-true}
+    networks:
+      - odoo-net
+    restart: unless-stopped
+
+  # ===========================================================================
+  # FLOWER — Monitoramento Celery
+  # ===========================================================================
+
+  flower:
+    image: mher/flower:2.0
+    container_name: flower
+    env_file: .env
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    # Sem ports: UI acessada via Traefik
+    command: celery --broker=amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672// flower --port=5555
+    environment:
+      CELERY_BROKER_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672//
+      CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD}@redis:6379/2
+      FLOWER_BASIC_AUTH: ${FLOWER_USER}:${FLOWER_PASSWORD}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=dokploy-network"
+      - "traefik.http.routers.flower.rule=Host(`${FLOWER_DOMAIN}`)"
+      - "traefik.http.routers.flower.entrypoints=websecure"
+      - "traefik.http.routers.flower.tls=true"
+      - "traefik.http.routers.flower.tls.certresolver=letsencrypt"
+      - "traefik.http.services.flower.loadbalancer.server.port=5555"
+    networks:
+      - odoo-net
+      - dokploy-network
+    restart: unless-stopped
+
+  # ===========================================================================
+  # EMAIL — MailHog (SMTP de teste)
+  # ===========================================================================
+
+  mailhog_mongo:
+    image: mongo:4.4-focal
+    container_name: mailhog_mongo
+    volumes:
+      - mailhog-mongo-data:/data/db
+    networks:
+      - odoo-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mongo", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: mailhog
+    depends_on:
+      mailhog_mongo:
+        condition: service_healthy
+    # Sem ports: UI acessada via Traefik; SMTP acessado internamente (mailhog:1025)
+    command: ["-storage=mongodb", "-mongo-uri=mailhog_mongo:27017", "-mongo-db=mailhog", "-mongo-coll=messages"]
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=dokploy-network"
+      - "traefik.http.routers.mailhog.rule=Host(`${MAILHOG_DOMAIN}`)"
+      - "traefik.http.routers.mailhog.entrypoints=websecure"
+      - "traefik.http.routers.mailhog.tls=true"
+      - "traefik.http.routers.mailhog.tls.certresolver=letsencrypt"
+      - "traefik.http.services.mailhog.loadbalancer.server.port=8025"
+    networks:
+      - odoo-net
+      - dokploy-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8025"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ===========================================================================
+  # OBSERVABILIDADE — Coleta de Métricas
+  # ===========================================================================
+
+  prometheus:
+    image: prom/prometheus:v2.48.1
+    container_name: prometheus
+    restart: unless-stopped
+    user: root
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observability/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+      - '--log.level=info'
+    # Sem ports: acessado internamente pelo Grafana (prometheus:9090)
+    networks:
+      - odoo-net
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  node-exporter:
+    image: prom/node-exporter:v1.7.0
+    container_name: node-exporter
+    restart: unless-stopped
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+      - '--no-collector.ipvs'
+    # Sem ports: raspagem feita internamente pelo Prometheus (node-exporter:9100)
+    networks:
+      - odoo-net
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.47.2
+    container_name: cadvisor
+    restart: unless-stopped
+    privileged: true
+    devices:
+      - /dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    # Sem ports: raspagem feita internamente pelo Prometheus (cadvisor:8080)
+    networks:
+      - odoo-net
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: postgres-exporter
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATA_SOURCE_NAME: "postgresql://${DB_USER:-odoo}:${DB_PASSWORD:-odoo}@db:5432/${DB_NAME:-realestate}?sslmode=disable"
+      PG_EXPORTER_EXTEND_QUERY_PATH: /etc/postgres_exporter/queries.yaml
+    volumes:
+      - ./observability/postgres-queries.yaml:/etc/postgres_exporter/queries.yaml:ro
+    # Sem ports: raspagem feita internamente pelo Prometheus (postgres-exporter:9187)
+    networks:
+      - odoo-net
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.55.0
+    container_name: redis-exporter
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      REDIS_ADDR: "redis:6379"
+      REDIS_PASSWORD: "${REDIS_PASSWORD:-}"
+    # Sem ports: raspagem feita internamente pelo Prometheus (redis-exporter:9121)
+    networks:
+      - odoo-net
+
+  # ===========================================================================
+  # OBSERVABILIDADE — Logs
+  # ===========================================================================
+
+  loki:
+    image: grafana/loki:2.9.3
+    container_name: loki
+    restart: unless-stopped
+    user: root
+    volumes:
+      - ./observability/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - loki-data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    # Sem ports: acessado internamente pelo Grafana (loki:3100)
+    networks:
+      - odoo-net
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3100/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  promtail:
+    image: grafana/promtail:2.9.3
+    container_name: promtail
+    restart: unless-stopped
+    volumes:
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./observability/promtail-config.yml:/etc/promtail/config.yml:ro
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - odoo-net
+    depends_on:
+      - loki
+
+  # ===========================================================================
+  # OBSERVABILIDADE — Tracing Distribuído (APM)
+  # ===========================================================================
+
+  tempo:
+    image: grafana/tempo:2.3.1
+    container_name: tempo
+    restart: unless-stopped
+    user: root
+    volumes:
+      - ./observability/tempo-config.yml:/etc/tempo/tempo.yaml:ro
+      - tempo-data:/var/tempo
+    command: -config.file=/etc/tempo/tempo.yaml
+    # Sem ports no host: odoo e workers enviam traces para tempo:4317 via odoo-net
+    # Grafana acessa a API em tempo:3200 via odoo-net
+    networks:
+      - odoo-net
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3200/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # ===========================================================================
+  # OBSERVABILIDADE — Dashboards (Grafana)
+  # ===========================================================================
+
+  grafana:
+    image: grafana/grafana:10.2.3
+    container_name: grafana
+    restart: unless-stopped
+    user: root
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_USERS_ALLOW_ORG_CREATE=false
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+      - GF_SERVER_ROOT_URL=${GRAFANA_ROOT_URL:-https://localhost}
+      - GF_SERVER_DOMAIN=${GRAFANA_DOMAIN:-localhost}
+      - GF_INSTALL_PLUGINS=redis-datasource,grafana-piechart-panel,grafana-clock-panel
+      - GF_DATABASE_TYPE=sqlite3
+      - GF_DATABASE_PATH=/var/lib/grafana/grafana.db
+      - GF_LOG_MODE=console
+      - GF_LOG_LEVEL=info
+      - GF_FEATURE_TOGGLES_ENABLE=traceqlEditor
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    # Sem ports: UI acessada via Traefik (${GRAFANA_DOMAIN})
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=dokploy-network"
+      - "traefik.http.routers.grafana.rule=Host(`${GRAFANA_DOMAIN}`)"
+      - "traefik.http.routers.grafana.entrypoints=websecure"
+      - "traefik.http.routers.grafana.tls=true"
+      - "traefik.http.routers.grafana.tls.certresolver=letsencrypt"
+      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+    networks:
+      - odoo-net
+      - dokploy-network
+    depends_on:
+      - prometheus
+      - loki
+      - tempo
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+# =============================================================================
+# VOLUMES
+# =============================================================================
+volumes:
+  odoo18-db:
+  odoo18-data:
+  odoo18-redis:
+  rabbitmq-data:
+  mailhog-mongo-data:
+  prometheus-data:
+    driver: local
+  loki-data:
+    driver: local
+  tempo-data:
+    driver: local
+  grafana-data:
+    driver: local
+
+# =============================================================================
+# NETWORKS
+# =============================================================================
+networks:
+  # Rede interna: todos os serviços se comunicam aqui
+  odoo-net:
+    driver: bridge
+
+  # Rede do Traefik gerenciada pelo Dokploy: apenas os serviços com
+  # rota externa (odoo, grafana, rabbitmq, flower, mailhog) são conectados
+  dokploy-network:
+    external: true

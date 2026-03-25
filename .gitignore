@@ -22,6 +22,10 @@ ENV/
 .env
 .env.production  # Production secrets (não versionar)
 .env.mcp  # MCP server tokens (use .env.mcp.example como template)
+.env.observability.local
+.env.observability.prod
+.env.observability.homol
+.env.observability.dev
 .vscode/mcp.json  # Contém tokens MCP - NÃO commitar
 
 # Odoo filestore (imagens e arquivos anexados)
