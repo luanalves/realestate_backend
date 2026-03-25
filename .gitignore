@@ -36,6 +36,7 @@ cypress/downloads/
 18.0/cypress/screenshots/
 18.0/cypress/videos/
 18.0/cypress/downloads/
+18.0/.env.production
 
 # OS specific
 .DS_Store
