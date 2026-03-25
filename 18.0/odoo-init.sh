@@ -64,6 +64,24 @@ _ODOO_BASE_ARGS=(
 )
 
 # ---------------------------------------------------------------------------
+# 3. Block external HTTP/HTTPS during init to prevent partner_autocomplete
+#    (and any other IAP module) from spawning threads that call iap.odoo.com.
+#    --stop-after-init waits for ALL threads; an unfinished IAP HTTP call
+#    causes an infinite hang. Routing through 127.0.0.1:1 guarantees an
+#    immediate ConnectionRefused — Odoo's IAP code catches the exception,
+#    logs a warning, and the thread exits cleanly.
+# ---------------------------------------------------------------------------
+export http_proxy="http://127.0.0.1:1/"
+export https_proxy="http://127.0.0.1:1/"
+export HTTP_PROXY="http://127.0.0.1:1/"
+export HTTPS_PROXY="http://127.0.0.1:1/"
+# Keep internal services reachable (DB/Redis/RabbitMQ use their own protocols,
+# but keep localhost and container names in no_proxy for safety)
+export no_proxy="localhost,127.0.0.1,db,redis,rabbitmq,mailhog"
+export NO_PROXY="localhost,127.0.0.1,db,redis,rabbitmq,mailhog"
+log "External HTTP blocked during init (proxy → 127.0.0.1:1) to prevent IAP hang"
+
+# ---------------------------------------------------------------------------
 # 3a. FRESH INSTALL — init all modules and load seed data
 # ---------------------------------------------------------------------------
 if [ -z "$_has_odoo" ]; then
@@ -79,6 +97,9 @@ else
     odoo "${_ODOO_BASE_ARGS[@]}" --update="$MODULES"
     log_ok "Modules upgraded: $MODULES"
 fi
+
+# Restore normal network access for subsequent steps (e.g. set_admin_password)
+unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY no_proxy NO_PROXY
 
 # ---------------------------------------------------------------------------
 # 4. Set admin user login password (idempotent — safe on every deploy)
