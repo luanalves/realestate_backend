@@ -310,9 +310,10 @@ def trace_http_request(func: Callable) -> Callable:
                     span.set_attribute("session.id", request.session.sid)
                     
                     # Session age (helps identify stale sessions)
-                    if hasattr(request.session, 'creation_time'):
+                    creation_time = getattr(request.session, 'creation_time', None)
+                    if creation_time is not None:
                         import time
-                        session_age = int(time.time() - request.session.creation_time)
+                        session_age = int(time.time() - creation_time)
                         span.set_attribute("session.age_seconds", session_age)
                 
                 try:
