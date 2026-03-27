@@ -578,6 +578,7 @@ services:
       - "traefik.http.routers.${ENV_NAME}-grafana.entrypoints=websecure"
       - "traefik.http.routers.${ENV_NAME}-grafana.tls=true"
       - "traefik.http.routers.${ENV_NAME}-grafana.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.${ENV_NAME}-grafana.service=${ENV_NAME}-grafana"
       - "traefik.http.services.${ENV_NAME}-grafana.loadbalancer.server.port=3000"
     networks:
       - odoo-net
