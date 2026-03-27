@@ -210,6 +210,7 @@ services:
       - "traefik.http.routers.${ENV_NAME}-rabbitmq.entrypoints=websecure"
       - "traefik.http.routers.${ENV_NAME}-rabbitmq.tls=true"
       - "traefik.http.routers.${ENV_NAME}-rabbitmq.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.${ENV_NAME}-rabbitmq.priority=100"
       - "traefik.http.routers.${ENV_NAME}-rabbitmq.service=${ENV_NAME}-rabbitmq"
       - "traefik.http.services.${ENV_NAME}-rabbitmq.loadbalancer.server.port=15672"
     networks:
@@ -344,6 +345,7 @@ services:
       - "traefik.http.routers.${ENV_NAME}-flower.entrypoints=websecure"
       - "traefik.http.routers.${ENV_NAME}-flower.tls=true"
       - "traefik.http.routers.${ENV_NAME}-flower.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.${ENV_NAME}-flower.priority=100"
       - "traefik.http.routers.${ENV_NAME}-flower.service=${ENV_NAME}-flower"
       - "traefik.http.services.${ENV_NAME}-flower.loadbalancer.server.port=5555"
     networks:
@@ -382,6 +384,7 @@ services:
       - "traefik.http.routers.${ENV_NAME}-mailhog.entrypoints=websecure"
       - "traefik.http.routers.${ENV_NAME}-mailhog.tls=true"
       - "traefik.http.routers.${ENV_NAME}-mailhog.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.${ENV_NAME}-mailhog.priority=100"
       - "traefik.http.routers.${ENV_NAME}-mailhog.service=${ENV_NAME}-mailhog"
       - "traefik.http.services.${ENV_NAME}-mailhog.loadbalancer.server.port=8025"
     networks:
@@ -578,6 +581,7 @@ services:
       - "traefik.http.routers.${ENV_NAME}-grafana.entrypoints=websecure"
       - "traefik.http.routers.${ENV_NAME}-grafana.tls=true"
       - "traefik.http.routers.${ENV_NAME}-grafana.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.${ENV_NAME}-grafana.priority=100"
       - "traefik.http.routers.${ENV_NAME}-grafana.service=${ENV_NAME}-grafana"
       - "traefik.http.services.${ENV_NAME}-grafana.loadbalancer.server.port=3000"
     networks:
