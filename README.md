@@ -2,140 +2,134 @@
 
 Backend do sistema de gestão imobiliária baseado em Odoo 18.0 com PostgreSQL.
 
-## 🚀 Como subir o ambiente
-
-## ☁️ Deploy no Dokploy
-
-Este repositório agora possui `Dockerfile` na raiz para deploy direto no Dokploy.
-
-- **Build Type:** Dockerfile (não usar Nixpacks)
-- **Dockerfile Path:** `./Dockerfile`
-- **Porta da aplicação:** `8069`
-- **Comando de start:** padrão da imagem (`ENTRYPOINT ["/entrypoint.sh"]` + `CMD ["odoo"]`)
-
-Se o app no Dokploy estiver configurado como Nixpacks, altere para Dockerfile e faça novo deploy.
-
-### Pré-requisitos
-
-- Docker
-- Docker Compose
-
-### Comandos principais
+## 🚀 Quick Start
 
 ```bash
 # Navegar para o diretório do Odoo 18.0
 cd 18.0
 
-# Subir os containers (Odoo + PostgreSQL)
+# Subir os containers
 docker compose up -d
 
-# Parar os containers
-docker compose down
+# Acessar a aplicação
+# http://localhost:8069
+# Usuário: admin | Senha: admin
+```
 
-# Ver logs do Odoo
+---
+
+## 📖 Documentação Completa
+
+**[📚 Acesse o Guia Completo →](docs/guide/00-index.md)**
+
+Documentação organizada em capítulos:
+
+| Capítulo | Descrição |
+|----------|-----------|
+| **[1. Quick Start](docs/guide/01-quick-start.md)** | Como subir o ambiente rapidamente |
+| **[2. Componentes Docker](docs/guide/02-docker-components.md)** | Detalhes da stack (Odoo, PostgreSQL, Redis, RabbitMQ, Celery, etc.) |
+| **[3. Ambientes](docs/guide/03-environments.md)** | URLs de Produção, Homologação e Desenvolvimento |
+| **[4. Documentação da API](docs/guide/04-api-documentation.md)** | Como usar a API REST (Swagger/OpenAPI) |
+| **[5. Deployment](docs/guide/05-deployment.md)** | Guias de deploy (Dokploy, Docker Compose, CI/CD) |
+
+---
+
+## 🔗 Links Rápidos
+
+### Desenvolvimento Local
+- **Odoo Web:** http://localhost:8069 (admin/admin)
+- **Swagger API:** http://localhost:8069/api/docs
+- **PostgreSQL:** localhost:5432 (odoo/odoo)
+- **Redis:** localhost:6379
+- **RabbitMQ:** http://localhost:15672 (odoo/odoo_rabbitmq_secret_2026)
+- **Flower:** http://localhost:5555 (admin/flower_admin_2026)
+- **MailHog:** http://localhost:8025
+
+### Ambientes Cloud
+
+#### Produção
+- **Odoo:** https://torque-backoffice.thedevkitchen.com.br
+- **Swagger:** https://torque-backoffice.thedevkitchen.com.br/api/docs
+- **Grafana:** https://grafana.torque-backoffice.thedevkitchen.com.br
+
+#### Homologação
+- **Odoo:** https://homol.torque-backoffice.thedevkitchen.com.br
+- **Swagger:** https://homol.torque-backoffice.thedevkitchen.com.br/api/docs
+
+#### Desenvolvimento
+- **Odoo:** https://dev.torque-backoffice.thedevkitchen.com.br
+- **Swagger:** https://dev.torque-backoffice.thedevkitchen.com.br/api/docs
+
+---
+
+## 📁 Estrutura do Projeto
+
+```
+odoo-docker/
+├── 18.0/                    # Odoo 18.0 (diretório principal)
+│   ├── extra-addons/        # Módulos customizados
+│   ├── docker-compose.yml   # Configuração Docker
+│   └── odoo.conf            # Configuração Odoo
+├── docs/                    # Documentação
+│   ├── guide/               # Guia completo (livro)
+│   ├── adr/                 # Architecture Decision Records
+│   ├── api/                 # Documentação da API
+│   └── architecture/        # Diagramas de arquitetura
+├── integration_tests/       # Testes de integração
+└── README.md                # Este arquivo
+```
+
+---
+
+## 🛠️ Comandos Essenciais
+
+```bash
+# Subir ambiente
+cd 18.0 && docker compose up -d
+
+# Ver logs
 docker compose logs -f odoo
 
-# Ver logs do PostgreSQL
-docker compose logs -f db
+# Parar ambiente
+docker compose down
 
-# Reiniciar os serviços
+# Reiniciar
 docker compose restart
 
-# Acessar o container do Odoo
+# Acessar container Odoo
 docker compose exec odoo bash
 
-# Acessar o PostgreSQL
+# Acessar PostgreSQL
 docker compose exec db psql -U odoo -d realestate
 ```
 
-### Acessos
+---
 
-- **Odoo Web**: http://localhost:8069
-- **PostgreSQL**: localhost:5432
-- **Database**: `realestate`
-- **Usuário padrão**: `admin`
-- **Senha padrão**: `admin`
+## 📚 Recursos Adicionais
 
-### Desenvolvimento
+### Documentação Técnica
+- [ADRs (Architecture Decision Records)](docs/adr/) - Decisões arquiteturais
+- [API Documentation](docs/api/) - Especificações da API
+- [OpenAPI Specs](docs/openapi/) - Schemas OpenAPI
+- [Postman Collections](docs/postman/) - Collections para testes
 
-Os módulos customizados devem ser adicionados no diretório `18.0/extra-addons/`.
+### Guias Específicos
+- [Production Setup](18.0/PRODUCTION_SETUP.md) - Configuração de produção
+- [Dokploy Deploy](18.0/DOKPLOY_DEPLOY.md) - Deploy no Dokploy
+- [Observability](docs/observability.md) - Monitoramento e métricas
 
-## 📚 Documentação
-
-- Docker source: https://github.com/odoo/docker
-- Odoo Documentation: https://www.odoo.com/documentation/18.0
-
-## 🔌 Acessos aos Componentes Docker
-
-### Odoo Web Application
-- **URL:** http://localhost:8069
-- **Usuário:** `admin`
-- **Senha:** `admin`
-
-### PostgreSQL Database
-- **Host:** `localhost`
-- **Port:** `5432`
-- **Database:** `realestate`
-- **Username:** `odoo`
-- **Password:** `odoo`
-- **Ferramentas:** DBeaver, pgAdmin, psql
-
-### Redis Cache
-- **Host:** `localhost`
-- **Port:** `6379`
-- **DB Index:** `1` (configurado no odoo.conf)
-- **CLI Access:** `docker compose exec redis redis-cli`
-
-### RabbitMQ (Message Broker)
-- **Management UI:** http://localhost:15672
-- **Username:** `odoo`
-- **Password:** `odoo_rabbitmq_secret_2026`
-- **AMQP Port:** `5672` (para conexões de aplicação)
-- **Purpose:** Gerenciamento de filas Celery
-
-### Flower (Celery Monitoring)
-- **URL:** http://localhost:5555
-- **Username:** `admin`
-- **Password:** `flower_admin_2026`
-- **Purpose:** Monitoramento em tempo real dos workers Celery
-
-### Celery Workers (Background Tasks)
-- **Commission Worker:** Processa cálculos de comissão
-- **Notification Worker:** Gerencia notificações email/SMS
-- **Audit Worker:** Registra alterações de segurança e dados
-- **Status:** `docker compose ps` ou Flower UI
-
-### MailHog (Email Testing - Development)
-- **SMTP Server:** `mailhog:1025` (configurar no Odoo)
-- **Web UI:** http://localhost:8025
-- **Purpose:** Captura todos os emails enviados sem enviá-los realmente
-- **Usage:** Ideal para testar fluxos de email (convites, password reset, notificações)
-- **Configuration:** Settings > Technical > Email > Outgoing Mail Servers
-  - SMTP Server: `mailhog`
-  - SMTP Port: `1025`
-  - Connection Security: `None`
-  - Username/Password: (deixar vazio)
-- **Production:** Ver [ADR-023](docs/adr/ADR-023-mailhog-email-testing-development.md) para configuração SMTP de produção
+### Referências Externas
+- [Odoo 18.0 Documentation](https://www.odoo.com/documentation/18.0)
+- [Docker Documentation](https://docs.docker.com/)
 
 ---
 
-## � Documentação da API (Swagger/OpenAPI)
+## 🆘 Suporte
 
-### Swagger UI (Interface Interativa)
-- **URL:** http://localhost:8069/api/docs
-- **Descrição:** Interface gráfica interativa para explorar e testar os endpoints da API
-- **Autenticação:** Não requer autenticação para visualizar (endpoints protegidos requerem token Bearer)
-
-### OpenAPI Specification (JSON)
-- **URL:** http://localhost:8069/api/v1/openapi.json
-- **Descrição:** Especificação OpenAPI 3.0 em formato JSON gerada dinamicamente
-- **Uso:** Importar em ferramentas como Postman, Insomnia ou geradores de código
-
-### Como usar a documentação Swagger
-
-1. **Visualizar endpoints:** Acesse http://localhost:8069/api/docs
-2. **Obter token de autenticação:** Use o endpoint `/api/v1/oauth/token` com suas credenciais
-3. **Autorizar:** Clique em "Authorize" no Swagger UI e insira o token no formato `Bearer {seu_token}`
-4. **Testar endpoints:** Clique em "Try it out" em qualquer endpoint para testar diretamente
+- **Slack:** #realestate-dev
+- **Email:** dev@thedevkitchen.com.br
+- **Issues:** [GitHub Issues](https://github.com/thedevkitchen/realestate-backend/issues)
 
 ---
+
+*Última atualização: 27 de março de 2026*
