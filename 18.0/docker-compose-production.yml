@@ -569,6 +569,7 @@ services:
       - GF_LOG_MODE=console
       - GF_LOG_LEVEL=info
       - GF_FEATURE_TOGGLES_ENABLE=traceqlEditor
+      - GF_DEFAULT_SERVICE_NAME=${OTEL_SERVICE_NAME:-odoo}
     volumes:
       - grafana-data:/var/lib/grafana
       - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro

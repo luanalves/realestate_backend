@@ -229,8 +229,8 @@
       {
         "current": {
           "selected": false,
-          "text": "odoo-production",
-          "value": "odoo-production"
+          "text": "${__env:GF_DEFAULT_SERVICE_NAME}",
+          "value": "${__env:GF_DEFAULT_SERVICE_NAME}"
         },
         "hide": 0,
         "includeAll": false,
@@ -240,21 +240,26 @@
         "options": [
           {
             "selected": true,
+            "text": "${__env:GF_DEFAULT_SERVICE_NAME}",
+            "value": "${__env:GF_DEFAULT_SERVICE_NAME}"
+          },
+          {
+            "selected": false,
             "text": "odoo-production",
             "value": "odoo-production"
           },
           {
             "selected": false,
-            "text": "odoo",
-            "value": "odoo"
+            "text": "odoo-homol",
+            "value": "odoo-homol"
           },
           {
             "selected": false,
-            "text": "odoo-development",
-            "value": "odoo-development"
+            "text": "odoo-dev",
+            "value": "odoo-dev"
           }
         ],
-        "query": "odoo-production,odoo,odoo-development",
+        "query": "odoo-production,odoo-homol,odoo-dev",
         "queryValue": "",
         "skipUrlSync": false,
         "type": "custom"
