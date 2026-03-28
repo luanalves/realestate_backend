@@ -229,8 +229,8 @@
       {
         "current": {
           "selected": false,
-          "text": "odoo",
-          "value": "odoo"
+          "text": "odoo-production",
+          "value": "odoo-production"
         },
         "hide": 0,
         "includeAll": false,
@@ -240,6 +240,11 @@
         "options": [
           {
             "selected": true,
+            "text": "odoo-production",
+            "value": "odoo-production"
+          },
+          {
+            "selected": false,
             "text": "odoo",
             "value": "odoo"
           },
@@ -249,7 +254,7 @@
             "value": "odoo-development"
           }
         ],
-        "query": "odoo,odoo-development",
+        "query": "odoo-production,odoo,odoo-development",
         "queryValue": "",
         "skipUrlSync": false,
         "type": "custom"
