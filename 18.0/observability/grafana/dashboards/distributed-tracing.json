@@ -21,7 +21,7 @@
       },
       "id": 1,
       "options": {
-        "query": "{service.name=\"odoo-development\"}",
+        "query": "{service.name=\"$service_name\"}",
         "queryType": "traceql",
         "limit": 20
       },
@@ -32,7 +32,7 @@
             "uid": "tempo"
           },
           "queryType": "traceql",
-          "query": "{service.name=\"odoo-development\"}",
+          "query": "{service.name=\"$service_name\"}",
           "refId": "A"
         }
       ],
@@ -120,7 +120,7 @@
             "uid": "tempo"
           },
           "queryType": "traceql",
-          "query": "{service.name=\"odoo-development\"} | rate() by (http.route)",
+          "query": "{service.name=\"$service_name\"} | rate() by (http.route)",
           "refId": "A"
         }
       ],
@@ -208,7 +208,7 @@
             "uid": "tempo"
           },
           "queryType": "traceql",
-          "query": "{service.name=\"odoo-development\"} | rate() by (http.status_code)",
+          "query": "{service.name=\"$service_name\"} | rate() by (http.status_code)",
           "refId": "A"
         }
       ],
@@ -225,7 +225,36 @@
     "apm"
   ],
   "templating": {
-    "list": []
+    "list": [
+      {
+        "current": {
+          "selected": false,
+          "text": "odoo",
+          "value": "odoo"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "label": "Service Name",
+        "multi": false,
+        "name": "service_name",
+        "options": [
+          {
+            "selected": true,
+            "text": "odoo",
+            "value": "odoo"
+          },
+          {
+            "selected": false,
+            "text": "odoo-development",
+            "value": "odoo-development"
+          }
+        ],
+        "query": "odoo,odoo-development",
+        "queryValue": "",
+        "skipUrlSync": false,
+        "type": "custom"
+      }
+    ]
   },
   "time": {
     "from": "now-15m",

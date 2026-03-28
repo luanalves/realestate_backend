@@ -124,7 +124,7 @@
           },
           "hide": false,
           "limit": 20,
-          "query": "{resource.service.name=\"odoo-development\"}",
+          "query": "{resource.service.name=\"$service_name\"}",
           "queryType": "traceqlSearch",
           "refId": "Backend",
           "tableType": "spans"
@@ -485,7 +485,7 @@
           },
           "hide": false,
           "limit": 20,
-          "query": "{resource.service.name=\"odoo-development\"}",
+          "query": "{resource.service.name=\"$service_name\"}",
           "queryType": "traceqlSearch",
           "refId": "Backend",
           "tableType": "spans"
@@ -632,6 +632,34 @@
         "regex": "",
         "skipUrlSync": false,
         "type": "datasource"
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": "odoo",
+          "value": "odoo"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "label": "Service Name",
+        "multi": false,
+        "name": "service_name",
+        "options": [
+          {
+            "selected": true,
+            "text": "odoo",
+            "value": "odoo"
+          },
+          {
+            "selected": false,
+            "text": "odoo-development",
+            "value": "odoo-development"
+          }
+        ],
+        "query": "odoo,odoo-development",
+        "queryValue": "",
+        "skipUrlSync": false,
+        "type": "custom"
       }
     ]
   },
