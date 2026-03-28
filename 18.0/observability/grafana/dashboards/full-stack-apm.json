@@ -636,8 +636,8 @@
       {
         "current": {
           "selected": false,
-          "text": "${__env:GF_DEFAULT_SERVICE_NAME}",
-          "value": "${__env:GF_DEFAULT_SERVICE_NAME}"
+          "text": "odoo-production",
+          "value": "odoo-production"
         },
         "hide": 0,
         "includeAll": false,
@@ -647,8 +647,8 @@
         "options": [
           {
             "selected": true,
-            "text": "${__env:GF_DEFAULT_SERVICE_NAME}",
-            "value": "${__env:GF_DEFAULT_SERVICE_NAME}"
+            "text": "odoo-production",
+            "value": "odoo-production"
           },
           {
             "selected": false,
