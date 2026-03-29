@@ -354,6 +354,30 @@ The following items were planned but are now covered by existing documentation:
 - [ ] ~~Disaster recovery~~ - Covered in [Production Setup Guide](../../18.0/PRODUCTION_SETUP.md) backup section
 - [ ] ~~Documentation~~ - [Production Setup Guide](../../18.0/PRODUCTION_SETUP.md) provides comprehensive runbook
 
+### Phase 8: Multi-Environment Grafana Dashboard Fix (Completed ✅)
+**Status:** Implemented March 28, 2026 (Commits: `69ccee5`, `d6d41c8`, `e0e3639`, `7efb5e1`)
+
+**Problem:** Grafana dashboards had `service.name="odoo-development"` hardcoded in queries. Each Dokploy stack uses a different `OTEL_SERVICE_NAME` (`odoo-production`, `odoo-dev`, `odoo-homol`), causing "No data" on all non-development environments.
+
+**Root Cause (bind mount inode):** Dokploy deletes and recreates the `dashboards/` directory on every deploy, creating a new inode. The Grafana container bind mount pointed to the old (deleted) inode until a container restart.
+
+**Solution:**
+1. Added `GF_DEFAULT_SERVICE_NAME=${OTEL_SERVICE_NAME:-odoo}` to the Grafana service in `docker-compose-production.yml` — passes the per-stack env var into the container.
+2. Created `18.0/observability/grafana/grafana-entrypoint.sh` — a custom entrypoint that:
+   - Copies dashboard JSONs from `:ro` source mount (`/tmp/dashboards-src`) to a writable named volume (`grafana-dashboards`)
+   - Patches `current.value` of the `service_name` template variable using `$GF_DEFAULT_SERVICE_NAME` via `sed`
+   - Starts Grafana normally via `exec /run.sh`
+3. Changed dashboard volume strategy: source bind mount → `/tmp/dashboards-src:ro`; patched copy → `grafana-dashboards` named volume.
+
+**Key Design:** Named volume `grafana-dashboards` is fully overwritten on every container start, so the patched value is always fresh and never persists stale data.
+
+**Files changed:**
+- `18.0/docker-compose-production.yml` — `entrypoint`, `volumes` (new mount strategy + `grafana-dashboards` volume)
+- `18.0/observability/grafana/grafana-entrypoint.sh` — new file
+- `18.0/observability/grafana/dashboards/*.json` — `current.value` defaults to `odoo-production` in repo; patched per env at runtime
+
+**Removed:** `integration_tests/post_deploy_grafana.sh` (manual fallback, superseded by automatic entrypoint)
+
 ---
 
 ## Success Metrics
@@ -394,6 +418,7 @@ The following items were planned but are now covered by existing documentation:
 | 2026-03-24 | 1.0 | DevKitchen | Initial decision: OpenTelemetry + Tempo |
 | 2026-03-24 | 1.1 | DevKitchen | Added SDK v1.40.0 compatibility note (AlwaysOn → ALWAYS_ON) |
 | 2026-03-24 | 2.0 | DevKitchen | Phases 1-4 completed, added Phase 5-7 roadmap |
+| 2026-03-28 | 2.1 | DevKitchen | Phase 8: Multi-environment Grafana `service_name` fix via custom entrypoint |
 
 ---
 
