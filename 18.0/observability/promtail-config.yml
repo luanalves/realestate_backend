@@ -47,9 +47,11 @@ scrape_configs:
     docker_sd_configs:
       - host: unix:///var/run/docker.sock
         refresh_interval: 5s
-        filters:
-          - name: label
-            values: ["com.docker.compose.project=180"]  # Só containers do projeto
+        # Coleta logs de TODOS os containers do servidor (Odoo + Kong + outros)
+        # Para restringir a um projeto específico, descomente o filtro abaixo:
+        # filters:
+        #   - name: label
+        #     values: ["com.docker.compose.project=180"]
     
     # Relabel: extrair labels úteis dos containers
     relabel_configs:

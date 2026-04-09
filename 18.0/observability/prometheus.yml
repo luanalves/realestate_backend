@@ -143,6 +143,20 @@ scrape_configs:
   #   scrape_interval: 30s
 
   # ---------------------------------------------------------------------------
+  # Kong API Gateway - Métricas do plugin prometheus nativo
+  # Scrape da Admin API (8001) — acessível via dokploy-network
+  # Métricas: requests totais, latência, bandwidth, status codes, upstream health
+  # ---------------------------------------------------------------------------
+  - job_name: 'kong'
+    static_configs:
+      - targets: ['kong-gateway:8001']
+        labels:
+          service: 'kong-apigateway'
+          tier: 'gateway'
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+
+  # ---------------------------------------------------------------------------
   # RabbitMQ Management Plugin (se habilitado)
   # ---------------------------------------------------------------------------
   # - job_name: 'rabbitmq'
