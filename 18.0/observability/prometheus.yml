@@ -11,14 +11,14 @@
 # =============================================================================
 
 global:
-  scrape_interval: 15s          # Coletar métricas a cada 15 segundos
-  evaluation_interval: 15s      # Avaliar regras a cada 15 segundos
-  scrape_timeout: 10s           # Timeout para coleta
-  
+  scrape_interval: 15s # Coletar métricas a cada 15 segundos
+  evaluation_interval: 15s # Avaliar regras a cada 15 segundos
+  scrape_timeout: 10s # Timeout para coleta
+
   external_labels:
-    cluster: 'odoo-production'
-    environment: 'production'
-    region: 'us-east-1'
+    cluster: "odoo-production"
+    environment: "production"
+    region: "us-east-1"
 
 # Regras de alertas (opcional - descomente se quiser usar)
 # rule_files:
@@ -37,97 +37,97 @@ scrape_configs:
   # ---------------------------------------------------------------------------
   # Prometheus Self-Monitoring
   # ---------------------------------------------------------------------------
-  - job_name: 'prometheus'
+  - job_name: "prometheus"
     static_configs:
-      - targets: ['localhost:9090']
+      - targets: ["localhost:9090"]
         labels:
-          service: 'prometheus'
-          tier: 'monitoring'
+          service: "prometheus"
+          tier: "monitoring"
 
   # ---------------------------------------------------------------------------
   # Node Exporter - Métricas do Sistema Operacional
   # ---------------------------------------------------------------------------
-  - job_name: 'node-exporter'
+  - job_name: "node-exporter"
     static_configs:
-      - targets: ['node-exporter:9100']
+      - targets: ["node-exporter:9100"]
         labels:
-          service: 'node-exporter'
-          tier: 'system'
+          service: "node-exporter"
+          tier: "system"
     metric_relabel_configs:
       # Drop métricas desnecessárias para reduzir storage
       - source_labels: [__name__]
-        regex: 'node_network_receive_errs_total|node_network_transmit_errs_total'
+        regex: "node_network_receive_errs_total|node_network_transmit_errs_total"
         action: drop
 
   # ---------------------------------------------------------------------------
   # cAdvisor - Métricas dos Containers
   # ---------------------------------------------------------------------------
-  - job_name: 'cadvisor'
+  - job_name: "cadvisor"
     static_configs:
-      - targets: ['cadvisor:8080']
+      - targets: ["cadvisor:8080"]
         labels:
-          service: 'cadvisor'
-          tier: 'containers'
+          service: "cadvisor"
+          tier: "containers"
     metric_relabel_configs:
       # Adicionar label amigável do container
       - source_labels: [container_label_com_docker_compose_service]
         target_label: container_name
       # Drop métricas de containers parados
       - source_labels: [container_label_com_docker_compose_oneoff]
-        regex: 'True'
+        regex: "True"
         action: drop
 
   # ---------------------------------------------------------------------------
   # PostgreSQL Exporter - Métricas do Database
   # ---------------------------------------------------------------------------
-  - job_name: 'postgres'
+  - job_name: "postgres"
     static_configs:
-      - targets: ['postgres-exporter:9187']
+      - targets: ["postgres-exporter:9187"]
         labels:
-          service: 'postgresql'
-          tier: 'database'
-          database: 'odoo'
+          service: "postgresql"
+          tier: "database"
+          database: "odoo"
 
   # ---------------------------------------------------------------------------
   # Redis Exporter - Métricas do Cache
   # ---------------------------------------------------------------------------
-  - job_name: 'redis'
+  - job_name: "redis"
     static_configs:
-      - targets: ['redis-exporter:9121']
+      - targets: ["redis-exporter:9121"]
         labels:
-          service: 'redis'
-          tier: 'cache'
+          service: "redis"
+          tier: "cache"
 
   # ---------------------------------------------------------------------------
   # Loki - Métricas do Agregador de Logs
   # ---------------------------------------------------------------------------
-  - job_name: 'loki'
+  - job_name: "loki"
     static_configs:
-      - targets: ['loki:3100']
+      - targets: ["loki:3100"]
         labels:
-          service: 'loki'
-          tier: 'monitoring'
+          service: "loki"
+          tier: "monitoring"
 
   # ---------------------------------------------------------------------------
   # Tempo - Métricas do Tracing
   # ---------------------------------------------------------------------------
-  - job_name: 'tempo'
+  - job_name: "tempo"
     static_configs:
-      - targets: ['tempo:3200']
+      - targets: ["tempo:3200"]
         labels:
-          service: 'tempo'
-          tier: 'monitoring'
+          service: "tempo"
+          tier: "monitoring"
 
   # ---------------------------------------------------------------------------
   # Grafana - Métricas do Dashboard
   # ---------------------------------------------------------------------------
-  - job_name: 'grafana'
+  - job_name: "grafana"
     static_configs:
-      - targets: ['grafana:3000']
+      - targets: ["grafana:3000"]
         labels:
-          service: 'grafana'
-          tier: 'monitoring'
-    metrics_path: '/metrics'
+          service: "grafana"
+          tier: "monitoring"
+    metrics_path: "/metrics"
 
   # ---------------------------------------------------------------------------
   # Odoo - Application Metrics (se expuser endpoint /metrics)
@@ -147,13 +147,13 @@ scrape_configs:
   # Scrape da Admin API (8001) — acessível via dokploy-network
   # Métricas: requests totais, latência, bandwidth, status codes, upstream health
   # ---------------------------------------------------------------------------
-  - job_name: 'kong'
+  - job_name: "kong"
     static_configs:
-      - targets: ['kong-gateway:8001']
+      - targets: ["kong-gateway:8001"]
         labels:
-          service: 'kong-apigateway'
-          tier: 'gateway'
-    metrics_path: '/metrics'
+          service: "kong-apigateway"
+          tier: "gateway"
+    metrics_path: "/metrics"
     scrape_interval: 15s
 
   # ---------------------------------------------------------------------------
