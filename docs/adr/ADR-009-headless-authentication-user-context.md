@@ -1,373 +1,166 @@
 # ADR 009: Autenticação Headless com Contexto de Usuário
 
 ## Status
-Proposto
+
+Aceito (revisado Abr/2026)
 
 ## Contexto
 
-O sistema atual usa **OAuth 2.0 Client Credentials Grant** (RFC 6749), onde:
-- Frontend obtém token usando `client_id` + `client_secret`
-- Token representa a **aplicação**, não o **usuário**
-- `request.env.user` no backend retorna usuário genérico da aplicação
-- **Problema:** Não há contexto de qual usuário está fazendo a requisição
+O sistema opera com **autenticação dual** (ADR-011):
 
-**Arquitetura headless** significa:
-- Frontend desacoplado (React, Vue, Angular, etc.)
-- Backend expõe apenas API REST (sem sessões web do Odoo)
-- Autenticação stateless via JWT
-- Cada requisição deve carregar identidade do usuário
+- **Camada de aplicação (serviço-a-serviço):** OAuth 2.0 Client Credentials gerenciado exclusivamente pelo Kong API Gateway. O frontend **nunca vê nem envia** este token.
+- **Camada de usuário (sessão):** Login do usuário retorna um `session_id` que o frontend usa em todos os requests subsequentes via header `X-Openerp-Session-Id`.
 
-**Requisitos:**
-1. Frontend precisa fazer login com credenciais do usuário (email/senha)
-2. Backend deve identificar qual usuário está autenticado em cada request
-3. Filtros de empresa (`company_ids`) dependem do usuário
-4. Não usar sessões do Odoo (stateless)
-5. Token deve expirar e ser renovável
+O Kong **remove** qualquer `Authorization` enviado pelo cliente e **injeta** o Bearer token de serviço antes de encaminhar ao Odoo. Isto garante que:
+
+1. Nenhum `client_secret` é exposto ao browser
+2. O Odoo sempre recebe um token válido de serviço (JWT validado por `@require_jwt`)
+3. O contexto do usuário é transportado pelo `session_id` (validado por `@require_session`)
+
+**Requisitos atendidos:**
+
+1. Frontend autentica com email/senha e recebe `session_id`
+2. Backend identifica o usuário via `session_id` (Redis → `thedevkitchen.api.session`)
+3. Isolamento multi-tenant garantido pelo header `X-Company-ID` (`@require_company`)
+4. Proteção contra session hijacking via JWT fingerprint armazenado no lado do servidor (ADR-017)
 
 ## Decisão
 
-Implementar **OAuth 2.0 Password Grant** (Resource Owner Password Credentials) combinado com **JWT contendo user_id** para autenticação headless com contexto de usuário.
-
-### Fluxo de Autenticação
+**Fluxo de autenticação adotado (implementado):**
 
 ```
-1. Frontend: POST /api/v1/auth/login
-   Body: { "username": "user@company.com", "password": "xxx" }
+1. Frontend → POST /api/v1/users/login
+   Body: { "email": "user@empresa.com", "password": "***" }
+   (SEM Authorization — Kong injeta o Bearer de serviço)
 
-2. Backend valida credenciais contra res.users
+2. Kong injeta: Authorization: Bearer <service_token>
+   Kong encaminha para Odoo
 
-3. Backend gera JWT com payload:
-   {
-     "user_id": 123,
-     "username": "user@company.com",
-     "company_ids": [5, 8],
-     "default_company_id": 5,
-     "exp": 1701234567,
-     "iat": 1701230967
-   }
+3. Odoo:
+   - @require_jwt valida o service token
+   - Autentica credenciais via request.session.authenticate()
+   - Cria registro em thedevkitchen.api.session
+   - Gera security_token (JWT fingerprint — ADR-017), armazenado no servidor
+   - Retorna { session_id, user }
 
-4. Backend retorna:
-   {
-     "access_token": "eyJ...",
-     "token_type": "Bearer",
-     "expires_in": 3600,
-     "refresh_token": "xxx",
-     "user": {
-       "id": 123,
-       "name": "João Silva",
-       "email": "user@company.com",
-       "companies": [{"id": 5, "name": "Imobiliária A"}],
-       "default_company_id": 5
-     }
-   }
+4. Frontend armazena em localStorage:
+   - session_id  (chave: STORAGE_KEYS.SESSION_ID)
+   - company_id  (chave: STORAGE_KEYS.COMPANY_ID, extraído de user.current_company.id)
+   - user        (chave: STORAGE_KEYS.USER, dados de exibição)
 
-5. Frontend armazena token (localStorage/sessionStorage)
+5. Todas as requisições autenticadas subsequentes:
+   X-Openerp-Session-Id: <session_id>
+   X-Company-ID: <company_id>
+   (SEM Authorization — Kong continua injetando)
 
-6. Frontend envia em TODAS as requisições:
-   Authorization: Bearer eyJ...
+6. Odoo valida com os três decoradores obrigatórios:
+   @require_jwt      → valida Bearer injetado pelo Kong
+   @require_session  → valida session_id + JWT fingerprint (anti-hijacking)
+   @require_company  → valida X-Company-ID e aplica isolamento de dados
 
-7. Middleware decodifica JWT e injeta user em request.env:
-   request.env = request.env(user=user_from_jwt)
+7. Logout:
+   POST /api/v1/users/logout
+   → Odoo desativa thedevkitchen.api.session (is_active=False)
+   → Frontend remove session_id, company_id e user do localStorage
 ```
 
-### Componentes da Solução
+### Transmissão do session_id
 
-#### 1. Novo Endpoint de Login
+O `@require_session` aceita o `session_id` nas seguintes fontes (por prioridade):
 
-**Rota:** `POST /api/v1/auth/login`
+| Prioridade | Fonte                    | Formato                     |
+| ---------- | ------------------------ | --------------------------- |
+| 1ª         | Query param / form param | `?session_id=...`           |
+| 2ª         | JSON body                | `{ "session_id": "..." }`   |
+| 3ª         | Header HTTP              | `X-Openerp-Session-Id: ...` |
+| 4ª         | Cookie                   | `session_id=...`            |
 
-**Responsabilidade:**
-- Validar username/password contra `res.users`
-- Verificar se usuário está ativo
-- Gerar JWT com `user_id` e `company_ids`
-- Criar registro em `thedevkitchen.oauth.token` vinculado ao usuário
+**Padrão recomendado para SPA (Web):** header `X-Openerp-Session-Id`.
 
-#### 2. Modelo OAuth Token Estendido
+### Responsabilidades por camada
 
-**Adicionar campos:**
-- `user_id` (Many2one para `res.users`)
-- `jti` (Char, unique, indexed) - JWT ID para revogação
-- `session_metadata` (JSON) - IP, User-Agent, device info
-
-**Comportamento:**
-- Tokens de Client Credentials: `user_id = NULL`, `jti = NULL`
-- Tokens de Password Grant: `user_id = <user>`, `jti = UUID único`
-
-**Exemplo:**
-```python
-class OAuthToken(models.Model):
-    _name = 'thedevkitchen.oauth.token'
-    
-    user_id = fields.Many2one(
-        'res.users',
-        string='User',
-        index=True,
-        ondelete='cascade',
-        help='User authenticated via Password Grant'
-    )
-    jti = fields.Char(
-        string='JWT ID',
-        index=True,
-        help='Unique token identifier for revocation (UUID)'
-    )
-    session_metadata = fields.Json(
-        string='Session Metadata',
-        help='IP, User-Agent, device info for audit'
-    )
-    
-    _sql_constraints = [
-        ('jti_unique', 'unique(jti)', 'JWT ID must be unique!'),
-    ]
-```
-
-#### 3. Middleware JWT Atualizado
-
-**Modificação em `require_jwt` (validação em 3 camadas):**
-
-```python
-@functools.wraps(func)
-def wrapper(*args, **kwargs):
-    # Extrair token do header
-    auth_header = request.httprequest.headers.get('Authorization')
-    if not auth_header or not auth_header.startswith('Bearer '):
-        return error_response(401, 'Missing or invalid Authorization header')
-    
-    token = auth_header[7:]  # Remove 'Bearer '
-    
-    # CAMADA 1: Validar assinatura e estrutura do JWT
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
-    except jwt.ExpiredSignatureError:
-        return error_response(401, 'Token expired')
-    except jwt.InvalidTokenError:
-        return error_response(401, 'Invalid token')
-    
-    # CAMADA 2: Validar token no banco (revogação)
-    Token = request.env['thedevkitchen.oauth.token']
-    token_record = Token.search([
-        ('jti', '=', payload.get('jti')),
-        ('revoked', '=', False),
-        ('expires_at', '>', fields.Datetime.now()),
-    ], limit=1)
-    
-    if not token_record:
-        return error_response(401, 'Token revoked or not found')
-    
-    # CAMADA 3: Validar usuário ainda existe e está ativo
-    if token_record.user_id:
-        if not token_record.user_id.active:
-            return error_response(401, 'User account is disabled')
-        
-        # ✅ CRÍTICO: Trocar contexto para usuário autenticado
-        request.env = request.env(user=token_record.user_id)
-    
-    # Attach token info to request
-    request.jwt_token = token_record
-    request.jwt_payload = payload
-    
-    return func(*args, **kwargs)
-```
-
-#### 4. Refresh Token com Contexto de Usuário
-
-**Rota:** `POST /api/v1/auth/refresh`
-
-**Comportamento:**
-- Validar `refresh_token`
-- Gerar novo `access_token` com mesmo `user_id`
-- Manter contexto de empresa
-
-### Estrutura do JWT
-
-```json
-{
-  "jti": "550e8400-e29b-41d4-a716-446655440000",  // JWT ID (session identifier) - CRÍTICO
-  "sub": "123",                                    // user_id (subject)
-  "username": "user@company.com",
-  "email": "user@company.com",
-  "company_ids": [5, 8],                          // empresas do usuário
-  "default_company_id": 5,                        // empresa padrão
-  "groups": [                                     // grupos de segurança (opcional)
-    "quicksol_estate.group_real_estate_manager"
-  ],
-  "iss": "odoo-api-gateway",                      // issuer
-  "aud": "real-estate-frontend",                  // audience
-  "exp": 1701234567,                              // expiration (Unix timestamp)
-  "iat": 1701230967,                              // issued at (Unix timestamp)
-  "sid": "abc123def456"                           // session_id (referência ao registro oauth.token)
-}
-```
-
-**Campos críticos de segurança:**
-- **`jti`** (JWT ID): Identificador único do token - usado para revogação
-- **`sub`** (Subject): ID do usuário - NUNCA deve ser aceito do request body
-- **`sid`** (Session ID): Referência ao registro `thedevkitchen.oauth.token` no banco
-- **`exp`** (Expiration): Token expira automaticamente (defesa em profundidade)
+| Responsabilidade                 | Quem                                       |
+| -------------------------------- | ------------------------------------------ |
+| Token OAuth (client_credentials) | Kong — exclusivo, nunca exposto ao browser |
+| Autenticação do usuário          | Odoo — `request.session.authenticate()`    |
+| Armazenar session_id             | Frontend — `localStorage`                  |
+| Enviar session_id                | Frontend — header `X-Openerp-Session-Id`   |
+| Enviar company_id                | Frontend — header `X-Company-ID`           |
+| Validar sessão + fingerprint     | Odoo — `@require_session` + ADR-017        |
+| Isolamento multi-tenant          | Odoo — `@require_company`                  |
 
 ### Segurança
 
-#### 1. Revogação de Tokens (CRÍTICO)
+#### Auditoria de Sessões
 
-**Problema:** JWT stateless não pode ser revogado após emissão.
-
-**Solução: Dual-layer validation**
-```python
-# Middleware valida em DUAS camadas:
-
-# Camada 1: Validar assinatura e expiração do JWT
-payload = jwt.decode(token, secret_key, algorithms=['HS256'])
-
-# Camada 2: Validar se token não foi revogado
-token_record = Token.search([
-    ('id', '=', payload['sid']),        # Session ID
-    ('jti', '=', payload['jti']),       # JWT ID
-    ('revoked', '=', False),            # Não revogado
-    ('expires_at', '>', now()),         # Não expirado no banco
-])
-
-if not token_record:
-    return error_response(401, 'Token revoked or expired')
-
-# Camada 3: Validar user ainda existe e está ativo
-if not token_record.user_id or not token_record.user_id.active:
-    return error_response(401, 'User inactive or deleted')
-```
-
-**Revogação em cenários:**
-- **Logout:** `token_record.write({'revoked': True, 'revoked_at': now()})`
-- **Troca de senha:** Revogar TODOS os tokens do usuário
-- **Admin desativa user:** Revogar TODOS os tokens automaticamente
-- **Suspeita de comprometimento:** Revogar token específico por `jti`
-
-#### 2. Session ID vs User ID
-
-**❌ NUNCA aceitar user_id do request:**
-```python
-# VULNERÁVEL - atacante pode trocar user_id
-user_id = data.get('user_id')  # ❌ PERIGOSO
-```
-
-**✅ SEMPRE extrair do JWT validado:**
-```python
-# SEGURO - user_id vem do token assinado
-payload = jwt.decode(token, secret_key)
-user_id = payload['sub']  # ✅ CORRETO
-token_record = Token.search([('jti', '=', payload['jti'])])
-user = token_record.user_id  # ✅ Usuário da sessão
-```
-
-#### 3. Password Grant apenas para frontends confiáveis
-   - Client Credentials para integrações server-to-server
-   - Password Grant para frontend próprio (SPA)
-   - **NUNCA** expor Password Grant para aplicações de terceiros
-
-#### 4. JWT assinado com chave secreta forte
-   - Usar `HS256` (HMAC-SHA256) ou `RS256` (RSA)
-   - Chave mínima de 256 bits (32 caracteres)
-   - Chave rotacionável via configuração do Odoo
-   - Armazenar chave em variável de ambiente, não hardcoded
-
-#### 5. Token de curta duração
-   - **Access token:** 15-60 minutos (recomendado: 30min)
-   - **Refresh token:** 7-30 dias (recomendado: 14 dias)
-   - Renovação automática antes de expirar (frontend)
-   - Expiração no JWT (`exp`) E no banco (`expires_at`)
-
-#### 6. Rate limiting em login
-   - Máximo 5 tentativas por IP em 15 minutos
-   - Máximo 10 tentativas por username em 1 hora
-   - Prevenir brute force de senhas
-   - Considerar CAPTCHA após 3 falhas
-
-#### 7. Auditoria de Sessões
-   - Logar TODAS as tentativas de login (sucesso e falha)
-   - Registrar IP, User-Agent, timestamp
-   - Permitir user ver sessões ativas e revogar remotamente
-   - Alertar user sobre login de novo dispositivo/localização
+- Logar TODAS as tentativas de login (sucesso e falha)
+- Registrar IP, User-Agent, timestamp
+- Permitir user ver sessões ativas e revogar remotamente
+- Alertar user sobre login de novo dispositivo/localização
 
 ## Regras de Implementação
 
-### ✅ SEMPRE
+### ✅ SEMPRE (Frontend Web)
 
-- Incluir `jti` (UUID único) e `sid` (session ID) no JWT
-- Incluir `user_id` (sub) e `company_ids` no payload do JWT
-- Validar token em 3 camadas: assinatura → banco → usuário ativo
-- Consultar banco para verificar se token foi revogado (via `jti`)
-- Trocar contexto de `request.env` para usuário do token
-- Logar tentativas de login (sucesso e falha) com IP e User-Agent
-- Implementar rate limiting em `/auth/login` (5 tentativas/15min)
-- Revogar TODOS os tokens ao trocar senha
-- Revogar refresh_token e access_token ao fazer logout
-- Gerar novo `jti` para cada token (nunca reutilizar)
-- Armazenar metadata da sessão (IP, User-Agent, device) para auditoria
+- Armazenar `session_id` retornado pelo login em `localStorage`
+- Armazenar `company_id` (`user.current_company.id`) em `localStorage`
+- Enviar `X-Openerp-Session-Id: <session_id>` em toda requisição autenticada
+- Enviar `X-Company-ID: <company_id>` em toda requisição autenticada
+- Limpar `session_id`, `company_id` e `user` do localStorage no logout e no 401
 
-### ❌ NUNCA
+### ❌ NUNCA (Frontend Web)
 
-- Aceitar `user_id` ou `company_ids` do request body (sempre extrair do JWT)
-- Confiar apenas na assinatura do JWT (sempre validar no banco)
-- Permitir troca de `user_id` sem re-autenticação
-- Gerar token sem validar credenciais do usuário
-- Armazenar senha (hash ou plain) no JWT
-- Usar sessões do Odoo (stateful) para autenticação de API
-- Retornar mensagem específica "usuário não existe" vs "senha incorreta" (info leakage)
-- Permitir token continuar válido após logout (sempre revogar via `jti`)
-- Confiar em `exp` do JWT sem validar `expires_at` no banco
-- Ignorar validação de `user_id.active` (usuário pode ser desativado)
+- Enviar header `Authorization` — o Kong o remove e injeta o próprio token
+- Armazenar ou lidar com tokens OAuth (client_id / client_secret)
+- Aceitar `user_id` ou `company_id` de outra fonte sem validação
+- Reutilizar `session_id` de outra sessão/usuário
+
+### ✅ SEMPRE (Backend Odoo — controllers)
+
+- Aplicar os três decoradores: `@require_jwt` + `@require_session` + `@require_company`
+- Logar tentativas de login (sucesso e falha) com IP e User-Agent via `AuditLogger`
+- Desativar `thedevkitchen.api.session` no logout (`is_active=False`)
+- Invalidar sessões anteriores do usuário ao fazer novo login
+
+### ❌ NUNCA (Backend Odoo)
+
+- Aceitar `user_id` ou `company_id` do request body (sempre extrair da sessão validada)
+- Criar endpoint de login sem `@require_jwt` (token de serviço Kong obrigatório)
+- Retornar mensagem diferente para "usuário não existe" vs "senha incorreta" (anti-enumeração)
 
 ## Consequências
 
 ### Positivas
 
-- **Contexto de usuário em todas as requisições** - `request.env.user` representa usuário real
-- **Stateless** - Não depende de sessões do Odoo
-- **Escalável** - Frontend pode ser hospedado separadamente
-- **Multi-tenancy funcional** - Filtros por `company_ids` funcionam corretamente
-- **Renovação transparente** - Refresh token permite renovar sem novo login
-- **Auditoria completa** - Todos os logs têm usuário real identificado
+- **Contexto de usuário em todas as requisições** — `request.env.user` representa usuário real via sessão Odoo
+- **Token de serviço nunca exposto ao browser** — gerenciado exclusivamente pelo Kong
+- **Revogação imediata** — desativar `thedevkitchen.api.session` invalida o acesso instantaneamente
+- **Proteção anti-hijacking** — JWT fingerprint (ADR-017) vincula sessão ao IP/UA do browser
+- **Multi-tenancy funcional** — isolamento garantido por `@require_company`
+- **Auditoria completa** — todos os acessos registrados com usuário real, IP e timestamps
 
 ### Negativas
 
-- **Complexidade aumentada** - Dois fluxos OAuth (Client Credentials + Password Grant)
-- **Gestão de tokens** - Tabela de tokens cresce (mitigado com TTL e cleanup)
-- **Segurança do frontend** - JWT exposto no browser (usar httpOnly cookies ou curta duração)
-- **Invalidação imediata difícil** - JWT válido até expirar (mitigado com blacklist)
+- **session_id em localStorage** — sujeito a XSS (mitigado pelo fingerprint ADR-017 e HTTPS obrigatório)
+- **Sessão stateful** — Redis deve estar disponível para validação das sessões
+- **TTL de sessão** — expiração de 2h de inatividade pode surpreender usuários em fluxos longos
 
-### Alternativas Consideradas
+### Alternativas Consideradas e Rejeitadas
 
-#### 1. Session-based Authentication (REJEITADA)
-- **Problema:** Não é stateless, quebra arquitetura headless
-- **Problema:** Dificulta deploy independente de frontend
-
-#### 2. API Key por Usuário (REJEITADA)
-- **Problema:** Sem expiração automática
-- **Problema:** Difícil revogar sem afetar todas as sessões
-
-#### 3. OAuth 2.0 Authorization Code Flow (REJEITADA para MVP)
-- **Vantagem:** Mais seguro (senha nunca vai ao frontend)
-- **Problema:** Requer servidor OAuth separado
-- **Problema:** Complexidade muito alta para MVP
-- **Decisão:** Considerar para v2.0
-
-## Migração
-
-### Fase 1: Adicionar Suporte a Password Grant
-- Criar endpoint `/api/v1/auth/login`
-- Adicionar `user_id` em `thedevkitchen.oauth.token`
-- Estender middleware para trocar contexto de usuário
-
-### Fase 2: Atualizar Frontend
-- Implementar tela de login
-- Armazenar token no localStorage/sessionStorage
-- Adicionar interceptor HTTP para incluir Authorization header
-- Implementar auto-refresh antes de expiração
-
-### Fase 3: Deprecar Client Credentials para Usuários
-- Manter Client Credentials apenas para integrações M2M
-- Password Grant para autenticação de usuários humanos
+| Alternativa                        | Motivo da rejeição                                                                                                     |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Password Grant JWT para o frontend | Expõe token JWT ao browser sem benefício adicional; `session_id` já provê contexto de usuário com proteção equivalente |
+| HttpOnly cookie para session_id    | Kong remove/sobrescreve headers; header explícito `X-Openerp-Session-Id` é mais confiável no contexto do API Gateway   |
+| Authorization Code Flow            | Requer servidor OAuth separado — complexidade excessiva para MVP                                                       |
 
 ## Referências
 
-- RFC 6749 - OAuth 2.0 (Password Grant): https://tools.ietf.org/html/rfc6749#section-4.3
-- RFC 7519 - JSON Web Token (JWT): https://tools.ietf.org/html/rfc7519
-- OWASP Authentication Cheat Sheet: https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html
+- ADR-011: Decoradores obrigatórios (`@require_jwt`, `@require_session`, `@require_company`)
+- ADR-017: Proteção anti-session-hijacking via JWT fingerprint
+- ADR-008: Segurança de APIs e multi-tenancy
+- `thedevkitchen_apigateway/middleware.py` — implementação de `require_session`
+- `thedevkitchen_apigateway/controllers/user_auth_controller.py` — implementação do login
+- `frontend/src/services/api.ts` — `buildHeaders()` com injeção de X-Openerp-Session-Id
+- `frontend/src/services/authService.ts` — persistência de session_id no login/logout
+
 - ADR-008: API Security Multi-Tenancy
