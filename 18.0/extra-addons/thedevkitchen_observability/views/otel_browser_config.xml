@@ -6,7 +6,7 @@
             <script type="text/javascript">
                 // OpenTelemetry Browser Configuration
                 // These values are injected by the Odoo backend
-                window.OTEL_ENABLED = <t t-esc="otel_config['enabled']"/>;
+                window.OTEL_ENABLED = <t t-if="otel_config['enabled']">true</t><t t-else="">false</t>;
                 window.OTEL_SERVICE_NAME = '<t t-esc="otel_config['service_name']"/>';
                 window.OTEL_SERVICE_VERSION = '<t t-esc="otel_config['service_version']"/>';
                 window.OTEL_DEPLOYMENT_ENVIRONMENT = '<t t-esc="otel_config['deployment_environment']"/>';
