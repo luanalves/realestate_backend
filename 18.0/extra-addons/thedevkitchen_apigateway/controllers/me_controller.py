@@ -41,6 +41,23 @@ class MeController(http.Controller):
                 for c in getattr(user, 'company_ids', user.env['res.company']).filtered(lambda c: c.is_real_estate)
             ]
 
+            role_map = {
+                'quicksol_estate.group_real_estate_owner': 'owner',
+                'quicksol_estate.group_real_estate_director': 'director',
+                'quicksol_estate.group_real_estate_manager': 'manager',
+                'quicksol_estate.group_real_estate_agent': 'agent',
+                'quicksol_estate.group_real_estate_prospector': 'prospector',
+                'quicksol_estate.group_real_estate_receptionist': 'receptionist',
+                'quicksol_estate.group_real_estate_financial': 'financial',
+                'quicksol_estate.group_real_estate_legal': 'legal',
+                'quicksol_estate.group_real_estate_property_owner': 'property_owner',
+                'quicksol_estate.group_real_estate_tenant': 'tenant',
+            }
+            role = next(
+                (role_name for xml_id, role_name in role_map.items() if user.has_group(xml_id)),
+                None
+            )
+
             user_data = {
                 'id': user.id,
                 'name': user.name,
@@ -48,6 +65,7 @@ class MeController(http.Controller):
                 'login': user.login,
                 'phone': user.phone or '',
                 'mobile': user.mobile or '',
+                'role': role,
                 'companies': companies,
                 'default_company_id': user.company_id.id if hasattr(user, 'company_id') and user.company_id else None,
                 'is_admin': user.has_group('base.group_system'),

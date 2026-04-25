@@ -95,57 +95,82 @@ curl -X POST 'http://localhost:8069/api/v1/users/logout' \
             <field name="description">Returns detailed information about the currently authenticated user.
 
 **Authentication:**
-Requires Bearer token in Authorization header.
+Requires Bearer token in `Authorization` header and session ID in `X-Openerp-Session-Id` header.
 
 **Request Example:**
 ```bash
 curl 'http://localhost:8069/api/v1/me' \
-  -H 'Authorization: Bearer YOUR_ACCESS_TOKEN'
+  -H 'Authorization: Bearer YOUR_ACCESS_TOKEN' \
+  -H 'X-Openerp-Session-Id: YOUR_SESSION_ID'
 ```
 
 **Response Format (200 OK):**
 ```json
 {
-  "id": 2,
-  "name": "John Doe",
-  "email": "john@example.com",
-  "login": "john",
-  "phone": "1133334444",
-  "mobile": "11999998888",
-  "companies": [
-    {
-      "id": 1,
-      "name": "Real Estate Company",
-      "is_default": true
-    }
-  ],
-  "current_company": {
-    "id": 1,
-    "name": "Real Estate Company"
-  },
-  "roles": ["Real Estate Manager"],
-  "permissions": {
-    "can_manage_properties": true,
-    "can_manage_agents": true,
-    "can_view_reports": true
+  "user": {
+    "id": 2,
+    "name": "John Doe",
+    "email": "john@example.com",
+    "login": "john",
+    "phone": "1133334444",
+    "mobile": "11999998888",
+    "role": "manager",
+    "companies": [
+      {
+        "id": 1,
+        "name": "Real Estate Company",
+        "cnpj": "12.345.678/0001-99",
+        "email": "company@example.com",
+        "phone": "1133334444",
+        "website": "https://example.com"
+      }
+    ],
+    "default_company_id": 1,
+    "is_admin": false,
+    "active": true
   }
 }
 ```
 
-**Error Responses:**
-- **401 Unauthorized**: Invalid or missing token
-- **500 Internal Server Error**: Server error</field>
-            <field name="active" eval="True"/>
-        </record>
+**Role values:** `owner`, `director`, `manager`, `agent`, `prospector`, `receptionist`, `financial`, `legal`, `property_owner`, `tenant`, or `null` for system administrators.
 
-        <record id="api_endpoint_users_profile" model="thedevkitchen.api.endpoint">
-            <field name="name">Update User Profile</field>
-            <field name="path">/api/v1/users/profile</field>
-            <field name="method">PATCH</field>
-            <field name="module_name">quicksol_estate</field>
-            <field name="protected" eval="True"/>
-            <field name="tags">User Authentication</field>
-            <field name="summary">Update user profile</field>
+**Error Responses:**
+- **401 Unauthorized**: Invalid or missing token/session
+- **500 Internal Server Error**: Server error</field>
+            <field name="response_schema">{
+  "type": "object",
+  "properties": {
+    "user": {
+      "type": "object",
+      "properties": {
+        "id":                 {"type": "integer", "example": 2},
+        "name":               {"type": "string",  "example": "John Doe"},
+        "email":              {"type": "string",  "format": "email", "example": "john@example.com"},
+        "login":              {"type": "string",  "example": "john"},
+        "phone":              {"type": "string",  "example": "1133334444"},
+        "mobile":             {"type": "string",  "example": "11999998888"},
+        "role":               {"type": "string",  "nullable": true, "enum": ["owner", "director", "manager", "agent", "prospector", "receptionist", "financial", "legal", "property_owner", "tenant", null], "example": "manager"},
+        "companies": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id":      {"type": "integer", "example": 1},
+              "name":    {"type": "string",  "example": "Real Estate Company"},
+              "cnpj":    {"type": "string",  "example": "12.345.678/0001-99"},
+              "email":   {"type": "string",  "example": "company@example.com"},
+              "phone":   {"type": "string",  "example": "1133334444"},
+              "website": {"type": "string",  "example": "https://example.com"}
+            }
+          }
+        },
+        "default_company_id": {"type": "integer", "nullable": true, "example": 1},
+        "is_admin":           {"type": "boolean", "example": false},
+        "active":             {"type": "boolean", "example": true}
+      }
+    }
+  }
+}</field>
             <field name="description">Partially update logged-in user profile (email, phone, mobile). Requires Bearer token. Only own profile can be updated.
 
 **Authentication:**
