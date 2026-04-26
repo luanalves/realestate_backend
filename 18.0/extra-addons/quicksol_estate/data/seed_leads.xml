@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    SEED LEADS — Imobiliária Seed
+    ─────────────────────────────────────────────────────────────────────────────
+    Cobertura de todas as dimensões de filtro da API GET /api/v1/leads:
+    ┌──────┬───────────┬────────┬───────────────┬──────────┬──────────────────┬──────────────────────┐
+    │ Lead │ state     │ active │ budget (min–max│ bedrooms │ location         │ first_contact_date   │
+    ├──────┼───────────┼────────┼───────────────┼──────────┼──────────────────┼──────────────────────┤
+    │ A    │ new       │ True   │ 150k – 300k   │ 1        │ Centro SP        │ 2025-11-10           │
+    │ B    │ contacted │ True   │ 300k – 500k   │ 2        │ Vila Mariana SP  │ 2025-12-15           │
+    │ C    │ qualified │ True   │ 500k – 750k   │ 3        │ Moema SP         │ 2026-01-20           │
+    │ D    │ won       │ True   │ 800k – 1.2M   │ 4        │ Jardins SP       │ 2025-10-01           │
+    │ E    │ lost      │ True   │ 250k – 400k   │ 2        │ Tatuapé SP       │ 2025-09-01           │
+    │ F    │ new       │ False  │ 100k – 200k   │ 1        │ Osasco SP        │ 2025-08-01 (arq.)    │
+    │ G    │ qualified │ True   │ 1.5M – 3M     │ 5        │ Alphaville SP    │ 2026-02-01 (premium) │
+    │ H    │ new       │ True   │ 400k – 600k   │ 2        │ Pinheiros SP     │ 2026-03-10           │
+    └──────┴───────────┴────────┴───────────────┴──────────┴──────────────────┴──────────────────────┘
+
+    Filtros cobertos:
+      • state          → new (A, F, H), contacted (B), qualified (C, G), won (D), lost (E)
+      • active         → True (A-E, G-H), False (F)  → active=all retorna todos os 8
+      • budget_min/max → 100k a 3M em 8 faixas distintas
+      • bedrooms       → 1, 2, 3, 4, 5
+      • location       → 8 bairros distintos
+      • first_contact_date → ago/2025 a mar/2026 (datas distintas)
+      • sort_by        → budget_max de 200k a 3M → ordenação ascendente/descendente testável
+      • pagination     → 8 registros permitem testar limit/offset
+
+    Dependências: seed_test_company.xml deve ser carregado antes (agent_seed, company_seed_imobiliaria).
+-->
+<odoo>
+    <data noupdate="0" context="{'tracking_disable': True, 'no_recompute': True}">
+
+        <!-- ============================================================ -->
+        <!-- Lead A: state=new | baixo orçamento | 1 quarto | Centro SP   -->
+        <!-- Cobre: state=new, bedrooms=1, budget 150k-300k, Centro       -->
+        <!-- ============================================================ -->
+        <record id="lead_seed_a" model="real.estate.lead">
+            <field name="name">Seed Lead A - Novo - Centro SP</field>
+            <field name="state">new</field>
+            <field name="active" eval="True"/>
+            <field name="phone">+55 (11) 99001-0101</field>
+            <field name="email">seed.lead.a@test-seed.com.br</field>
+            <field name="budget_min">150000.0</field>
+            <field name="budget_max">300000.0</field>
+            <field name="bedrooms_needed">1</field>
+            <field name="location_preference">Centro SP</field>
+            <field name="first_contact_date">2025-11-10</field>
+            <field name="expected_closing_date">2026-03-31</field>
+            <field name="agent_id" ref="quicksol_estate.agent_seed"/>
+            <field name="company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
+        </record>
+
+        <!-- ============================================================ -->
+        <!-- Lead B: state=contacted | médio | 2 quartos | Vila Mariana   -->
+        <!-- Cobre: state=contacted, bedrooms=2, budget 300k-500k         -->
+        <!-- ============================================================ -->
+        <record id="lead_seed_b" model="real.estate.lead">
+            <field name="name">Seed Lead B - Contato - Vila Mariana SP</field>
+            <field name="state">contacted</field>
+            <field name="active" eval="True"/>
+            <field name="phone">+55 (11) 99001-0202</field>
+            <field name="email">seed.lead.b@test-seed.com.br</field>
+            <field name="budget_min">300000.0</field>
+            <field name="budget_max">500000.0</field>
+            <field name="bedrooms_needed">2</field>
+            <field name="location_preference">Vila Mariana SP</field>
+            <field name="first_contact_date">2025-12-15</field>
+            <field name="expected_closing_date">2026-06-30</field>
+            <field name="agent_id" ref="quicksol_estate.agent_seed"/>
+            <field name="company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
+        </record>
+
+        <!-- ============================================================ -->
+        <!-- Lead C: state=qualified | médio-alto | 3 quartos | Moema     -->
+        <!-- Cobre: state=qualified, bedrooms=3, budget 500k-750k, Moema  -->
+        <!-- ============================================================ -->
+        <record id="lead_seed_c" model="real.estate.lead">
+            <field name="name">Seed Lead C - Qualificado - Moema SP</field>
+            <field name="state">qualified</field>
+            <field name="active" eval="True"/>
+            <field name="phone">+55 (11) 99001-0303</field>
+            <field name="email">seed.lead.c@test-seed.com.br</field>
+            <field name="budget_min">500000.0</field>
+            <field name="budget_max">750000.0</field>
+            <field name="bedrooms_needed">3</field>
+            <field name="location_preference">Moema SP</field>
+            <field name="first_contact_date">2026-01-20</field>
+            <field name="expected_closing_date">2026-08-31</field>
+            <field name="agent_id" ref="quicksol_estate.agent_seed"/>
+            <field name="company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
+        </record>
+
+        <!-- ============================================================ -->
+        <!-- Lead D: state=won | alto orçamento | 4 quartos | Jardins     -->
+        <!-- Cobre: state=won, bedrooms=4, budget 800k-1.2M, Jardins      -->
+        <!-- ============================================================ -->
+        <record id="lead_seed_d" model="real.estate.lead">
+            <field name="name">Seed Lead D - Ganho - Jardins SP</field>
+            <field name="state">won</field>
+            <field name="active" eval="True"/>
+            <field name="phone">+55 (11) 99001-0404</field>
+            <field name="email">seed.lead.d@test-seed.com.br</field>
+            <field name="budget_min">800000.0</field>
+            <field name="budget_max">1200000.0</field>
+            <field name="bedrooms_needed">4</field>
+            <field name="location_preference">Jardins SP</field>
+            <field name="first_contact_date">2025-10-01</field>
+            <field name="expected_closing_date">2026-01-15</field>
+            <field name="agent_id" ref="quicksol_estate.agent_seed"/>
+            <field name="company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
+        </record>
+
+        <!-- ============================================================ -->
+        <!-- Lead E: state=lost | baixo-médio | 2 quartos | Tatuapé       -->
+        <!-- Cobre: state=lost, budget 250k-400k                          -->
+        <!-- ============================================================ -->
+        <record id="lead_seed_e" model="real.estate.lead">
+            <field name="name">Seed Lead E - Perdido - Tatuapé SP</field>
+            <field name="state">lost</field>
+            <field name="active" eval="True"/>
+            <field name="lost_reason">Price too high</field>
+            <field name="phone">+55 (11) 99001-0505</field>
+            <field name="email">seed.lead.e@test-seed.com.br</field>
+            <field name="budget_min">250000.0</field>
+            <field name="budget_max">400000.0</field>
+            <field name="bedrooms_needed">2</field>
+            <field name="location_preference">Tatuapé SP</field>
+            <field name="first_contact_date">2025-09-01</field>
+            <field name="lost_date">2026-02-28</field>
+            <field name="agent_id" ref="quicksol_estate.agent_seed"/>
+            <field name="company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
+        </record>
+
+        <!-- ============================================================ -->
+        <!-- Lead F: state=new | ARQUIVADO (active=False) | 1 quarto      -->
+        <!-- Cobre: active=false + active=all (retorna arquivados)        -->
+        <!-- ============================================================ -->
+        <record id="lead_seed_f" model="real.estate.lead">
+            <field name="name">Seed Lead F - Arquivado - Osasco SP</field>
+            <field name="state">new</field>
+            <field name="active" eval="False"/>
+            <field name="phone">+55 (11) 99001-0606</field>
+            <field name="email">seed.lead.f@test-seed.com.br</field>
+            <field name="budget_min">100000.0</field>
+            <field name="budget_max">200000.0</field>
+            <field name="bedrooms_needed">1</field>
+            <field name="location_preference">Osasco SP</field>
+            <field name="first_contact_date">2025-08-01</field>
+            <field name="agent_id" ref="quicksol_estate.agent_seed"/>
+            <field name="company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
+        </record>
+
+        <!-- ============================================================ -->
+        <!-- Lead G: state=qualified | PREMIUM | 5 quartos | Alphaville   -->
+        <!-- Cobre: budget altíssimo (1.5M-3M), bedrooms=5, sort_by desc  -->
+        <!-- ============================================================ -->
+        <record id="lead_seed_g" model="real.estate.lead">
+            <field name="name">Seed Lead G - Qualificado Premium - Alphaville SP</field>
+            <field name="state">qualified</field>
+            <field name="active" eval="True"/>
+            <field name="phone">+55 (11) 99001-0707</field>
+            <field name="email">seed.lead.g@test-seed.com.br</field>
+            <field name="budget_min">1500000.0</field>
+            <field name="budget_max">3000000.0</field>
+            <field name="bedrooms_needed">5</field>
+            <field name="location_preference">Alphaville SP</field>
+            <field name="first_contact_date">2026-02-01</field>
+            <field name="expected_closing_date">2026-12-31</field>
+            <field name="agent_id" ref="quicksol_estate.agent_seed"/>
+            <field name="company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
+        </record>
+
+        <!-- ============================================================ -->
+        <!-- Lead H: state=new | médio | 2 quartos | Pinheiros SP         -->
+        <!-- Cobre: Pinheiros, budget 400k-600k, date mais recente        -->
+        <!-- ============================================================ -->
+        <record id="lead_seed_h" model="real.estate.lead">
+            <field name="name">Seed Lead H - Novo - Pinheiros SP</field>
+            <field name="state">new</field>
+            <field name="active" eval="True"/>
+            <field name="phone">+55 (11) 99001-0808</field>
+            <field name="email">seed.lead.h@test-seed.com.br</field>
+            <field name="budget_min">400000.0</field>
+            <field name="budget_max">600000.0</field>
+            <field name="bedrooms_needed">2</field>
+            <field name="location_preference">Pinheiros SP</field>
+            <field name="first_contact_date">2026-03-10</field>
+            <field name="expected_closing_date">2026-09-30</field>
+            <field name="agent_id" ref="quicksol_estate.agent_seed"/>
+            <field name="company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
+        </record>
+
+    </data>
+</odoo>

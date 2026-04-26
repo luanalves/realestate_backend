@@ -74,6 +74,7 @@ Property Form Sections:
         'data/property_demo_data.xml',
         'data/agent_seed.xml',  # Feature 007: Agent seed data
         'data/seed_test_company.xml',  # Seed: Imobiliária Seed + todos os perfis para testes
+        'data/seed_leads.xml',  # Seed: Leads da Imobiliária Seed cobrindo todas as jornadas de filtro
         'data/oauth2_seed.xml',  # Feature 007: OAuth2 test client
         'data/mailhog_smtp_seed.xml',  # Test infra: MailHog SMTP (mailhog:1025) para captura de emails nos testes
         'data/api_endpoints.xml',
