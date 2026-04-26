@@ -1053,34 +1053,34 @@ Returns: Agent object with id, name, cpf, email, creci, company_id, company_name
             <field name="protected" eval="True"/>
             <field name="tags">Leads</field>
             <field name="summary">List leads with pagination and filters</field>
-            <field name="description">List leads with RBAC (agents see own, managers see all).
+            <field name="description"><![CDATA[Lista leads com RBAC (agentes veem apenas os próprios; managers veem todos da empresa).
 
-**Query Parameters:**
-- state (string): Filter by state (new/contacted/qualified/won/lost)
-- agent_id (integer): Filter by agent (managers only)
-- search (string): Free-text search (name, phone, email)
-- active (string): Filter by active status (true/false/all, default: true)
-- budget_min (number): Minimum budget filter
-- budget_max (number): Maximum budget filter
-- bedrooms (integer): Number of bedrooms needed
-- property_type_id (integer): Property type interest
-- location (string): Location preference filter
-- sort_by (string): Sort field (default: create_date)
-- sort_order (string): asc or desc (default: desc)
-- limit (integer): Results per page (default: 20, max: 100)
-- offset (integer): Pagination offset (default: 0)
+**Filtros disponíveis:**
 
-**Response (200):**
-```json
-{
-  "success": true,
-  "data": [...],
-  "count": 5,
-  "total": 50,
-  "limit": 20,
-  "offset": 0
-}
-```</field>
+| Parâmetro | Tipo | Descrição |
+|---|---|---|
+| state | string | Estado do lead: new, contacted, qualified, won, lost |
+| active | string | true (padrão), false ou all (ativos + inativos) |
+| agent_id | integer | Filtrar por agente (somente managers) |
+| search | string | Busca livre em nome, telefone e e-mail |
+| budget_min | number | Budget mínimo — retorna leads com budget_max >= este valor |
+| budget_max | number | Budget máximo — retorna leads com budget_min <= este valor |
+| bedrooms | integer | Número de quartos necessários (match exato) |
+| property_type_id | integer | ID do tipo de imóvel de interesse |
+| location | string | Busca parcial na preferência de localização |
+| last_activity_before | date | YYYY-MM-DD — leads sem atividade após esta data |
+| created_from | date | YYYY-MM-DD — leads criados a partir desta data (inclusive) |
+| created_to | date | YYYY-MM-DD — leads criados até esta data (inclusive) |
+| sort_by | string | Campo de ordenação (padrão: create_date) |
+| sort_order | string | asc ou desc (padrão: desc) |
+| limit | integer | Resultados por página (padrão: 20, máximo: 100) |
+| offset | integer | Offset para paginação (padrão: 0) |
+
+Exemplo — leads criados em janeiro:
+GET /api/v1/leads?created_from=2026-01-01&created_to=2026-01-31
+
+Exemplo — leads qualificados com budget entre R$300k e R$500k:
+GET /api/v1/leads?state=qualified&budget_min=300000&budget_max=500000]]></field>
             <field name="active" eval="True"/>
         </record>
 

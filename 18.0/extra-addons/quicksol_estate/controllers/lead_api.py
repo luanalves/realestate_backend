@@ -14,9 +14,7 @@ from odoo.addons.thedevkitchen_apigateway.middleware import require_session, req
 _logger = logging.getLogger(__name__)
 
 
-class LeadApiController(http.Controller):
-    """REST API Controller for Lead endpoints following ADR-011"""
-    
+class LeadApiController(http.Controller):    
     @http.route('/api/v1/leads', 
                 type='http', auth='none', methods=['GET'], csrf=False, cors='*')
     @require_jwt
@@ -40,6 +38,10 @@ class LeadApiController(http.Controller):
             property_type_filter = kwargs.get('property_type_id')
             location_filter = kwargs.get('location', '').strip()
             last_activity_before = kwargs.get('last_activity_before', '').strip()
+
+            # Period filters
+            created_from = kwargs.get('created_from', '').strip()
+            created_to = kwargs.get('created_to', '').strip()
             
             # Sorting parameters
             sort_by = kwargs.get('sort_by', 'create_date')
@@ -102,7 +104,22 @@ class LeadApiController(http.Controller):
             # Location filter (FR-043)
             if location_filter:
                 domain.append(('location_preference', 'ilike', location_filter))
-            
+
+            # Period filter (created_from / created_to)
+            if created_from:
+                try:
+                    from datetime import datetime as dt
+                    domain.append(('create_date', '>=', dt.strptime(created_from, '%Y-%m-%d').strftime('%Y-%m-%d 00:00:00')))
+                except ValueError:
+                    _logger.warning(f"Invalid date format for created_from: {created_from}")
+
+            if created_to:
+                try:
+                    from datetime import datetime as dt
+                    domain.append(('create_date', '<=', dt.strptime(created_to, '%Y-%m-%d').strftime('%Y-%m-%d 23:59:59')))
+                except ValueError:
+                    _logger.warning(f"Invalid date format for created_to: {created_to}")
+
             # Last activity before filter (FR-047)
             if last_activity_before:
                 try:
