@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <data noupdate="1">
+    <data noupdate="0">
         
         <!-- User Authentication & Profile Endpoints -->
         
@@ -95,13 +95,17 @@ curl -X POST 'http://localhost:8069/api/v1/users/logout' \
             <field name="description">Returns detailed information about the currently authenticated user.
 
 **Authentication:**
-Requires Bearer token in `Authorization` header and session ID in `X-Openerp-Session-Id` header.
+Requires Bearer token in `Authorization` header.
+
+**Session:**
+Send the `session_id` returned by `POST /api/v1/users/login` as a `Cookie` header.
+Do NOT use the browser/Odoo native session cookie.
 
 **Request Example:**
 ```bash
-curl 'http://localhost:8069/api/v1/me' \
+curl 'https://api.torque-backoffice.thedevkitchen.com.br/api/v1/me' \
   -H 'Authorization: Bearer YOUR_ACCESS_TOKEN' \
-  -H 'X-Openerp-Session-Id: YOUR_SESSION_ID'
+  -H 'Cookie: session_id=YOUR_SESSION_ID'
 ```
 
 **Response Format (200 OK):**
