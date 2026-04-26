@@ -153,9 +153,11 @@ class LeadApiController(http.Controller):
             
             # Query leads (record rules auto-filter by agent/company)
             Lead = request.env['real.estate.lead']
-            
-            total = Lead.with_context(active_test=False).sudo().search_count(domain)
-            leads = Lead.sudo().search(domain, limit=limit, offset=offset, order=order_string)
+            # active='all' requires active_test=False so Odoo doesn't implicitly add ('active','=',True)
+            lead_ctx = Lead.with_context(active_test=False) if active_filter == 'all' else Lead
+
+            total = lead_ctx.sudo().search_count(domain)
+            leads = lead_ctx.sudo().search(domain, limit=limit, offset=offset, order=order_string)
             
             # Serialize leads
             lead_list = []
