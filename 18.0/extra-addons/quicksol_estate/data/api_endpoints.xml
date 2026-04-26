@@ -1285,9 +1285,9 @@ Returns: Agent object with id, name, cpf, email, creci, company_id, company_name
             <field name="method">GET</field>
             <field name="module_name">quicksol_estate</field>
             <field name="protected" eval="True"/>
-            <field name="tags">Leads</field>
+            <field name="tags">Lead Filters</field>
             <field name="summary">List saved lead filters</field>
-            <field name="description">Get user's saved lead filters for quick access.</field>
+            <field name="description">Retorna os filtros de busca salvos pelo usuário autenticado. Filtros salvos permitem que agentes reutilizem combinações complexas de critérios (ex: budget, quartos, localização) sem precisar reconfigurar a busca a cada acesso. Use ?include_shared=true para incluir também filtros compartilhados por outros usuários da mesma empresa.</field>
             <field name="active" eval="True"/>
         </record>
 
@@ -1297,9 +1297,9 @@ Returns: Agent object with id, name, cpf, email, creci, company_id, company_name
             <field name="method">POST</field>
             <field name="module_name">quicksol_estate</field>
             <field name="protected" eval="True"/>
-            <field name="tags">Leads</field>
+            <field name="tags">Lead Filters</field>
             <field name="summary">Create saved lead filter</field>
-            <field name="description">Save a lead filter configuration for quick access.</field>
+            <field name="description">Salva uma combinação de critérios de busca como filtro nomeado para reutilização futura. Útil para clientes externos (app mobile, integrações) que precisam persistir e reaplicar filtros complexos de leads. Campos obrigatórios: name (string) e filter_params (objeto com os critérios). Opcional: is_shared (bool) para tornar o filtro visível a outros usuários da empresa.</field>
             <field name="active" eval="True"/>
         </record>
 
@@ -1309,9 +1309,9 @@ Returns: Agent object with id, name, cpf, email, creci, company_id, company_name
             <field name="method">DELETE</field>
             <field name="module_name">quicksol_estate</field>
             <field name="protected" eval="True"/>
-            <field name="tags">Leads</field>
+            <field name="tags">Lead Filters</field>
             <field name="summary">Delete saved lead filter</field>
-            <field name="description">Delete a saved lead filter. Returns 204 No Content on success.</field>
+            <field name="description">Remove um filtro salvo pelo seu ID. Apenas o dono do filtro pode deletá-lo — tentativas de remover filtros de outros usuários retornam 403 Forbidden. Retorna 404 se o filtro não existir.</field>
             <field name="active" eval="True"/>
         </record>
 

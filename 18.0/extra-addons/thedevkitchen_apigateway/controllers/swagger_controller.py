@@ -76,6 +76,31 @@ class SwaggerController(http.Controller):
             "paths": {}
         }
         
+        # Top-level tag descriptions (shown in Swagger UI section headers)
+        TAG_DESCRIPTIONS = {
+            "Lead Filters": (
+                "Filtros de busca salvos para leads. "
+                "Um agente aplica uma combinação complexa de filtros (ex: budget R$300k-500k, "
+                "2-3 quartos, bairro Centro) com frequência — em vez de reconfigurar esses filtros "
+                "toda vez, ele salva como \"High-value Centro leads\" e reutiliza posteriormente. "
+                "Útil para clientes externos (app mobile, integrações) que precisam persistir e "
+                "reaplicar filtros complexos sem depender das views nativas do Odoo."
+            ),
+        }
+
+        # Collect all unique tags from endpoints and build the tags array
+        all_tags = {}
+        for endpoint in endpoints:
+            for tag in (endpoint.tags.split(',') if endpoint.tags else [endpoint.module_name]):
+                tag = tag.strip()
+                if tag not in all_tags:
+                    all_tags[tag] = TAG_DESCRIPTIONS.get(tag, "")
+
+        spec["tags"] = [
+            {"name": name, "description": desc} if desc else {"name": name}
+            for name, desc in all_tags.items()
+        ]
+
         # Add registered endpoints from database
         for endpoint in endpoints:
             path = endpoint.path
