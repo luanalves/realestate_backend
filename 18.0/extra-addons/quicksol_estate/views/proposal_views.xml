@@ -170,8 +170,7 @@
                                 <field name="partner_id" string="Client"
                                        readonly="state not in ('draft',)"/>
                                 <field name="agent_id"
-                                       readonly="state not in ('draft',)"
-                                       groups="quicksol_estate.group_real_estate_manager,quicksol_estate.group_real_estate_owner"/>
+                                       readonly="state not in ('draft',)"/>
                                 <field name="proposal_type"
                                        readonly="state not in ('draft',)"/>
                                 <field name="company_id" groups="base.group_multi_company"/>
@@ -234,7 +233,6 @@
                   name="Proposals"
                   parent="quicksol_estate.menu_real_estate_root"
                   action="action_real_estate_proposals"
-                  sequence="25"
-                  groups="quicksol_estate.group_real_estate_owner,quicksol_estate.group_real_estate_manager,quicksol_estate.group_real_estate_agent,quicksol_estate.group_real_estate_receptionist"/>
+                  sequence="27"/>
     </data>
 </odoo>
