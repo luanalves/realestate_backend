@@ -90,36 +90,48 @@ Ask **3-5 targeted clarification questions** before generating the specification
 ```markdown
 ## Feature Scope
 
-1. **Primary Goal**: What is the main objective of this feature?
-2. **User Roles**: Which roles will use this feature?
+1. **Solution Type**: What is the target interface for this feature?
+   - [ ] API only (REST endpoints, headless/mobile consumers)
+   - [ ] Odoo UI only (forms, lists, menus, views inside Odoo)
+   - [ ] Both (API + Odoo UI)
+
+   > ⚠️ This answer drives the entire specification:
+   > - **API only** → focuses on controllers, OpenAPI contracts, Postman collection (ADR-005, ADR-016), no Cypress tests
+   > - **Odoo UI only** → focuses on views, menus, actions, Cypress E2E tests (ADR-001, ADR-003), no REST endpoints
+   > - **Both** → full spec with dual-interface sections, all test types required
+
+2. **Primary Goal**: What is the main objective of this feature?
+3. **User Roles**: Which roles will use this feature?
    - [ ] Owner
    - [ ] Manager  
    - [ ] Agent
    - [ ] Receptionist
    - [ ] Prospector
-3. **User Stories**: What are the key user stories? (describe 2-3 primary flows)
+4. **User Stories**: What are the key user stories? (describe 2-3 primary flows)
 ```
 
 #### 2. Data Model Questions
 ```markdown
 ## Data Model
 
-4. **Entities**: What entities are involved?
+5. **Entities**: What entities are involved?
    - Entity name and purpose
    - Key fields required
    - Relationships to existing entities (properties, agents, leads, etc.)
 
-5. **Constraints**: What validations are needed?
+6. **Constraints**: What validations are needed?
    - Required fields
    - Unique constraints
    - Business rules (e.g., price > 0)
 ```
 
 #### 3. API & Security Questions
+> Skip this section if Solution Type (question 1) is **Odoo UI only**.
+
 ```markdown
 ## API & Security
 
-6. **Endpoints**: What API operations are needed?
+7. **Endpoints**: What API operations are needed?
    - [ ] Create (POST)
    - [ ] Read single (GET /id)
    - [ ] Read list (GET)
@@ -127,7 +139,7 @@ Ask **3-5 targeted clarification questions** before generating the specification
    - [ ] Delete (DELETE)
    - [ ] Custom operations
 
-7. **Authorization**: Who can perform each operation?
+8. **Authorization**: Who can perform each operation?
    | Operation | Allowed Roles |
    |-----------|---------------|
    | Create    | ?             |
@@ -140,15 +152,21 @@ Ask **3-5 targeted clarification questions** before generating the specification
 ```markdown
 ## Testing Requirements
 
-8. **Critical Flows**: What user flows must be tested end-to-end?
-9. **Edge Cases**: What edge cases should be validated?
-10. **Multi-tenancy**: Should data be isolated by company? (default: YES per ADR-008)11. **UI Components**: Does this feature include new views/menus? (If YES, Cypress E2E required)
-12. **Frontend Validation**: Should conditional fields be tested in the UI?```
+9. **Critical Flows**: What user flows must be tested end-to-end?
+10. **Edge Cases**: What edge cases should be validated?
+11. **Multi-tenancy**: Should data be isolated by company? (default: YES per ADR-008)
+12. **UI Components**: Does this feature include new views/menus? (If YES, Cypress E2E required — only applies if Solution Type includes Odoo UI)
+13. **Frontend Validation**: Should conditional fields be tested in the UI? (only applies if Solution Type includes Odoo UI)
+```
 
 **IMPORTANT**: 
 - Wait for user responses before proceeding to Phase 2
 - Don't assume answers - clarify explicitly
 - Reference relevant ADRs when asking about standards
+- **Question 1 (Solution Type) is mandatory** — the answer gates which sections of the specification are generated:
+  - `API only` → generate API contract sections, skip Odoo view/menu sections and Cypress tests
+  - `Odoo UI only` → generate view/menu/action sections and Cypress tests, skip REST endpoint sections and Postman collection
+  - `Both` → generate all sections (full dual-interface specification)
 
 ### Phase 2: Specification Generation
 
