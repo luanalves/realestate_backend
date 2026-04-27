@@ -17,6 +17,8 @@ Auto-generated from all feature plans. Last updated: 2026-01-15
 - PostgreSQL 14+ (tokens, settings, users) + Redis 7+ (sessions, cache) (009-user-onboarding-password-management)
 - Python 3.10+ (Odoo 18.0), XML (views/data), Bash (integration tests) + Odoo 18.0 ORM, PostgreSQL 15, Redis 7-alpine (sessions/cache), RabbitMQ + Celery (async) (011-company-odoo-integration)
 - PostgreSQL — `realestate` database; Redis DB1 (sessions/cache), DB2 (Celery) (011-company-odoo-integration)
+- Python 3.11 (Odoo 18.0) + Odoo 18.0 framework, `quicksol_estate` (existing module — property, lead, agent), `thedevkitchen_apigateway` (auth: JWT + session + company), `mail` (Odoo built-in: `mail.thread`, `mail.template`, `mail.activity.mixin`), Celery 5.3.4 with Redis backend, `psycopg2` (PostgreSQL driver) (013-property-proposals)
+- PostgreSQL 14+ (primary persistence; partial unique index + `SELECT FOR UPDATE` row locking), Redis 7-alpine (DB index 1 for Odoo sessions/cache, DB 2 for Celery results), `ir.attachment` for documents (Odoo's built-in filestore) (013-property-proposals)
 
 - Python 3.11 (Odoo 18.0) + Odoo 18.0, PyJWT, Redis 7-alpine, PostgreSQL 16 (001-bearer-token-validation)
 
@@ -37,9 +39,9 @@ cd src [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECHNOLO
 Python 3.11 (Odoo 18.0): Follow standard conventions
 
 ## Recent Changes
+- 013-property-proposals: Added Python 3.11 (Odoo 18.0) + Odoo 18.0 framework, `quicksol_estate` (existing module — property, lead, agent), `thedevkitchen_apigateway` (auth: JWT + session + company), `mail` (Odoo built-in: `mail.thread`, `mail.template`, `mail.activity.mixin`), Celery 5.3.4 with Redis backend, `psycopg2` (PostgreSQL driver)
 - 011-company-odoo-integration: Added Python 3.10+ (Odoo 18.0), XML (views/data), Bash (integration tests) + Odoo 18.0 ORM, PostgreSQL 15, Redis 7-alpine (sessions/cache), RabbitMQ + Celery (async)
 - 009-user-onboarding-password-management: Added Python 3.10+ (Odoo 18.0 framework) + Odoo 18.0, `thedevkitchen_apigateway` v18.0.1.1.0 (auth middleware), `quicksol_estate` v18.0.2.1.0 (RBAC groups, models), `validate_docbr` (CPF validation), `email_validator`
-- 008-tenant-lease-sale-api: Added Python 3.12 (Ubuntu Noble Docker image) + Odoo 18.0 (ORM, HTTP framework), Redis 7 (sessions)
 
 
 <!-- MANUAL ADDITIONS START -->
