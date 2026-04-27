@@ -193,9 +193,103 @@ fi
 
 ## 📁 Convenções de Nomenclatura
 
-- **Unitários:** `test_*_unit.py` (ex: `test_property_validations_unit.py`)
-- **E2E Cypress:** `*.cy.js` (ex: `imoveis-fluxo-completo.cy.js`)
-- **E2E Shell:** `test_*.sh` (ex: `test_us1_s1_owner_login.sh`)
+### 1. Testes Unitários (`tests/unit/`)
+
+| Elemento | Padrão | Exemplo |
+|----------|--------|---------|
+| **Arquivo** | `test_{domínio}_unit.py` | `test_property_validations_unit.py` |
+| **Classe** | `Test{Domínio}(unittest.TestCase)` ou subclasse de base | `TestPropertyValidationsUnit` |
+| **Método** | `test_{ação}_{condição}` | `test_agent_email_validation_valid` |
+| **Docstring** | `"""FR-XXX: Descrição do que está sendo testado."""` | `"""FR-004: Proposal value must be positive."""` |
+
+> ✅ O sufixo `_unit` é **obrigatório** — diferencia do diretório `integration/`.
+
+```python
+# ✅ CORRETO
+# tests/unit/test_proposal_validations_unit.py
+class TestProposalValidationsUnit(unittest.TestCase):
+    def test_proposal_value_positive(self):
+        """FR-004: Proposal value must be positive."""
+        ...
+
+# ❌ ERRADO — sufixo ausente
+# tests/unit/test_proposal_validations.py
+class TestProposalValidations(TransactionCase):
+    ...
+```
+
+---
+
+### 2. Testes de Integração (`tests/integration/`)
+
+| Elemento | Padrão | Exemplo |
+|----------|--------|---------|
+| **Arquivo** | `test_{domínio}.py` | `test_proposal_create.py` |
+| **Arquivo (categoria)** | `test_{categoria}_{domínio}.py` | `test_rbac_manager.py` |
+| **Arquivo base** | `base_{feature}_test.py` | `base_proposal_test.py` |
+| **Classe** | `Test{Domínio}(TransactionCase)` | `TestProposalCreate` |
+| **Classe (base)** | `Base{Feature}Test(TransactionCase)` | `BaseProposalTest` |
+| **Método** | `test_{ação}_{condição}` | `test_create_draft_when_no_active_proposal` |
+| **Docstring** | `"""US{N}/FR-{N}: Descrição."""` | `"""US1/FR-001: First proposal goes to draft."""` |
+| **Tags** | `@tagged('post_install', '-at_install', '{categoria}', '{domínio}')` | `@tagged('post_install', '-at_install', 'proposal', 'proposal_create')` |
+
+> ✅ Sem sufixo no arquivo — o diretório `integration/` já comunica o tipo.  
+> ❌ Nunca use `_integration` no nome do arquivo (ex: `test_rbac_owner_integration.py` → `test_rbac_owner.py`).
+
+```python
+# ✅ CORRETO
+# tests/integration/test_proposal_create.py
+@tagged('post_install', '-at_install', 'proposal', 'proposal_create')
+class TestProposalCreate(BaseProposalTest):
+    def test_create_draft_when_no_active_proposal(self):
+        """US1/FR-001: First proposal for a property goes to draft."""
+        ...
+
+# ❌ ERRADO — sufixo desnecessário
+# tests/integration/test_proposal_create_integration.py
+class TestProposalCreateIntegration(TransactionCase):
+    ...
+```
+
+---
+
+### 3. Testes E2E Shell (`integration_tests/`)
+
+| Elemento | Padrão | Exemplo |
+|----------|--------|---------|
+| **Arquivo** | `test_{us}{N}_{sN}_{descrição}.sh` | `test_us1_s1_owner_login.sh` |
+| **Teste inline** | `echo "🧪 Test: {Cenário}"` | `echo "🧪 Test: Owner login"` |
+
+---
+
+### 4. Testes E2E Cypress (`cypress/e2e/`)
+
+| Elemento | Padrão | Exemplo |
+|----------|--------|---------|
+| **Arquivo** | `{domínio}-{fluxo}.cy.js` | `imoveis-fluxo-completo.cy.js` |
+| **describe** | `'Fluxo Completo: {Cenário}'` | `'Fluxo Completo: Criação de Imóvel'` |
+| **it** | `'deve {ação esperada}'` | `'deve criar imóvel com dados válidos'` |
+
+---
+
+### Resumo Visual
+
+```
+tests/
+  unit/
+    test_{domínio}_unit.py          ← sufixo _unit obrigatório
+    base_{feature}_test.py          ← base sem sufixo
+  integration/
+    test_{domínio}.py               ← sem sufixo
+    test_{categoria}_{domínio}.py   ← prefixo de categoria
+    base_{feature}_test.py          ← classe base compartilhada
+
+integration_tests/
+    test_{us}{N}_{sN}_{descrição}.sh
+
+cypress/e2e/
+    {domínio}-{fluxo}.cy.js
+```
 
 ## 🔍 Verificação de Cobertura
 
