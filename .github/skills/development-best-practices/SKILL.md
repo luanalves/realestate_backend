@@ -237,6 +237,7 @@ session_redis_prefix = odoo18_
 
 - [copilot-instructions.md](../../copilot-instructions.md) - Authentication dual decorators and project context
 - [postman-collection-manager](../postman-collection-manager/SKILL.md) - API documentation skill
+- [swagger-updater](../swagger-updater/SKILL.md) - Add/update/remove Swagger endpoints (DB-driven, ADR-005)
 - [controllers.instructions.md](../../instructions/controllers.instructions.md) - Controller-specific instructions
 - [test-strategy.instructions.md](../../instructions/test-strategy.instructions.md) - Testing strategy
 
