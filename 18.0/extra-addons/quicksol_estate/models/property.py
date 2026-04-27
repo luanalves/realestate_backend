@@ -239,6 +239,45 @@ class Property(models.Model):
         ('sold', 'Sold'),
         ('rented', 'Rented')
     ], string='Status (Legacy)', default='available')
+
+    # ========== FEATURE 013: PROPOSAL RELATIONSHIPS ==========
+    proposal_ids = fields.One2many(
+        'real.estate.proposal', 'property_id', string='Proposals',
+        help='All proposals submitted for this property'
+    )
+
+    active_proposal_id = fields.Many2one(
+        'real.estate.proposal', string='Active Proposal',
+        compute='_compute_active_proposal', store=True,
+        help='The current active (draft/sent/accepted) root proposal for this property'
+    )
+
+    @api.depends('proposal_ids.state', 'proposal_ids.active', 'proposal_ids.parent_proposal_id')
+    def _compute_active_proposal(self):
+        Proposal = self.env['real.estate.proposal']
+        for prop in self:
+            active = Proposal.search([
+                ('property_id', '=', prop.id),
+                ('state', 'in', ('draft', 'sent', 'accepted')),
+                ('active', '=', True),
+                ('parent_proposal_id', '=', False),
+            ], order='create_date asc', limit=1)
+            prop.active_proposal_id = active or False
+
+    def write(self, vals):
+        """When a property is archived, cancel all non-terminal proposals (FR-047)."""
+        result = super().write(vals)
+        if vals.get('active') is False:
+            TERMINAL = ('accepted', 'rejected', 'expired', 'cancelled')
+            for prop in self:
+                live_proposals = prop.proposal_ids.filtered(
+                    lambda p: p.state not in TERMINAL
+                )
+                if live_proposals:
+                    live_proposals.action_cancel(
+                        'Proposta cancelada automaticamente: imóvel arquivado.'
+                    )
+        return result
     
     # ========== COMPUTED FIELDS ==========
     @api.depends('street', 'street_number', 'complement', 'neighborhood', 'city', 'state_id', 'zip_code', 'country_id')

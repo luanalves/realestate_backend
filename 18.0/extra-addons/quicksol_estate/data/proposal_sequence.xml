@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+        <!-- Per-company sequence for proposal codes (PRP001, PRP002, ...) -->
+        <!-- company_id=False means Odoo creates a per-company copy automatically -->
+        <record id="seq_real_estate_proposal" model="ir.sequence">
+            <field name="name">Real Estate Proposal</field>
+            <field name="code">real.estate.proposal</field>
+            <field name="prefix">PRP</field>
+            <field name="padding">5</field>
+            <field name="number_increment">1</field>
+            <field name="number_next">1</field>
+            <field name="company_id" eval="False"/>
+        </record>
+    </data>
+</odoo>

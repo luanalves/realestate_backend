@@ -1,0 +1,748 @@
+{
+  "info": {
+    "_postman_id": "f013a1b2-c3d4-4e5f-8a9b-0c1d2e3f4a5b",
+    "name": "Feature 013 - Property Proposals",
+    "description": "Postman collection for Feature 013: Property Proposals management.\n\n## Overview\nComplete CRUD and workflow endpoints for managing property proposals (offers) in the QuickSol Real Estate system.\n\n## Proposal Lifecycle\n1. **draft** → Created (POST /api/v1/proposals)\n2. **draft** → **sent** (POST .../send)\n3. **sent** → **accepted** (POST .../accept) or **rejected** (POST .../reject)\n4. **sent** → **countered** (POST .../counter) → new proposal created\n5. **draft/sent** → **cancelled** (DELETE ...)\n\n## Authentication Flow\n1. **Get OAuth Token**: POST /api/v1/auth/token → saves `access_token`\n2. **User Login**: POST /api/v1/users/login → saves `session_id`\n3. Use both on all proposal endpoints\n\n## ADR-016 Session Rules\n- **GET / DELETE**: `session_id` → header `X-Openerp-Session-Id`\n- **POST / PUT / PATCH**: `session_id` → body JSON field\n- **Multipart**: `session_id` → form-data field\n- **All**: `Authorization: Bearer {{access_token}}` header\n- **All**: `X-Company-ID: {{company_id}}` header\n\n## Variables\n| Variable | Description |\n|---|---|\n| `base_url` | API base URL (default: http://localhost:8069) |\n| `access_token` | OAuth 2.0 Bearer token (auto-saved) |\n| `session_id` | Odoo session ID (auto-saved) |\n| `company_id` | Active company ID |\n| `proposal_id` | Proposal record ID (auto-saved on create) |\n\n## Changelog v1.0\n- Initial collection for Feature 013\n- 12 endpoints: CRUD + lifecycle actions (send, accept, reject, counter)\n- Queue position endpoint\n- Attachment upload (multipart)\n- ADR-016 compliant: GET/DELETE use header, POST/PUT use body\n- Test script: Create Proposal auto-saves `proposal_id`",
+    "version": "1.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Authentication",
+      "description": "OAuth 2.0 authentication and session management. Run these first before testing proposal endpoints.",
+      "item": [
+        {
+          "name": "Get OAuth Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.access_token) {",
+                  "    pm.environment.set('access_token', jsonData.access_token);",
+                  "    console.log('✅ Access token saved to environment');",
+                  "    if (jsonData.refresh_token) {",
+                  "        pm.environment.set('refresh_token', jsonData.refresh_token);",
+                  "        console.log('✅ Refresh token saved to environment');",
+                  "    }",
+                  "} else {",
+                  "    console.error('❌ Failed to extract access_token from response');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_id\": \"{{client_id}}\",\n  \"client_secret\": \"{{client_secret}}\",\n  \"grant_type\": \"client_credentials\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/token",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "token"]
+            },
+            "description": "Get OAuth 2.0 access token.\n\n**Authentication:** None (public endpoint)\n\n**Response:** access_token, refresh_token, expires_in\n\n**IMPORTANT:** OAuth endpoints do NOT use JSON-RPC. Send JSON directly in body.\n\n**Test Script:** Auto-saves `access_token` and `refresh_token` to environment."
+          }
+        },
+        {
+          "name": "User Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.result && jsonData.result.session_id) {",
+                  "    pm.environment.set('session_id', jsonData.result.session_id);",
+                  "    console.log('✅ Session ID saved to environment');",
+                  "} else if (jsonData && jsonData.session_id) {",
+                  "    pm.environment.set('session_id', jsonData.session_id);",
+                  "    console.log('✅ Session ID saved to environment');",
+                  "} else {",
+                  "    console.error('❌ Failed to extract session_id from response');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "type": "text",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{user_email}}\",\n  \"password\": \"{{user_password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users", "login"]
+            },
+            "description": "Authenticate user and obtain session ID.\n\n**Authentication:** Bearer Token required\n\n**Response:** session_id (required for all subsequent requests)\n\n**IMPORTANT:** session_id goes in body JSON for POST endpoints (ADR-016).\n\n**Test Script:** Auto-saves `session_id` to environment."
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Property Proposals",
+      "description": "Property proposal CRUD and lifecycle management endpoints.\n\n**Workflow:** draft → sent → accepted/rejected/countered\n\n**ADR-016 Rules:**\n- GET / DELETE: session_id in header `X-Openerp-Session-Id`\n- POST / PUT: session_id in body JSON\n- Multipart (attachments): session_id as form-data field",
+      "item": [
+        {
+          "name": "Create Proposal",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.data && jsonData.data.id) {",
+                  "    pm.environment.set('proposal_id', jsonData.data.id);",
+                  "    console.log('✅ proposal_id saved: ' + jsonData.data.id);",
+                  "} else {",
+                  "    console.error('❌ Failed to extract proposal id from response.data.id');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "type": "text",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Company-ID",
+                "value": "{{company_id}}",
+                "type": "text",
+                "description": "Active company for multi-tenancy isolation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"session_id\": \"{{session_id}}\",\n  \"property_id\": 1,\n  \"partner_id\": 1,\n  \"proposal_type\": \"sale\",\n  \"proposal_value\": 500000,\n  \"valid_until\": \"2026-12-31\",\n  \"notes\": \"Test\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/proposals",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "proposals"]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For POST requests (type='json'), session_id MUST be sent in the **body JSON**, NOT in the header.\n\nCreates a new property proposal (offer) in `draft` state. The proposal is associated with a property and a partner (buyer/tenant).\n\n**Required fields:** property_id, partner_id, proposal_type, proposal_value\n**Optional fields:** valid_until, notes\n\n**Test Script:** Auto-saves `proposal_id` from response `data.id` to environment."
+          }
+        },
+        {
+          "name": "List Proposals",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "type": "text",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "type": "text",
+                "description": "Session ID for fingerprint validation (REQUIRED for GET)"
+              },
+              {
+                "key": "X-Company-ID",
+                "value": "{{company_id}}",
+                "type": "text",
+                "description": "Active company for multi-tenancy isolation"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/proposals?state=&property_id=&page=1&limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "proposals"],
+              "query": [
+                {
+                  "key": "state",
+                  "value": "",
+                  "description": "Filter by proposal state: draft, sent, accepted, rejected, cancelled, countered"
+                },
+                {
+                  "key": "property_id",
+                  "value": "",
+                  "description": "Filter by property ID"
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number (1-based)"
+                },
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Records per page"
+                }
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For GET requests (type='http'), session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in request body.\n\nReturns a paginated list of property proposals scoped to the active company.\n\n**Query Parameters:**\n| Param | Type | Description |\n|---|---|---|\n| state | string | Filter by state: draft, sent, accepted, rejected, cancelled, countered |\n| property_id | integer | Filter by property ID |\n| page | integer | Page number (default: 1) |\n| limit | integer | Records per page (default: 20) |"
+          }
+        },
+        {
+          "name": "Proposal Statistics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "type": "text",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "type": "text",
+                "description": "Session ID for fingerprint validation (REQUIRED for GET)"
+              },
+              {
+                "key": "X-Company-ID",
+                "value": "{{company_id}}",
+                "type": "text",
+                "description": "Active company for multi-tenancy isolation"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/proposals/stats",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "proposals", "stats"]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For GET requests (type='http'), session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in request body.\n\nReturns aggregated proposal counts grouped by state for the active company.\n\n**Response:** Counts by state (total, draft, sent, accepted, rejected, cancelled, countered)."
+          }
+        },
+        {
+          "name": "Get Proposal Detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "type": "text",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "type": "text",
+                "description": "Session ID for fingerprint validation (REQUIRED for GET)"
+              },
+              {
+                "key": "X-Company-ID",
+                "value": "{{company_id}}",
+                "type": "text",
+                "description": "Active company for multi-tenancy isolation"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/proposals/{{proposal_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "proposals", "{{proposal_id}}"]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For GET requests (type='http'), session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in request body.\n\nReturns full details for a single proposal by ID, including property info, partner info, current state, and audit trail."
+          }
+        },
+        {
+          "name": "Update Proposal",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "type": "text",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Company-ID",
+                "value": "{{company_id}}",
+                "type": "text",
+                "description": "Active company for multi-tenancy isolation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"session_id\": \"{{session_id}}\",\n  \"proposal_value\": 490000,\n  \"notes\": \"Reduced offer\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/proposals/{{proposal_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "proposals", "{{proposal_id}}"]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For PUT requests (type='json'), session_id MUST be sent in the **body JSON**, NOT in the header.\n\nUpdates a proposal in `draft` state. Only proposals that have not yet been sent can be modified.\n\n**Updatable fields:** proposal_value, valid_until, notes"
+          }
+        },
+        {
+          "name": "Cancel Proposal",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "type": "text",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "type": "text",
+                "description": "Session ID for fingerprint validation (REQUIRED for DELETE)"
+              },
+              {
+                "key": "X-Company-ID",
+                "value": "{{company_id}}",
+                "type": "text",
+                "description": "Active company for multi-tenancy isolation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cancellation_reason\": \"Changed mind\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/proposals/{{proposal_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "proposals", "{{proposal_id}}"]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For DELETE requests (type='http'), session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in request body.\n\nCancels a proposal, transitioning it to `cancelled` state. Optionally accepts a cancellation reason in the JSON body.\n\n**Allowed states:** draft, sent (cannot cancel accepted/rejected proposals)"
+          }
+        },
+        {
+          "name": "Send Proposal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "type": "text",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Company-ID",
+                "value": "{{company_id}}",
+                "type": "text",
+                "description": "Active company for multi-tenancy isolation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/proposals/{{proposal_id}}/send",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "proposals", "{{proposal_id}}", "send"]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For POST requests (type='json'), session_id MUST be sent in the **body JSON**, NOT in the header.\n\nTransitions a proposal from `draft` → `sent`. Notifies the partner that a proposal has been submitted for their property."
+          }
+        },
+        {
+          "name": "Accept Proposal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "type": "text",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Company-ID",
+                "value": "{{company_id}}",
+                "type": "text",
+                "description": "Active company for multi-tenancy isolation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/proposals/{{proposal_id}}/accept",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "proposals", "{{proposal_id}}", "accept"]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For POST requests (type='json'), session_id MUST be sent in the **body JSON**, NOT in the header.\n\nAccepts a proposal, transitioning it from `sent` → `accepted`. This action may trigger property status updates and reject competing proposals for the same property.\n\n**Required state:** sent"
+          }
+        },
+        {
+          "name": "Reject Proposal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "type": "text",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Company-ID",
+                "value": "{{company_id}}",
+                "type": "text",
+                "description": "Active company for multi-tenancy isolation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"session_id\": \"{{session_id}}\",\n  \"rejection_reason\": \"Price too high\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/proposals/{{proposal_id}}/reject",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "proposals", "{{proposal_id}}", "reject"]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For POST requests (type='json'), session_id MUST be sent in the **body JSON**, NOT in the header.\n\nRejects a proposal, transitioning it from `sent` → `rejected`. Optionally records a rejection reason for the partner.\n\n**Required state:** sent"
+          }
+        },
+        {
+          "name": "Counter Proposal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "type": "text",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Company-ID",
+                "value": "{{company_id}}",
+                "type": "text",
+                "description": "Active company for multi-tenancy isolation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"session_id\": \"{{session_id}}\",\n  \"proposal_value\": 480000,\n  \"valid_until\": \"2026-12-31\",\n  \"notes\": \"Counter offer\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/proposals/{{proposal_id}}/counter",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "proposals", "{{proposal_id}}", "counter"]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For POST requests (type='json'), session_id MUST be sent in the **body JSON**, NOT in the header.\n\nCreates a counter-proposal from an existing sent proposal. The original proposal transitions to `countered` state and a new `draft` proposal is created with the revised terms.\n\n**Required state:** sent\n**Required fields:** proposal_value\n**Optional fields:** valid_until, notes"
+          }
+        },
+        {
+          "name": "Get Proposal Queue",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "type": "text",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "type": "text",
+                "description": "Session ID for fingerprint validation (REQUIRED for GET)"
+              },
+              {
+                "key": "X-Company-ID",
+                "value": "{{company_id}}",
+                "type": "text",
+                "description": "Active company for multi-tenancy isolation"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/proposals/{{proposal_id}}/queue",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "proposals", "{{proposal_id}}", "queue"]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For GET requests (type='http'), session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in request body.\n\nReturns the FIFO queue position for the given proposal relative to other active proposals on the same property. Useful for multi-proposal scenarios where acceptance order matters."
+          }
+        },
+        {
+          "name": "Upload Attachment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "type": "text",
+                "description": "Required for session fingerprint validation"
+              },
+              {
+                "key": "X-Company-ID",
+                "value": "{{company_id}}",
+                "type": "text",
+                "description": "Active company for multi-tenancy isolation"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "description": "File to attach (PDF, DOC, JPG, PNG, etc.)"
+                },
+                {
+                  "key": "session_id",
+                  "value": "{{session_id}}",
+                  "type": "text",
+                  "description": "Session ID (sent as form-data field for multipart requests)"
+                },
+                {
+                  "key": "description",
+                  "value": "",
+                  "type": "text",
+                  "description": "Optional description for the attachment"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/proposals/{{proposal_id}}/attachments",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "proposals", "{{proposal_id}}", "attachments"]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For multipart requests, do NOT set Content-Type manually — Postman sets it automatically with the correct boundary. session_id is sent as a form-data field (not a header or JSON body).\n\nUploads a file attachment linked to a specific proposal. Returns the attachment record ID and access URL."
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8069",
+      "type": "string",
+      "description": "API base URL. Change for staging/production environments."
+    },
+    {
+      "key": "client_id",
+      "value": "client_xxx",
+      "type": "string",
+      "description": "OAuth 2.0 client ID for token generation."
+    },
+    {
+      "key": "client_secret",
+      "value": "secret_yyy",
+      "type": "string",
+      "description": "OAuth 2.0 client secret. Use environment variable in production."
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string",
+      "description": "OAuth 2.0 Bearer token. Auto-populated by 'Get OAuth Token' test script."
+    },
+    {
+      "key": "refresh_token",
+      "value": "",
+      "type": "string",
+      "description": "OAuth 2.0 refresh token. Auto-populated by 'Get OAuth Token' test script."
+    },
+    {
+      "key": "session_id",
+      "value": "",
+      "type": "string",
+      "description": "Odoo session ID. Auto-populated by 'User Login' test script."
+    },
+    {
+      "key": "user_agent",
+      "value": "PostmanRuntime/7.26.8",
+      "type": "string",
+      "description": "User-Agent for session fingerprint validation. Keep consistent during a session."
+    },
+    {
+      "key": "user_email",
+      "value": "admin@example.com",
+      "type": "string",
+      "description": "Login email for User Login endpoint."
+    },
+    {
+      "key": "user_password",
+      "value": "admin",
+      "type": "string",
+      "description": "Login password. Use environment variable in production."
+    },
+    {
+      "key": "company_id",
+      "value": "1",
+      "type": "string",
+      "description": "Active company ID for X-Company-ID header (multi-tenancy)."
+    },
+    {
+      "key": "proposal_id",
+      "value": "",
+      "type": "string",
+      "description": "Proposal record ID. Auto-populated by 'Create Proposal' test script."
+    }
+  ]
+}

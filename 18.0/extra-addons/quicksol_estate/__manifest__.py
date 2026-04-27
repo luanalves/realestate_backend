@@ -1,6 +1,6 @@
 {
     'name': 'Real Estate Management - Kenlo Imóveis Edition',
-    'version': '18.0.2.1.0',
+    'version': '18.0.2.2.0',  # Feature 013: Property Proposals
     'category': 'Real Estate',
     'summary': 'Complete property management system following Kenlo Imóveis standards with RBAC',
     'description': """
@@ -80,6 +80,11 @@ Property Form Sections:
         'data/api_endpoints.xml',
         'data/user_auth_endpoints_data.xml',
         'data/lease_cron.xml',  # CHK002: Auto-expire leases cron job
+        # Feature 013: Property Proposals
+        'security/proposal_record_rules.xml',
+        'data/proposal_sequence.xml',
+        'data/mail_templates_proposal.xml',
+        'data/proposal_cron.xml',
         # 'data/default_groups.xml',  # Demo data temporarily disabled - complex dependencies
         
         # Views (actions must be loaded before menus that reference them)
@@ -96,6 +101,7 @@ Property Form Sections:
         'views/real_estate_menus.xml',
         'views/lead_filter_views.xml',  # FR-048: Saved search filters (REATIVADO)
         'views/res_users_views.xml',
+        'views/proposal_views.xml',  # Feature 013: Proposal Kanban/List/Form
     ],
     'assets': {
         'web.assets_backend': [

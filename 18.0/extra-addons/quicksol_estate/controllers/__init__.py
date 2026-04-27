@@ -8,3 +8,4 @@ from . import company_api  # Feature 007: Company CRUD API
 from . import profile_api  # Feature 010: Unified profile CRUD API
 from . import lease_api  # Feature 008: Lease lifecycle API
 from . import sale_api  # Feature 008: Sale management API
+from . import proposal_controller  # Feature 013: Property Proposals API

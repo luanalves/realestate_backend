@@ -54,6 +54,16 @@ from .api import test_company_isolation_api
 
 # Integration tests directory (TransactionCase - WITH database)
 from . import integration
+# Feature 013: Property Proposals (explicit imports for Odoo test discovery)
+from .integration import test_proposal_create
+from .integration import test_proposal_send
+from .integration import test_proposal_queue
+from .integration import test_proposal_counter
+from .integration import test_proposal_accept_reject
+from .integration import test_proposal_lead_integration
+from .integration import test_proposal_list
+from .integration import test_proposal_attachments
+from .integration import test_proposal_expiration
 
 # Observer pattern tests
 from . import observers

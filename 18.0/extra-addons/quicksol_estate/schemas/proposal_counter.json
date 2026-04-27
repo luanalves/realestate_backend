@@ -1,0 +1,12 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ProposalCounter",
+  "type": "object",
+  "required": ["proposal_value"],
+  "additionalProperties": false,
+  "properties": {
+    "proposal_value":  { "type": "number", "exclusiveMinimum": 0 },
+    "description":     { "type": ["string", "null"], "maxLength": 4000 },
+    "valid_until":     { "type": ["string", "null"], "format": "date" }
+  }
+}

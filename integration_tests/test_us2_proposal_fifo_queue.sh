@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+# Feature 013 - T033: FIFO Queue Ordering
+set -e
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/lib/get_oauth2_token.sh"
+if [ -f "$SCRIPT_DIR/../18.0/.env" ]; then source "$SCRIPT_DIR/../18.0/.env"; fi
+BASE_URL="${BASE_URL:-http://localhost:8069}"
+API_BASE="$BASE_URL/api/v1"
+RED='\033[0;31m'; GREEN='\033[0;32m'; NC='\033[0m'
+PASS=0; FAIL=0
+pass() { echo -e "${GREEN}✓ $1${NC}"; ((PASS++)); }
+fail() { echo -e "${RED}✗ $1${NC}"; ((FAIL++)); }
+
+echo "========================================"
+echo "T033: FIFO Queue Ordering"
+echo "========================================"
+
+if ! command -v jq &>/dev/null; then echo "ERROR: jq required"; exit 1; fi
+
+BEARER_TOKEN=$(get_oauth2_token)
+SESSION_RESPONSE=$(curl -s -X POST "$API_BASE/users/login" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $BEARER_TOKEN" \
+  -d "{\"login\": \"${TEST_USER_OWNER:-owner@example.com}\", \"password\": \"${TEST_PASSWORD_OWNER:-SecurePass123!}\"}")
+SESSION_ID=$(echo "$SESSION_RESPONSE" | jq -r '.session_id // empty')
+AUTH_HEADERS=(-H "Authorization: Bearer $BEARER_TOKEN" -H "X-Session-Id: $SESSION_ID" -H "Content-Type: application/json")
+
+PROPERTY_ID=$(curl -s "${AUTH_HEADERS[@]}" "$API_BASE/properties?limit=1" \
+  | jq -r '.data[0].id // .results[0].id // 1')
+BODY="{\"property_id\": $PROPERTY_ID, \"client_document\": \"52998224725\", \"price\": 100000}"
+
+echo "Creating 3 proposals sequentially for property $PROPERTY_ID..."
+P1=$(curl -s -X POST "$API_BASE/proposals" "${AUTH_HEADERS[@]}" -d "$BODY")
+P2=$(curl -s -X POST "$API_BASE/proposals" "${AUTH_HEADERS[@]}" -d "$BODY")
+P3=$(curl -s -X POST "$API_BASE/proposals" "${AUTH_HEADERS[@]}" -d "$BODY")
+
+P1_ID=$(echo "$P1" | jq -r '.id');    P1_STATE=$(echo "$P1" | jq -r '.state')
+P2_ID=$(echo "$P2" | jq -r '.id');    P2_POS=$(echo "$P2" | jq -r '.queue_position')
+P3_ID=$(echo "$P3" | jq -r '.id');    P3_POS=$(echo "$P3" | jq -r '.queue_position')
+
+[ "$P1_STATE" = "draft" ] && pass "Proposal 1 is draft"         || fail "Proposal 1 state: $P1_STATE"
+[ "$P2_POS"   = "1"     ] && pass "Proposal 2 queue_position=1" || fail "Proposal 2 queue_position=$P2_POS"
+[ "$P3_POS"   = "2"     ] && pass "Proposal 3 queue_position=2" || fail "Proposal 3 queue_position=$P3_POS"
+
+echo "Rejecting proposal 1 (draft) → expect proposal 2 to be promoted..."
+REJECT_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+  -X POST "$API_BASE/proposals/$P1_ID/reject" \
+  "${AUTH_HEADERS[@]}" -d '{"reason": "Test FIFO reject"}')
+[ "$REJECT_CODE" = "200" ] || [ "$REJECT_CODE" = "204" ] \
+  && pass "Reject proposal 1 ($REJECT_CODE)" \
+  || fail "Reject returned $REJECT_CODE"
+
+NEW_P2_STATE=$(curl -s "${AUTH_HEADERS[@]}" "$API_BASE/proposals/$P2_ID" | jq -r '.state')
+[ "$NEW_P2_STATE" = "draft" ] \
+  && pass "Proposal 2 promoted to draft after P1 rejection" \
+  || fail "Proposal 2 state after rejection: $NEW_P2_STATE"
+
+NEW_P3_POS=$(curl -s "${AUTH_HEADERS[@]}" "$API_BASE/proposals/$P3_ID" | jq -r '.queue_position')
+[ "$NEW_P3_POS" = "1" ] \
+  && pass "Proposal 3 queue_position shifted to 1" \
+  || fail "Proposal 3 queue_position after shift: $NEW_P3_POS"
+
+echo ""
+echo "PASSED: $PASS, FAILED: $FAIL"
+[ "$FAIL" -eq 0 ] && exit 0 || exit 1

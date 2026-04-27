@@ -67,6 +67,20 @@ class RealEstateLead(models.Model):
         default=True,
         help='Soft delete flag. Archived leads have active=False'
     )
+
+    # Feature 013: Proposal source tracking
+    source = fields.Selection([
+        ('manual', 'Manual'),
+        ('proposal', 'Proposal'),
+        ('website', 'Website'),
+        ('import', 'Import'),
+    ], string='Source', default='manual', index=True, tracking=True,
+       help='How this lead was created (manual entry, from a proposal, website, etc.)')
+
+    proposal_ids = fields.One2many(
+        'real.estate.proposal', 'lead_id', string='Proposals',
+        help='Property proposals linked to this lead'
+    )
     
     state = fields.Selection(
         [
@@ -367,10 +381,13 @@ class RealEstateLead(models.Model):
                 # Log state change in chatter
                 res = super(RealEstateLead, record).write(vals)
                 if old_state != new_state:
-                    record.message_post(
-                        body=f"State changed from {old_state} to {new_state}",
-                        subtype_xmlid='mail.mt_note',
-                    )
+                    try:
+                        record.message_post(
+                            body=f"State changed from {old_state} to {new_state}",
+                            subtype_xmlid='mail.mt_note',
+                        )
+                    except Exception:
+                        pass
                 return res
         
         return super().write(vals)

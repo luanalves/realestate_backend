@@ -171,5 +171,60 @@ def process_event_task(self, event_name, data):
         raise self.retry(exc=exc, countdown=2 ** self.request.retries)
 
 
+@app.task(bind=True, max_retries=3, name='proposal.send_email')
+def send_proposal_email_task(self, proposal_id, event_name='proposal.sent'):
+    """
+    T029 — Celery task that sends a proposal notification email.
+    Picks the `proposal.sent` (or related) event, renders the corresponding
+    mail.template via Odoo XML-RPC, and on failure logs to chatter without
+    rolling back the DB transaction (FR-041a).
+
+    The task is idempotent: if the email was already sent it silently succeeds.
+    """
+    try:
+        url = os.environ['ODOO_URL']
+        db = os.environ['ODOO_DB']
+        username = os.environ['ODOO_USER']
+        password = os.environ['ODOO_PASSWORD']
+
+        common = xmlrpc.client.ServerProxy(f'{url}/xmlrpc/2/common')
+        models = xmlrpc.client.ServerProxy(f'{url}/xmlrpc/2/object')
+
+        uid = common.authenticate(db, username, password, {})
+
+        # Delegate to a model method so the template rendering stays in Odoo.
+        # The method is responsible for looking up the correct mail.template
+        # by ref and sending it; it returns True on success or raises.
+        result = models.execute_kw(
+            db, uid, password,
+            'real.estate.proposal',
+            'send_notification_email',
+            [[proposal_id], event_name],
+        )
+        return f"Proposal {proposal_id} email dispatched for event {event_name}: {result}"
+
+    except Exception as exc:
+        try:
+            # Best-effort: log failure to chatter so it's visible in the UI
+            url = os.environ.get('ODOO_URL', '')
+            db = os.environ.get('ODOO_DB', '')
+            username = os.environ.get('ODOO_USER', '')
+            password = os.environ.get('ODOO_PASSWORD', '')
+            if url and db:
+                common = xmlrpc.client.ServerProxy(f'{url}/xmlrpc/2/common')
+                models = xmlrpc.client.ServerProxy(f'{url}/xmlrpc/2/object')
+                uid = common.authenticate(db, username, password, {})
+                models.execute_kw(
+                    db, uid, password,
+                    'real.estate.proposal',
+                    'log_email_failure',
+                    [[proposal_id], event_name, str(exc)],
+                )
+        except Exception:
+            pass  # Do not mask the original error
+
+        raise self.retry(exc=exc, countdown=2 ** self.request.retries)
+
+
 if __name__ == '__main__':
     app.start()
