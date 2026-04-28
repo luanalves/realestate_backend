@@ -2170,5 +2170,433 @@ Returns: Owner object with id, name, email, cpf, phone, mobile, company_count, c
             <field name="active" eval="True"/>
         </record>
 
+
+        <!-- ============================================================ -->
+        <!-- Proposal API Endpoints (Feature 013)                        -->
+        <!-- ============================================================ -->
+
+        <record id="api_endpoint_create_proposal" model="thedevkitchen.api.endpoint">
+            <field name="name">Create Proposal</field>
+            <field name="path">/api/v1/proposals</field>
+            <field name="method">POST</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Proposals</field>
+            <field name="summary">Create a new property proposal</field>
+            <field name="description">Creates a proposal for a property. If the property already has an active proposal, the new one enters the queue (state=queued). Otherwise state=draft.
+
+**Required Headers:**
+- `Authorization: Bearer {access_token}`
+- `X-Session-Id: {session_id}`
+
+**Request Body:**
+```json
+{
+  "property_id": 1,
+  "agent_id": 2,
+  "proposal_type": "sale",
+  "proposal_value": 450000.00,
+  "client_name": "João da Silva",
+  "client_document": "123.456.789-09",
+  "client_email": "joao@email.com",
+  "client_phone": "+55 11 99999-9999",
+  "valid_until": "2026-05-30",
+  "description": "Interested in quick closing."
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "id": 10,
+  "proposal_code": "PRP00010",
+  "state": "draft",
+  "property_id": 1,
+  "proposal_value": 450000.00
+}
+```
+
+**Error Responses:**
+- 400: Validation error (missing required field, invalid document, etc.)
+- 401: Invalid or missing JWT token
+- 403: Access denied
+- 409: Concurrent creation conflict (pessimistic lock)</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_list_proposals" model="thedevkitchen.api.endpoint">
+            <field name="name">List Proposals</field>
+            <field name="path">/api/v1/proposals</field>
+            <field name="method">GET</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Proposals</field>
+            <field name="summary">List proposals with filters and pagination</field>
+            <field name="description">Returns a paginated list of proposals for the authenticated company. Agents see only their own proposals.
+
+**Required Headers:**
+- `Authorization: Bearer {access_token}`
+- `X-Session-Id: {session_id}`
+
+**Query Parameters:**
+- `state` (string, optional): Filter by state (draft, queued, sent, negotiation, accepted, rejected, expired, cancelled)
+- `agent_id` (int, optional): Filter by agent
+- `property_id` (int, optional): Filter by property
+- `partner_id` (int, optional): Filter by client
+- `date_from` (string, optional): Filter by creation date (YYYY-MM-DD)
+- `date_to` (string, optional): Filter by creation date (YYYY-MM-DD)
+- `search` (string, optional): Search by code, client name or property name
+- `page` (int, optional): Page number. Default: 1
+- `page_size` (int, optional): Items per page. Default: 50, max: 100
+
+**Response (200 OK):**
+```json
+{
+  "data": [{"id": 1, "proposal_code": "PRP00001", "state": "sent", ...}],
+  "_meta": {"total": 8, "page": 1, "page_size": 50, "pages": 1},
+  "_links": {"first": "...", "prev": null, "next": null, "last": "..."}
+}
+```
+
+**Error Responses:**
+- 401: Invalid or missing JWT token
+- 403: Access denied</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_get_proposal_stats" model="thedevkitchen.api.endpoint">
+            <field name="name">Get Proposal Stats</field>
+            <field name="path">/api/v1/proposals/stats</field>
+            <field name="method">GET</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Proposals</field>
+            <field name="summary">Aggregated proposal metrics by state</field>
+            <field name="description">Returns proposal counts grouped by state for the authenticated company.
+
+**Required Headers:**
+- `Authorization: Bearer {access_token}`
+- `X-Session-Id: {session_id}`
+
+**Response (200 OK):**
+```json
+{
+  "total": 8,
+  "by_state": {
+    "draft": 1, "queued": 1, "sent": 1, "negotiation": 1,
+    "accepted": 1, "rejected": 1, "expired": 1, "cancelled": 1
+  }
+}
+```
+
+**Error Responses:**
+- 401: Invalid or missing JWT token
+- 403: Access denied</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_get_proposal" model="thedevkitchen.api.endpoint">
+            <field name="name">Get Proposal</field>
+            <field name="path">/api/v1/proposals/{proposal_id}</field>
+            <field name="method">GET</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Proposals</field>
+            <field name="summary">Get proposal details including chain and attachments</field>
+            <field name="description">Returns full proposal details including the counter-proposal chain and attached documents.
+
+**Required Headers:**
+- `Authorization: Bearer {access_token}`
+- `X-Session-Id: {session_id}`
+
+**Path Parameters:**
+- `proposal_id` (int, required): Proposal ID
+
+**Response (200 OK):**
+```json
+{
+  "id": 1,
+  "proposal_code": "PRP00001",
+  "state": "sent",
+  "property_id": 1,
+  "partner_id": 5,
+  "agent_id": 2,
+  "proposal_value": 450000.00,
+  "chain": [],
+  "attachments": []
+}
+```
+
+**Error Responses:**
+- 401: Invalid or missing JWT token
+- 404: Proposal not found or belongs to another company</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_update_proposal" model="thedevkitchen.api.endpoint">
+            <field name="name">Update Proposal</field>
+            <field name="path">/api/v1/proposals/{proposal_id}</field>
+            <field name="method">PUT</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Proposals</field>
+            <field name="summary">Update a proposal (value, description, validity, agent)</field>
+            <field name="description">Updates editable fields of a non-terminal proposal. Reassigning the agent requires manager or owner role.
+
+**Required Headers:**
+- `Authorization: Bearer {access_token}`
+- `X-Session-Id: {session_id}`
+
+**Path Parameters:**
+- `proposal_id` (int, required): Proposal ID
+
+**Request Body (all fields optional):**
+```json
+{
+  "proposal_value": 480000.00,
+  "description": "Updated notes",
+  "valid_until": "2026-06-15",
+  "agent_id": 3
+}
+```
+
+**Error Responses:**
+- 400: Validation error
+- 401: Invalid or missing JWT token
+- 403: Insufficient permissions to reassign agent
+- 404: Proposal not found
+- 409: Proposal is in a terminal state</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_cancel_proposal" model="thedevkitchen.api.endpoint">
+            <field name="name">Cancel Proposal</field>
+            <field name="path">/api/v1/proposals/{proposal_id}</field>
+            <field name="method">DELETE</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Proposals</field>
+            <field name="summary">Cancel (soft-delete) a proposal</field>
+            <field name="description">Cancels a proposal (soft delete — sets state=cancelled, active=False). Promotes the next queued proposal. Requires manager or owner role.
+
+**Required Headers:**
+- `Authorization: Bearer {access_token}`
+- `X-Session-Id: {session_id}`
+
+**Path Parameters:**
+- `proposal_id` (int, required): Proposal ID
+
+**Request Body:**
+```json
+{
+  "cancellation_reason": "Client withdrew interest."
+}
+```
+
+**Error Responses:**
+- 400: Missing cancellation_reason
+- 401: Invalid or missing JWT token
+- 403: Only managers/owners can cancel
+- 404: Proposal not found
+- 409: Proposal already in terminal state</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_send_proposal" model="thedevkitchen.api.endpoint">
+            <field name="name">Send Proposal</field>
+            <field name="path">/api/v1/proposals/{proposal_id}/send</field>
+            <field name="method">POST</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Proposals</field>
+            <field name="summary">Transition proposal from Draft to Sent</field>
+            <field name="description">Moves the proposal from `draft` to `sent`. Stamps `sent_date`. Sets default `valid_until` (+7 days) if not already set.
+
+**Required Headers:**
+- `Authorization: Bearer {access_token}`
+- `X-Session-Id: {session_id}`
+
+**Path Parameters:**
+- `proposal_id` (int, required): Proposal ID
+
+**Request Body:** (empty)
+
+**Error Responses:**
+- 401: Invalid or missing JWT token
+- 404: Proposal not found
+- 422: Invalid state transition (e.g. already sent)</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_accept_proposal" model="thedevkitchen.api.endpoint">
+            <field name="name">Accept Proposal</field>
+            <field name="path">/api/v1/proposals/{proposal_id}/accept</field>
+            <field name="method">POST</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Proposals</field>
+            <field name="summary">Accept a proposal (manager/owner only)</field>
+            <field name="description">Accepts a proposal in `sent` or `negotiation` state. Auto-cancels all competing proposals on the same property. Updates linked lead to `won`. Requires manager or owner role.
+
+**Required Headers:**
+- `Authorization: Bearer {access_token}`
+- `X-Session-Id: {session_id}`
+
+**Path Parameters:**
+- `proposal_id` (int, required): Proposal ID
+
+**Request Body:** (empty)
+
+**Error Responses:**
+- 401: Invalid or missing JWT token
+- 403: Only managers/owners can accept
+- 404: Proposal not found
+- 422: Invalid state transition</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_reject_proposal" model="thedevkitchen.api.endpoint">
+            <field name="name">Reject Proposal</field>
+            <field name="path">/api/v1/proposals/{proposal_id}/reject</field>
+            <field name="method">POST</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Proposals</field>
+            <field name="summary">Reject a proposal with a required reason</field>
+            <field name="description">Moves the proposal to `rejected` state. Promotes the next queued proposal. A rejection reason is required.
+
+**Required Headers:**
+- `Authorization: Bearer {access_token}`
+- `X-Session-Id: {session_id}`
+
+**Path Parameters:**
+- `proposal_id` (int, required): Proposal ID
+
+**Request Body:**
+```json
+{
+  "rejection_reason": "Offer value below minimum acceptable."
+}
+```
+
+**Error Responses:**
+- 400: Missing rejection_reason
+- 401: Invalid or missing JWT token
+- 404: Proposal not found
+- 422: Invalid state transition</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_counter_proposal" model="thedevkitchen.api.endpoint">
+            <field name="name">Counter Proposal</field>
+            <field name="path">/api/v1/proposals/{proposal_id}/counter</field>
+            <field name="method">POST</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Proposals</field>
+            <field name="summary">Create a counter-proposal (negotiation chain)</field>
+            <field name="description">Creates a counter-proposal linked to the parent. Moves parent to `negotiation`. The new counter-proposal starts in `draft` and takes the active slot. Counter value must differ from the parent.
+
+**Required Headers:**
+- `Authorization: Bearer {access_token}`
+- `X-Session-Id: {session_id}`
+
+**Path Parameters:**
+- `proposal_id` (int, required): Parent proposal ID
+
+**Request Body:**
+```json
+{
+  "proposal_value": 460000.00,
+  "description": "Counter with adjusted price.",
+  "valid_until": "2026-06-01"
+}
+```
+
+**Response (201 Created):** Full proposal object with chain.
+
+**Error Responses:**
+- 400: Validation error
+- 401: Invalid or missing JWT token
+- 404: Parent proposal not found
+- 422: Same value as parent, or invalid state</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_get_proposal_queue" model="thedevkitchen.api.endpoint">
+            <field name="name">Get Proposal Queue</field>
+            <field name="path">/api/v1/proposals/{proposal_id}/queue</field>
+            <field name="method">GET</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Proposals</field>
+            <field name="summary">Get the active proposal and queued proposals for the same property</field>
+            <field name="description">Returns the currently active proposal and the FIFO queue of waiting proposals for the same property.
+
+**Required Headers:**
+- `Authorization: Bearer {access_token}`
+- `X-Session-Id: {session_id}`
+
+**Path Parameters:**
+- `proposal_id` (int, required): Any proposal ID on the target property
+
+**Response (200 OK):**
+```json
+{
+  "property_id": 1,
+  "active_proposal": {"id": 1, "proposal_code": "PRP00001", "state": "sent"},
+  "queue": [
+    {"id": 2, "proposal_code": "PRP00002", "state": "queued"}
+  ]
+}
+```
+
+**Error Responses:**
+- 401: Invalid or missing JWT token
+- 404: Proposal not found</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_upload_proposal_attachment" model="thedevkitchen.api.endpoint">
+            <field name="name">Upload Proposal Attachment</field>
+            <field name="path">/api/v1/proposals/{proposal_id}/attachments</field>
+            <field name="method">POST</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Proposals</field>
+            <field name="summary">Upload a file attachment to a proposal</field>
+            <field name="description">Uploads a file (PDF, JPEG, PNG, DOCX, XLSX) as an attachment linked to the proposal. Max size: 10 MB.
+
+**Required Headers:**
+- `Authorization: Bearer {access_token}`
+- `X-Session-Id: {session_id}`
+- `Content-Type: multipart/form-data`
+
+**Path Parameters:**
+- `proposal_id` (int, required): Proposal ID
+
+**Form Data:**
+- `file` (file, required): The file to upload
+- `description` (string, optional): Description of the attachment
+
+**Response (201 Created):**
+```json
+{
+  "id": 42,
+  "name": "proposta_assinada.pdf",
+  "mimetype": "application/pdf",
+  "size": 204800,
+  "download_url": "/web/content/42?download=true"
+}
+```
+
+**Error Responses:**
+- 400: No file provided or unsupported file type
+- 401: Invalid or missing JWT token
+- 404: Proposal not found
+- 413: File exceeds 10 MB limit</field>
+            <field name="active" eval="True"/>
+        </record>
+
     </data>
 </odoo>
