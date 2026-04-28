@@ -4127,11 +4127,17 @@
                 "value": "{{company_id}}",
                 "type": "text",
                 "description": "Active company for multi-tenancy isolation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "type": "text",
+                "description": "Session cookie ID (required for type='http' endpoints)"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"session_id\": \"{{session_id}}\",\n  \"property_id\": 1,\n  \"agent_id\": 1,\n  \"proposal_type\": \"sale\",\n  \"proposal_value\": 500000,\n  \"client_name\": \"João da Silva\",\n  \"client_document\": \"123.456.789-09\",\n  \"client_email\": \"joao@email.com\",\n  \"client_phone\": \"+55 11 99999-9999\",\n  \"valid_until\": \"2026-12-31\",\n  \"description\": \"Test\"\n}"
+              "raw": "{  \"property_id\": 1,\n  \"agent_id\": 1,\n  \"proposal_type\": \"sale\",\n  \"proposal_value\": 500000,\n  \"client_name\": \"João da Silva\",\n  \"client_document\": \"123.456.789-09\",\n  \"client_email\": \"joao@email.com\",\n  \"client_phone\": \"+55 11 99999-9999\",\n  \"valid_until\": \"2026-12-31\",\n  \"description\": \"Test\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/proposals",
@@ -4345,11 +4351,17 @@
                 "value": "{{company_id}}",
                 "type": "text",
                 "description": "Active company for multi-tenancy isolation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "type": "text",
+                "description": "Session cookie ID (required for type='http' endpoints)"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"session_id\": \"{{session_id}}\",\n  \"proposal_value\": 490000,\n  \"notes\": \"Reduced offer\"\n}"
+              "raw": "{  \"proposal_value\": 490000,\n  \"notes\": \"Reduced offer\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/proposals/{{proposal_id}}",
@@ -4447,11 +4459,17 @@
                 "value": "{{company_id}}",
                 "type": "text",
                 "description": "Active company for multi-tenancy isolation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "type": "text",
+                "description": "Session cookie ID (required for type='http' endpoints)"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"session_id\": \"{{session_id}}\"\n}"
+              "raw": "{}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/proposals/{{proposal_id}}/send",
@@ -4496,11 +4514,17 @@
                 "value": "{{company_id}}",
                 "type": "text",
                 "description": "Active company for multi-tenancy isolation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "type": "text",
+                "description": "Session cookie ID (required for type='http' endpoints)"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"session_id\": \"{{session_id}}\"\n}"
+              "raw": "{}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/proposals/{{proposal_id}}/accept",
@@ -4545,11 +4569,17 @@
                 "value": "{{company_id}}",
                 "type": "text",
                 "description": "Active company for multi-tenancy isolation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "type": "text",
+                "description": "Session cookie ID (required for type='http' endpoints)"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"session_id\": \"{{session_id}}\",\n  \"rejection_reason\": \"Price too high\"\n}"
+              "raw": "{  \"rejection_reason\": \"Price too high\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/proposals/{{proposal_id}}/reject",
@@ -4594,11 +4624,17 @@
                 "value": "{{company_id}}",
                 "type": "text",
                 "description": "Active company for multi-tenancy isolation"
+              },
+              {
+                "key": "X-Openerp-Session-Id",
+                "value": "{{session_id}}",
+                "type": "text",
+                "description": "Session cookie ID (required for type='http' endpoints)"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"session_id\": \"{{session_id}}\",\n  \"proposal_value\": 480000,\n  \"valid_until\": \"2026-12-31\",\n  \"notes\": \"Counter offer\"\n}"
+              "raw": "{  \"proposal_value\": 480000,\n  \"valid_until\": \"2026-12-31\",\n  \"notes\": \"Counter offer\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/proposals/{{proposal_id}}/counter",
