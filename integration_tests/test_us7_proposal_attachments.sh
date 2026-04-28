@@ -3,13 +3,13 @@
 set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib/get_oauth2_token.sh"
-if [ -f "$SCRIPT_DIR/../18.0/.env" ]; then source "$SCRIPT_DIR/../18.0/.env"; fi
+if [ -f "$SCRIPT_DIR/../18.0/.env" ] && [ -z "${_PROPOSAL_TEST_ENV:-}" ]; then source "$SCRIPT_DIR/../18.0/.env"; fi
 BASE_URL="${BASE_URL:-http://localhost:8069}"
 API_BASE="$BASE_URL/api/v1"
 RED='\033[0;31m'; GREEN='\033[0;32m'; NC='\033[0m'
 PASS=0; FAIL=0
-pass() { echo -e "${GREEN}✓ $1${NC}"; ((PASS++)); }
-fail() { echo -e "${RED}✗ $1${NC}"; ((FAIL++)); }
+pass() { echo -e "${GREEN}✓ $1${NC}"; PASS=$((PASS+1)); }
+fail() { echo -e "${RED}✗ $1${NC}"; FAIL=$((FAIL+1)); }
 
 echo "========================================"
 echo "T060: Proposal Attachments"
@@ -28,8 +28,8 @@ COMPANY_ID=$(echo "$SESSION_RESPONSE" | jq -r '.user.default_company_id // empty
 AUTH_ONLY=(-H "Authorization: Bearer $BEARER_TOKEN" -H "X-Openerp-Session-Id: $SESSION_ID")
 AUTH_JSON=("${AUTH_ONLY[@]}" -H "Content-Type: application/json")
 
-PROPERTY_ID=$(curl -s "${AUTH_JSON[@]}" "$API_BASE/properties?limit=1" \
-  | jq -r '.data[0].id // .results[0].id // 1')
+PROPERTY_ID="${PROPOSAL_TEST_PROPERTY_ID:-$(curl -s "${AUTH_JSON[@]}" "$API_BASE/properties?limit=1&company_ids=${COMPANY_ID:-2}" \
+  | jq -r '.data[0].id // .results[0].id // 1')}"
 
 echo "Creating proposal..."
 P1=$(curl -s -X POST "$API_BASE/proposals" "${AUTH_JSON[@]}" \
@@ -40,17 +40,17 @@ P1_ID=$(echo "$P1" | jq -r '.id')
   || { fail "Could not create proposal"; exit 1; }
 
 BEFORE_COUNT=$(curl -s "${AUTH_JSON[@]}" "$API_BASE/proposals/$P1_ID" \
-  | jq -r '.documents_count // 0')
+  | jq '(.attachments // [] | length)')
 
 echo "Uploading attachment..."
-TMP_FILE=$(mktemp /tmp/f013_attach_XXXXXX.txt)
-echo "Test attachment – Feature 013 T060 – $(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$TMP_FILE"
+TMP_FILE=$(mktemp /tmp/f013_attach_XXXXXX.pdf)
+echo "fake pdf content for test" > "$TMP_FILE"
 
 UPLOAD_CODE=$(curl -s -o /tmp/f013_upload.json -w "%{http_code}" \
   -X POST "$API_BASE/proposals/$P1_ID/attachments" \
   "${AUTH_ONLY[@]}" \
-  -F "file=@$TMP_FILE;type=text/plain" \
-  -F "name=test_document.txt")
+  -F "file=@$TMP_FILE;type=application/pdf" \
+  -F "name=test_document.pdf")
 rm -f "$TMP_FILE"
 
 [ "$UPLOAD_CODE" = "200" ] || [ "$UPLOAD_CODE" = "201" ] \
@@ -59,7 +59,7 @@ rm -f "$TMP_FILE"
 rm -f /tmp/f013_upload.json
 
 AFTER_DATA=$(curl -s "${AUTH_JSON[@]}" "$API_BASE/proposals/$P1_ID")
-AFTER_COUNT=$(echo "$AFTER_DATA" | jq -r '.documents_count // 0')
+AFTER_COUNT=$(echo "$AFTER_DATA" | jq '(.attachments // [] | length)')
 [ "$AFTER_COUNT" -gt "$BEFORE_COUNT" ] \
   && pass "documents_count incremented ($BEFORE_COUNT → $AFTER_COUNT)" \
   || fail "documents_count did not increment (before=$BEFORE_COUNT, after=$AFTER_COUNT)"

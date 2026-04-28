@@ -879,6 +879,7 @@ class RealEstateProposal(models.Model):
         from datetime import datetime, timedelta
         now = datetime.now()
         updates = {
+            # QuickSol Real Estate proposals
             'proposal_sent_1':        ('sent',        {'sent_date': now - timedelta(hours=2)}),
             'proposal_negotiation_1': ('negotiation', {'sent_date': now - timedelta(days=3)}),
             'proposal_accepted_1':    ('accepted',    {'sent_date': now - timedelta(days=7),
@@ -887,6 +888,11 @@ class RealEstateProposal(models.Model):
                                                        'rejected_date': now - timedelta(days=5)}),
             'proposal_cancelled_1':   ('cancelled',   {}),
             'proposal_expired_1':     ('expired',     {'sent_date': now - timedelta(days=20)}),
+            # Imobiliária Seed proposals
+            'seed_proposal_sent_1':     ('sent',     {'sent_date': now - timedelta(hours=3)}),
+            'seed_proposal_rejected_1': ('rejected', {'sent_date': now - timedelta(days=5),
+                                                      'rejected_date': now - timedelta(days=2),
+                                                      'rejection_reason': 'Valor abaixo do mínimo aceito.'}),
         }
         for xml_name, (state, extra) in updates.items():
             rec = self.env.ref(f'quicksol_estate.{xml_name}', raise_if_not_found=False)

@@ -3,13 +3,13 @@
 set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib/get_oauth2_token.sh"
-if [ -f "$SCRIPT_DIR/../18.0/.env" ]; then source "$SCRIPT_DIR/../18.0/.env"; fi
+if [ -f "$SCRIPT_DIR/../18.0/.env" ] && [ -z "${_PROPOSAL_TEST_ENV:-}" ]; then source "$SCRIPT_DIR/../18.0/.env"; fi
 BASE_URL="${BASE_URL:-http://localhost:8069}"
 API_BASE="$BASE_URL/api/v1"
 RED='\033[0;31m'; GREEN='\033[0;32m'; NC='\033[0m'
 PASS=0; FAIL=0
-pass() { echo -e "${GREEN}✓ $1${NC}"; ((PASS++)); }
-fail() { echo -e "${RED}✗ $1${NC}"; ((FAIL++)); }
+pass() { echo -e "${GREEN}✓ $1${NC}"; PASS=$((PASS+1)); }
+fail() { echo -e "${RED}✗ $1${NC}"; FAIL=$((FAIL+1)); }
 
 echo "========================================"
 echo "T051: Lead Capture on Proposal Creation"
@@ -26,8 +26,8 @@ SESSION_ID=$(echo "$SESSION_RESPONSE" | jq -r '.session_id // empty')
 COMPANY_ID=$(echo "$SESSION_RESPONSE" | jq -r '.user.default_company_id // empty')
 AUTH_HEADERS=(-H "Authorization: Bearer $BEARER_TOKEN" -H "X-Openerp-Session-Id: $SESSION_ID" -H "Content-Type: application/json" -H "X-Company-ID: ${COMPANY_ID:-2}")
 
-PROPERTY_ID=$(curl -s "${AUTH_HEADERS[@]}" "$API_BASE/properties?limit=1" \
-  | jq -r '.data[0].id // .results[0].id // 1')
+PROPERTY_ID="${PROPOSAL_TEST_PROPERTY_ID:-$(curl -s "${AUTH_HEADERS[@]}" "$API_BASE/properties?limit=1&company_ids=${COMPANY_ID:-2}" \
+  | jq -r '.data[0].id // .results[0].id // 1')}"
 
 echo "Step 1: Create first proposal with client_document=52998224725..."
 PA_RESP=$(curl -s -X POST "$API_BASE/proposals" "${AUTH_HEADERS[@]}" \

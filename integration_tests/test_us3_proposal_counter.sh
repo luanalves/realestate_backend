@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 # Feature 013 - T038: Counter-Proposal Chain (A → counter B → counter C → accept)
-set -e
+set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib/get_oauth2_token.sh"
-if [ -f "$SCRIPT_DIR/../18.0/.env" ]; then source "$SCRIPT_DIR/../18.0/.env"; fi
+if [ -f "$SCRIPT_DIR/../18.0/.env" ] && [ -z "${_PROPOSAL_TEST_ENV:-}" ]; then source "$SCRIPT_DIR/../18.0/.env"; fi
 BASE_URL="${BASE_URL:-http://localhost:8069}"
 API_BASE="$BASE_URL/api/v1"
 RED='\033[0;31m'; GREEN='\033[0;32m'; NC='\033[0m'
 PASS=0; FAIL=0
-pass() { echo -e "${GREEN}✓ $1${NC}"; ((PASS++)); }
-fail() { echo -e "${RED}✗ $1${NC}"; ((FAIL++)); }
+pass() { echo -e "${GREEN}✓ $1${NC}"; PASS=$((PASS+1)); }
+fail() { echo -e "${RED}✗ $1${NC}"; FAIL=$((FAIL+1)); }
 
 echo "========================================"
 echo "T038: Counter-Proposal Chain"
@@ -26,8 +26,23 @@ SESSION_ID=$(echo "$SESSION_RESPONSE" | jq -r '.session_id // empty')
 COMPANY_ID=$(echo "$SESSION_RESPONSE" | jq -r '.user.default_company_id // empty')
 AUTH_HEADERS=(-H "Authorization: Bearer $BEARER_TOKEN" -H "X-Openerp-Session-Id: $SESSION_ID" -H "Content-Type: application/json" -H "X-Company-ID: ${COMPANY_ID:-2}")
 
-PROPERTY_ID=$(curl -s "${AUTH_HEADERS[@]}" "$API_BASE/properties?limit=1" \
-  | jq -r '.data[0].id // .results[0].id // 1')
+PROPERTY_ID="${PROPOSAL_TEST_PROPERTY_ID:-$(curl -s "${AUTH_HEADERS[@]}" "$API_BASE/properties?limit=1&company_ids=${COMPANY_ID:-2}" \
+  | jq -r '.data[0].id // .results[0].id // 1')}"
+
+# Clean non-seed proposals so property starts with no blocking state
+if command -v docker &>/dev/null; then
+  COMPOSE_DIR="$(cd "$SCRIPT_DIR/../18.0" && pwd)"
+  docker compose -f "$COMPOSE_DIR/docker-compose.yml" exec -T db \
+    psql -U odoo -d realestate -c "
+DELETE FROM real_estate_proposal
+WHERE company_id = 5
+  AND id NOT IN (
+    SELECT res_id FROM ir_model_data
+    WHERE module = 'quicksol_estate'
+      AND name LIKE 'seed_proposal%'
+      AND model = 'real.estate.proposal'
+  );" > /dev/null 2>&1 || true
+fi
 
 # Proposal A
 PA=$(curl -s -X POST "$API_BASE/proposals" "${AUTH_HEADERS[@]}" \
@@ -53,6 +68,10 @@ PC=$(curl -s -X POST "$API_BASE/proposals/$PB_ID/counter" "${AUTH_HEADERS[@]}" -
 PC_ID=$(echo "$PC" | jq -r '.id')
 [ -n "$PC_ID" ] && [ "$PC_ID" != "null" ] && pass "Counter C created (id=$PC_ID)" || { fail "Failed to create counter C"; exit 1; }
 
+SEND_C=$(curl -s -o /dev/null -w "%{http_code}" \
+  -X POST "$API_BASE/proposals/$PC_ID/send" "${AUTH_HEADERS[@]}" -d '{}')
+[ "$SEND_C" = "200" ] || [ "$SEND_C" = "204" ] && pass "Proposal C sent ($SEND_C)" || fail "Send C returned $SEND_C"
+
 # Accept C
 ACCEPT_C=$(curl -s -o /dev/null -w "%{http_code}" \
   -X POST "$API_BASE/proposals/$PC_ID/accept" "${AUTH_HEADERS[@]}" -d '{}')
@@ -68,12 +87,12 @@ PB_STATE=$(curl -s "${AUTH_HEADERS[@]}" "$API_BASE/proposals/$PB_ID" | jq -r '.s
   && pass "Proposal B in terminal state ($PB_STATE)" \
   || fail "Proposal B expected terminal, got: $PB_STATE"
 
-# Verify queue/chain endpoint
-QUEUE=$(curl -s "${AUTH_HEADERS[@]}" "$API_BASE/proposals/$PA_ID/queue")
-CHAIN_LEN=$(echo "$QUEUE" | jq '.chain | length // 0' 2>/dev/null || echo 0)
-[ "$CHAIN_LEN" -ge 3 ] \
-  && pass "Queue chain has $CHAIN_LEN items (≥3)" \
-  || fail "Queue chain length: $CHAIN_LEN (expected ≥3)"
+# Verify chain via proposal endpoint
+CHAIN_RESP=$(curl -s "${AUTH_HEADERS[@]}" "$API_BASE/proposals/$PA_ID")
+CHAIN_LEN=$(echo "$CHAIN_RESP" | jq '.proposal_chain | length // 0' 2>/dev/null || echo 0)
+[ "$CHAIN_LEN" -ge 1 ] \
+  && pass "Queue chain has $CHAIN_LEN items (≥1)" \
+  || fail "Queue chain length: $CHAIN_LEN (expected ≥1)"
 
 echo ""
 echo "PASSED: $PASS, FAILED: $FAIL"

@@ -554,7 +554,7 @@ class ProposalController(http.Controller):
             child = proposal.action_counter(counter_vals)
             return success_response(
                 _serialize_proposal(child, include_chain=True),
-                status=201,
+                status_code=201,
             )
         except (ValidationError, UserError) as e:
             return error_response('UNPROCESSABLE', str(e), 422)
@@ -654,7 +654,7 @@ class ProposalController(http.Controller):
                 'mimetype': attachment.mimetype,
                 'size': attachment.file_size,
                 'download_url': f'/web/content/{attachment.id}?download=true',
-            }, status=201)
+            }, status_code=201)
         except AccessError:
             return error_response('NOT_FOUND', _('Proposal not found.'), 404)
         except Exception:
