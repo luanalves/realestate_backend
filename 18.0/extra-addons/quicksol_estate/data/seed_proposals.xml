@@ -151,5 +151,128 @@
         <field name="description">&lt;p&gt;Proposta de locação aceita. Contrato em elaboração.&lt;/p&gt;</field>
     </record>
 
+    <!-- ================================================================ -->
+    <!-- IMOBILIÁRIA SEED — Propriedades, Assignments e Proposals         -->
+    <!-- Para que owner@seed.com.br tenha jornada completa                -->
+    <!-- ================================================================ -->
+
+    <!-- Properties -->
+    <record id="seed_property_1" model="real.estate.property">
+        <field name="name">Apartamento Seed - Bairro Nobre</field>
+        <field name="property_type_id" ref="property_type_apartment"/>
+        <field name="company_id" ref="company_seed_imobiliaria"/>
+        <field name="state_id" ref="base.state_br_sp"/>
+        <field name="location_type_id" ref="location_type_urban"/>
+        <field name="city">São Paulo</field>
+        <field name="zip_code">01310-100</field>
+        <field name="street">Av. Paulista</field>
+        <field name="street_number">1000</field>
+        <field name="area">85.0</field>
+        <field name="status">available</field>
+        <field name="description">Apartamento seed para testes de jornada (Imobiliária Seed).</field>
+    </record>
+
+    <record id="seed_property_2" model="real.estate.property">
+        <field name="name">Casa Seed - Condomínio Fechado</field>
+        <field name="property_type_id" ref="property_type_house"/>
+        <field name="company_id" ref="company_seed_imobiliaria"/>
+        <field name="state_id" ref="base.state_br_sp"/>
+        <field name="location_type_id" ref="location_type_urban"/>
+        <field name="city">Campinas</field>
+        <field name="zip_code">13010-050</field>
+        <field name="street">Rua Barão de Jaguara</field>
+        <field name="street_number">500</field>
+        <field name="area">200.0</field>
+        <field name="status">available</field>
+        <field name="description">Casa seed para testes de jornada (Imobiliária Seed).</field>
+    </record>
+
+    <record id="seed_property_3" model="real.estate.property">
+        <field name="name">Sala Comercial Seed - Centro</field>
+        <field name="property_type_id" ref="property_type_commercial"/>
+        <field name="company_id" ref="company_seed_imobiliaria"/>
+        <field name="state_id" ref="base.state_br_sp"/>
+        <field name="location_type_id" ref="location_type_urban"/>
+        <field name="city">São Paulo</field>
+        <field name="zip_code">01310-200</field>
+        <field name="street">Rua da Consolação</field>
+        <field name="street_number">200</field>
+        <field name="area">60.0</field>
+        <field name="status">available</field>
+        <field name="description">Sala comercial seed para testes de jornada (Imobiliária Seed).</field>
+    </record>
+
+    <!-- Agent ↔ Property Assignments (Seed Agent → all 3 seed properties) -->
+    <record id="assignment_seed_agent_prop1" model="real.estate.agent.property.assignment">
+        <field name="agent_id" ref="agent_seed"/>
+        <field name="property_id" ref="seed_property_1"/>
+        <field name="company_id" ref="company_seed_imobiliaria"/>
+        <field name="responsibility_type">primary</field>
+        <field name="active" eval="True"/>
+    </record>
+
+    <record id="assignment_seed_agent_prop2" model="real.estate.agent.property.assignment">
+        <field name="agent_id" ref="agent_seed"/>
+        <field name="property_id" ref="seed_property_2"/>
+        <field name="company_id" ref="company_seed_imobiliaria"/>
+        <field name="responsibility_type">primary</field>
+        <field name="active" eval="True"/>
+    </record>
+
+    <record id="assignment_seed_agent_prop3" model="real.estate.agent.property.assignment">
+        <field name="agent_id" ref="agent_seed"/>
+        <field name="property_id" ref="seed_property_3"/>
+        <field name="company_id" ref="company_seed_imobiliaria"/>
+        <field name="responsibility_type">primary</field>
+        <field name="active" eval="True"/>
+    </record>
+
+    <!-- Proposals — property 1: sent + queued -->
+    <record id="seed_proposal_sent_1" model="real.estate.proposal">
+        <field name="property_id" ref="seed_property_1"/>
+        <field name="partner_id" ref="user_seed_tenant_res_partner"/>
+        <field name="agent_id" ref="agent_seed"/>
+        <field name="proposal_type">sale</field>
+        <field name="proposal_value">620000.00</field>
+        <field name="valid_until" eval="(datetime.now() + timedelta(days=15)).strftime('%Y-%m-%d')"/>
+        <field name="company_id" ref="company_seed_imobiliaria"/>
+        <field name="description">&lt;p&gt;Proposta de compra do apartamento seed.&lt;/p&gt;</field>
+    </record>
+
+    <record id="seed_proposal_queued_1" model="real.estate.proposal">
+        <field name="property_id" ref="seed_property_1"/>
+        <field name="partner_id" ref="user_seed_propowner_res_partner"/>
+        <field name="agent_id" ref="agent_seed"/>
+        <field name="proposal_type">sale</field>
+        <field name="proposal_value">600000.00</field>
+        <field name="valid_until" eval="(datetime.now() + timedelta(days=20)).strftime('%Y-%m-%d')"/>
+        <field name="company_id" ref="company_seed_imobiliaria"/>
+        <field name="description">&lt;p&gt;Segunda proposta — aguarda na fila.&lt;/p&gt;</field>
+    </record>
+
+    <!-- Proposals — property 2: draft + accepted -->
+    <record id="seed_proposal_draft_1" model="real.estate.proposal">
+        <field name="property_id" ref="seed_property_2"/>
+        <field name="partner_id" ref="user_seed_tenant_res_partner"/>
+        <field name="agent_id" ref="agent_seed"/>
+        <field name="proposal_type">sale</field>
+        <field name="proposal_value">890000.00</field>
+        <field name="valid_until" eval="(datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d')"/>
+        <field name="company_id" ref="company_seed_imobiliaria"/>
+        <field name="description">&lt;p&gt;Proposta em rascunho para a casa seed.&lt;/p&gt;</field>
+    </record>
+
+    <!-- Proposals — property 3: rejected -->
+    <record id="seed_proposal_rejected_1" model="real.estate.proposal">
+        <field name="property_id" ref="seed_property_3"/>
+        <field name="partner_id" ref="user_seed_propowner_res_partner"/>
+        <field name="agent_id" ref="agent_seed"/>
+        <field name="proposal_type">lease</field>
+        <field name="proposal_value">4500.00</field>
+        <field name="valid_until" eval="(datetime.now() + timedelta(days=10)).strftime('%Y-%m-%d')"/>
+        <field name="company_id" ref="company_seed_imobiliaria"/>
+        <field name="description">&lt;p&gt;Proposta de locação da sala comercial seed.&lt;/p&gt;</field>
+    </record>
+
     </data>
 </odoo>
