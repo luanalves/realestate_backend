@@ -23,11 +23,12 @@ SESSION_RESPONSE=$(curl -s -X POST "$API_BASE/users/login" \
   -H "Authorization: Bearer $BEARER_TOKEN" \
   -d "{\"login\": \"${TEST_USER_OWNER:-owner@example.com}\", \"password\": \"${TEST_PASSWORD_OWNER:-SecurePass123!}\"}")
 SESSION_ID=$(echo "$SESSION_RESPONSE" | jq -r '.session_id // empty')
-AUTH_HEADERS=(-H "Authorization: Bearer $BEARER_TOKEN" -H "X-Session-Id: $SESSION_ID" -H "Content-Type: application/json")
+COMPANY_ID=$(echo "$SESSION_RESPONSE" | jq -r '.user.default_company_id // empty')
+AUTH_HEADERS=(-H "Authorization: Bearer $BEARER_TOKEN" -H "X-Openerp-Session-Id: $SESSION_ID" -H "Content-Type: application/json" -H "X-Company-ID: ${COMPANY_ID:-2}")
 
 PROPERTY_ID=$(curl -s "${AUTH_HEADERS[@]}" "$API_BASE/properties?limit=1" \
   | jq -r '.data[0].id // .results[0].id // 1')
-BODY="{\"property_id\": $PROPERTY_ID, \"client_document\": \"52998224725\", \"price\": 100000}"
+BODY="{\"property_id\": $PROPERTY_ID, \"client_name\": \"Cliente Teste\", \"client_document\": \"52998224725\", \"agent_id\": ${TEST_AGENT_ID:-8}, \"proposal_type\": \"sale\", \"proposal_value\": 100000}"
 
 echo "Creating 3 proposals sequentially for property $PROPERTY_ID..."
 P1=$(curl -s -X POST "$API_BASE/proposals" "${AUTH_HEADERS[@]}" -d "$BODY")
@@ -45,7 +46,7 @@ P3_ID=$(echo "$P3" | jq -r '.id');    P3_POS=$(echo "$P3" | jq -r '.queue_positi
 echo "Rejecting proposal 1 (draft) → expect proposal 2 to be promoted..."
 REJECT_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
   -X POST "$API_BASE/proposals/$P1_ID/reject" \
-  "${AUTH_HEADERS[@]}" -d '{"reason": "Test FIFO reject"}')
+  "${AUTH_HEADERS[@]}" -d '{"rejection_reason": "Test FIFO reject"}')
 [ "$REJECT_CODE" = "200" ] || [ "$REJECT_CODE" = "204" ] \
   && pass "Reject proposal 1 ($REJECT_CODE)" \
   || fail "Reject returned $REJECT_CODE"

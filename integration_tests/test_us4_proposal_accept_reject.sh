@@ -23,14 +23,15 @@ SESSION_RESPONSE=$(curl -s -X POST "$API_BASE/users/login" \
   -H "Authorization: Bearer $BEARER_TOKEN" \
   -d "{\"login\": \"${TEST_USER_OWNER:-owner@example.com}\", \"password\": \"${TEST_PASSWORD_OWNER:-SecurePass123!}\"}")
 SESSION_ID=$(echo "$SESSION_RESPONSE" | jq -r '.session_id // empty')
-AUTH_HEADERS=(-H "Authorization: Bearer $BEARER_TOKEN" -H "X-Session-Id: $SESSION_ID" -H "Content-Type: application/json")
+COMPANY_ID=$(echo "$SESSION_RESPONSE" | jq -r '.user.default_company_id // empty')
+AUTH_HEADERS=(-H "Authorization: Bearer $BEARER_TOKEN" -H "X-Openerp-Session-Id: $SESSION_ID" -H "Content-Type: application/json" -H "X-Company-ID: ${COMPANY_ID:-2}")
 
 PROPERTY_ID=$(curl -s "${AUTH_HEADERS[@]}" "$API_BASE/properties?limit=1" \
   | jq -r '.data[0].id // .results[0].id // 1')
 
 echo "--- Scenario: Accept ---"
 P1=$(curl -s -X POST "$API_BASE/proposals" "${AUTH_HEADERS[@]}" \
-  -d "{\"property_id\": $PROPERTY_ID, \"client_document\": \"52998224725\", \"price\": 200000}")
+  -d "{\"property_id\": $PROPERTY_ID, \"client_name\": \"Cliente Teste\", \"client_document\": \"52998224725\", \"agent_id\": ${TEST_AGENT_ID:-8}, \"proposal_type\": \"sale\", \"proposal_value\": 200000}")
 P1_ID=$(echo "$P1" | jq -r '.id')
 
 curl -s -o /dev/null -X POST "$API_BASE/proposals/$P1_ID/send" "${AUTH_HEADERS[@]}" -d '{}'
@@ -55,14 +56,14 @@ DOUBLE_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
 
 echo "--- Scenario: Reject with reason ---"
 P2=$(curl -s -X POST "$API_BASE/proposals" "${AUTH_HEADERS[@]}" \
-  -d "{\"property_id\": $PROPERTY_ID, \"client_document\": \"52998224725\", \"price\": 150000}")
+  -d "{\"property_id\": $PROPERTY_ID, \"client_name\": \"Cliente Teste\", \"client_document\": \"52998224725\", \"agent_id\": ${TEST_AGENT_ID:-8}, \"proposal_type\": \"sale\", \"proposal_value\": 150000}")
 P2_ID=$(echo "$P2" | jq -r '.id')
 
 curl -s -o /dev/null -X POST "$API_BASE/proposals/$P2_ID/send" "${AUTH_HEADERS[@]}" -d '{}'
 
 REJECT_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
   -X POST "$API_BASE/proposals/$P2_ID/reject" \
-  "${AUTH_HEADERS[@]}" -d '{"reason": "Price too low"}')
+  "${AUTH_HEADERS[@]}" -d '{"rejection_reason": "Price too low"}')
 [ "$REJECT_CODE" = "200" ] || [ "$REJECT_CODE" = "204" ] \
   && pass "Reject returns $REJECT_CODE" \
   || fail "Reject returned $REJECT_CODE"

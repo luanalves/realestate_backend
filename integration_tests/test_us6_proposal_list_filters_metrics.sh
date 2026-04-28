@@ -23,14 +23,15 @@ SESSION_RESPONSE=$(curl -s -X POST "$API_BASE/users/login" \
   -H "Authorization: Bearer $BEARER_TOKEN" \
   -d "{\"login\": \"${TEST_USER_OWNER:-owner@example.com}\", \"password\": \"${TEST_PASSWORD_OWNER:-SecurePass123!}\"}")
 SESSION_ID=$(echo "$SESSION_RESPONSE" | jq -r '.session_id // empty')
-AUTH_HEADERS=(-H "Authorization: Bearer $BEARER_TOKEN" -H "X-Session-Id: $SESSION_ID" -H "Content-Type: application/json")
+COMPANY_ID=$(echo "$SESSION_RESPONSE" | jq -r '.user.default_company_id // empty')
+AUTH_HEADERS=(-H "Authorization: Bearer $BEARER_TOKEN" -H "X-Openerp-Session-Id: $SESSION_ID" -H "Content-Type: application/json" -H "X-Company-ID: ${COMPANY_ID:-2}")
 
 PROPERTY_ID=$(curl -s "${AUTH_HEADERS[@]}" "$API_BASE/properties?limit=1" \
   | jq -r '.data[0].id // .results[0].id // 1')
 
 # Seed at least one draft proposal
 curl -s -o /dev/null -X POST "$API_BASE/proposals" "${AUTH_HEADERS[@]}" \
-  -d "{\"property_id\": $PROPERTY_ID, \"client_document\": \"52998224725\", \"price\": 100000}"
+  -d "{\"property_id\": $PROPERTY_ID, \"client_name\": \"Cliente Teste\", \"client_document\": \"52998224725\", \"agent_id\": ${TEST_AGENT_ID:-8}, \"proposal_type\": \"sale\", \"proposal_value\": 100000}"
 
 echo "--- Filter: ?state=draft ---"
 DRAFT_RESP=$(curl -s "${AUTH_HEADERS[@]}" "$API_BASE/proposals?state=draft")

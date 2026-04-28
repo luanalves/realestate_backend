@@ -23,8 +23,9 @@ SESSION_RESPONSE=$(curl -s -X POST "$API_BASE/users/login" \
   -H "Authorization: Bearer $BEARER_TOKEN" \
   -d "{\"login\": \"${TEST_USER_OWNER:-owner@example.com}\", \"password\": \"${TEST_PASSWORD_OWNER:-SecurePass123!}\"}")
 SESSION_ID=$(echo "$SESSION_RESPONSE" | jq -r '.session_id // empty')
+COMPANY_ID=$(echo "$SESSION_RESPONSE" | jq -r '.user.default_company_id // empty')
 # Note: no Content-Type header here; it is set per-request below
-AUTH_ONLY=(-H "Authorization: Bearer $BEARER_TOKEN" -H "X-Session-Id: $SESSION_ID")
+AUTH_ONLY=(-H "Authorization: Bearer $BEARER_TOKEN" -H "X-Openerp-Session-Id: $SESSION_ID")
 AUTH_JSON=("${AUTH_ONLY[@]}" -H "Content-Type: application/json")
 
 PROPERTY_ID=$(curl -s "${AUTH_JSON[@]}" "$API_BASE/properties?limit=1" \
@@ -32,7 +33,7 @@ PROPERTY_ID=$(curl -s "${AUTH_JSON[@]}" "$API_BASE/properties?limit=1" \
 
 echo "Creating proposal..."
 P1=$(curl -s -X POST "$API_BASE/proposals" "${AUTH_JSON[@]}" \
-  -d "{\"property_id\": $PROPERTY_ID, \"client_document\": \"52998224725\", \"price\": 100000}")
+  -d "{\"property_id\": $PROPERTY_ID, \"client_name\": \"Cliente Teste\", \"client_document\": \"52998224725\", \"agent_id\": ${TEST_AGENT_ID:-8}, \"proposal_type\": \"sale\", \"proposal_value\": 100000}")
 P1_ID=$(echo "$P1" | jq -r '.id')
 [ -n "$P1_ID" ] && [ "$P1_ID" != "null" ] \
   && pass "Proposal created (id=$P1_ID)" \
