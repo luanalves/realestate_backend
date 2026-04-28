@@ -800,11 +800,11 @@ class RealEstateProposal(models.Model):
     def _get_chain_root(self):
         """Walk up parent links to find the root proposal."""
         self.ensure_one()
-        rec = self
+        rec = self.with_context(active_test=False)
         visited = set()
         while rec.parent_proposal_id and rec.id not in visited:
             visited.add(rec.id)
-            rec = rec.parent_proposal_id
+            rec = rec.parent_proposal_id.with_context(active_test=False)
         return rec
 
     def get_proposal_chain(self):
@@ -819,7 +819,7 @@ class RealEstateProposal(models.Model):
                 continue
             visited.add(current.id)
             chain |= current
-            queue.extend(current.child_proposal_ids)
+            queue.extend(current.with_context(active_test=False).child_proposal_ids)
         return chain.sorted('create_date')
 
     # ================================================================== #

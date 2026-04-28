@@ -21,7 +21,7 @@ export BASE_URL="${BASE_URL:-http://localhost:8069}"
 export OAUTH_CLIENT_ID="test-client-id"
 export OAUTH_CLIENT_SECRET="test-client-secret-12345"
 export TEST_USER_OWNER="${TEST_USER_OWNER:-owner@seed.com.br}"
-export TEST_PASSWORD_OWNER="${TEST_PASSWORD_OWNER:-admin}"
+export TEST_PASSWORD_OWNER="${TEST_PASSWORD_OWNER:-seed123}"
 export TEST_AGENT_ID="${TEST_AGENT_ID:-8}"
 # Use property 117 (Sala Comercial Seed) which starts with only a rejected
 # proposal — ensures new proposals begin in 'draft' state (not 'queued').

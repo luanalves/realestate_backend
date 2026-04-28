@@ -90,9 +90,9 @@ PB_STATE=$(curl -s "${AUTH_HEADERS[@]}" "$API_BASE/proposals/$PB_ID" | jq -r '.s
 # Verify chain via proposal endpoint
 CHAIN_RESP=$(curl -s "${AUTH_HEADERS[@]}" "$API_BASE/proposals/$PA_ID")
 CHAIN_LEN=$(echo "$CHAIN_RESP" | jq '.proposal_chain | length // 0' 2>/dev/null || echo 0)
-[ "$CHAIN_LEN" -ge 1 ] \
-  && pass "Queue chain has $CHAIN_LEN items (≥1)" \
-  || fail "Queue chain length: $CHAIN_LEN (expected ≥1)"
+[ "$CHAIN_LEN" -ge 3 ] \
+  && pass "Queue chain has $CHAIN_LEN items (≥3)" \
+  || fail "Queue chain length: $CHAIN_LEN (expected ≥3)"
 
 echo ""
 echo "PASSED: $PASS, FAILED: $FAIL"
