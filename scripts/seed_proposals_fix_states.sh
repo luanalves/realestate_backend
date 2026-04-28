@@ -1,47 +1,17 @@
 #!/usr/bin/env bash
-# reset_proposals_seed.sh
-# Resets proposal seed data to cover all 8 FSM states.
-# Safe to run multiple times.
+# seed_proposals_fix_states.sh
+# Phase 2: corrige os estados FSM das proposals de seed via SQL direto.
+# Deve ser executado APÓS seed_proposals_create.sh.
 #
-# Usage:
-#   ./scripts/reset_proposals_seed.sh
-#
-# Must be run from the repo root.
+# Uso (a partir da raiz do repositório):
+#   ./scripts/seed_proposals_fix_states.sh
 
 set -euo pipefail
 
 COMPOSE="docker compose -f 18.0/docker-compose.yml"
 DB_CMD="$COMPOSE exec -T db psql -U odoo -d realestate"
 
-echo "=== Phase 0: Clean existing seed proposals ==="
-$DB_CMD <<'SQL'
-DELETE FROM real_estate_proposal;
-DELETE FROM real_estate_agent_property_assignment
-  WHERE id IN (
-    SELECT res_id FROM ir_model_data
-    WHERE module = 'quicksol_estate'
-      AND name LIKE 'assignment_%'
-  );
-DELETE FROM ir_model_data
-  WHERE module = 'quicksol_estate'
-    AND name LIKE 'proposal_%';
-DELETE FROM ir_model_data
-  WHERE module = 'quicksol_estate'
-    AND name LIKE 'assignment_%';
-SQL
-echo "   Cleaned."
-
-echo ""
-echo "=== Phase 1: Upgrade module (creates proposals via FSM) ==="
-docker exec odoo18 odoo \
-  --config=/etc/odoo/odoo.conf \
-  -u quicksol_estate \
-  --stop-after-init \
-  --log-level=warn 2>&1 | grep -v opentelemetry | grep -v "View error context" || true
-echo "   Upgrade done."
-
-echo ""
-echo "=== Phase 2: Fix FSM states via SQL ==="
+echo "==> Ajustando estados FSM das proposals de seed..."
 $DB_CMD <<'SQL'
 UPDATE real_estate_proposal SET
     state = 'sent',
@@ -79,9 +49,9 @@ UPDATE real_estate_proposal SET
     sent_date = NOW() - INTERVAL '20 days'
 WHERE id = (SELECT res_id FROM ir_model_data
             WHERE module = 'quicksol_estate' AND name = 'proposal_expired_1');
-
-SELECT proposal_code, state, proposal_value FROM real_estate_proposal ORDER BY id;
 SQL
 
+echo "   Estados ajustados."
 echo ""
-echo "=== Done. Proposals reset with all 8 FSM states. ==="
+echo "==> Estado final das proposals:"
+$DB_CMD -c "SELECT proposal_code, state, proposal_value FROM real_estate_proposal ORDER BY id;"
