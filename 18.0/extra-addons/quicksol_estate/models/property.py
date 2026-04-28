@@ -255,15 +255,28 @@ class Property(models.Model):
     @api.depends('proposal_ids.state', 'proposal_ids.active', 'proposal_ids.parent_proposal_id')
     def _compute_active_proposal(self):
         Proposal = self.env['real.estate.proposal']
-        for prop in self:
-            active = Proposal.search([
-                ('property_id', '=', prop.id),
-                ('state', 'in', ('draft', 'sent', 'accepted')),
-                ('active', '=', True),
-                ('parent_proposal_id', '=', False),
-            ], order='create_date asc', limit=1)
-            prop.active_proposal_id = active or False
 
+        for prop in self:
+            prop.active_proposal_id = False
+
+        if not self.ids:
+            return
+
+        proposals = Proposal.search([
+            ('property_id', 'in', self.ids),
+            ('state', 'in', ('draft', 'sent', 'accepted')),
+            ('active', '=', True),
+            ('parent_proposal_id', '=', False),
+        ], order='property_id asc, create_date asc, id asc')
+
+        first_active_by_property = {}
+        for proposal in proposals:
+            property_id = proposal.property_id.id
+            if property_id not in first_active_by_property:
+                first_active_by_property[property_id] = proposal
+
+        for prop in self:
+            prop.active_proposal_id = first_active_by_property.get(prop.id, False)
     def write(self, vals):
         """When a property is archived, cancel all non-terminal proposals (FR-047)."""
         result = super().write(vals)
