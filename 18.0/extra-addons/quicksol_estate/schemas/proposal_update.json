@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ProposalUpdate",
+  "type": "object",
+  "additionalProperties": false,
+  "minProperties": 1,
+  "properties": {
+    "proposal_value":  { "type": "number", "exclusiveMinimum": 0 },
+    "description":     { "type": ["string", "null"], "maxLength": 4000 },
+    "valid_until":     { "type": ["string", "null"], "format": "date" },
+    "agent_id":        { "type": "integer", "minimum": 1 }
+  }
+}

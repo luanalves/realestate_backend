@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ============================================================ -->
+    <!-- PROPOSAL SEED — Phase 2: Fix FSM states                     -->
+    <!-- Runs after seed_proposals.xml (declared after it in         -->
+    <!-- __manifest__.py data list).                                 -->
+    <!--                                                              -->
+    <!-- Uses noupdate="0" so re-executes on every upgrade,          -->
+    <!-- garantindo que os estados corretos sejam restaurados.        -->
+    <!-- ============================================================ -->
+    <data noupdate="0">
+        <function model="real.estate.proposal" name="_seed_fix_states"/>
+    </data>
+</odoo>

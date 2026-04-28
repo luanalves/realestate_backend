@@ -150,3 +150,8 @@ access_profile_type_user,User: Profile Types (Read),model_thedevkitchen_profile_
 access_profile_type_owner,Owner: Profile Types (Read),model_thedevkitchen_profile_type,group_real_estate_owner,1,0,0,0
 access_profile_type_system_admin,System Admin: Profile Types,model_thedevkitchen_profile_type,base.group_system,1,1,1,1
 access_profile_type_portal,Portal: Profile Types (Read),model_thedevkitchen_profile_type,group_real_estate_portal_user,1,0,0,0
+access_owner_proposal,Owner: Proposals,model_real_estate_proposal,group_real_estate_owner,1,1,1,1
+access_manager_proposal,Manager: Proposals,model_real_estate_proposal,group_real_estate_manager,1,1,1,1
+access_agent_proposal,Agent: Proposals,model_real_estate_proposal,group_real_estate_agent,1,1,1,0
+access_receptionist_proposal,Receptionist: Proposals (Read),model_real_estate_proposal,group_real_estate_receptionist,1,0,0,0
+access_system_admin_proposal,System Admin: Proposals,model_real_estate_proposal,base.group_system,1,1,1,1

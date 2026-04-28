@@ -90,36 +90,48 @@ Ask **3-5 targeted clarification questions** before generating the specification
 ```markdown
 ## Feature Scope
 
-1. **Primary Goal**: What is the main objective of this feature?
-2. **User Roles**: Which roles will use this feature?
+1. **Solution Type**: What is the target interface for this feature?
+   - [ ] API only (REST endpoints, headless/mobile consumers)
+   - [ ] Odoo UI only (forms, lists, menus, views inside Odoo)
+   - [ ] Both (API + Odoo UI)
+
+   > ⚠️ This answer drives the entire specification:
+   > - **API only** → focuses on controllers, OpenAPI contracts, Postman collection (ADR-005, ADR-016), no Cypress tests
+   > - **Odoo UI only** → focuses on views, menus, actions, Cypress E2E tests (ADR-001, ADR-003), no REST endpoints
+   > - **Both** → full spec with dual-interface sections, all test types required
+
+2. **Primary Goal**: What is the main objective of this feature?
+3. **User Roles**: Which roles will use this feature?
    - [ ] Owner
    - [ ] Manager  
    - [ ] Agent
    - [ ] Receptionist
    - [ ] Prospector
-3. **User Stories**: What are the key user stories? (describe 2-3 primary flows)
+4. **User Stories**: What are the key user stories? (describe 2-3 primary flows)
 ```
 
 #### 2. Data Model Questions
 ```markdown
 ## Data Model
 
-4. **Entities**: What entities are involved?
+5. **Entities**: What entities are involved?
    - Entity name and purpose
    - Key fields required
    - Relationships to existing entities (properties, agents, leads, etc.)
 
-5. **Constraints**: What validations are needed?
+6. **Constraints**: What validations are needed?
    - Required fields
    - Unique constraints
    - Business rules (e.g., price > 0)
 ```
 
 #### 3. API & Security Questions
+> Skip this section if Solution Type (question 1) is **Odoo UI only**.
+
 ```markdown
 ## API & Security
 
-6. **Endpoints**: What API operations are needed?
+7. **Endpoints**: What API operations are needed?
    - [ ] Create (POST)
    - [ ] Read single (GET /id)
    - [ ] Read list (GET)
@@ -127,7 +139,7 @@ Ask **3-5 targeted clarification questions** before generating the specification
    - [ ] Delete (DELETE)
    - [ ] Custom operations
 
-7. **Authorization**: Who can perform each operation?
+8. **Authorization**: Who can perform each operation?
    | Operation | Allowed Roles |
    |-----------|---------------|
    | Create    | ?             |
@@ -140,15 +152,27 @@ Ask **3-5 targeted clarification questions** before generating the specification
 ```markdown
 ## Testing Requirements
 
-8. **Critical Flows**: What user flows must be tested end-to-end?
-9. **Edge Cases**: What edge cases should be validated?
-10. **Multi-tenancy**: Should data be isolated by company? (default: YES per ADR-008)11. **UI Components**: Does this feature include new views/menus? (If YES, Cypress E2E required)
-12. **Frontend Validation**: Should conditional fields be tested in the UI?```
+9. **Critical Flows**: What user flows must be tested end-to-end?
+10. **Edge Cases**: What edge cases should be validated?
+11. **Multi-tenancy**: Should data be isolated by company? (default: YES per ADR-008)
+12. **UI Components**: Does this feature include new views/menus? (If YES, Cypress E2E required — only applies if Solution Type includes Odoo UI)
+13. **Frontend Validation**: Should conditional fields be tested in the UI? (only applies if Solution Type includes Odoo UI)
+14. **Seeds**: What seed data is required to exercise each user journey in tests?
+    - Seeds are MANDATORY regardless of Solution Type (API only, Odoo UI only, or Both)
+    - Describe the minimum dataset needed: users per role, companies, entities with relationships
+    - Seeds must cover all roles involved in the user stories
+```
 
 **IMPORTANT**: 
 - Wait for user responses before proceeding to Phase 2
 - Don't assume answers - clarify explicitly
 - Reference relevant ADRs when asking about standards
+- **Question 1 (Solution Type) is mandatory** — the answer gates which sections of the specification are generated:
+  - `API only` → generate API contract sections, skip Odoo view/menu sections and Cypress tests
+  - `Odoo UI only` → generate view/menu/action sections and Cypress tests, skip REST endpoint sections and Postman collection
+  - `Both` → generate all sections (full dual-interface specification)
+- **Seeds (question 14) are MANDATORY for all solution types** — every spec must include a seed data section to enable user journey testing
+- **Odoo UI menus must NEVER have a `groups` attribute** — menus are visible to the Odoo administrator user, who is not linked to any group; access control is handled at model/view level via record rules and field-level security, never at the menu level
 
 ### Phase 2: Specification Generation
 
@@ -298,6 +322,43 @@ def _check_field_name(self):
 
 [Repeat for GET, PUT, DELETE endpoints...]
 
+### Seed Data (MANDATORY — all solution types)
+
+Seeds are required to enable user journey testing regardless of Solution Type.
+
+**Seed: Companies**
+```python
+# Minimum: 2 companies for multi-tenancy isolation tests
+company_a = env['res.company'].create({'name': 'Empresa A (Seed)'})
+company_b = env['res.company'].create({'name': 'Empresa B (Seed)'})
+```
+
+**Seed: Users per Role** (one per role involved in user stories)
+```python
+# Example — adjust roles per feature
+users = {
+    'owner':       {'login': 'seed_owner@test.com',       'company': company_a},
+    'manager':     {'login': 'seed_manager@test.com',     'company': company_a},
+    'agent':       {'login': 'seed_agent@test.com',       'company': company_a},
+    'owner_b':     {'login': 'seed_owner_b@test.com',     'company': company_b},  # isolation
+}
+```
+
+**Seed: Domain Entities**
+```python
+# Minimum dataset to exercise all user journeys
+# [Entity] = env['thedevkitchen.estate.[entity]'].create({...})
+```
+
+> ⚠️ **Rules**:
+> - Seed IDs/logins must use a `seed_` prefix to avoid conflicts with production data
+> - Seed data must be idempotent (safe to run multiple times)
+> - Each user journey in the spec must have at least one seed record to start from
+> - For API tests: seeds provide the initial state before each test request
+> - For Odoo UI tests: seeds provide records visible in lists/forms during Cypress runs
+
+---
+
 ### Non-Functional Requirements
 
 **NFR1: Security** (per ADR-008, ADR-011, ADR-017, ADR-019)
@@ -339,6 +400,7 @@ def _check_field_name(self):
 |--------|-------------|------------|
 | ADR-001 | Flat Odoo structure (no nested feature dirs) | Module structure |
 | ADR-001 | Odoo 18.0 view standards (no `attrs`, use `<list>`) | All views |
+| ADR-001 | **Menus must NOT be linked to any group** — visible to admin user only (no `groups` attribute on `<menuitem>`) | All menus |
 | ADR-003 | 100% test coverage on validations | All constraints |
 | ADR-003 | E2E tests for all UI components | Views/Menus |
 | ADR-004 | `thedevkitchen_` prefix | Model names, tables |
@@ -371,12 +433,21 @@ def _check_field_name(self):
 
 ### Frontend (if feature includes views)
 - [ ] All views follow Odoo 18.0 standards (KB-10)
+- [ ] **No `groups` attribute on any `<menuitem>`** — menus visible to admin user only
 - [ ] Cypress E2E tests for all menus/views
 - [ ] Manual browser test passed (no "Oops!" errors)
 - [ ] Zero JavaScript console errors
 - [ ] Conditional fields tested and working
 - [ ] Column visibility uses `optional` attribute
 - [ ] Multi-browser compatibility verified (Chrome, Firefox)
+
+### Seeds
+- [ ] Seed data file created with `seed_` prefix on all IDs/logins
+- [ ] Seed covers all user roles involved in user stories
+- [ ] Seed covers minimum entity dataset for all user journeys
+- [ ] Seed is idempotent (safe to run multiple times)
+- [ ] API tests use seed records as initial state
+- [ ] Cypress tests find seed records in lists/forms
 
 ### Documentation
 - [ ] Constitution feedback analyzed and documented

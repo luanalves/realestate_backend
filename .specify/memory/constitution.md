@@ -414,7 +414,23 @@ def _invalidate_user_sessions(self, user):
 - **Testing**: 90+ unit tests (4 files), E2E integration tests (shell scripts)
 - **Location**: `18.0/extra-addons/thedevkitchen_user_onboarding/`
 
-Use Feature 007 for standard CRUD patterns with HATEOAS. Use Feature 009 for security-sensitive flows requiring token-based authentication, anti-enumeration, and session management.
+**Feature 013 - Property Proposals Management** (FSM + Queue + Pessimistic Lock Template):
+- **Data Model**: `real.estate.proposal` model with 8-state FSM (draft → queued → sent → negotiation → {accepted, rejected, expired, cancelled})
+- **Concurrency**: Pessimistic locking (`SELECT FOR UPDATE NOWAIT`) + partial unique index `real_estate_proposal_one_active_per_property` (ADR-027)
+- **FIFO Queue**: Auto-promotion of next queued proposal when active terminates non-accepted; `_promote_next_queued()` with queue_position recalculation
+- **Counter-Proposals**: Linked chain via `parent_proposal_id` preserving full negotiation history; parent moves to `negotiation` state
+- **Lead Integration**: Auto-create/link `real.estate.lead` on first proposal for client with source="proposal" (de-duplication by document)
+- **Async Notifications**: Celery task `proposal.send_email` with 3 retries; failure logged to activity timeline (Outbox pattern)
+- **API**: 12 REST endpoints under `/api/v1/proposals/` (all authenticated with triple decorators @require_jwt + @require_session + @require_company)
+- **Security**: Triple auth on all endpoints, RBAC matrix (Owner/Manager: full CRUD; Agent: own proposals; Receptionist: read-only)
+- **OTel**: `@trace_http_request` on all controller methods; composite DB indexes for performance
+- **Testing**: 9 TransactionCase test files (47 test methods), 8 E2E bash scripts
+- **Postman**: `docs/postman/feature013_property_proposals_v1.0_postman_collection.json`
+- **OpenAPI**: `docs/openapi/proposals.yaml`
+- **Location**: `18.0/extra-addons/quicksol_estate/models/proposal.py`, `controllers/proposal_controller.py`
+- **ADRs**: ADR-027 (pessimistic locking), ADR-011 (security), ADR-016 (Postman), ADR-017 (performance)
+
+Use Feature 007 for standard CRUD patterns with HATEOAS. Use Feature 009 for security-sensitive flows requiring token-based authentication, anti-enumeration, and session management. Use Feature 013 for FSM-driven domain entities with concurrent access control, FIFO queues, and async notifications.
 
 ### Required Tests per Feature
 - **Unit**: Services, helpers, serializers, decorators
@@ -497,4 +513,4 @@ Para criação de testes, **DEVEM ser utilizados** os prompts e agents especiali
 - Constitution provides strategic direction; copilot-instructions provides tactical rules
 - Conflicts resolved in favor of constitution (strategic supersedes tactical)
 
-**Version**: 1.4.0 | **Ratified**: 2026-01-03 | **Last Amended**: 2026-02-24
+**Version**: 1.5.0 | **Ratified**: 2026-01-03 | **Last Amended**: 2026-04-27

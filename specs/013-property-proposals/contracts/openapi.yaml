@@ -1,0 +1,596 @@
+openapi: 3.0.3
+info:
+  title: Property Proposals API
+  description: |
+    REST endpoints for managing property proposals: create, list, update, send,
+    accept, reject, counter, cancel, attachments, and metrics. All authenticated
+    endpoints require the triple decorator `@require_jwt + @require_session +
+    @require_company` (Constitution I, ADR-011). HATEOAS links per ADR-007;
+    schema validation per ADR-018; multi-tenant scoping per ADR-008.
+  version: 1.0.0
+  contact:
+    name: TheDevKitchen
+servers:
+  - url: http://localhost:8069
+    description: Local Odoo (dev)
+  - url: https://api.example.com
+    description: Production
+tags:
+  - name: Proposals
+    description: Property proposal lifecycle
+  - name: Proposals - Transitions
+    description: State transition operations
+  - name: Proposals - Documents
+    description: Attachment management
+  - name: Proposals - Aggregates
+    description: Metrics and queue inspection
+
+components:
+  securitySchemes:
+    jwtBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    sessionCookie:
+      type: apiKey
+      in: header
+      name: X-Openerp-Session-Id
+
+  parameters:
+    proposalId:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+    page:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    pageSize:
+      name: page_size
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+    state:
+      name: state
+      in: query
+      schema:
+        type: string
+        enum: [draft, queued, sent, negotiation, accepted, rejected, expired, cancelled]
+    agentId:
+      name: agent_id
+      in: query
+      schema: { type: integer }
+    propertyId:
+      name: property_id
+      in: query
+      schema: { type: integer }
+    partnerId:
+      name: partner_id
+      in: query
+      schema: { type: integer }
+    search:
+      name: search
+      in: query
+      description: Free-text search on proposal_code, client name, property name.
+      schema: { type: string, maxLength: 100 }
+    dateFrom:
+      name: date_from
+      in: query
+      schema: { type: string, format: date }
+    dateTo:
+      name: date_to
+      in: query
+      schema: { type: string, format: date }
+
+  schemas:
+    Money:
+      type: number
+      format: double
+      minimum: 0.01
+
+    HateoasLink:
+      type: object
+      required: [rel, href, method]
+      properties:
+        rel: { type: string }
+        href: { type: string, format: uri-reference }
+        method:
+          type: string
+          enum: [GET, POST, PUT, DELETE]
+
+    PageMeta:
+      type: object
+      properties:
+        total: { type: integer }
+        page: { type: integer }
+        page_size: { type: integer }
+        pages: { type: integer }
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string, example: 'VALIDATION_ERROR' }
+            message: { type: string }
+            details:
+              type: array
+              items:
+                type: object
+                properties:
+                  field: { type: string }
+                  message: { type: string }
+
+    PropertyRef:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        code: { type: string, nullable: true }
+
+    PartnerRef:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        document: { type: string, description: 'CPF or CNPJ' }
+        email: { type: string, format: email, nullable: true }
+        phone: { type: string, nullable: true }
+
+    AgentRef:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+
+    AttachmentRef:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        mimetype: { type: string }
+        size: { type: integer }
+        download_url: { type: string, format: uri-reference }
+
+    Proposal:
+      type: object
+      required:
+        - id
+        - proposal_code
+        - state
+        - property
+        - client
+        - agent
+        - proposal_type
+        - proposal_value
+        - currency
+      properties:
+        id: { type: integer }
+        proposal_code: { type: string, example: 'PRP001' }
+        state:
+          type: string
+          enum: [draft, queued, sent, negotiation, accepted, rejected, expired, cancelled]
+        proposal_type: { type: string, enum: [sale, lease] }
+        proposal_value: { $ref: '#/components/schemas/Money' }
+        currency: { type: string, example: 'BRL' }
+        property: { $ref: '#/components/schemas/PropertyRef' }
+        client: { $ref: '#/components/schemas/PartnerRef' }
+        agent: { $ref: '#/components/schemas/AgentRef' }
+        lead_id: { type: integer, nullable: true }
+        description: { type: string, nullable: true }
+        valid_until: { type: string, format: date, nullable: true }
+        sent_date: { type: string, format: date-time, nullable: true }
+        accepted_date: { type: string, format: date-time, nullable: true }
+        rejected_date: { type: string, format: date-time, nullable: true }
+        rejection_reason: { type: string, nullable: true }
+        cancellation_reason: { type: string, nullable: true }
+        parent_proposal_id: { type: integer, nullable: true }
+        superseded_by_id: { type: integer, nullable: true }
+        queue_position:
+          type: integer
+          nullable: true
+          description: '0 = active; ≥1 = queue position; null = terminal'
+        is_active_proposal: { type: boolean }
+        documents_count: { type: integer }
+        has_competing_proposals: { type: boolean }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        attachments:
+          type: array
+          items: { $ref: '#/components/schemas/AttachmentRef' }
+        proposal_chain:
+          type: array
+          description: 'All related counter-proposals (parent + descendants), chronological.'
+          items:
+            type: object
+            properties:
+              id: { type: integer }
+              proposal_code: { type: string }
+              state: { type: string }
+              proposal_value: { $ref: '#/components/schemas/Money' }
+              created_at: { type: string, format: date-time }
+        links:
+          type: array
+          items: { $ref: '#/components/schemas/HateoasLink' }
+
+    ProposalCreate:
+      type: object
+      required: [property_id, client_name, client_document, agent_id, proposal_type, proposal_value]
+      properties:
+        property_id: { type: integer }
+        client_name: { type: string, minLength: 2, maxLength: 200 }
+        client_document:
+          type: string
+          description: 'CPF or CNPJ (with or without punctuation)'
+        client_email: { type: string, format: email, nullable: true }
+        client_phone: { type: string, nullable: true }
+        agent_id: { type: integer }
+        proposal_type: { type: string, enum: [sale, lease] }
+        proposal_value: { $ref: '#/components/schemas/Money' }
+        valid_until:
+          type: string
+          format: date
+          nullable: true
+          description: 'Optional. If provided, must be > today and ≤ today+90d.'
+        description: { type: string, nullable: true, maxLength: 4000 }
+        lead_id:
+          type: integer
+          nullable: true
+          description: 'Optional explicit lead reference; otherwise auto-resolved by document.'
+
+    ProposalUpdate:
+      type: object
+      properties:
+        proposal_value: { $ref: '#/components/schemas/Money' }
+        description: { type: string, nullable: true, maxLength: 4000 }
+        valid_until: { type: string, format: date, nullable: true }
+        agent_id:
+          type: integer
+          description: 'Manager/Owner only.'
+
+    ProposalListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Proposal' }
+        _meta: { $ref: '#/components/schemas/PageMeta' }
+        _links:
+          type: object
+          properties:
+            first: { type: string, format: uri-reference }
+            prev: { type: string, format: uri-reference, nullable: true }
+            next: { type: string, format: uri-reference, nullable: true }
+            last: { type: string, format: uri-reference }
+
+    StatsResponse:
+      type: object
+      properties:
+        total: { type: integer }
+        by_state:
+          type: object
+          properties:
+            draft: { type: integer }
+            queued: { type: integer }
+            sent: { type: integer }
+            negotiation: { type: integer }
+            accepted: { type: integer }
+            rejected: { type: integer }
+            expired: { type: integer }
+            cancelled: { type: integer }
+
+    QueueResponse:
+      type: object
+      properties:
+        property_id: { type: integer }
+        active_proposal:
+          oneOf:
+            - $ref: '#/components/schemas/Proposal'
+            - type: 'null'
+        queue:
+          type: array
+          items: { $ref: '#/components/schemas/Proposal' }
+
+    RejectRequest:
+      type: object
+      required: [rejection_reason]
+      properties:
+        rejection_reason: { type: string, minLength: 1, maxLength: 2000 }
+
+    CounterRequest:
+      type: object
+      required: [proposal_value]
+      properties:
+        proposal_value: { $ref: '#/components/schemas/Money' }
+        description: { type: string, nullable: true, maxLength: 4000 }
+        valid_until: { type: string, format: date, nullable: true }
+
+  responses:
+    BadRequest:
+      description: Validation error
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    Unauthorized:
+      description: Missing or invalid JWT/session
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    Forbidden:
+      description: RBAC denied
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    NotFound:
+      description: Resource not found (or belongs to another organization)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    Conflict:
+      description: Action not allowed in current state (terminal)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    Unprocessable:
+      description: Invalid state transition
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    PayloadTooLarge:
+      description: File exceeds 10 MB
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+security:
+  - jwtBearer: []
+    sessionCookie: []
+
+paths:
+  /api/v1/proposals:
+    post:
+      tags: [Proposals]
+      summary: Create a proposal
+      operationId: createProposal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProposalCreate' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Proposal' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    get:
+      tags: [Proposals]
+      summary: List proposals (paginated, filtered)
+      operationId: listProposals
+      parameters:
+        - $ref: '#/components/parameters/state'
+        - $ref: '#/components/parameters/agentId'
+        - $ref: '#/components/parameters/propertyId'
+        - $ref: '#/components/parameters/partnerId'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/dateFrom'
+        - $ref: '#/components/parameters/dateTo'
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/pageSize'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProposalListResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/v1/proposals/{id}:
+    parameters:
+      - $ref: '#/components/parameters/proposalId'
+    get:
+      tags: [Proposals]
+      summary: Get proposal detail (with chain + attachments)
+      operationId: getProposal
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Proposal' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Proposals]
+      summary: Update a proposal (only in draft/queued/sent/negotiation)
+      operationId: updateProposal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProposalUpdate' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Proposal' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [Proposals]
+      summary: Soft-cancel a proposal
+      description: Marks proposal as cancelled with reason; sets active=False.
+      operationId: cancelProposal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cancellation_reason]
+              properties:
+                cancellation_reason: { type: string, minLength: 1, maxLength: 2000 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Proposal' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /api/v1/proposals/{id}/send:
+    parameters:
+      - $ref: '#/components/parameters/proposalId'
+    post:
+      tags: [Proposals - Transitions]
+      summary: Transition draft → sent
+      operationId: sendProposal
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Proposal' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+
+  /api/v1/proposals/{id}/accept:
+    parameters:
+      - $ref: '#/components/parameters/proposalId'
+    post:
+      tags: [Proposals - Transitions]
+      summary: Accept (auto-cancels competing proposals on the same property)
+      operationId: acceptProposal
+      responses:
+        '200':
+          description: OK. Response includes HATEOAS link with rel='create-contract'.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Proposal' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+
+  /api/v1/proposals/{id}/reject:
+    parameters:
+      - $ref: '#/components/parameters/proposalId'
+    post:
+      tags: [Proposals - Transitions]
+      summary: Reject (with reason); promotes next queued
+      operationId: rejectProposal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RejectRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Proposal' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+
+  /api/v1/proposals/{id}/counter:
+    parameters:
+      - $ref: '#/components/parameters/proposalId'
+    post:
+      tags: [Proposals - Transitions]
+      summary: Create a counter-proposal (parent → negotiation; child takes active slot)
+      operationId: counterProposal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CounterRequest' }
+      responses:
+        '201':
+          description: Created (returns the new child proposal)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Proposal' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+
+  /api/v1/proposals/{id}/queue:
+    parameters:
+      - $ref: '#/components/parameters/proposalId'
+    get:
+      tags: [Proposals - Aggregates]
+      summary: Inspect the property's proposal queue (active + queued)
+      operationId: getProposalQueue
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/QueueResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/v1/proposals/stats:
+    get:
+      tags: [Proposals - Aggregates]
+      summary: Aggregated counts (total + per-state) for the user's organization
+      operationId: getProposalStats
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/StatsResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/v1/proposals/{id}/attachments:
+    parameters:
+      - $ref: '#/components/parameters/proposalId'
+    post:
+      tags: [Proposals - Documents]
+      summary: Attach a document to a proposal
+      operationId: uploadProposalAttachment
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                description: { type: string, nullable: true, maxLength: 500 }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AttachmentRef' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }

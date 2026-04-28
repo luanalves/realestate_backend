@@ -205,6 +205,56 @@ Toda descrição de endpoint **DEVE** incluir:
 7. **✅ SEMPRE** salvar `refresh_token` em variável (usado por endpoints de refresh)
 8. **✅ SEMPRE** documentar tipo de autenticação na descrição
 
+### ⚠️ Regra Crítica: Feature Nova → Atualizar Coleção Principal
+
+**NUNCA crie um arquivo de coleção separado por feature** (ex: `feature013_proposals_v1.0_postman_collection.json`).
+
+Ao implementar endpoints de uma nova feature:
+1. **Localize a última versão** da coleção principal em `docs/postman/` (ex: `quicksol_api_v1.23_postman_collection.json`)
+2. **Adicione os novos endpoints** como uma nova pasta numerada (ex: `21. Property Proposals`)
+3. **Incremente a versão minor** (`1.23` → `1.24`)
+4. **Adicione entrada no Changelog** no campo `info.description`
+5. **Adicione novas variáveis** necessárias (ex: `proposal_id`)
+6. **Salve como novo arquivo** com a versão atualizada
+7. **Delete o arquivo antigo** (apenas guarde a última versão)
+
+**Como encontrar a última versão:**
+```bash
+ls docs/postman/quicksol_api_v*.json | sort -V | tail -1
+```
+
+**Script Python para fundir:**
+```python
+import json
+
+# 1. Carregar última versão
+with open('quicksol_api_v1.23_postman_collection.json', encoding='utf-8') as f:
+    collection = json.loads(f.read(), strict=False)  # strict=False para control chars
+
+# 2. Criar pasta da nova feature
+new_folder = {
+    "name": "21. Property Proposals",
+    "description": "...",
+    "item": [/* endpoints */]
+}
+
+# 3. Adicionar pasta, incrementar versão, adicionar changelog
+collection['item'].append(new_folder)
+collection['info']['version'] = '1.24'
+collection['info']['description'] += '\n\n## Changelog v1.24\n- **NEW**: ...' 
+
+# 4. Adicionar variáveis novas
+collection['variable'].append({'key': 'proposal_id', 'value': '', 'type': 'string'})
+
+# 5. Salvar com nova versão
+with open('quicksol_api_v1.24_postman_collection.json', 'w', encoding='utf-8') as f:
+    json.dump(collection, f, indent=2, ensure_ascii=False)
+```
+
+> **Nota:** `json.loads(..., strict=False)` é necessário pois alguns arquivos podem conter control characters nos campos de descrição. Sempre use esta opção ao ler coleções existentes.
+
+---
+
 ### Processo: Criar Nova Coleção
 
 1. **Leia a ADR-016 completa**
@@ -566,6 +616,17 @@ if (jsonData.refresh_token) {
 }
 ```
 
+### ❌ Erro 6: Criar Arquivo Separado por Feature
+```
+// ERRADO - arquivo isolado por feature
+docs/postman/feature013_property_proposals_v1.0_postman_collection.json
+
+// CORRETO - adicionar à coleção principal com versão incrementada
+docs/postman/quicksol_api_v1.24_postman_collection.json  // era v1.23
+```
+
+Uma feature nova = uma nova pasta na coleção principal + versão minor incrementada.
+
 ### ❌ Erro 5: Headers Hardcoded
 ```json
 // ERRADO
@@ -592,6 +653,6 @@ if (jsonData.refresh_token) {
 
 ---
 
-**Skill Version:** 1.0  
-**Last Updated:** 2026-01-31  
+**Skill Version:** 1.1  
+**Last Updated:** 2026-04-28  
 **Maintained by:** Development Team

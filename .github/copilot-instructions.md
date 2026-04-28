@@ -153,3 +153,12 @@ User onboarding and password management module implementing token-based authenti
 - POST /api/v1/auth/reset-password (public)
 
 **Reference**: See constitution v1.3.0 for security patterns and `.specify/memory/constitution.md` section on Feature 009.
+
+## Swagger / OpenAPI Documentation
+
+Swagger is generated **dynamically from the database** (`thedevkitchen_api_endpoint` table). **Never edit static files to update Swagger.** The correct flow is: XML data file → module upgrade → DB → Swagger UI.
+
+Use the **swagger-updater** skill for all Swagger tasks (add, update, remove endpoints, inspect orphan records).
+
+**Skill:** [.github/skills/swagger-updater/SKILL.md](.github/skills/swagger-updater/SKILL.md)
+**Reference ADR:** [ADR-005](../docs/adr/ADR-005-openapi-30-swagger-documentation.md)

@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+
+        <!-- ============================================================ -->
+        <!-- 1. Proposta enviada                                           -->
+        <!-- ============================================================ -->
+        <record id="email_template_proposal_sent" model="mail.template">
+            <field name="name">Proposta Enviada</field>
+            <field name="model_id" ref="model_real_estate_proposal"/>
+            <field name="subject">Proposta {{ object.proposal_code }} — {{ object.property_id.name }}</field>
+            <field name="partner_to">{{ object.partner_id.id }}</field>
+            <field name="body_html"><![CDATA[
+<p>Olá, <strong>{{ object.partner_id.name }}</strong>,</p>
+<p>Uma proposta foi registrada para o imóvel <strong>{{ object.property_id.name }}</strong>.</p>
+<ul>
+  <li><strong>Código:</strong> {{ object.proposal_code }}</li>
+  <li><strong>Valor:</strong> {{ format_amount(object.proposal_value, object.currency_id) }}</li>
+  <li><strong>Tipo:</strong> {{ dict(object.fields_get(['proposal_type'])['proposal_type']['selection'])[object.proposal_type] }}</li>
+  {% if object.valid_until %}
+  <li><strong>Validade:</strong> {{ format_date(object.valid_until) }}</li>
+  {% endif %}
+</ul>
+<p>Em caso de dúvidas, entre em contato com seu corretor.</p>
+            ]]></field>
+            <field name="lang">{{ object.partner_id.lang }}</field>
+            <field name="auto_delete" eval="True"/>
+        </record>
+
+        <!-- ============================================================ -->
+        <!-- 2. Contra-proposta gerada                                     -->
+        <!-- ============================================================ -->
+        <record id="email_template_proposal_countered" model="mail.template">
+            <field name="name">Contra-Proposta Gerada</field>
+            <field name="model_id" ref="model_real_estate_proposal"/>
+            <field name="subject">Contra-Proposta para {{ object.proposal_code }} — {{ object.property_id.name }}</field>
+            <field name="partner_to">{{ object.partner_id.id }}</field>
+            <field name="body_html"><![CDATA[
+<p>Olá, <strong>{{ object.partner_id.name }}</strong>,</p>
+<p>Uma contra-proposta foi registrada para o imóvel <strong>{{ object.property_id.name }}</strong>
+em resposta à proposta <strong>{{ object.proposal_code }}</strong>.</p>
+<p>Seu corretor entrará em contato com os novos termos em breve.</p>
+            ]]></field>
+            <field name="lang">{{ object.partner_id.lang }}</field>
+            <field name="auto_delete" eval="True"/>
+        </record>
+
+        <!-- ============================================================ -->
+        <!-- 3. Proposta aceita                                            -->
+        <!-- ============================================================ -->
+        <record id="email_template_proposal_accepted" model="mail.template">
+            <field name="name">Proposta Aceita</field>
+            <field name="model_id" ref="model_real_estate_proposal"/>
+            <field name="subject">Parabéns! Proposta {{ object.proposal_code }} foi Aceita</field>
+            <field name="partner_to">{{ object.partner_id.id }}</field>
+            <field name="body_html"><![CDATA[
+<p>Olá, <strong>{{ object.partner_id.name }}</strong>,</p>
+<p>A proposta <strong>{{ object.proposal_code }}</strong> para o imóvel
+<strong>{{ object.property_id.name }}</strong> foi <strong>aceita</strong>.</p>
+<ul>
+  <li><strong>Valor aceito:</strong> {{ format_amount(object.proposal_value, object.currency_id) }}</li>
+  <li><strong>Data de aceite:</strong> {{ format_datetime(object.accepted_date) }}</li>
+</ul>
+<p>Os próximos passos para formalização do contrato serão comunicados em breve.</p>
+            ]]></field>
+            <field name="lang">{{ object.partner_id.lang }}</field>
+            <field name="auto_delete" eval="True"/>
+        </record>
+
+        <!-- ============================================================ -->
+        <!-- 4. Proposta rejeitada                                         -->
+        <!-- ============================================================ -->
+        <record id="email_template_proposal_rejected" model="mail.template">
+            <field name="name">Proposta Rejeitada</field>
+            <field name="model_id" ref="model_real_estate_proposal"/>
+            <field name="subject">Proposta {{ object.proposal_code }} — Não Aprovada</field>
+            <field name="partner_to">{{ object.partner_id.id }}</field>
+            <field name="body_html"><![CDATA[
+<p>Olá, <strong>{{ object.partner_id.name }}</strong>,</p>
+<p>Infelizmente a proposta <strong>{{ object.proposal_code }}</strong> para o imóvel
+<strong>{{ object.property_id.name }}</strong> não foi aprovada.</p>
+{% if object.rejection_reason %}
+<p><strong>Motivo:</strong> {{ object.rejection_reason }}</p>
+{% endif %}
+<p>Caso tenha interesse em reformular sua proposta, entre em contato com seu corretor.</p>
+            ]]></field>
+            <field name="lang">{{ object.partner_id.lang }}</field>
+            <field name="auto_delete" eval="True"/>
+        </record>
+
+        <!-- ============================================================ -->
+        <!-- 5. Proposta expirada                                          -->
+        <!-- ============================================================ -->
+        <record id="email_template_proposal_expired" model="mail.template">
+            <field name="name">Proposta Expirada</field>
+            <field name="model_id" ref="model_real_estate_proposal"/>
+            <field name="subject">Proposta {{ object.proposal_code }} Expirou</field>
+            <field name="partner_to">{{ object.agent_id.user_id.partner_id.id }}</field>
+            <field name="body_html"><![CDATA[
+<p>Olá, <strong>{{ object.agent_id.name }}</strong>,</p>
+<p>A proposta <strong>{{ object.proposal_code }}</strong> para o imóvel
+<strong>{{ object.property_id.name }}</strong> expirou em
+<strong>{{ format_date(object.valid_until) }}</strong> sem resolução.</p>
+<p>O próximo na fila (se houver) foi promovido automaticamente.</p>
+            ]]></field>
+            <field name="lang">{{ object.agent_id.user_id.lang }}</field>
+            <field name="auto_delete" eval="True"/>
+        </record>
+
+        <!-- ============================================================ -->
+        <!-- 6. Proposta superada (cancelada por aceite de outra)          -->
+        <!-- ============================================================ -->
+        <record id="email_template_proposal_superseded" model="mail.template">
+            <field name="name">Proposta Superada por Aceite</field>
+            <field name="model_id" ref="model_real_estate_proposal"/>
+            <field name="subject">Proposta {{ object.proposal_code }} — Imóvel Negociado</field>
+            <field name="partner_to">{{ object.agent_id.user_id.partner_id.id }}</field>
+            <field name="body_html"><![CDATA[
+<p>Olá, <strong>{{ object.agent_id.name }}</strong>,</p>
+<p>Informamos que o imóvel <strong>{{ object.property_id.name }}</strong> foi negociado
+através de outra proposta.</p>
+<p>A proposta <strong>{{ object.proposal_code }}</strong> foi automaticamente cancelada.</p>
+{% if object.superseded_by_id %}
+<p><strong>Proposta vencedora:</strong> {{ object.superseded_by_id.proposal_code }}</p>
+{% endif %}
+            ]]></field>
+            <field name="lang">{{ object.agent_id.user_id.lang }}</field>
+            <field name="auto_delete" eval="True"/>
+        </record>
+
+        <!-- ============================================================ -->
+        <!-- 7. Proposta promovida da fila                                 -->
+        <!-- ============================================================ -->
+        <record id="email_template_proposal_promoted" model="mail.template">
+            <field name="name">Proposta Promovida da Fila</field>
+            <field name="model_id" ref="model_real_estate_proposal"/>
+            <field name="subject">Sua Proposta {{ object.proposal_code }} Está Ativa!</field>
+            <field name="partner_to">{{ object.agent_id.user_id.partner_id.id }}</field>
+            <field name="body_html"><![CDATA[
+<p>Olá, <strong>{{ object.agent_id.name }}</strong>,</p>
+<p>Boa notícia! A proposta <strong>{{ object.proposal_code }}</strong> para o imóvel
+<strong>{{ object.property_id.name }}</strong> foi promovida da fila e agora está
+<strong>ativa</strong>.</p>
+<p>Você pode agora enviá-la ao cliente para avaliação.</p>
+            ]]></field>
+            <field name="lang">{{ object.agent_id.user_id.lang }}</field>
+            <field name="auto_delete" eval="True"/>
+        </record>
+
+    </data>
+</odoo>
