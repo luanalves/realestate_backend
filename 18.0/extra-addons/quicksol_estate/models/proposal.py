@@ -870,3 +870,51 @@ class RealEstateProposal(models.Model):
                 message_type='comment',
                 subtype_xmlid='mail.mt_note',
             )
+
+    @api.model
+    def _set_seed_proposal_states(self):
+        """Set seed proposal states via direct SQL, bypassing business logic.
+        Called only during module data load (seed_proposals.xml <function> tag).
+        """
+        from datetime import datetime, timedelta
+        now = datetime.now()
+        seed_updates = {
+            'quicksol_estate.proposal_sent_1': {
+                'state': 'sent',
+                'sent_date': (now - timedelta(hours=2)).strftime('%Y-%m-%d %H:%M:%S'),
+            },
+            'quicksol_estate.proposal_rejected_1': {
+                'state': 'rejected',
+                'sent_date': (now - timedelta(days=10)).strftime('%Y-%m-%d %H:%M:%S'),
+                'rejected_date': (now - timedelta(days=5)).strftime('%Y-%m-%d %H:%M:%S'),
+            },
+            'quicksol_estate.proposal_negotiation_1': {
+                'state': 'negotiation',
+                'sent_date': (now - timedelta(days=3)).strftime('%Y-%m-%d %H:%M:%S'),
+            },
+            'quicksol_estate.proposal_cancelled_1': {
+                'state': 'cancelled',
+            },
+            'quicksol_estate.proposal_expired_1': {
+                'state': 'expired',
+                'sent_date': (now - timedelta(days=20)).strftime('%Y-%m-%d %H:%M:%S'),
+            },
+            'quicksol_estate.proposal_accepted_1': {
+                'state': 'accepted',
+                'sent_date': (now - timedelta(days=7)).strftime('%Y-%m-%d %H:%M:%S'),
+                'accepted_date': (now - timedelta(days=2)).strftime('%Y-%m-%d %H:%M:%S'),
+            },
+        }
+        for xml_id, vals in seed_updates.items():
+            try:
+                rec = self.env.ref(xml_id, raise_if_not_found=False)
+                if not rec:
+                    continue
+                set_clauses = ', '.join(f'"{k}" = %s' for k in vals)
+                values = list(vals.values()) + [rec.id]
+                self.env.cr.execute(
+                    f'UPDATE real_estate_proposal SET {set_clauses} WHERE id = %s',
+                    values,
+                )
+            except Exception:
+                pass

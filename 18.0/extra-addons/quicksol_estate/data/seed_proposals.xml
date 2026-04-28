@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ============================================================ -->
+    <!-- PROPOSAL SEED DATA — Feature 013                             -->
+    <!-- Covers all 8 FSM states for UI journey testing              -->
+    <!--                                                              -->
+    <!-- Property distribution (avoids one_active_per_property):     -->
+    <!--   Property 1 (apto_copacabana): sent, queued, rejected       -->
+    <!--   Property 2 (casa_europa):     draft, negotiation(*),       -->
+    <!--                                 cancelled, expired           -->
+    <!--   Property 3 (sala_comercial):  accepted                     -->
+    <!--                                                              -->
+    <!-- (*) negotiation is not in INDEX_ACTIVE_STATES so it coexists -->
+    <!--     with draft on the same property at the DB level.         -->
+    <!--                                                              -->
+    <!-- States are set via _set_seed_proposal_states() SQL method    -->
+    <!-- to bypass the create() FSM override.                         -->
+    <!-- ============================================================ -->
+
+    <!-- All records noupdate="1" so they're only created once -->
+    <data noupdate="1">
+
+    <!-- ── Agent ↔ Property Assignments ───────────────────────────── -->
+    <record id="assignment_pedro_apto" model="real.estate.agent.property.assignment">
+        <field name="agent_id" ref="agent_pedro_demo"/>
+        <field name="property_id" ref="demo_property_1"/>
+        <field name="company_id" ref="company_quicksol_real_estate"/>
+        <field name="responsibility_type">primary</field>
+        <field name="active" eval="True"/>
+    </record>
+
+    <record id="assignment_pedro_casa" model="real.estate.agent.property.assignment">
+        <field name="agent_id" ref="agent_pedro_demo"/>
+        <field name="property_id" ref="demo_property_2"/>
+        <field name="company_id" ref="company_quicksol_real_estate"/>
+        <field name="responsibility_type">primary</field>
+        <field name="active" eval="True"/>
+    </record>
+
+    <record id="assignment_joao_sala" model="real.estate.agent.property.assignment">
+        <field name="agent_id" ref="agent_demo_1"/>
+        <field name="property_id" ref="demo_property_3"/>
+        <field name="company_id" ref="company_quicksol_real_estate"/>
+        <field name="responsibility_type">primary</field>
+        <field name="active" eval="True"/>
+    </record>
+
+    <record id="assignment_maria_apto" model="real.estate.agent.property.assignment">
+        <field name="agent_id" ref="agent_demo_2"/>
+        <field name="property_id" ref="demo_property_1"/>
+        <field name="company_id" ref="company_quicksol_real_estate"/>
+        <field name="responsibility_type">secondary</field>
+        <field name="active" eval="True"/>
+    </record>
+
+    <!-- ── Property 1 (apto_copacabana): sent + queued + rejected ── -->
+    <!-- sent_1 created first → gets 'draft' via create() → SQL will update to 'sent' -->
+    <record id="proposal_sent_1" model="real.estate.proposal">
+        <field name="property_id" ref="demo_property_1"/>
+        <field name="partner_id" ref="user_estate_portal_demo_res_partner"/>
+        <field name="agent_id" ref="agent_pedro_demo"/>
+        <field name="proposal_type">sale</field>
+        <field name="proposal_value">1350000.00</field>
+        <field name="valid_until" eval="(datetime.now() + timedelta(days=20)).strftime('%Y-%m-%d')"/>
+        <field name="company_id" ref="company_quicksol_real_estate"/>
+        <field name="description">&lt;p&gt;Proposta enviada ao cliente. Aguardando resposta.&lt;/p&gt;</field>
+    </record>
+
+    <!-- queued_1 created after sent_1 → gets 'queued' via create() → correct state already -->
+    <record id="proposal_queued_1" model="real.estate.proposal">
+        <field name="property_id" ref="demo_property_1"/>
+        <field name="partner_id" ref="user_estate_user1_demo_res_partner"/>
+        <field name="agent_id" ref="agent_pedro_demo"/>
+        <field name="proposal_type">sale</field>
+        <field name="proposal_value">1280000.00</field>
+        <field name="valid_until" eval="(datetime.now() + timedelta(days=25)).strftime('%Y-%m-%d')"/>
+        <field name="company_id" ref="company_quicksol_real_estate"/>
+        <field name="description">&lt;p&gt;Segunda proposta para o Apartamento. Aguarda na fila (há proposta em envio).&lt;/p&gt;</field>
+    </record>
+
+    <!-- rejected_1: SQL will update to 'rejected' -->
+    <record id="proposal_rejected_1" model="real.estate.proposal">
+        <field name="property_id" ref="demo_property_1"/>
+        <field name="partner_id" ref="user_estate_user2_demo_res_partner"/>
+        <field name="agent_id" ref="agent_demo_2"/>
+        <field name="proposal_type">sale</field>
+        <field name="proposal_value">900000.00</field>
+        <field name="valid_until" eval="(datetime.now() + timedelta(days=5)).strftime('%Y-%m-%d')"/>
+        <field name="company_id" ref="company_quicksol_real_estate"/>
+        <field name="rejection_reason">Valor abaixo do preço mínimo aceito pelo proprietário.</field>
+    </record>
+
+    <!-- ── Property 2 (casa_europa): draft + negotiation + cancelled + expired ── -->
+    <!-- draft_1 created first → gets 'draft' via create() → already correct -->
+    <record id="proposal_draft_1" model="real.estate.proposal">
+        <field name="property_id" ref="demo_property_2"/>
+        <field name="partner_id" ref="user_estate_portal_demo_res_partner"/>
+        <field name="agent_id" ref="agent_pedro_demo"/>
+        <field name="proposal_type">sale</field>
+        <field name="proposal_value">850000.00</field>
+        <field name="valid_until" eval="(datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d')"/>
+        <field name="company_id" ref="company_quicksol_real_estate"/>
+        <field name="description">&lt;p&gt;Cliente interessado na Casa Moderna. Proposta inicial para negociação.&lt;/p&gt;</field>
+    </record>
+
+    <!-- negotiation_1: SQL will update to 'negotiation' (not in INDEX_ACTIVE_STATES → no DB constraint conflict) -->
+    <record id="proposal_negotiation_1" model="real.estate.proposal">
+        <field name="property_id" ref="demo_property_2"/>
+        <field name="partner_id" ref="user_estate_user2_demo_res_partner"/>
+        <field name="agent_id" ref="agent_pedro_demo"/>
+        <field name="proposal_type">sale</field>
+        <field name="proposal_value">920000.00</field>
+        <field name="valid_until" eval="(datetime.now() + timedelta(days=10)).strftime('%Y-%m-%d')"/>
+        <field name="company_id" ref="company_quicksol_real_estate"/>
+        <field name="description">&lt;p&gt;Em negociação ativa. Cliente solicitou desconto de 5%.&lt;/p&gt;</field>
+    </record>
+
+    <!-- cancelled_1: SQL will update to 'cancelled' -->
+    <record id="proposal_cancelled_1" model="real.estate.proposal">
+        <field name="property_id" ref="demo_property_2"/>
+        <field name="partner_id" ref="user_estate_user1_demo_res_partner"/>
+        <field name="agent_id" ref="agent_pedro_demo"/>
+        <field name="proposal_type">sale</field>
+        <field name="proposal_value">780000.00</field>
+        <field name="valid_until" eval="(datetime.now() + timedelta(days=5)).strftime('%Y-%m-%d')"/>
+        <field name="company_id" ref="company_quicksol_real_estate"/>
+        <field name="cancellation_reason">Cliente desistiu da compra por motivos pessoais.</field>
+    </record>
+
+    <!-- expired_1: SQL will update to 'expired' (valid_until=tomorrow to pass constraint) -->
+    <record id="proposal_expired_1" model="real.estate.proposal">
+        <field name="property_id" ref="demo_property_2"/>
+        <field name="partner_id" ref="user_estate_user2_demo_res_partner"/>
+        <field name="agent_id" ref="agent_pedro_demo"/>
+        <field name="proposal_type">sale</field>
+        <field name="proposal_value">810000.00</field>
+        <field name="valid_until" eval="(datetime.now() + timedelta(days=3)).strftime('%Y-%m-%d')"/>
+        <field name="company_id" ref="company_quicksol_real_estate"/>
+    </record>
+
+    <!-- ── Property 3 (sala_comercial): accepted ───────────────────── -->
+    <!-- accepted_1: SQL will update to 'accepted' -->
+    <record id="proposal_accepted_1" model="real.estate.proposal">
+        <field name="property_id" ref="demo_property_3"/>
+        <field name="partner_id" ref="user_estate_portal_demo_res_partner"/>
+        <field name="agent_id" ref="agent_demo_1"/>
+        <field name="proposal_type">lease</field>
+        <field name="proposal_value">8500.00</field>
+        <field name="valid_until" eval="(datetime.now() + timedelta(days=60)).strftime('%Y-%m-%d')"/>
+        <field name="company_id" ref="company_quicksol_real_estate"/>
+        <field name="description">&lt;p&gt;Proposta de locação aceita. Contrato em elaboração.&lt;/p&gt;</field>
+    </record>
+
+    <!-- ── States set via post_init_hook → _set_seed_proposal_states() ─── -->
+
+    </data>
+</odoo>

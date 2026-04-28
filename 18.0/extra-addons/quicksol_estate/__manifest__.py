@@ -85,6 +85,7 @@ Property Form Sections:
         'data/proposal_sequence.xml',
         'data/mail_templates_proposal.xml',
         'data/proposal_cron.xml',
+        'data/seed_proposals.xml',  # Seed: Proposals em todos os 8 estados FSM para testes de jornada
         # 'data/default_groups.xml',  # Demo data temporarily disabled - complex dependencies
         
         # Views (actions must be loaded before menus that reference them)
@@ -114,4 +115,5 @@ Property Form Sections:
     'installable': True,
     'auto_install': False,
     'application': True,
+    'post_init_hook': 'post_init_hook',
 }
