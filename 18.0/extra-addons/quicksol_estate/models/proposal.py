@@ -870,3 +870,31 @@ class RealEstateProposal(models.Model):
                 message_type='comment',
                 subtype_xmlid='mail.mt_note',
             )
+
+    @api.model
+    def _seed_fix_states(self):
+        """Corrige os estados das proposals de seed via SQL direto.
+        Chamado por seed_proposals_states.xml após seed_proposals.xml.
+        """
+        from datetime import datetime, timedelta
+        now = datetime.now()
+        updates = {
+            'proposal_sent_1':        ('sent',        {'sent_date': now - timedelta(hours=2)}),
+            'proposal_negotiation_1': ('negotiation', {'sent_date': now - timedelta(days=3)}),
+            'proposal_accepted_1':    ('accepted',    {'sent_date': now - timedelta(days=7),
+                                                       'accepted_date': now - timedelta(days=2)}),
+            'proposal_rejected_1':    ('rejected',    {'sent_date': now - timedelta(days=10),
+                                                       'rejected_date': now - timedelta(days=5)}),
+            'proposal_cancelled_1':   ('cancelled',   {}),
+            'proposal_expired_1':     ('expired',     {'sent_date': now - timedelta(days=20)}),
+        }
+        for xml_name, (state, extra) in updates.items():
+            rec = self.env.ref(f'quicksol_estate.{xml_name}', raise_if_not_found=False)
+            if not rec:
+                continue
+            vals = {'state': state, **extra}
+            set_sql = ', '.join(f'"{k}" = %s' for k in vals)
+            self.env.cr.execute(
+                f'UPDATE real_estate_proposal SET {set_sql} WHERE id = %s',
+                [*vals.values(), rec.id],
+            )
