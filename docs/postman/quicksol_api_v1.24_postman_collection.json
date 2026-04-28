@@ -4131,7 +4131,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"session_id\": \"{{session_id}}\",\n  \"property_id\": 1,\n  \"partner_id\": 1,\n  \"proposal_type\": \"sale\",\n  \"proposal_value\": 500000,\n  \"valid_until\": \"2026-12-31\",\n  \"notes\": \"Test\"\n}"
+              "raw": "{\n  \"session_id\": \"{{session_id}}\",\n  \"property_id\": 1,\n  \"agent_id\": 1,\n  \"proposal_type\": \"sale\",\n  \"proposal_value\": 500000,\n  \"client_name\": \"João da Silva\",\n  \"client_document\": \"123.456.789-09\",\n  \"client_email\": \"joao@email.com\",\n  \"client_phone\": \"+55 11 99999-9999\",\n  \"valid_until\": \"2026-12-31\",\n  \"description\": \"Test\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/proposals",
@@ -4144,7 +4144,7 @@
                 "proposals"
               ]
             },
-            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For POST requests (type='json'), session_id MUST be sent in the **body JSON**, NOT in the header.\n\nCreates a new property proposal (offer) in `draft` state. The proposal is associated with a property and a partner (buyer/tenant).\n\n**Required fields:** property_id, partner_id, proposal_type, proposal_value\n**Optional fields:** valid_until, notes\n\n**Test Script:** Auto-saves `proposal_id` from response `data.id` to environment."
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For POST requests (type='json'), session_id MUST be sent in the **body JSON**, NOT in the header.\n\nCreates a new property proposal (offer) in `draft` state. The partner (client) is resolved by document (CPF/CNPJ) or created automatically.\n\n**Required fields:** property_id, agent_id, proposal_type, proposal_value, client_name, client_document\n**Optional fields:** client_email, client_phone, valid_until, description, lead_id\n\n**Test Script:** Auto-saves `proposal_id` from response `data.id` to environment."
           }
         },
         {
