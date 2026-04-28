@@ -216,15 +216,15 @@ class ProposalController(http.Controller):
             proposal = request.env['real.estate.proposal'].create([vals])
             return success_response(
                 _serialize_proposal(proposal, include_chain=False, include_attachments=False),
-                status=201,
+                status_code=201,
             )
-        except (ValidationError, UserError) as e:
-            return error_response('VALIDATION_ERROR', str(e), 400)
         except AccessError as e:
             return error_response('FORBIDDEN', str(e), 403)
+        except (ValidationError, UserError) as e:
+            return error_response('VALIDATION_ERROR', str(e), 400)
         except Exception:
             _logger.exception('POST /api/v1/proposals failed')
-            return error_response('INTERNAL_ERROR', _('Internal server error.'), 500)
+            return error_response('INTERNAL_ERROR', 'Internal server error.', 500)
 
     # ================================================================== #
     #  GET /api/v1/proposals — list (T056)                               #
@@ -677,10 +677,14 @@ def _fetch_proposal(proposal_id):
 
 
 def _resolve_or_create_partner(body):
-    """Find or create res.partner from client_name + client_document."""
+    """Find or create res.partner from client_name + client_document.
+
+    Uses sudo() because the API user may not have Contact Creation rights;
+    the operation is already protected by JWT + session + company middleware.
+    """
     from odoo.addons.quicksol_estate.utils.validators import normalize_document
     doc = normalize_document(body.get('client_document', ''))
-    Partner = request.env['res.partner']
+    Partner = request.env['res.partner'].sudo()
     partner = Partner.search([('vat', '=', doc), ('company_id', '=', False)], limit=1)
     if not partner:
         partner = Partner.create({
