@@ -2,7 +2,7 @@
 from odoo.http import request
 
 
-def error_response(arg1, arg2=None, arg3='error'):
+def error_response(arg1, arg2=None, arg3='error', details=None):
 
     # Detect argument order by finding which arg is an int
     if isinstance(arg1, int):
@@ -19,11 +19,15 @@ def error_response(arg1, arg2=None, arg3='error'):
         except (ValueError, TypeError):
             status_code, message, error_type = 500, str(arg1), str(arg2 or 'error')
 
-    return request.make_json_response({
+    body = {
         'error': error_type,
         'message': message,
         'code': status_code
-    }, status=status_code)
+    }
+    if details is not None:
+        body['details'] = details
+
+    return request.make_json_response(body, status=status_code)
 
 
 def success_response(data, status_code=200):
