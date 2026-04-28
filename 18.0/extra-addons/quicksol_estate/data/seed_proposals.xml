@@ -151,7 +151,5 @@
         <field name="description">&lt;p&gt;Proposta de locação aceita. Contrato em elaboração.&lt;/p&gt;</field>
     </record>
 
-    <!-- ── States set via post_init_hook → _set_seed_proposal_states() ─── -->
-
     </data>
 </odoo>
