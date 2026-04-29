@@ -85,6 +85,7 @@ run_test "T056 List/Filters/Metrics"  "$SCRIPT_DIR/test_us6_proposal_list_filter
 run_test "T057 Attachments"           "$SCRIPT_DIR/test_us7_proposal_attachments.sh"
 run_test "T058 Expiration"            "$SCRIPT_DIR/test_us8_proposal_expiration.sh"
 run_test "T032b Concurrent Creation"  "$SCRIPT_DIR/test_us_proposal_concurrent_creation.sh"
+run_test "T013-GAP Gap Coverage"      "$SCRIPT_DIR/test_us013_gap_scenarios.sh"
 
 # ── Summary ───────────────────────────────────────────────────────────────────
 echo -e "\n${BOLD}══════════════════ SUMMARY ══════════════════${NC}"
