@@ -112,7 +112,7 @@
                                invisible="proposal_type != 'lease'"
                                readonly="1"
                                widget="one2many_list"
-                               context="{'default_proposal_id': active_id}">
+                               context="{'default_proposal_id': id}">
                             <list string="Análises de Ficha" create="0">
                                 <field name="insurer_name"/>
                                 <field name="result"

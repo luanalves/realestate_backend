@@ -120,7 +120,7 @@ for PID in $(echo "$PROPOSALS" | jq -r '.data[].id // empty' | head -5); do
         -H "Authorization: Bearer $BEARER_TOKEN" \
         -H "X-Openerp-Session-Id: $MANAGER_SESSION" \
         -H "X-Company-ID: $MANAGER_COMPANY")
-    COUNT=$(echo "$CHECKS" | jq -r '.total // 0')
+    COUNT=$(echo "$CHECKS" | jq -r '.data.items | length // 0' 2>/dev/null || echo 0)
     if [ "$COUNT" -gt 0 ] 2>/dev/null; then
         PARTNER_ID=$(echo "$PROPOSALS" | jq -r ".data[] | select(.id == $PID) | .partner_id // empty")
         [ -n "$PARTNER_ID" ] && info "Parceiro $PARTNER_ID tem $COUNT checks" && break
@@ -154,15 +154,15 @@ else
     BODY=$(echo "$RESP" | head -1)
     info "HTTP $HTTP_CODE — partner_id=$PARTNER_ID"
     if [ "$HTTP_CODE" = "200" ]; then
-        IS_ARRAY=$(echo "$BODY" | jq '.data | type == "array"' -r)
-        HAS_SUMMARY=$(echo "$BODY" | jq 'has("summary")' -r)
-        SUMMARY_KEYS=$(echo "$BODY" | jq '.summary | keys | sort | join(",")' -r 2>/dev/null || echo "")
-        if [ "$IS_ARRAY" = "true" ] && [ "$HAS_SUMMARY" = "true" ]; then
-            TOTAL=$(echo "$BODY" | jq -r '.summary.total // 0')
+        IS_ITEMS=$(echo "$BODY" | jq '.data | has("items")' -r)
+        HAS_SUMMARY=$(echo "$BODY" | jq '.data | has("summary")' -r)
+        SUMMARY_KEYS=$(echo "$BODY" | jq '.data.summary | keys | sort | join(",")' -r 2>/dev/null || echo "")
+        if [ "$IS_ITEMS" = "true" ] && [ "$HAS_SUMMARY" = "true" ]; then
+            TOTAL=$(echo "$BODY" | jq -r '.data.summary.total // 0')
             info "Summary: total=$TOTAL — keys: $SUMMARY_KEYS"
             pass "Manager vê histórico completo com summary (FR-013)"
         else
-            fail "200 mas is_array=$IS_ARRAY, has_summary=$HAS_SUMMARY"
+            fail "200 mas has_items=$IS_ITEMS, has_summary=$HAS_SUMMARY"
         fi
     else
         fail "Esperado 200, obtido $HTTP_CODE"
@@ -182,7 +182,7 @@ else
     BODY=$(echo "$RESP" | head -1)
     if [ "$HTTP_CODE" = "200" ]; then
         for KEY in total approved rejected pending cancelled; do
-            HAS=$(echo "$BODY" | jq ".summary | has(\"$KEY\")" -r)
+            HAS=$(echo "$BODY" | jq ".data.summary | has(\"$KEY\")" -r)
             if [ "$HAS" != "true" ]; then
                 fail "Chave '$KEY' ausente no summary"
             fi
@@ -196,7 +196,7 @@ fi
 # ---------------------------------------------------------------------------
 echo ""
 echo "Cenário 4: Agent acessa cliente fora do escopo → 404 (ADR-008)"
-AGENT_DATA=$(login_user "${TEST_USER_AGENT:-agent_test}" "${TEST_PASSWORD_AGENT:-Senha@123}")
+AGENT_DATA=$(login_user "${TEST_USER_AGENT:-agent_test}" "${TEST_PASSWORD_AGENT:-Senha@123}") || true
 if [ -z "$AGENT_DATA" ]; then
     echo -e "${YELLOW}  ⚠ Pulado — TEST_USER_AGENT não configurado no .env${NC}"
 else
@@ -238,7 +238,7 @@ else
     HTTP_CODE=$(echo "$RESP" | tail -1)
     BODY=$(echo "$RESP" | head -1)
     if [ "$HTTP_CODE" = "200" ]; then
-        COUNT=$(echo "$BODY" | jq '.data | length')
+        COUNT=$(echo "$BODY" | jq '.data.items | length')
         if [ "$COUNT" -le 2 ] 2>/dev/null; then
             pass "Paginação limit=2 retornou $COUNT item(s)"
         else

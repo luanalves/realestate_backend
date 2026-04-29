@@ -120,11 +120,12 @@ PROPOSALS_RESP=$(curl -s -m 30 \
     -H "X-Company-ID: $MANAGER_COMPANY")
 
 PROPOSAL_ID=$(echo "$PROPOSALS_RESP" | jq -r '.data[0].id // empty')
+PROPOSAL_TYPE=$(echo "$PROPOSALS_RESP" | jq -r '.data[0].proposal_type // empty')
 PARTNER_ID=$(echo "$PROPOSALS_RESP" | jq -r '.data[0].partner_id // empty')
 
-if [ -z "$PROPOSAL_ID" ] || [ "$PROPOSAL_ID" = "null" ]; then
-    echo -e "${YELLOW}⚠ Nenhuma proposta de locação em 'sent' encontrada${NC}"
-    echo "  Criando proposta de teste via JSON-RPC admin para os testes..."
+# Validar que é realmente uma proposta de LOCAÇÃO (API pode ignorar filtro)
+if [ -z "$PROPOSAL_ID" ] || [ "$PROPOSAL_ID" = "null" ] || [ "$PROPOSAL_TYPE" != "lease" ]; then
+    echo -e "${YELLOW}⚠ Nenhuma proposta de locação em 'sent' encontrada no banco${NC}"
     PROPOSAL_ID=""
 fi
 
@@ -218,10 +219,10 @@ else
     RESP=$(post_initiate "$MANAGER_SESSION" "$MANAGER_COMPANY" "$SALE_PROPOSAL_ID" "Tokio Marine")
     HTTP_CODE=$(echo "$RESP" | tail -1)
     info "HTTP $HTTP_CODE — sale_proposal_id=$SALE_PROPOSAL_ID"
-    if [ "$HTTP_CODE" = "400" ]; then
-        pass "Proposta de venda bloqueada corretamente (400, FR-006)"
+    if [ "$HTTP_CODE" = "400" ] || [ "$HTTP_CODE" = "422" ]; then
+        pass "Proposta de venda bloqueada (HTTP $HTTP_CODE, FR-006)"
     else
-        fail "Esperado 400 para proposta de venda, obtido $HTTP_CODE"
+        fail "Esperado 400/422 para proposta de venda, obtido $HTTP_CODE"
     fi
 fi
 

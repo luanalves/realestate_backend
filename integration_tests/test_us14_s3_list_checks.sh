@@ -117,7 +117,7 @@ for PID in $(echo "$ALL_PROPOSALS" | jq -r '.data[].id // empty'); do
         -H "Authorization: Bearer $BEARER_TOKEN" \
         -H "X-Openerp-Session-Id: $MANAGER_SESSION" \
         -H "X-Company-ID: $MANAGER_COMPANY")
-    COUNT=$(echo "$CHECKS" | jq -r '.total // 0')
+    COUNT=$(echo "$CHECKS" | jq -r '.data.items | length // 0' 2>/dev/null || echo 0)
     if [ "$COUNT" -gt 0 ] 2>/dev/null; then
         PROPOSAL_ID="$PID"
         info "Proposta $PROPOSAL_ID tem $COUNT checks"
@@ -157,13 +157,13 @@ else
     BODY=$(echo "$RESP" | head -1)
     info "HTTP $HTTP_CODE — proposal_id=$PROPOSAL_ID"
     if [ "$HTTP_CODE" = "200" ]; then
-        IS_ARRAY=$(echo "$BODY" | jq 'if .data | type == "array" then "yes" else "no" end' -r)
-        HAS_TOTAL=$(echo "$BODY" | jq 'if has("total") then "yes" else "no" end' -r)
-        if [ "$IS_ARRAY" = "yes" ] && [ "$HAS_TOTAL" = "yes" ]; then
-            TOTAL=$(echo "$BODY" | jq -r '.total')
-            pass "Lista retornada com $TOTAL checks (array + total presentes)"
+        IS_ARRAY=$(echo "$BODY" | jq '.data.items | type == "array"' -r)
+        HAS_ITEMS=$(echo "$BODY" | jq '.data | has("items")' -r)
+        if [ "$IS_ARRAY" = "true" ] && [ "$HAS_ITEMS" = "true" ]; then
+            COUNT=$(echo "$BODY" | jq -r '.data.items | length')
+            pass "Lista retornada com $COUNT checks (data.items presente)"
         else
-            fail "200 mas resposta inválida: is_array=$IS_ARRAY, has_total=$HAS_TOTAL"
+            fail "200 mas resposta inválida: is_array=$IS_ARRAY, has_items=$HAS_ITEMS"
         fi
     else
         fail "Esperado 200, obtido $HTTP_CODE"
@@ -183,11 +183,10 @@ else
     BODY=$(echo "$RESP" | head -1)
     info "HTTP $HTTP_CODE"
     if [ "$HTTP_CODE" = "200" ]; then
-        # Verifica que todos os checks retornados têm result=approved
-        NON_APPROVED=$(echo "$BODY" | jq '[.data[] | select(.result != "approved")] | length')
+        NON_APPROVED=$(echo "$BODY" | jq '[.data.items[] | select(.result != "approved")] | length')
         if [ "$NON_APPROVED" = "0" ]; then
-            TOTAL=$(echo "$BODY" | jq -r '.total')
-            pass "Filtro result=approved correto ($TOTAL checks aprovados)"
+            COUNT=$(echo "$BODY" | jq -r '.data.items | length')
+            pass "Filtro result=approved correto ($COUNT checks aprovados)"
         else
             fail "$NON_APPROVED checks com result != approved retornados com filtro"
         fi
@@ -209,7 +208,7 @@ else
     BODY=$(echo "$RESP" | head -1)
     info "HTTP $HTTP_CODE"
     if [ "$HTTP_CODE" = "200" ]; then
-        COUNT=$(echo "$BODY" | jq '.data | length')
+        COUNT=$(echo "$BODY" | jq '.data.items | length')
         if [ "$COUNT" -le 1 ] 2>/dev/null; then
             pass "Paginação limit=1 retornou $COUNT item(s)"
         else
@@ -232,11 +231,11 @@ else
     HTTP_CODE=$(echo "$RESP" | tail -1)
     BODY=$(echo "$RESP" | head -1)
     if [ "$HTTP_CODE" = "200" ]; then
-        HAS_LINKS=$(echo "$BODY" | jq 'if has("_links") then "yes" else "no" end' -r)
-        if [ "$HAS_LINKS" = "yes" ]; then
-            pass "_links HATEOAS presente na resposta"
+        HAS_LINKS=$(echo "$BODY" | jq '.data | has("_links")' -r)
+        if [ "$HAS_LINKS" = "true" ]; then
+            pass "_links HATEOAS presente em data._links"
         else
-            fail "_links ausente na resposta"
+            fail "_links ausente em data"
         fi
     fi
 fi
