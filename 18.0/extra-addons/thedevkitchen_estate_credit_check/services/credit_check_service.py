@@ -7,14 +7,6 @@ _logger = logging.getLogger(__name__)
 
 
 class CreditCheckService:
-    """
-    Business logic for Rental Credit Check (spec 014).
-    All state transitions and invariant guards live here.
-
-    Usage:
-        svc = CreditCheckService(request.env)
-        check = svc.initiate_credit_check(proposal_id, insurer_name)
-    """
 
     def __init__(self, env):
         self.env = env
@@ -24,17 +16,13 @@ class CreditCheckService:
     # ================================================================== #
 
     def _get_proposal_or_404(self, proposal_id):
-        """
-        Return proposal record or raise UserError (ADR-008 anti-enumeration:
-        the controller maps UserError → 404 for cross-company records).
-        """
+
         proposal = self.env['real.estate.proposal'].browse(int(proposal_id))
         if not proposal.exists():
             raise UserError(_('Proposal not found.'))
         return proposal
 
     def _get_check_or_404(self, proposal_id, check_id):
-        """Return CreditCheck or raise UserError (404 if not accessible)."""
         proposal = self._get_proposal_or_404(proposal_id)
         check = self.env['thedevkitchen.estate.credit.check'].browse(int(check_id))
         if not check.exists() or check.proposal_id.id != proposal.id:
@@ -42,10 +30,7 @@ class CreditCheckService:
         return check
 
     def _assert_agent_owns_proposal(self, proposal):
-        """
-        If the current user is an Agent, verify they own this proposal.
-        Owners and Managers have unrestricted access.
-        """
+
         user = self.env.user
         if user.has_group('quicksol_estate.group_real_estate_owner'):
             return
@@ -67,12 +52,6 @@ class CreditCheckService:
     # ================================================================== #
 
     def initiate_credit_check(self, proposal_id, insurer_name):
-        """
-        Transition proposal from sent/negotiation → credit_check_pending
-        and create a new CreditCheck with result=pending (FR-001, FR-002).
-
-        Raises UserError for all guard violations (controller maps to HTTP errors).
-        """
         proposal = self._get_proposal_or_404(proposal_id)
         self._assert_agent_owns_proposal(proposal)
 
@@ -133,15 +112,6 @@ class CreditCheckService:
     # ================================================================== #
 
     def register_result(self, proposal_id, check_id, result, rejection_reason=None, check_date=None):
-        """
-        Register approved / rejected / cancelled on a pending CreditCheck.
-
-        - approved  → proposal → accepted, competitors cancelled (FR-003, FR-017)
-        - rejected  → proposal → rejected, queue promoted (FR-004, FR-016)
-        - cancelled → proposal → sent (FR-007c)
-
-        Raises UserError for all guard violations.
-        """
         check = self._get_check_or_404(proposal_id, check_id)
         proposal = check.proposal_id
         self._assert_agent_owns_proposal(proposal)
@@ -207,7 +177,6 @@ class CreditCheckService:
         return check
 
     def _handle_approved(self, proposal):
-        """Proposal → accepted + cancel competitors (FR-003, FR-017)."""
         proposal.write({
             'state': 'accepted',
             'accepted_date': fields.Datetime.now(),
@@ -234,7 +203,6 @@ class CreditCheckService:
             })
 
     def _handle_rejected(self, proposal, rejection_reason):
-        """Proposal → rejected (terminal) + promote next queued (FR-004, FR-016)."""
         proposal.write({
             'state': 'rejected',
             'rejected_date': fields.Datetime.now(),
@@ -244,11 +212,9 @@ class CreditCheckService:
         proposal._promote_next_queued()
 
     def _handle_cancelled_via_api(self, proposal):
-        """Proposal reverts to sent when check is cancelled via API (FR-007c)."""
         proposal.write({'state': 'sent'})
 
     def _emit_credit_check_event(self, check, result):
-        """Emit credit_check.result_registered event via Outbox (ADR-021)."""
         try:
             from odoo.addons.quicksol_estate.celery_tasks import (
                 send_proposal_notification,
@@ -278,10 +244,7 @@ class CreditCheckService:
     # ================================================================== #
 
     def get_client_credit_history(self, partner_id, limit=100, offset=0, company_id=None):
-        """
-        Return paginated credit history for a client, with agent-scope enforcement.
-        Anti-enumeration: raises UserError (→ 404) for out-of-scope clients.
-        """
+
         company = self.env.company
         user = self.env.user
 
@@ -352,7 +315,6 @@ class CreditCheckService:
         }
 
     def get_checks_for_proposal(self, proposal_id, result_filter=None, limit=100, offset=0):
-        """Return all CreditChecks for a proposal, optionally filtered by result."""
         proposal = self._get_proposal_or_404(proposal_id)
         self._assert_agent_owns_proposal(proposal)
 
