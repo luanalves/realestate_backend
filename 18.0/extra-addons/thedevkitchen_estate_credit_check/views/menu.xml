@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- Sub-menu under Real Estate → Análises de Ficha -->
+        <!-- Accessible only to Owner and Manager (FR-026)  -->
+        <menuitem
+            id="menu_real_estate_credit_checks"
+            name="Análises de Ficha"
+            parent="quicksol_estate.menu_real_estate_proposals"
+            sequence="20"
+            action="action_credit_check_list"
+            groups="quicksol_estate.group_real_estate_owner,quicksol_estate.group_real_estate_manager"/>
+
+    </data>
+</odoo>

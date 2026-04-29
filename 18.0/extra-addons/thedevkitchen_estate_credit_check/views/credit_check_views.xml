@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- ============================================================ -->
+        <!-- CreditCheck list view (ADR-001: <list> not <tree>)           -->
+        <!-- ============================================================ -->
+        <record id="view_credit_check_list" model="ir.ui.view">
+            <field name="name">thedevkitchen.estate.credit.check.list</field>
+            <field name="model">thedevkitchen.estate.credit.check</field>
+            <field name="arch" type="xml">
+                <list string="Análises de Ficha" create="0">
+                    <field name="proposal_id"/>
+                    <field name="insurer_name"/>
+                    <field name="result" decoration-success="result=='approved'"
+                           decoration-danger="result=='rejected'"
+                           decoration-warning="result=='pending'"
+                           decoration-muted="result=='cancelled'"/>
+                    <field name="requested_by"/>
+                    <field name="requested_at"/>
+                    <field name="check_date" optional="show"/>
+                    <field name="rejection_reason" optional="show"/>
+                    <field name="result_registered_by" optional="hide"/>
+                    <field name="result_registered_at" optional="hide"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- ============================================================ -->
+        <!-- CreditCheck form view                                        -->
+        <!-- ============================================================ -->
+        <record id="view_credit_check_form" model="ir.ui.view">
+            <field name="name">thedevkitchen.estate.credit.check.form</field>
+            <field name="model">thedevkitchen.estate.credit.check</field>
+            <field name="arch" type="xml">
+                <form string="Análise de Ficha" create="0" edit="0">
+                    <header>
+                        <field name="result" widget="statusbar"
+                               statusbar_visible="pending,approved,rejected,cancelled"/>
+                    </header>
+                    <sheet>
+                        <group>
+                            <group string="Proposta">
+                                <field name="proposal_id" readonly="1"/>
+                                <field name="partner_id" readonly="1"/>
+                                <field name="company_id" readonly="1" groups="base.group_multi_company"/>
+                            </group>
+                            <group string="Análise">
+                                <field name="insurer_name" readonly="1"/>
+                                <field name="check_date" readonly="1"/>
+                                <field name="rejection_reason" readonly="1"/>
+                            </group>
+                        </group>
+                        <group string="Auditoria">
+                            <group>
+                                <field name="requested_by" readonly="1"/>
+                                <field name="requested_at" readonly="1"/>
+                            </group>
+                            <group>
+                                <field name="result_registered_by" readonly="1"/>
+                                <field name="result_registered_at" readonly="1"/>
+                            </group>
+                        </group>
+                    </sheet>
+                    <div class="oe_chatter">
+                        <field name="message_follower_ids"/>
+                        <field name="activity_ids"/>
+                        <field name="message_ids"/>
+                    </div>
+                </form>
+            </field>
+        </record>
+
+        <!-- ============================================================ -->
+        <!-- CreditCheck action                                           -->
+        <!-- ============================================================ -->
+        <record id="action_credit_check_list" model="ir.actions.act_window">
+            <field name="name">Análises de Ficha</field>
+            <field name="res_model">thedevkitchen.estate.credit.check</field>
+            <field name="view_mode">list,form</field>
+            <field name="view_id" ref="view_credit_check_list"/>
+            <field name="groups_id" eval="[(4, ref('quicksol_estate.group_real_estate_owner')),
+                                            (4, ref('quicksol_estate.group_real_estate_manager'))]"/>
+        </record>
+
+        <!-- ============================================================ -->
+        <!-- Proposal form extension — "Análise de Ficha" tab            -->
+        <!-- (ADR-001: no attrs, invisible domain syntax only)            -->
+        <!-- ============================================================ -->
+        <record id="view_proposal_credit_check_tab" model="ir.ui.view">
+            <field name="name">real.estate.proposal.credit.check.tab</field>
+            <field name="model">real.estate.proposal</field>
+            <field name="inherit_id" ref="quicksol_estate.view_real_estate_proposal_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//notebook" position="inside">
+                    <page string="Análise de Ficha" name="credit_check_tab"
+                          groups="quicksol_estate.group_real_estate_owner,quicksol_estate.group_real_estate_manager">
+                        <group>
+                            <field name="credit_history_summary" readonly="1"
+                                   string="Histórico do Cliente"/>
+                        </group>
+                        <!-- Show initiate button only for lease proposals in sent/negotiation -->
+                        <div invisible="proposal_type != 'lease' or state not in ('sent', 'negotiation')">
+                            <button name="%(thedevkitchen_estate_credit_check.action_credit_check_list)d"
+                                    string="Ver Análises" type="action" class="btn-secondary"/>
+                        </div>
+                        <!-- Informational message for sale proposals -->
+                        <div invisible="proposal_type != 'sale'" class="alert alert-info" role="alert">
+                            <p>Análise de ficha é exclusiva para propostas de <strong>locação</strong>. Esta proposta é de venda.</p>
+                        </div>
+                        <field name="credit_check_ids"
+                               invisible="proposal_type != 'lease'"
+                               readonly="1"
+                               widget="one2many_list"
+                               context="{'default_proposal_id': id}">
+                            <list string="Análises de Ficha" create="0">
+                                <field name="insurer_name"/>
+                                <field name="result"
+                                       decoration-success="result=='approved'"
+                                       decoration-danger="result=='rejected'"
+                                       decoration-warning="result=='pending'"
+                                       decoration-muted="result=='cancelled'"/>
+                                <field name="requested_by"/>
+                                <field name="requested_at"/>
+                                <field name="check_date" optional="show"/>
+                                <field name="rejection_reason" optional="show"/>
+                            </list>
+                        </field>
+                    </page>
+                </xpath>
+            </field>
+        </record>
+
+    </data>
+</odoo>

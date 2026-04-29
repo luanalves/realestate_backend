@@ -1,0 +1,382 @@
+{
+  "info": {
+    "name": "Feature 014 — Rental Credit Check",
+    "version": "1.0",
+    "description": "Standalone Postman collection for Feature 014 (Análise de Ficha).\n\n## Endpoints\n- POST   /api/v1/proposals/{id}/credit-checks — Initiate credit check\n- GET    /api/v1/proposals/{id}/credit-checks — List credit checks\n- PATCH  /api/v1/proposals/{id}/credit-checks/{check_id} — Register result\n- GET    /api/v1/clients/{partner_id}/credit-history — Client credit history\n\n## Pre-requisites\n1. Run '1. Authentication > Get OAuth Token' to set `access_token`\n2. Run '1. Authentication > User Login' to set `session_id`\n3. Set `proposal_id` and `partner_id` in collection variables",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {"key": "base_url", "value": "http://localhost:8069"},
+    {"key": "client_id", "value": "client_xxx"},
+    {"key": "client_secret", "value": "secret_yyy"},
+    {"key": "access_token", "value": ""},
+    {"key": "refresh_token", "value": ""},
+    {"key": "session_id", "value": ""},
+    {"key": "company_id", "value": "1"},
+    {"key": "user_agent", "value": "PostmanRuntime/7.26.8"},
+    {"key": "user_email", "value": "admin@example.com"},
+    {"key": "user_password", "value": "admin"},
+    {"key": "proposal_id", "value": "1", "description": "Set after creating a lease proposal"},
+    {"key": "check_id", "value": "1", "description": "Set after initiating a credit check"},
+    {"key": "partner_id", "value": "1", "description": "Client partner_id for history endpoint"}
+  ],
+  "item": [
+    {
+      "name": "1. Authentication",
+      "item": [
+        {
+          "name": "Get OAuth Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.access_token) {",
+                  "    pm.collectionVariables.set('access_token', jsonData.access_token);",
+                  "    console.log('✅ Access token saved');",
+                  "    if (jsonData.refresh_token) {",
+                  "        pm.collectionVariables.set('refresh_token', jsonData.refresh_token);",
+                  "        console.log('✅ Refresh token saved');",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json", "type": "text"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_id\": \"{{client_id}}\",\n  \"client_secret\": \"{{client_secret}}\",\n  \"grant_type\": \"client_credentials\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/token",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "token"]
+            },
+            "description": "Obtain OAuth 2.0 Bearer token. Auto-saves `access_token` and `refresh_token` to collection variables."
+          }
+        },
+        {
+          "name": "User Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.session_id) {",
+                  "    pm.collectionVariables.set('session_id', jsonData.session_id);",
+                  "    console.log('✅ session_id saved: ' + jsonData.session_id);",
+                  "}",
+                  "if (jsonData && jsonData.company_id) {",
+                  "    pm.collectionVariables.set('company_id', String(jsonData.company_id));",
+                  "    console.log('✅ company_id saved: ' + jsonData.company_id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json", "type": "text"},
+              {"key": "User-Agent", "value": "{{user_agent}}", "type": "text", "description": "Required for session fingerprint validation"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"login\": \"{{user_email}}\",\n  \"password\": \"{{user_password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "login"]
+            },
+            "description": "Login to get session_id. Auto-saves `session_id` and `company_id` to collection variables."
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Credit Checks",
+      "item": [
+        {
+          "name": "POST Initiate Credit Check",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.data && jsonData.data.id) {",
+                  "    pm.collectionVariables.set('check_id', String(jsonData.data.id));",
+                  "    console.log('✅ check_id saved: ' + jsonData.data.id);",
+                  "} else {",
+                  "    console.error('❌ Failed to extract check id from response.data.id');",
+                  "}",
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Has data.id', () => pm.expect(jsonData.data).to.have.property('id'));",
+                  "pm.test('result is pending', () => pm.expect(jsonData.data.result).to.equal('pending'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json", "type": "text"},
+              {"key": "Authorization", "value": "Bearer {{access_token}}", "type": "text", "description": "OAuth 2.0 Bearer token"},
+              {"key": "User-Agent", "value": "{{user_agent}}", "type": "text", "description": "Required for session fingerprint validation"},
+              {"key": "X-Company-ID", "value": "{{company_id}}", "type": "text", "description": "Active company for multi-tenancy isolation"},
+              {"key": "X-Openerp-Session-Id", "value": "{{session_id}}", "type": "text", "description": "Session cookie ID"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"insurer_name\": \"Tokio Marine\",\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/proposals/{{proposal_id}}/credit-checks",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "proposals", "{{proposal_id}}", "credit-checks"]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For POST requests (type='json'), session_id MUST be sent in the **body JSON**, NOT in the header.\n\nInitiates a credit check analysis on a lease proposal in 'sent' or 'negotiation' state.\n\n**Guards (FR-006, FR-001, FR-002, FR-010):**\n- Proposal must be type=lease\n- State must be sent or negotiation\n- No existing pending check allowed\n\n**Response:** 201 + CreditCheck dict with HATEOAS _links\n**Errors:** 400 (sale proposal), 409 (already pending), 403 (access denied), 404 (not found)\n\n**Test Script:** Auto-saves `check_id` from response `data.id`."
+          }
+        },
+        {
+          "name": "GET List Credit Checks",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const jsonData = pm.response.json();",
+                  "pm.test('Has data array', () => pm.expect(jsonData.data).to.be.an('array'));",
+                  "pm.test('Has pagination', () => pm.expect(jsonData).to.have.property('total'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Content-Type", "value": "application/json", "type": "text"},
+              {"key": "Authorization", "value": "Bearer {{access_token}}", "type": "text", "description": "OAuth 2.0 Bearer token"},
+              {"key": "User-Agent", "value": "{{user_agent}}", "type": "text", "description": "Required for session fingerprint validation"},
+              {"key": "X-Openerp-Session-Id", "value": "{{session_id}}", "type": "text", "description": "Session ID for fingerprint validation (REQUIRED for GET)"},
+              {"key": "X-Company-ID", "value": "{{company_id}}", "type": "text", "description": "Active company for multi-tenancy isolation"}
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/proposals/{{proposal_id}}/credit-checks?result=pending&limit=20&offset=0",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "proposals", "{{proposal_id}}", "credit-checks"],
+              "query": [
+                {"key": "result", "value": "pending", "description": "Optional: filter by result (pending/approved/rejected/cancelled)"},
+                {"key": "limit", "value": "20"},
+                {"key": "offset", "value": "0"}
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For GET requests (type='http'), session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in request body.\n\nReturns all credit checks for a proposal, ordered by requested_at desc.\n\n**Query parameters:**\n- result: optional filter (pending/approved/rejected/cancelled)\n- limit: max results per page (default 100)\n- offset: pagination offset\n\n**Response:** 200 + paginated list with total count and HATEOAS _links"
+          }
+        },
+        {
+          "name": "PATCH Register Result — Approved",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const jsonData = pm.response.json();",
+                  "pm.test('result is approved', () => pm.expect(jsonData.data.result).to.equal('approved'));",
+                  "pm.test('proposal state is accepted', () => pm.expect(jsonData.data.proposal_state).to.equal('accepted'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {"key": "Content-Type", "value": "application/json", "type": "text"},
+              {"key": "Authorization", "value": "Bearer {{access_token}}", "type": "text", "description": "OAuth 2.0 Bearer token"},
+              {"key": "User-Agent", "value": "{{user_agent}}", "type": "text", "description": "Required for session fingerprint validation"},
+              {"key": "X-Company-ID", "value": "{{company_id}}", "type": "text", "description": "Active company for multi-tenancy isolation"},
+              {"key": "X-Openerp-Session-Id", "value": "{{session_id}}", "type": "text", "description": "Session cookie ID"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"result\": \"approved\",\n  \"check_date\": \"2026-01-15\",\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/proposals/{{proposal_id}}/credit-checks/{{check_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "proposals", "{{proposal_id}}", "credit-checks", "{{check_id}}"]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For PATCH requests (type='json'), session_id MUST be sent in the **body JSON**, NOT in the header.\n\nRegisters result=approved on a pending credit check.\n\n**Effects (FR-003, FR-017):**\n- CreditCheck.result → approved\n- Proposal.state → accepted\n- Competing proposals cancelled\n\n**Immutability:** Cannot re-register on a resolved check (409)\n**check_date:** Must not be in the future\n\n**Response:** 200 + updated CreditCheck dict"
+          }
+        },
+        {
+          "name": "PATCH Register Result — Rejected",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const jsonData = pm.response.json();",
+                  "pm.test('result is rejected', () => pm.expect(jsonData.data.result).to.equal('rejected'));",
+                  "pm.test('proposal state is rejected', () => pm.expect(jsonData.data.proposal_state).to.equal('rejected'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {"key": "Content-Type", "value": "application/json", "type": "text"},
+              {"key": "Authorization", "value": "Bearer {{access_token}}", "type": "text", "description": "OAuth 2.0 Bearer token"},
+              {"key": "User-Agent", "value": "{{user_agent}}", "type": "text", "description": "Required for session fingerprint validation"},
+              {"key": "X-Company-ID", "value": "{{company_id}}", "type": "text", "description": "Active company for multi-tenancy isolation"},
+              {"key": "X-Openerp-Session-Id", "value": "{{session_id}}", "type": "text", "description": "Session cookie ID"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"result\": \"rejected\",\n  \"rejection_reason\": \"Pontuação de crédito insuficiente (score 320).\",\n  \"check_date\": \"2026-01-15\",\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/proposals/{{proposal_id}}/credit-checks/{{check_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "proposals", "{{proposal_id}}", "credit-checks", "{{check_id}}"]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n\nRegisters result=rejected on a pending credit check.\n\n**Effects (FR-004, FR-016):**\n- CreditCheck.result → rejected\n- Proposal.state → rejected (terminal)\n- Next queued proposal promoted\n\n**rejection_reason is REQUIRED when result=rejected (FR-009)**\n\n**Response:** 200 + updated CreditCheck dict"
+          }
+        },
+        {
+          "name": "PATCH Register Result — Cancelled (FR-007c)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const jsonData = pm.response.json();",
+                  "pm.test('result is cancelled', () => pm.expect(jsonData.data.result).to.equal('cancelled'));",
+                  "pm.test('proposal reverts to sent', () => pm.expect(jsonData.data.proposal_state).to.equal('sent'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {"key": "Content-Type", "value": "application/json", "type": "text"},
+              {"key": "Authorization", "value": "Bearer {{access_token}}", "type": "text", "description": "OAuth 2.0 Bearer token"},
+              {"key": "User-Agent", "value": "{{user_agent}}", "type": "text", "description": "Required for session fingerprint validation"},
+              {"key": "X-Company-ID", "value": "{{company_id}}", "type": "text", "description": "Active company for multi-tenancy isolation"},
+              {"key": "X-Openerp-Session-Id", "value": "{{session_id}}", "type": "text", "description": "Session cookie ID"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"result\": \"cancelled\",\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/proposals/{{proposal_id}}/credit-checks/{{check_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "proposals", "{{proposal_id}}", "credit-checks", "{{check_id}}"]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n\nCancels a pending credit check via API (FR-007c).\n\n**Effects:**\n- CreditCheck.result → cancelled\n- Proposal.state → sent (reverts to negotiable)\n\n**Response:** 200 + updated CreditCheck dict"
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Client Credit History",
+      "item": [
+        {
+          "name": "GET Client Credit History",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const jsonData = pm.response.json();",
+                  "pm.test('Has data array', () => pm.expect(jsonData.data).to.be.an('array'));",
+                  "pm.test('Has summary', () => pm.expect(jsonData.summary).to.have.all.keys('total','approved','rejected','pending','cancelled'));",
+                  "pm.test('Has pagination', () => pm.expect(jsonData).to.have.property('total'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Content-Type", "value": "application/json", "type": "text"},
+              {"key": "Authorization", "value": "Bearer {{access_token}}", "type": "text", "description": "OAuth 2.0 Bearer token"},
+              {"key": "User-Agent", "value": "{{user_agent}}", "type": "text", "description": "Required for session fingerprint validation"},
+              {"key": "X-Openerp-Session-Id", "value": "{{session_id}}", "type": "text", "description": "Session ID for fingerprint validation (REQUIRED for GET)"},
+              {"key": "X-Company-ID", "value": "{{company_id}}", "type": "text", "description": "Active company for multi-tenancy isolation"}
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/clients/{{partner_id}}/credit-history?limit=20&offset=0",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "clients", "{{partner_id}}", "credit-history"],
+              "query": [
+                {"key": "limit", "value": "20"},
+                {"key": "offset", "value": "0"}
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For GET requests (type='http'), session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in request body.\n\nReturns paginated credit check history for a client.\n\n**RBAC scope (FR-013, ADR-008):**\n- Owner / Manager: unrestricted access\n- Agent: only clients from their own proposals\n- Out-of-scope client returns 404 (anti-enumeration)\n\n**Response fields:**\n- data: array of CreditCheck dicts\n- summary: {total, approved, rejected, pending, cancelled}\n- total / limit / offset (pagination)\n- _links: HATEOAS (self)\n\n**Errors:** 404 (unknown client or out of agent scope)"
+          }
+        },
+        {
+          "name": "GET Client Credit History — Agent Scope Test",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Test that an agent gets 404 for out-of-scope client (anti-enumeration)",
+                  "const jsonData = pm.response.json();",
+                  "const status = pm.response.code;",
+                  "pm.test('Returns 404 for out-of-scope client', () => {",
+                  "    pm.expect([404]).to.include(status);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Content-Type", "value": "application/json", "type": "text"},
+              {"key": "Authorization", "value": "Bearer {{access_token}}", "type": "text", "description": "OAuth 2.0 Bearer token"},
+              {"key": "User-Agent", "value": "{{user_agent}}", "type": "text", "description": "Required for session fingerprint validation"},
+              {"key": "X-Openerp-Session-Id", "value": "{{session_id}}", "type": "text", "description": "Session ID for fingerprint validation (REQUIRED for GET)"},
+              {"key": "X-Company-ID", "value": "{{company_id}}", "type": "text", "description": "Active company for multi-tenancy isolation"}
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/clients/999999/credit-history",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "clients", "999999", "credit-history"]
+            },
+            "description": "Verifies ADR-008 anti-enumeration: agent requesting a client they don't manage must receive 404 (not 403 — to avoid revealing the client's existence)."
+          }
+        }
+      ]
+    }
+  ]
+}

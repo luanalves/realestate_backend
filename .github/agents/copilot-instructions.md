@@ -19,6 +19,8 @@ Auto-generated from all feature plans. Last updated: 2026-01-15
 - PostgreSQL — `realestate` database; Redis DB1 (sessions/cache), DB2 (Celery) (011-company-odoo-integration)
 - Python 3.11 (Odoo 18.0) + Odoo 18.0 framework, `quicksol_estate` (existing module — property, lead, agent), `thedevkitchen_apigateway` (auth: JWT + session + company), `mail` (Odoo built-in: `mail.thread`, `mail.template`, `mail.activity.mixin`), Celery 5.3.4 with Redis backend, `psycopg2` (PostgreSQL driver) (013-property-proposals)
 - PostgreSQL 14+ (primary persistence; partial unique index + `SELECT FOR UPDATE` row locking), Redis 7-alpine (DB index 1 for Odoo sessions/cache, DB 2 for Celery results), `ir.attachment` for documents (Odoo's built-in filestore) (013-property-proposals)
+- Python 3.11 (Odoo 18.0) + Odoo ORM, `mail.thread`, `mail.activity.mixin`, `thedevkitchen_apigateway` (JWT/session auth), `quicksol_estate` (proposal/property models), `thedevkitchen_user_onboarding` (RBAC groups) (014-rental-credit-check)
+- PostgreSQL 15 (primary persistence) + Redis DB1 (sessions, HTTP cache — existing infrastructure) (014-rental-credit-check)
 
 - Python 3.11 (Odoo 18.0) + Odoo 18.0, PyJWT, Redis 7-alpine, PostgreSQL 16 (001-bearer-token-validation)
 
@@ -39,9 +41,9 @@ cd src [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECHNOLO
 Python 3.11 (Odoo 18.0): Follow standard conventions
 
 ## Recent Changes
+- 014-rental-credit-check: Added Python 3.11 (Odoo 18.0) + Odoo ORM, `mail.thread`, `mail.activity.mixin`, `thedevkitchen_apigateway` (JWT/session auth), `quicksol_estate` (proposal/property models), `thedevkitchen_user_onboarding` (RBAC groups)
+- 014-rental-credit-check: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
 - 013-property-proposals: Added Python 3.11 (Odoo 18.0) + Odoo 18.0 framework, `quicksol_estate` (existing module — property, lead, agent), `thedevkitchen_apigateway` (auth: JWT + session + company), `mail` (Odoo built-in: `mail.thread`, `mail.template`, `mail.activity.mixin`), Celery 5.3.4 with Redis backend, `psycopg2` (PostgreSQL driver)
-- 011-company-odoo-integration: Added Python 3.10+ (Odoo 18.0), XML (views/data), Bash (integration tests) + Odoo 18.0 ORM, PostgreSQL 15, Redis 7-alpine (sessions/cache), RabbitMQ + Celery (async)
-- 009-user-onboarding-password-management: Added Python 3.10+ (Odoo 18.0 framework) + Odoo 18.0, `thedevkitchen_apigateway` v18.0.1.1.0 (auth middleware), `quicksol_estate` v18.0.2.1.0 (RBAC groups, models), `validate_docbr` (CPF validation), `email_validator`
 
 
 <!-- MANUAL ADDITIONS START -->
