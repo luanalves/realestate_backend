@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- Company isolation rule — applied to all CRUD on CreditCheck -->
+        <record id="rule_credit_check_company" model="ir.rule">
+            <field name="name">Credit Check: company isolation</field>
+            <field name="model_id" ref="model_thedevkitchen_estate_credit_check"/>
+            <field name="domain_force">[('company_id', 'in', user.company_ids.ids)]</field>
+            <field name="groups" eval="[(4, ref('quicksol_estate.group_real_estate_owner')),
+                                        (4, ref('quicksol_estate.group_real_estate_manager')),
+                                        (4, ref('quicksol_estate.group_real_estate_agent')),
+                                        (4, ref('quicksol_estate.group_real_estate_receptionist'))]"/>
+        </record>
+
+    </data>
+</odoo>

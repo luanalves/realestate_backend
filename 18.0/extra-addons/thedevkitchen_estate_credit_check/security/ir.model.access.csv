@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_credit_check_owner,Owner: Credit Check,model_thedevkitchen_estate_credit_check,quicksol_estate.group_real_estate_owner,1,1,1,1
+access_credit_check_manager,Manager: Credit Check,model_thedevkitchen_estate_credit_check,quicksol_estate.group_real_estate_manager,1,1,1,1
+access_credit_check_agent,Agent: Credit Check,model_thedevkitchen_estate_credit_check,quicksol_estate.group_real_estate_agent,1,1,1,0
+access_credit_check_receptionist,Receptionist: Credit Check,model_thedevkitchen_estate_credit_check,quicksol_estate.group_real_estate_receptionist,1,0,0,0

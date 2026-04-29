@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- Template: Credit Check Approved -->
+        <record id="credit_check_approved_template" model="mail.template">
+            <field name="name">Ficha Aprovada — Análise de Crédito</field>
+            <field name="model_id" ref="thedevkitchen_estate_credit_check.model_thedevkitchen_estate_credit_check"/>
+            <field name="subject">Ficha aprovada — {{ object.proposal_id.proposal_code }}</field>
+            <field name="body_html"><![CDATA[
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+    <h2 style="color: #16a34a;">✅ Análise de Ficha Aprovada</h2>
+    <p>Olá,</p>
+    <p>A análise de crédito para a proposta <strong>{{ object.proposal_id.proposal_code }}</strong> foi <strong>APROVADA</strong>.</p>
+    <table style="border-collapse: collapse; width: 100%; margin: 16px 0;">
+        <tr>
+            <td style="padding: 8px; border: 1px solid #e5e7eb; font-weight: bold; background: #f9fafb;">Proposta</td>
+            <td style="padding: 8px; border: 1px solid #e5e7eb;">{{ object.proposal_id.proposal_code }}</td>
+        </tr>
+        <tr>
+            <td style="padding: 8px; border: 1px solid #e5e7eb; font-weight: bold; background: #f9fafb;">Cliente</td>
+            <td style="padding: 8px; border: 1px solid #e5e7eb;">{{ object.partner_id.name }}</td>
+        </tr>
+        <tr>
+            <td style="padding: 8px; border: 1px solid #e5e7eb; font-weight: bold; background: #f9fafb;">Seguradora</td>
+            <td style="padding: 8px; border: 1px solid #e5e7eb;">{{ object.insurer_name }}</td>
+        </tr>
+        <tr>
+            <td style="padding: 8px; border: 1px solid #e5e7eb; font-weight: bold; background: #f9fafb;">Data da Análise</td>
+            <td style="padding: 8px; border: 1px solid #e5e7eb;">{{ object.check_date or '—' }}</td>
+        </tr>
+        <tr>
+            <td style="padding: 8px; border: 1px solid #e5e7eb; font-weight: bold; background: #f9fafb;">Registrado por</td>
+            <td style="padding: 8px; border: 1px solid #e5e7eb;">{{ object.result_registered_by.name }}</td>
+        </tr>
+    </table>
+    <p>A proposta foi automaticamente movida para o estado <strong>Aceito</strong>.</p>
+    <p>Atenciosamente,<br/>Sistema de Gestão Imobiliária</p>
+</div>
+            ]]></field>
+            <field name="email_from">{{ (object.company_id.email or '') }}</field>
+            <field name="lang">{{ object.partner_id.lang }}</field>
+            <field name="auto_delete" eval="True"/>
+        </record>
+
+        <!-- Template: Credit Check Rejected -->
+        <record id="credit_check_rejected_template" model="mail.template">
+            <field name="name">Ficha Reprovada — Análise de Crédito</field>
+            <field name="model_id" ref="thedevkitchen_estate_credit_check.model_thedevkitchen_estate_credit_check"/>
+            <field name="subject">Ficha reprovada — {{ object.proposal_id.proposal_code }}</field>
+            <field name="body_html"><![CDATA[
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+    <h2 style="color: #dc2626;">❌ Análise de Ficha Reprovada</h2>
+    <p>Olá,</p>
+    <p>A análise de crédito para a proposta <strong>{{ object.proposal_id.proposal_code }}</strong> foi <strong>REPROVADA</strong>.</p>
+    <table style="border-collapse: collapse; width: 100%; margin: 16px 0;">
+        <tr>
+            <td style="padding: 8px; border: 1px solid #e5e7eb; font-weight: bold; background: #f9fafb;">Proposta</td>
+            <td style="padding: 8px; border: 1px solid #e5e7eb;">{{ object.proposal_id.proposal_code }}</td>
+        </tr>
+        <tr>
+            <td style="padding: 8px; border: 1px solid #e5e7eb; font-weight: bold; background: #f9fafb;">Cliente</td>
+            <td style="padding: 8px; border: 1px solid #e5e7eb;">{{ object.partner_id.name }}</td>
+        </tr>
+        <tr>
+            <td style="padding: 8px; border: 1px solid #e5e7eb; font-weight: bold; background: #f9fafb;">Seguradora</td>
+            <td style="padding: 8px; border: 1px solid #e5e7eb;">{{ object.insurer_name }}</td>
+        </tr>
+        <tr>
+            <td style="padding: 8px; border: 1px solid #e5e7eb; font-weight: bold; background: #f9fafb;">Data da Análise</td>
+            <td style="padding: 8px; border: 1px solid #e5e7eb;">{{ object.check_date or '—' }}</td>
+        </tr>
+        <tr>
+            <td style="padding: 8px; border: 1px solid #e5e7eb; font-weight: bold; background: #f9fafb; color: #dc2626;">Motivo da Reprovação</td>
+            <td style="padding: 8px; border: 1px solid #e5e7eb;">{{ object.rejection_reason }}</td>
+        </tr>
+        <tr>
+            <td style="padding: 8px; border: 1px solid #e5e7eb; font-weight: bold; background: #f9fafb;">Registrado por</td>
+            <td style="padding: 8px; border: 1px solid #e5e7eb;">{{ object.result_registered_by.name }}</td>
+        </tr>
+    </table>
+    <p>A proposta foi movida para o estado <strong>Rejeitado</strong>. Para nova tentativa com outra seguradora, crie uma nova proposta no sistema.</p>
+    <p>Atenciosamente,<br/>Sistema de Gestão Imobiliária</p>
+</div>
+            ]]></field>
+            <field name="email_from">{{ (object.company_id.email or '') }}</field>
+            <field name="lang">{{ object.partner_id.lang }}</field>
+            <field name="auto_delete" eval="True"/>
+        </record>
+
+    </data>
+</odoo>

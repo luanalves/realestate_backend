@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+
+        <!-- ============================================================ -->
+        <!-- Feature 014 — Rental Credit Check API Endpoints              -->
+        <!-- Swagger records (ADR-005): generated from DB, not static     -->
+        <!-- ============================================================ -->
+
+        <record id="api_endpoint_credit_check_initiate" model="thedevkitchen.api.endpoint">
+            <field name="name">Initiate Credit Check</field>
+            <field name="path">/api/v1/proposals/{proposal_id}/credit-checks</field>
+            <field name="method">POST</field>
+            <field name="module_name">thedevkitchen_estate_credit_check</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Credit Checks</field>
+            <field name="summary">Initiate a credit check for a rental proposal</field>
+            <field name="description">Initiates a credit analysis (Análise de Ficha) for a lease proposal.
+Transitions proposal state from sent/negotiation → credit_check_pending.
+Creates a new CreditCheck record with result=pending.
+
+**Authorization**: Owner, Manager, or Agent (own proposals only).
+**Auth Headers**: Authorization: Bearer {jwt_token} | X-Openerp-Session-Id | X-Company-Id
+
+**Required fields:**
+- insurer_name (string, max 255 chars)
+
+**Invariant**: Only one pending check per proposal (partial unique index, ADR-027).
+
+**Errors:**
+- 400: missing insurer_name or proposal not in sent/negotiation
+- 403: agent does not own proposal
+- 404: proposal not found
+- 409: pending check already exists
+- 422: sale proposal (credit check only for lease)
+
+**Request:**
+```json
+{"insurer_name": "Tokio Marine"}
+```
+
+**Response (201):**
+```json
+{
+  "status": "success",
+  "data": {
+    "id": 42,
+    "proposal_id": 15,
+    "insurer_name": "Tokio Marine",
+    "result": "pending",
+    "requested_at": "2026-04-29T14:30:00Z",
+    "_links": {
+      "self": {"href": "/api/v1/proposals/15/credit-checks/42"},
+      "proposal": {"href": "/api/v1/proposals/15"}
+    }
+  }
+}
+```</field>
+        </record>
+
+        <record id="api_endpoint_credit_check_register" model="thedevkitchen.api.endpoint">
+            <field name="name">Register Credit Check Result</field>
+            <field name="path">/api/v1/proposals/{proposal_id}/credit-checks/{check_id}</field>
+            <field name="method">PATCH</field>
+            <field name="module_name">thedevkitchen_estate_credit_check</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Credit Checks</field>
+            <field name="summary">Register the result of a pending credit check</field>
+            <field name="description">Registers approved / rejected / cancelled on a pending CreditCheck.
+
+- **approved**: Proposal → accepted. Competing proposals cancelled.
+- **rejected**: Proposal → rejected (terminal). Queue promotion triggered.
+- **cancelled**: Check cancelled. Proposal reverts to sent (FR-007c).
+
+**Authorization**: Owner, Manager, or Agent (own proposals only).
+
+**Required fields:**
+- result (approved | rejected | cancelled)
+
+**Conditional fields:**
+- rejection_reason (required when result=rejected)
+- check_date (optional, must not be future)
+
+**Errors:**
+- 400: missing result or rejection_reason
+- 404: check or proposal not found
+- 409: check already resolved (immutable)
+
+**Request:**
+```json
+{
+  "result": "rejected",
+  "rejection_reason": "Renda insuficiente para o valor solicitado.",
+  "check_date": "2026-04-29"
+}
+```</field>
+        </record>
+
+        <record id="api_endpoint_credit_check_list" model="thedevkitchen.api.endpoint">
+            <field name="name">List Credit Checks for Proposal</field>
+            <field name="path">/api/v1/proposals/{proposal_id}/credit-checks</field>
+            <field name="method">GET</field>
+            <field name="module_name">thedevkitchen_estate_credit_check</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Credit Checks</field>
+            <field name="summary">List all credit checks for a proposal</field>
+            <field name="description">Returns all credit check records for a given proposal, ordered by requested_at desc.
+
+**Authorization**: Owner, Manager, or Agent (own proposals only).
+
+**Query params:**
+- result (filter: pending | approved | rejected | cancelled)
+- limit (max 100, default 100)
+- offset (default 0)
+
+**Response (200):**
+```json
+{
+  "status": "success",
+  "data": {
+    "items": [...],
+    "limit": 100,
+    "offset": 0,
+    "_links": {"self": {"href": "/api/v1/proposals/15/credit-checks"}}
+  }
+}
+```</field>
+        </record>
+
+        <record id="api_endpoint_credit_history" model="thedevkitchen.api.endpoint">
+            <field name="name">Get Client Credit History</field>
+            <field name="path">/api/v1/clients/{partner_id}/credit-history</field>
+            <field name="method">GET</field>
+            <field name="module_name">thedevkitchen_estate_credit_check</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Client History</field>
+            <field name="summary">Get full credit check history for a client</field>
+            <field name="description">Returns the complete credit check history for a client (res.partner) across all proposals in the company.
+
+**Authorization**:
+- Owner/Manager: any client in their company
+- Agent: only clients from their own proposals (any state). Returns 404 for out-of-scope clients (ADR-008 anti-enumeration).
+- Receptionist: read-only access
+
+**Performance**: &lt; 300ms for up to 1,000 checks per company (SC-004).
+
+**Query params:**
+- limit (max 100, default 100)
+- offset (default 0)
+
+**Response (200):**
+```json
+{
+  "status": "success",
+  "data": {
+    "partner_id": 7,
+    "summary": {"total": 3, "approved": 1, "rejected": 2, "pending": 0, "cancelled": 0},
+    "items": [...],
+    "limit": 100,
+    "offset": 0,
+    "_links": {"self": {"href": "/api/v1/clients/7/credit-history"}}
+  }
+}
+```</field>
+        </record>
+
+    </data>
+</odoo>
