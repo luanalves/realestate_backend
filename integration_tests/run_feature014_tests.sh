@@ -1,18 +1,19 @@
 #!/usr/bin/env bash
 # =============================================================================
 # Feature 014 — Rental Credit Check (Análise de Ficha)
-# Integration test runner
+# Integration test runner — segue padrão ADR-003 (curl E2E)
 #
 # Usage:
-#   ./run_feature014_tests.sh             # Run all tests
-#   ./run_feature014_tests.sh 1 3         # Run only tests 1 and 3
+#   ./run_feature014_tests.sh             # Executa todos os testes
+#   ./run_feature014_tests.sh 1 3         # Executa apenas os testes 1 e 3
+#   ./run_feature014_tests.sh 1-3         # Executa testes 1 a 3
 #   BASE_URL=http://prod:8069 ./run_feature014_tests.sh
 #
-# Requirements: jq, curl
-# ADR: ADR-003 (E2E API tests — requires running Odoo + DB)
+# Requires: jq, curl, 18.0/.env configurado
+# ADR-003: E2E API tests — requer Odoo em execução com banco real
 # =============================================================================
 
-set -euo pipefail
+set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -22,6 +23,99 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m'
+
+# Mapeamento de número → arquivo de teste
+get_test_file() {
+    case $1 in
+        1) echo "test_us14_s1_initiate_credit_check.sh" ;;
+        2) echo "test_us14_s2_register_result.sh" ;;
+        3) echo "test_us14_s3_list_checks.sh" ;;
+        4) echo "test_us14_s4_client_history.sh" ;;
+        *) echo "" ;;
+    esac
+}
+
+get_test_name() {
+    case $1 in
+        1) echo "US14-S1: Initiate Credit Check" ;;
+        2) echo "US14-S2: Register Result" ;;
+        3) echo "US14-S3: List Credit Checks" ;;
+        4) echo "US14-S4: Client Credit History" ;;
+        *) echo "Unknown Test" ;;
+    esac
+}
+
+# Determinar quais testes executar
+TESTS_TO_RUN=()
+if [ $# -eq 0 ]; then
+    TESTS_TO_RUN=(1 2 3 4)
+else
+    for arg in "$@"; do
+        if [[ $arg =~ ^([0-9]+)-([0-9]+)$ ]]; then
+            start=${BASH_REMATCH[1]}
+            end=${BASH_REMATCH[2]}
+            for i in $(seq "$start" "$end"); do
+                test_file=$(get_test_file "$i")
+                [[ -n "$test_file" ]] && TESTS_TO_RUN+=("$i")
+            done
+        elif [[ $arg =~ ^[0-9]+$ ]]; then
+            test_file=$(get_test_file "$arg")
+            [[ -n "$test_file" ]] && TESTS_TO_RUN+=("$arg")
+        else
+            echo -e "${RED}Número de teste inválido: $arg${NC}"
+            exit 1
+        fi
+    done
+fi
+
+if [ ${#TESTS_TO_RUN[@]} -eq 0 ]; then
+    echo -e "${RED}Nenhum teste válido especificado${NC}"
+    exit 1
+fi
+
+echo -e "${CYAN}╔══════════════════════════════════════════════════╗${NC}"
+echo -e "${CYAN}║  Feature 014 — Rental Credit Check (E2E Suite)  ║${NC}"
+echo -e "${CYAN}╚══════════════════════════════════════════════════╝${NC}"
+echo -e "${BLUE}Testes a executar: ${TESTS_TO_RUN[*]}${NC}"
+echo ""
+
+PASSED=0
+FAILED=0
+
+for test_num in "${TESTS_TO_RUN[@]}"; do
+    test_file=$(get_test_file "$test_num")
+    test_name=$(get_test_name "$test_num")
+
+    if [ -z "$test_file" ]; then
+        echo -e "${YELLOW}⚠ Teste $test_num não encontrado${NC}"
+        continue
+    fi
+
+    test_path="$SCRIPT_DIR/$test_file"
+    if [ ! -f "$test_path" ]; then
+        echo -e "${RED}✗ Arquivo não encontrado: $test_path${NC}"
+        FAILED=$((FAILED + 1))
+        continue
+    fi
+
+    echo -e "${CYAN}━━━ Executando: $test_name ━━━${NC}"
+    if bash "$test_path"; then
+        echo -e "${GREEN}✓ $test_name — PASSOU${NC}"
+        PASSED=$((PASSED + 1))
+    else
+        echo -e "${RED}✗ $test_name — FALHOU${NC}"
+        FAILED=$((FAILED + 1))
+    fi
+    echo ""
+done
+
+echo -e "${CYAN}━━━ Resultado Final ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "  ${GREEN}PASSOU: $PASSED${NC}   ${RED}FALHOU: $FAILED${NC}"
+echo ""
+
+if [ "$FAILED" -gt 0 ]; then
+    exit 1
+fi
 
 # ---------------------------------------------------------------------------
 # Config
