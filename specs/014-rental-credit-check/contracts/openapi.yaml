@@ -1,0 +1,511 @@
+openapi: "3.0.3"
+info:
+  title: Rental Credit Check API
+  description: |
+    REST API for managing rental credit checks (Análise de Ficha).
+    All endpoints require authentication via JWT + session (ADR-011).
+    Multi-tenancy is enforced at record-rule level (ADR-008).
+  version: "1.0.0"
+  contact:
+    name: TheDevKitchen
+    url: https://www.thedevkitchen.com
+
+servers:
+  - url: "{base_url}/api/v1"
+    variables:
+      base_url:
+        default: "http://localhost:8069"
+        description: Odoo base URL
+
+security:
+  - bearerAuth: []
+  - sessionCookie: []
+
+tags:
+  - name: credit-checks
+    description: Credit check management for rental proposals
+  - name: client-history
+    description: Client credit history across proposals
+
+paths:
+  /proposals/{proposal_id}/credit-checks:
+    post:
+      summary: Initiate credit check
+      description: |
+        Initiates a credit check for a rental proposal.
+        Transitions proposal state from `sent` → `credit_check_pending`.
+        Creates a new `thedevkitchen.estate.credit.check` record in `pending` state.
+        
+        **Authorization**: Owner, Manager, or Agent (only for proposals assigned to them).
+        
+        **Invariant**: Only one `pending` check is allowed per proposal at a time
+        (enforced by partial unique index at DB level).
+      operationId: initiateCreditCheck
+      tags: [credit-checks]
+      parameters:
+        - $ref: "#/components/parameters/ProposalId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [insurer_name]
+              properties:
+                insurer_name:
+                  type: string
+                  maxLength: 255
+                  description: Name of the insurer performing the analysis (free text, FR-022). Required.
+      responses:
+        "201":
+          description: Credit check initiated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreditCheckResponse"
+              example:
+                status: "success"
+                data:
+                  id: 42
+                  proposal_id: 15
+                  partner_id: 7
+                  insurer_name: "Tokio Marine"
+                  result: "pending"
+                  requested_by: 3
+                  requested_at: "2026-04-29T14:30:00Z"
+                  _links:
+                    self:
+                      href: "/api/v1/proposals/15/credit-checks/42"
+                    proposal:
+                      href: "/api/v1/proposals/15"
+        "400":
+          description: |
+            Bad request. Possible causes:
+            - Proposal is not in `sent` state
+            - A pending credit check already exists for this proposal
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Agent does not own this proposal
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Proposal not found or not accessible in current company
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+    get:
+      summary: List credit checks for a proposal
+      description: |
+        Returns all credit checks (all results) for a given proposal, ordered by `requested_at` desc.
+        
+        **Authorization**: Owner, Manager, or Agent (only for proposals assigned to them).
+      operationId: listCreditChecks
+      tags: [credit-checks]
+      parameters:
+        - $ref: "#/components/parameters/ProposalId"
+        - name: result
+          in: query
+          description: Filter by result
+          required: false
+          schema:
+            type: string
+            enum: [pending, approved, rejected, cancelled]
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: List of credit checks
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreditCheckListResponse"
+        "404":
+          description: Proposal not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /proposals/{proposal_id}/credit-checks/{check_id}:
+    patch:
+      summary: Register credit check result
+      description: |
+        Registers the result of a credit check (approved / rejected / cancelled).
+        Transitions `result` from `pending` to the given value.
+        
+        - **approved**: Transitions proposal → `accepted`. Triggers queue promotion for competing proposals.
+        - **rejected**: Transitions proposal → `rejected` (terminal). New proposal required to retry.
+        - **cancelled**: Cancels the check. Proposal reverts to `sent` (FR-007c). Use this when the insurer analysis is abandoned and the agent wants to retry with a different insurer.
+        
+        **Authorization**: Owner, Manager, or Agent (own proposals only).
+        
+        **Notifications**: An async event is emitted (`credit_check.result_registered`) for email dispatch.
+      operationId: registerCreditCheckResult
+      tags: [credit-checks]
+      parameters:
+        - $ref: "#/components/parameters/ProposalId"
+        - name: check_id
+          in: path
+          required: true
+          description: Credit check record ID
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterResultRequest"
+            examples:
+              approve:
+                summary: Approve
+                value:
+                  result: "approved"
+                  check_date: "2026-04-29"
+              reject:
+                summary: Reject with reason
+                value:
+                  result: "rejected"
+                  rejection_reason: "Renda insuficiente para o valor do aluguel solicitado."
+                  check_date: "2026-04-29"
+              cancel:
+                summary: Cancel
+                value:
+                  result: "cancelled"
+      responses:
+        "200":
+          description: Result registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreditCheckResponse"
+        "400":
+          description: |
+            Bad request. Possible causes:
+            - `result` is not `pending`
+            - `rejection_reason` is missing when `result = rejected`
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Agent is not authorized to register results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Credit check or proposal not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Credit check is not in `pending` state (already resolved)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /clients/{partner_id}/credit-history:
+    get:
+      summary: Get client credit history
+      description: |
+        Returns the full credit check history for a client (res.partner) across all proposals
+        in the current company.
+        
+        **Authorization**:
+        - Owner and Manager: access any client in their company.
+        - Agent: access only clients who appear in at least one proposal assigned to the agent
+          (any state, including terminal). Returns **404** (anti-enumeration) if the agent
+          has no such proposal for the requested client.
+        
+        **Performance**: Guaranteed < 300 ms for up to 1,000 checks per company (SC-004).
+      operationId: getClientCreditHistory
+      tags: [client-history]
+      parameters:
+        - name: partner_id
+          in: path
+          required: true
+          description: Odoo res.partner ID
+          schema:
+            type: integer
+            minimum: 1
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: Client credit history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreditHistoryResponse"
+              example:
+                status: "success"
+                data:
+                  partner_id: 7
+                  partner_name: "Maria Silva"
+                  summary:
+                    total: 3
+                    approved: 2
+                    rejected: 1
+                    pending: 0
+                    cancelled: 0
+                  checks:
+                    - id: 42
+                      proposal_id: 15
+                      result: "approved"
+                      requested_at: "2026-04-10T10:00:00Z"
+                      result_registered_at: "2026-04-11T09:30:00Z"
+                      check_date: "2026-04-11"
+                    - id: 38
+                      proposal_id: 12
+                      result: "rejected"
+                      rejection_reason: "Renda insuficiente"
+                      requested_at: "2026-03-15T14:00:00Z"
+                      result_registered_at: "2026-03-16T11:00:00Z"
+                      check_date: "2026-03-16"
+                  _links:
+                    self:
+                      href: "/api/v1/clients/7/credit-history"
+        "404":
+          description: |
+            Client not found in current company, or (for agents) no proposals exist
+            for this client in their scope. 404 used for anti-enumeration (ADR-008).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT access token from OAuth2 token endpoint
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: session_id
+      description: Odoo session cookie
+
+  parameters:
+    ProposalId:
+      name: proposal_id
+      in: path
+      required: true
+      description: Proposal record ID
+      schema:
+        type: integer
+        minimum: 1
+
+    Limit:
+      name: limit
+      in: query
+      required: false
+      description: Max records to return (default 20, max 100)
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+
+    Offset:
+      name: offset
+      in: query
+      required: false
+      description: Pagination offset
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+
+  schemas:
+    CreditCheckResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success]
+        data:
+          $ref: "#/components/schemas/CreditCheck"
+
+    CreditCheckListResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success]
+        data:
+          type: object
+          properties:
+            total:
+              type: integer
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/CreditCheck"
+            _links:
+              $ref: "#/components/schemas/PaginationLinks"
+
+    CreditHistoryResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success]
+        data:
+          type: object
+          required: [partner_id, partner_name, summary, checks]
+          properties:
+            partner_id:
+              type: integer
+            partner_name:
+              type: string
+            summary:
+              type: object
+              properties:
+                total:
+                  type: integer
+                approved:
+                  type: integer
+                rejected:
+                  type: integer
+                pending:
+                  type: integer
+                cancelled:
+                  type: integer
+            checks:
+              type: array
+              items:
+                $ref: "#/components/schemas/CreditCheck"
+            _links:
+              $ref: "#/components/schemas/SelfLink"
+
+    CreditCheck:
+      type: object
+      required: [id, proposal_id, partner_id, insurer_name, result, requested_by, requested_at]
+      properties:
+        id:
+          type: integer
+        proposal_id:
+          type: integer
+        partner_id:
+          type: integer
+        insurer_name:
+          type: string
+          description: Name of the insurer (free text)
+        result:
+          type: string
+          enum: [pending, approved, rejected, cancelled]
+        requested_by:
+          type: integer
+          description: res.users ID
+        requested_at:
+          type: string
+          format: date-time
+        result_registered_by:
+          type: integer
+          nullable: true
+        result_registered_at:
+          type: string
+          format: date-time
+          nullable: true
+        rejection_reason:
+          type: string
+          nullable: true
+          description: Required when result is `rejected`
+        check_date:
+          type: string
+          format: date
+          nullable: true
+        _links:
+          type: object
+          properties:
+            self:
+              $ref: "#/components/schemas/HrefObject"
+            proposal:
+              $ref: "#/components/schemas/HrefObject"
+
+    RegisterResultRequest:
+      type: object
+      required: [result]
+      properties:
+        result:
+          type: string
+          enum: [approved, rejected, cancelled]
+          description: New result state. Must be approved, rejected, or cancelled.
+        rejection_reason:
+          type: string
+          description: Required when result is `rejected`. Free text.
+          maxLength: 2000
+        check_date:
+          type: string
+          format: date
+          description: Optional date the insurer performed the analysis.
+
+    ErrorResponse:
+      type: object
+      required: [status, message]
+      properties:
+        status:
+          type: string
+          enum: [error]
+        message:
+          type: string
+        code:
+          type: string
+          description: Machine-readable error code (optional)
+
+    HrefObject:
+      type: object
+      required: [href]
+      properties:
+        href:
+          type: string
+          format: uri-reference
+
+    SelfLink:
+      type: object
+      properties:
+        self:
+          $ref: "#/components/schemas/HrefObject"
+
+    PaginationLinks:
+      type: object
+      properties:
+        self:
+          $ref: "#/components/schemas/HrefObject"
+        next:
+          $ref: "#/components/schemas/HrefObject"
+        prev:
+          $ref: "#/components/schemas/HrefObject"
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid JWT token / session
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            status: "error"
+            message: "Authentication required"
+            code: "UNAUTHORIZED"
