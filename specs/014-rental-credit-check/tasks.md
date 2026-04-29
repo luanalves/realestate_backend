@@ -191,16 +191,16 @@ This gives agents the ability to open and resolve a credit check via API, with f
 
 ## Validation Checklist
 
-- [ ] All 28 tasks have `- [ ]` checkbox, sequential T-ID, correct `[P]` / `[Story]` labels, and exact file paths
-- [ ] Each user story phase has an Independent Test criterion defined
-- [ ] Phase 2 Foundation has explicit checkpoint note
-- [ ] No tasks reference spec-013 internals by assumption — integration points call existing public methods
-- [ ] All 4 endpoints from `contracts/openapi.yaml` are covered (T007, T010, T020, T021)
-- [ ] All 5 user stories have at least 2 tasks each
-- [ ] Triple decorator (`@require_jwt` + `@require_session` + `@require_company`) referenced in T007, T010, T020, T021 (ADR-011)
-- [ ] `<list>` not `<tree>`, no `attrs` referenced in T014, T016 (ADR-001)
-- [ ] Soft-delete `active` field included in T002 (ADR-015)
-- [ ] Partial unique index in T002 (ADR-027)
-- [ ] Anti-enumeration 404 in T020 (ADR-008)
-- [ ] Swagger records in T023 (ADR-005)
-- [ ] Postman collection in T025 (ADR-016)
+- [X] All 28 tasks have `- [ ]` checkbox, sequential T-ID, correct `[P]` / `[Story]` labels, and exact file paths
+- [X] Each user story phase has an Independent Test criterion defined
+- [X] Phase 2 Foundation has explicit checkpoint note
+- [X] No tasks reference spec-013 internals by assumption — integration points call existing public methods
+- [X] All 4 endpoints from `contracts/openapi.yaml` are covered (T007, T010, T020, T021)
+- [X] All 5 user stories have at least 2 tasks each
+- [X] Triple decorator (`@require_jwt` + `@require_session` + `@require_company`) referenced in T007, T010, T020, T021 (ADR-011)
+- [X] `<list>` not `<tree>`, no `attrs` referenced in T014, T016 (ADR-001)
+- [X] Soft-delete `active` field included in T002 (ADR-015)
+- [X] Partial unique index in T002 (ADR-027)
+- [X] Anti-enumeration 404 in T020 (ADR-008)
+- [X] Swagger records in T023 (ADR-005)
+- [X] Postman collection in T025 (ADR-016)
