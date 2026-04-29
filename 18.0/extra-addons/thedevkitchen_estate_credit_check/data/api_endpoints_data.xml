@@ -13,7 +13,7 @@
             <field name="method">POST</field>
             <field name="module_name">thedevkitchen_estate_credit_check</field>
             <field name="protected" eval="True"/>
-            <field name="tags">Credit Checks</field>
+            <field name="tags">Proposal Credit Checks</field>
             <field name="summary">Initiate a credit check for a rental proposal</field>
             <field name="description">Initiates a credit analysis (Análise de Ficha) for a lease proposal.
 Transitions proposal state from sent/negotiation → credit_check_pending.
@@ -64,7 +64,7 @@ Creates a new CreditCheck record with result=pending.
             <field name="method">PATCH</field>
             <field name="module_name">thedevkitchen_estate_credit_check</field>
             <field name="protected" eval="True"/>
-            <field name="tags">Credit Checks</field>
+            <field name="tags">Proposal Credit Checks</field>
             <field name="summary">Register the result of a pending credit check</field>
             <field name="description">Registers approved / rejected / cancelled on a pending CreditCheck.
 
@@ -102,7 +102,7 @@ Creates a new CreditCheck record with result=pending.
             <field name="method">GET</field>
             <field name="module_name">thedevkitchen_estate_credit_check</field>
             <field name="protected" eval="True"/>
-            <field name="tags">Credit Checks</field>
+            <field name="tags">Proposal Credit Checks</field>
             <field name="summary">List all credit checks for a proposal</field>
             <field name="description">Returns all credit check records for a given proposal, ordered by requested_at desc.
 
