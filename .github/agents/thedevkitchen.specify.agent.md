@@ -31,6 +31,11 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 Generate comprehensive, implementable feature specifications for the Real Estate Management System project. This agent integrates project-specific ADRs, knowledge base patterns, and multi-tenancy requirements to produce specifications that are compliant, testable, and follow all established standards.
 
+> **Access Model (Architectural Constraint)**: The Odoo UI is accessible **only by the system administrator** (`admin` user). All other user profiles (Owner, Manager, Agent, Receptionist, Prospector, Portal, etc.) access the application exclusively through the **headless frontend**, which communicates with the backend via REST API. This means:
+> - Features targeting non-admin users are **always API-only** — never Odoo views/forms/menus for those roles.
+> - Odoo UI features (views, menus, forms) are valid **only** for internal administration purposes, accessible solely by the `admin` user.
+> - Never specify Odoo UI flows (Cypress E2E navigation, form fields, list views) for non-admin roles — those users do not have Odoo UI access.
+
 ## Pre-Requisites
 
 Before generating any specification, you MUST:
@@ -99,6 +104,8 @@ Ask **3-5 targeted clarification questions** before generating the specification
    > - **API only** → focuses on controllers, OpenAPI contracts, Postman collection (ADR-005, ADR-016), no Cypress tests
    > - **Odoo UI only** → focuses on views, menus, actions, Cypress E2E tests (ADR-001, ADR-003), no REST endpoints
    > - **Both** → full spec with dual-interface sections, all test types required
+
+   > 🏗️ **Access Model Reminder**: Only the system `admin` user accesses the Odoo UI directly. If the feature targets non-admin roles (Owner, Manager, Agent, Receptionist, Prospector, Portal), the correct answer is always **API only** — those users access the system exclusively via the headless frontend.
 
 2. **Primary Goal**: What is the main objective of this feature?
 3. **User Roles**: Which roles will use this feature?
@@ -401,6 +408,7 @@ users = {
 | ADR-001 | Flat Odoo structure (no nested feature dirs) | Module structure |
 | ADR-001 | Odoo 18.0 view standards (no `attrs`, use `<list>`) | All views |
 | ADR-001 | **Menus must NOT be linked to any group** — visible to admin user only (no `groups` attribute on `<menuitem>`) | All menus |
+| Arch | **Only the system `admin` user accesses the Odoo UI** — all other roles (Owner, Manager, Agent, Receptionist, Prospector, Portal) use the headless frontend via REST API exclusively | Solution Type, User Stories, Test Coverage |
 | ADR-003 | 100% test coverage on validations | All constraints |
 | ADR-003 | E2E tests for all UI components | Views/Menus |
 | ADR-004 | `thedevkitchen_` prefix | Model names, tables |
