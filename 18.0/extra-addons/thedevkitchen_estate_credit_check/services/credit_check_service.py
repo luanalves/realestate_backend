@@ -29,6 +29,14 @@ class CreditCheckService:
             raise UserError(_('Credit check not found.'))
         return check
 
+    def _assert_proposal_not_terminal(self, proposal):
+        terminal_states = ('rejected', 'accepted', 'expired', 'cancelled')
+        if proposal.state in terminal_states:
+            raise UserError(_(
+                'Cannot initiate a new credit check on a terminal proposal (state: %s).',
+                proposal.state,
+            ))
+
     def _assert_agent_owns_proposal(self, proposal):
 
         user = self.env.user
@@ -54,6 +62,7 @@ class CreditCheckService:
     def initiate_credit_check(self, proposal_id, insurer_name):
         proposal = self._get_proposal_or_404(proposal_id)
         self._assert_agent_owns_proposal(proposal)
+        self._assert_proposal_not_terminal(proposal)
 
         # FR-006: only lease proposals
         if proposal.proposal_type != 'lease':

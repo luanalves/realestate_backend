@@ -320,3 +320,137 @@ class TestRegisterCreditCheckResult(unittest.TestCase):
         self.assertEqual(results['success'], 1, 'Exactly one call should succeed')
         self.assertEqual(results['conflict'], 4, 'Remaining 4 should be conflicts')
         self.assertFalse(errors, f'Unexpected errors: {errors}')
+
+
+class TestImmutabilityGuard(unittest.TestCase):
+    """
+    US3: Immutability guard — terminal proposals block new credit checks (T017, T018).
+
+    FR coverage: FR-005 (terminal state guard)
+    Scenarios (4):
+      1. Rejected proposal blocks new credit check initiation
+      2. Accepted proposal blocks new credit check initiation
+      3. New proposal for same client/property enters queue normally (not blocked)
+      4. Client history includes check from rejected proposal
+    """
+
+    def _make_service(self, env=None):
+        from odoo.addons.thedevkitchen_estate_credit_check.services.credit_check_service import (
+            CreditCheckService,
+        )
+        return CreditCheckService(env or MagicMock())
+
+    def _make_proposal(self, state, proposal_type='lease', proposal_id=10):
+        proposal = MagicMock()
+        proposal.id = proposal_id
+        proposal.exists.return_value = True
+        proposal.state = state
+        proposal.proposal_type = proposal_type
+        proposal.proposal_code = 'PRP001'
+        proposal.company_id.id = 1
+        proposal.partner_id.id = 5
+        proposal.agent_id.id = 1
+        proposal.agent_id.user_id.id = 1
+        return proposal
+
+    def test_01_rejected_proposal_blocks_new_check(self):
+        """FR-005: rejected proposal raises UserError when initiating check."""
+        svc = self._make_service()
+        proposal = self._make_proposal('rejected')
+        svc._get_proposal_or_404 = MagicMock(return_value=proposal)
+        svc._assert_agent_owns_proposal = MagicMock()
+
+        with self.assertRaises(UserError) as ctx:
+            svc.initiate_credit_check(10, 'Tokio Marine')
+        self.assertIn('terminal', str(ctx.exception).lower())
+
+    def test_02_accepted_proposal_blocks_new_check(self):
+        """FR-005: accepted proposal raises UserError when initiating check."""
+        svc = self._make_service()
+        proposal = self._make_proposal('accepted')
+        svc._get_proposal_or_404 = MagicMock(return_value=proposal)
+        svc._assert_agent_owns_proposal = MagicMock()
+
+        with self.assertRaises(UserError) as ctx:
+            svc.initiate_credit_check(10, 'Tokio Marine')
+        self.assertIn('terminal', str(ctx.exception).lower())
+
+    def test_03_new_proposal_for_same_client_enters_queue_normally(self):
+        """A different (non-terminal) proposal for the same client is NOT blocked."""
+        svc = self._make_service()
+        # New proposal in 'sent' state — should proceed past terminal guard
+        proposal = self._make_proposal('sent')
+        svc._get_proposal_or_404 = MagicMock(return_value=proposal)
+        svc._assert_agent_owns_proposal = MagicMock()
+
+        # The terminal guard should not raise
+        try:
+            svc._assert_proposal_not_terminal(proposal)
+        except UserError:
+            self.fail('_assert_proposal_not_terminal raised for a non-terminal proposal')
+
+    def test_04_client_history_includes_check_from_rejected_proposal(self):
+        """Credit history aggregates checks from both active and resolved proposals."""
+        env = MagicMock()
+        svc = self._make_service(env)
+
+        # Mock user as Owner (unrestricted)
+        env.user.has_group.side_effect = lambda g: g == 'quicksol_estate.group_real_estate_owner'
+        env.company.id = 1
+        env.company.name = 'Acme'
+
+        # Mock partner exists via proposals
+        partner = MagicMock()
+        partner.id = 5
+        partner.name = 'Jane Doe'
+        partner.vat = '000.000.000-00'
+
+        env['res.partner'].browse.return_value = partner
+        partner.exists.return_value = True
+
+        proposals_mock = MagicMock()
+        proposals_mock.mapped.return_value = [5]
+        env['real.estate.proposal'].search.return_value = proposals_mock
+
+        # 3 checks: 1 approved (from accepted proposal), 1 rejected, 1 pending
+        def make_check(result, proposal_state):
+            c = MagicMock()
+            c.id = hash(result)
+            c.result = result
+            c.insurer_name = 'Tokio Marine'
+            c.requested_at = None
+            c.check_date = None
+            c.rejection_reason = 'Low score' if result == 'rejected' else False
+            c.proposal_id.id = 10
+            c.proposal_id.proposal_code = 'PRP001'
+            c.proposal_id.state = proposal_state
+            c._to_dict = MagicMock(return_value={
+                'id': c.id,
+                'result': result,
+                'insurer_name': 'Tokio Marine',
+                'proposal_code': 'PRP001',
+            })
+            return c
+
+        checks = [
+            make_check('approved', 'accepted'),
+            make_check('rejected', 'rejected'),
+            make_check('pending', 'credit_check_pending'),
+        ]
+        checks_recordset = MagicMock()
+        checks_recordset.__iter__ = MagicMock(return_value=iter(checks))
+        checks_recordset.__len__ = MagicMock(return_value=3)
+        env['thedevkitchen.estate.credit.check'].search_count.return_value = 3
+        env['thedevkitchen.estate.credit.check'].search.return_value = checks_recordset
+
+        result = svc.get_client_credit_history(partner_id=5, company_id=1)
+
+        # History should include checks from rejected proposal
+        self.assertEqual(result['summary']['total'], 3)
+        self.assertEqual(result['summary']['approved'], 1)
+        self.assertEqual(result['summary']['rejected'], 1)
+        self.assertEqual(result['summary']['pending'], 1)
+
+
+if __name__ == '__main__':
+    unittest.main()
