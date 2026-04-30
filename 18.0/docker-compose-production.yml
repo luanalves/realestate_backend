@@ -118,7 +118,7 @@ services:
       PASSWORD: ${POSTGRES_PASSWORD}
       DB_NAME: ${DB_NAME}
       ODOO_NEW_ADMIN_PASSWORD: ${ODOO_NEW_ADMIN_PASSWORD:-}
-      ODOO_INIT_MODULES: ${ODOO_INIT_MODULES:-quicksol_estate,thedevkitchen_branding,thedevkitchen_apigateway,thedevkitchen_user_onboarding}
+      ODOO_INIT_MODULES: ${ODOO_INIT_MODULES:-quicksol_estate,thedevkitchen_branding,thedevkitchen_apigateway,thedevkitchen_user_onboarding,thedevkitchen_estate_credit_check}
     volumes:
       - odoo18-data:/var/lib/odoo
       - ./extra-addons:/mnt/extra-addons
