@@ -148,17 +148,17 @@ description: "Tasks for feature 015 — Service Pipeline (Atendimentos)"
 
 ### Tests for US3
 
-- [ ] T043 [P] [US3] API test in `tests/api/test_service_endpoints.py` — extend with filter/ordering/pagination cases (or new file `test_service_filters.py`) covering each filter param + each ordering value
-- [ ] T044 [P] [US3] Unit test `18.0/extra-addons/quicksol_estate/tests/unit/test_service_pendency.py` — verifies `last_activity_date` computation per research R2 (write_date + user-authored mail.message, excluding system messages and computed-field recomputes) and `is_pending` recompute respects `service.settings.pendency_threshold_days`
-- [ ] T045 [P] [US3] Integration shell test `integration_tests/test_us15_s3_filters_and_summary.sh` — full filter + ordering coverage end-to-end, including pendency ordering edge cases
+- [X] T043 [P] [US3] API test in `tests/api/test_service_endpoints.py` — extend with filter/ordering/pagination cases (or new file `test_service_filters.py`) covering each filter param + each ordering value
+- [X] T044 [P] [US3] Unit test `18.0/extra-addons/quicksol_estate/tests/unit/test_service_pendency.py` — verifies `last_activity_date` computation per research R2 (write_date + user-authored mail.message, excluding system messages and computed-field recomputes) and `is_pending` recompute respects `service.settings.pendency_threshold_days`
+- [X] T045 [P] [US3] Integration shell test `integration_tests/test_us15_s3_filters_and_summary.sh` — full filter + ordering coverage end-to-end, including pendency ordering edge cases
 
 ### Implementation for US3
 
-- [ ] T046 [US3] Extend `service_controller.py` GET `/api/v1/services` to parse all filter query params per `contracts/openapi.yaml`, build Odoo domain, apply ordering map (`pendency` → `last_activity_date asc`, `recent` → `write_date desc`, `oldest` → `create_date asc`), apply pagination + total count, return `ListResponse` with HATEOAS pagination links
-- [ ] T047 [US3] Implement search `q` param: domain `OR` over `client_partner_id.name|email|phone_ids.number|property_ids.name`; case-insensitive; ensure indexes (T071) cover key columns
-- [ ] T048 [US3] Confirm `is_pending` cron job (T017) runs and recomputes correctly; add `_recompute_pendency()` method on the model triggered by cron
-- [ ] T049 [US3] Update Swagger DB entry for GET `/api/v1/services` to reflect full filter set
-- [ ] T050 [US3] Run T043–T045 and confirm GREEN
+- [X] T046 [US3] Extend `service_controller.py` GET `/api/v1/services` to parse all filter query params per `contracts/openapi.yaml`, build Odoo domain, apply ordering map (`pendency` → `last_activity_date asc`, `recent` → `write_date desc`, `oldest` → `create_date asc`), apply pagination + total count, return `ListResponse` with HATEOAS pagination links
+- [X] T047 [US3] Implement search `q` param: domain `OR` over `client_partner_id.name|email|phone_ids.number|property_ids.name`; case-insensitive; ensure indexes (T071) cover key columns
+- [X] T048 [US3] Confirm `is_pending` cron job (T017) runs and recomputes correctly; add `_recompute_pendency()` method on the model triggered by cron
+- [X] T049 [US3] Update Swagger DB entry for GET `/api/v1/services` to reflect full filter set
+- [X] T050 [US3] Run T043–T045 and confirm GREEN
 
 **Checkpoint** ✅: Kanban-grade filtering and ordering operational.
 
