@@ -172,7 +172,7 @@ Clientes potenciais frequentemente fornecem múltiplos contatos (celular + Whats
 **Cliente e contatos**
 
 - **FR-021**: O sistema MUST suportar múltiplos telefones por cliente, classificados por tipo (celular, residencial, comercial, WhatsApp, fax).
-- **FR-022**: O sistema MUST reaproveitar cadastro de cliente existente quando telefone OR e-mail informados correspondem a um cliente já cadastrado.
+- **FR-022**: O sistema MUST reaproveitar cadastro de cliente existente quando telefone OR e-mail informados correspondem a um cliente já cadastrado. **Regra de resolução de conflito**: (a) coincidência por telefone tem precedência sobre coincidência por e-mail; (b) se um único telefone informado coincidir com múltiplos parceiros distintos, o sistema MUST retornar HTTP 409 com a lista de IDs candidatos para o operador escolher; (c) se telefone e e-mail apontarem para parceiros diferentes, prevalece o parceiro identificado pelo telefone (auditado via mensagem no atendimento criado).
 - **FR-023**: O sistema MUST validar formato de telefone e tipo dentro dos valores aceitos.
 
 **Reatribuição e auditoria**

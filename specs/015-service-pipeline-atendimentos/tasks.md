@@ -91,7 +91,7 @@ description: "Tasks for feature 015 — Service Pipeline (Atendimentos)"
 
 ### Tests for US1 (write FIRST, ensure FAIL before implementation)
 
-- [ ] T018 [P] [US1] Unit test `18.0/extra-addons/quicksol_estate/tests/unit/test_service_pipeline.py` — covers stage gates (FR-004, FR-005, FR-006, FR-007), forward jumps with gates (clarification Q1), audit message creation in mail.thread on transition, terminal stages reject non-reopen transitions
+- [ ] T018 [P] [US1] Unit test `18.0/extra-addons/quicksol_estate/tests/unit/test_service_pipeline.py` — covers stage gates (FR-004, FR-005, FR-006, FR-007), forward jumps with gates (clarification Q1), **rollback transitions** from any non-terminal stage with audit (FR-003), audit message creation in mail.thread on transition, terminal stages reject non-reopen transitions (FR-003a), **lead independence** — transitions to `won`/`lost` MUST NOT mutate any field on the linked `real.estate.lead` (FR-001a), and **concurrent stage transitions** — simulate two simultaneous PATCH /stage operations on the same record and assert the last-writer-wins outcome with both attempts present in the mail.thread audit trail
 - [ ] T019 [P] [US1] Unit test `18.0/extra-addons/quicksol_estate/tests/unit/test_service_uniqueness.py` — verifies EXCLUDE constraint blocks duplicate active service (client+type+agent), allows historical duplicates (won/lost), allows same property in multiple active services (FR-008a)
 - [ ] T020 [P] [US1] Unit test `18.0/extra-addons/quicksol_estate/tests/unit/test_service_tag_system.py` — verifies `is_system` immutability and `closed` tag locks pipeline movement (FR-007)
 - [ ] T021 [P] [US1] Unit test `18.0/extra-addons/quicksol_estate/tests/unit/test_orphan_agent.py` — verifies `is_orphan_agent` computed and FR-024a blocking stage transitions
@@ -100,7 +100,7 @@ description: "Tasks for feature 015 — Service Pipeline (Atendimentos)"
 
 ### Implementation for US1
 
-- [ ] T024 [US1] Create `18.0/extra-addons/quicksol_estate/services/partner_dedup_service.py` — function `find_or_create_partner(env, name, email, phones)` deduplicating by phone OR email; reuses existing partner if match (FR-022); writes `phone_ids` if new
+- [ ] T024 [US1] Create `18.0/extra-addons/quicksol_estate/services/partner_dedup_service.py` — function `find_or_create_partner(env, name, email, phones)` deduplicating by phone OR email; reuses existing partner if match (FR-022); writes `phone_ids` if new. **Conflict resolution per FR-022**: (a) phone match takes precedence over email match; (b) if a single provided phone matches multiple distinct partners, raise a domain error mapped by the controller to HTTP 409 with the candidate partner IDs; (c) if phone and email map to different partners, prefer the phone match and post an audit `mail.message` on the new service noting the divergence
 - [ ] T025 [US1] Create `18.0/extra-addons/quicksol_estate/services/service_pipeline_service.py` — business-logic helpers: `change_stage(service, target_stage, comment, lost_reason)`, `reassign(service, new_agent_id, reason)`, `compute_summary(env, filters)`; encapsulates audit message posting via `service.message_post(...)` (depends on T010, T013)
 - [ ] T026 [US1] Create `18.0/extra-addons/quicksol_estate/controllers/service_controller.py` — endpoints: POST `/api/v1/services`, GET `/api/v1/services` (basic — filters wired in US2/US3), GET `/api/v1/services/{id}`, PUT `/api/v1/services/{id}`, DELETE `/api/v1/services/{id}`, PATCH `/api/v1/services/{id}/stage`. All use triple decorator `@require_jwt + @require_session + @require_company` per ADR-011. Returns HATEOAS responses per ADR-007 and contract `openapi.yaml`. Uses `service_pipeline_service.py` for business logic. Uses `partner_dedup_service.py` on create
 - [ ] T027 [US1] Add validation schemas (ADR-018) inside controller or in `18.0/extra-addons/quicksol_estate/services/service_schemas.py` — schemas for `ServiceCreateInput`, `ServiceUpdateInput`, `StageChangeInput` matching `contracts/openapi.yaml`; map errors to `{error:'validation_error', details:[]}` 400 response
@@ -196,7 +196,7 @@ description: "Tasks for feature 015 — Service Pipeline (Atendimentos)"
 
 ### Tests for US5
 
-- [ ] T059 [P] [US5] Unit test `18.0/extra-addons/quicksol_estate/tests/unit/test_partner_dedup.py` — covers phone-only match, email-only match, both match (consistent partner), no match (creates new), invalid phone_type rejected
+- [ ] T059 [P] [US5] Unit test `18.0/extra-addons/quicksol_estate/tests/unit/test_partner_dedup.py` — covers phone-only match, email-only match, both match (consistent partner), no match (creates new), invalid phone_type rejected, **conflict cases per FR-022**: (i) single phone matches multiple partners → raises mapped to 409 with candidate IDs; (ii) phone matches partner A while email matches partner B → prefers partner A and audit message recorded
 - [ ] T060 [P] [US5] Integration shell test `integration_tests/test_us15_s7_partner_dedup_multiphone.sh` — two consecutive POSTs reuse same partner
 
 ### Implementation for US5
@@ -230,7 +230,7 @@ description: "Tasks for feature 015 — Service Pipeline (Atendimentos)"
 - [ ] T071 [P] Add database indexes per data-model.md (`idx_service_company_stage`, `idx_service_company_agent`, `idx_service_company_lastactivity`, partial `idx_service_active`) via the same `pre-migrate.py` (T003) or new migration step; idempotent
 - [ ] T072 [P] Create `18.0/extra-addons/quicksol_estate/data/seed_services_data.xml` per spec-idea.md Seed Data section — 5 profiles × 2 companies × all 7 stages with `seed_*` xml_id prefix; idempotent
 - [ ] T073 [P] Run linters: `cd 18.0 && ./lint.sh` (Python: black, isort, flake8, pylint ≥ 8.0; XML: `lint_xml.sh`); fix issues
-- [ ] T074 [P] Performance verification: run `integration_tests/test_us15_s3_filters_and_summary.sh` and capture latencies; assert GET list < 300ms p95 (10k rows), GET /summary < 100ms p95; if /summary fails budget, revisit research R4 and add Redis caching
+- [ ] T074 [P] Performance verification: run `integration_tests/test_us15_s3_filters_and_summary.sh` and `integration_tests/test_us15_s1_agent_creates_service_lifecycle.sh` capturing latencies; assert GET list < 300ms p95 (10k rows), GET /summary < 100ms p95, **PATCH /services/{id}/stage end-to-end < 1s p95 (SC-002)**; if /summary fails budget, revisit research R4 and add Redis caching
 - [ ] T075 Run full quickstart end-to-end: follow [quickstart.md](./quickstart.md) section by section against a fresh Docker stack; record any deviations
 - [ ] T076 Generate Postman collection `docs/postman/feature015_services_v1.0_postman_collection.json` per ADR-016 (skill postman-collection-manager) — covers all 9 endpoints + OAuth flow + auto-save tokens
 - [ ] T077 [P] Sync Swagger from DB end-to-end: upgrade module on dev DB, verify all entries present in `/api/docs` (skill swagger-updater); export YAML diff for review
