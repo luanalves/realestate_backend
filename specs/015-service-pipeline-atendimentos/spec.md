@@ -6,6 +6,16 @@
 **Input**: User description: "utilizar o arquivo `spec-idea.md` como base"
 **Source Document**: [spec-idea.md](./spec-idea.md) (technical/architectural detail — for plan phase)
 
+## Clarifications
+
+### Session 2026-05-03
+
+- Q: Política de transições do pipeline (saltos vs adjacência)? → A: **Flexível com gates** — qualquer salto à frente permitido desde que os validators de etapa passem (Proposta exige imóvel; Formalização exige proposta aprovada); rollback permitido em qualquer ponto e sempre auditado; `lost` permitido a partir de qualquer etapa não-terminal.
+- Q: O que conta como "interação" para o cálculo de pendência (FR-015)? → A: **Mudanças no atendimento + mensagens no timeline** — `last_activity_date` = max(write_date manual, mais recente `mail.message` postada por usuário). Writes automaticos de campos computados NÃO contam.
+- Q: Comportamento de atendimentos quando o corretor responsável é desativado? → A: **Visível para Owner/Manager com sinalização "Sem corretor responsável"** — `agent_id` original é preservado para auditoria, mas o atendimento entra em fila especial "Sem corretor responsável" visível a Owners/Managers da imobiliária; permanece nessa fila até reatribuição manual; nenhuma ação automática além da sinalização.
+- Q: Política de vínculo do mesmo imóvel a múltiplos atendimentos ativos? → A: **Sem restrição no atendimento** — vários atendimentos ativos podem referenciar o mesmo imóvel simultaneamente (cenário comum: múltiplos corretores/clientes interessados). A exclusividade é garantida apenas no nível de **Proposta** (spec 013, partial unique index `real_estate_proposal_one_active_per_property`).
+- Q: Efeito do ciclo de vida do Atendimento sobre o Lead de origem? → A: **Independência total** — Atendimento mantém referência opcional `lead_id` apenas para rastreabilidade histórica, mas Lead (006) e Atendimento (015) têm ciclos de vida totalmente independentes. Nenhuma mudança de etapa do Atendimento (incluindo Ganho/Perdido) altera automaticamente o estado do Lead. Atualizações no Lead são sempre manuais pelo corretor.
+
 ## Overview
 
 Imobiliárias brasileiras precisam acompanhar, de forma estruturada, cada oportunidade de relacionamento entre um corretor e um cliente potencial sobre uma operação específica (Venda ou Locação). Hoje o sistema cobre **leads** (clientes potenciais) e **propostas** (etapa final), mas não modela a jornada completa entre os dois — o **atendimento**. Sem isso, gestores não conseguem visualizar o pipeline em formato kanban, balancear a carga entre corretores, nem identificar oportunidades estagnadas.
@@ -118,13 +128,16 @@ Clientes potenciais frequentemente fornecem múltiplos contatos (celular + Whats
 **Pipeline e ciclo de vida**
 
 - **FR-001**: O sistema MUST registrar atendimento como entidade distinta de Lead, vinculando cliente, corretor, tipo de operação (Venda ou Locação) e origem.
+- **FR-001a**: O sistema MUST manter Lead (spec 006) e Atendimento (015) como entidades com **ciclos de vida totalmente independentes**: o Atendimento pode opcionalmente referenciar um Lead de origem (`lead_id`) apenas para rastreabilidade histórica, mas nenhuma transição de etapa do Atendimento (incluindo Ganho/Perdido) altera automaticamente o estado do Lead. Atualizações do Lead permanecem manuais pelo corretor.
 - **FR-002**: O sistema MUST suportar pipeline com etapas: Sem atendimento, Em atendimento, Visita, Proposta, Formalização, Ganho, Perdido.
-- **FR-003**: O sistema MUST permitir avançar e retroceder etapas no pipeline, registrando cada transição com data, hora e usuário responsável (auditoria).
+- **FR-003**: O sistema MUST permitir transições de etapa **flexíveis com gates**: saltos arbitrários para frente são permitidos desde que os validators da etapa-alvo sejam satisfeitos (FR-004 e FR-005); rollback (retroceder) é permitido a partir de qualquer etapa não-terminal; toda transição (avanço ou rollback) registra data, hora, usuário responsável e etapa de origem/destino no histórico (auditoria).
+- **FR-003a**: O sistema MUST tratar `Ganho` e `Perdido` como etapas terminais — não permite transições de saída sem ação explícita de reabertura (fora do escopo desta feature).
 - **FR-004**: O sistema MUST exigir ao menos um imóvel vinculado para mover atendimento à etapa "Proposta".
 - **FR-005**: O sistema MUST exigir proposta aprovada vinculada para mover atendimento à etapa "Formalização".
 - **FR-006**: O sistema MUST exigir motivo obrigatório quando atendimento é marcado como "Perdido".
 - **FR-007**: O sistema MUST bloquear movimentação no pipeline quando o atendimento possuir etiqueta de sistema "Encerrado".
 - **FR-008**: O sistema MUST impedir criação de mais de um atendimento ativo para a mesma combinação de cliente + tipo de operação + corretor.
+- **FR-008a**: O sistema MUST permitir que o **mesmo imóvel** esteja vinculado a múltiplos atendimentos ativos simultaneamente (clientes e/ou corretores distintos podem estar interessados no mesmo imóvel). A exclusividade de imóvel é garantida apenas no nível de **Proposta** (spec 013), não no atendimento.
 
 **Multi-tenancy e autorização**
 
@@ -146,7 +159,7 @@ Clientes potenciais frequentemente fornecem múltiplos contatos (celular + Whats
 - **FR-012**: O sistema MUST oferecer ordenações: pendências (mais antigos sem interação primeiro), mais recentes, mais antigos, melhor potencial.
 - **FR-013**: O sistema MUST oferecer paginação com tamanho de página configurável (default razoável para dispositivos web).
 - **FR-014**: O sistema MUST disponibilizar contagem de atendimentos por etapa para apresentação em painel kanban.
-- **FR-015**: O sistema MUST sinalizar atendimentos como "pendentes" quando a última interação for mais antiga que um limite configurável pela imobiliária.
+- **FR-015**: O sistema MUST sinalizar atendimentos como "pendentes" quando a última interação for mais antiga que um limite configurável pela imobiliária. Considera-se **interação** qualquer uma das seguintes ações atribuíveis a um usuário: (a) alteração manual de campos do atendimento (write explícito), (b) mensagem postada no timeline do atendimento, ou (c) transição de etapa. Atualizações automáticas (recomputação de campos calculados, jobs em background) NÃO contam como interação.
 
 **Etiquetas, origens e configuração**
 
@@ -165,6 +178,11 @@ Clientes potenciais frequentemente fornecem múltiplos contatos (celular + Whats
 **Reatribuição e auditoria**
 
 - **FR-024**: O sistema MUST permitir reatribuição de corretor por Owner/Manager, registrando a mudança no histórico do atendimento.
+- **FR-024a**: O sistema MUST sinalizar como "Sem corretor responsável" todo atendimento ativo cujo `agent_id` aponte para um usuário desativado (`active=False`); esses atendimentos:
+  - permanecem com o `agent_id` original preservado para auditoria;
+  - tornam-se visíveis a Owners e Managers da imobiliária por meio de uma fila/filtro dedicado ("Sem corretor responsável");
+  - permanecem nessa fila até que um Owner ou Manager realize a reatribuição manual (FR-024);
+  - bloqueiam transições de etapa enquanto não tiverem corretor ativo responsável.
 - **FR-025**: O sistema MUST manter histórico completo de mudanças do atendimento (etapas, atribuições, etiquetas, observações), preservado indefinidamente.
 - **FR-026**: O sistema MUST oferecer soft delete de atendimentos (sem remoção física), com possibilidade de visualização de arquivados via filtro.
 
