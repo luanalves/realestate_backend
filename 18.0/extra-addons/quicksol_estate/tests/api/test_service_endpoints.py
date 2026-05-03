@@ -1,16 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-API Test: Service Endpoints (HTTP layer) — Feature 015
-
-Tests the REST endpoints under /api/v1/services using Odoo HttpCase.
-Verifies: HATEOAS links presence, RBAC response codes, error shapes.
-
-Note: These tests run in Odoo TransactionCase context with a real DB.
-Execute via: ./odoo-bin -d realestate --test-tags=service_api
-
-Task: T022
-FRs: FR-001, FR-003, FR-004, FR-005, FR-006, FR-008, FR-009, FR-010
-"""
 import json
 import logging
 from odoo.tests.common import HttpCase, tagged
@@ -20,26 +8,6 @@ _logger = logging.getLogger(__name__)
 
 @tagged('post_install', '-at_install', 'service_api')
 class TestServiceEndpoints(HttpCase):
-    """HTTP-level tests for /api/v1/services endpoints.
-
-    These tests require a running Odoo instance with:
-    - quicksol_estate module installed
-    - thedevkitchen_apigateway module installed
-    - A valid JWT token (obtained via /api/v1/auth/token)
-
-    The tests exercise:
-    - POST /api/v1/services → 201 Created
-    - GET  /api/v1/services → 200 + pagination + HATEOAS
-    - GET  /api/v1/services/{id} → 200 + HATEOAS links
-    - PUT  /api/v1/services/{id} → 200
-    - DELETE /api/v1/services/{id} → 204
-    - PATCH /api/v1/services/{id}/stage → 200 / 422 / 423
-    - Auth errors → 401
-    - RBAC errors → 403
-    - Not found → 404
-    - Conflict (duplicate) → 409
-    """
-
     @classmethod
     def setUpClass(cls):
         super().setUpClass()

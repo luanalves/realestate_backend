@@ -1,23 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Service Controller — Feature 015
 
-Exposes REST endpoints for real.estate.service (Atendimentos pipeline).
-
-Endpoints:
-    POST   /api/v1/services
-    GET    /api/v1/services
-    GET    /api/v1/services/summary
-    GET    /api/v1/services/{id}
-    PUT    /api/v1/services/{id}
-    DELETE /api/v1/services/{id}
-    PATCH  /api/v1/services/{id}/stage
-
-All endpoints require triple decorator: @require_jwt + @require_session + @require_company
-(ADR-011, controllers.instructions.md)
-
-HATEOAS links are included in all single-resource responses (ADR-007).
-"""
 import json
 import logging
 import math

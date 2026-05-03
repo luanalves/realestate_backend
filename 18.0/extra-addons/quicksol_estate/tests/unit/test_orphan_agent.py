@@ -1,14 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Unit Test: Orphan Agent (FR-024a) — Feature 015
-
-Tests is_orphan_agent computation and stage-change blocking
-when the responsible agent's account is deactivated.
-
-ADR-003: unittest.TestCase (no DB, mock only).
-Task: T021
-FR: FR-024a
-"""
 import unittest
 from unittest.mock import MagicMock
 

@@ -1,12 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Model: real.estate.service.source — Feature 015 (Service Pipeline)
 
-Captation origin channels (Site, WhatsApp, Indicação, …) scoped by company.
-CRUD restricted to Owner/Manager (enforced at controller layer, FR-017).
-
-data-model.md: E3
-"""
 import logging
 
 from odoo import models, fields

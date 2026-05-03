@@ -1,14 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Service Pipeline Business Logic — Feature 015
 
-Encapsulates stage transitions, agent reassignment, and pipeline summary.
-All business-logic helpers in this module call model methods or ORM directly
-and post audit messages via mail.thread to produce the audit trail.
-
-Usage:
-    from .service_pipeline_service import change_stage, reassign, compute_summary
-"""
 import logging
 from datetime import datetime, timezone
 
@@ -18,23 +9,7 @@ _logger = logging.getLogger(__name__)
 
 
 def change_stage(service, target_stage, comment=None, lost_reason=None):
-    """Advance or roll back a service to target_stage.
 
-    Orchestrates:
-    - Validation (delegates to @api.constrains in service.py)
-    - Write
-    - Audit message via mail.thread
-
-    Args:
-        service: real.estate.service record (singleton).
-        target_stage (str): One of STAGES in service.py.
-        comment (str|None): Optional user comment for the audit trail.
-        lost_reason (str|None): Required when target_stage == 'lost'.
-
-    Raises:
-        UserError: when business rules are violated (FR-003, FR-004, FR-005,
-                   FR-006, FR-007, FR-024a).
-    """
     origin_stage = service.stage
 
     write_vals = {'stage': target_stage}
@@ -53,20 +28,7 @@ def change_stage(service, target_stage, comment=None, lost_reason=None):
 
 
 def reassign(service, new_agent_id, reason=None):
-    """Reassign a service to a different agent.
 
-    Posts mail.activity notifications to BOTH the previous and the new agent
-    per FR-024 and FR-024b.
-
-    Args:
-        service: real.estate.service record (singleton).
-        new_agent_id (int): ID of the new responsible agent (res.users).
-        reason (str|None): Reason for reassignment (optional).
-
-    Raises:
-        UserError: if new_agent_id is not a real.estate.agent for the same
-                   company or service is in a terminal stage.
-    """
     TERMINAL_STAGES = {'won', 'lost'}
 
     if service.stage in TERMINAL_STAGES:
@@ -128,28 +90,7 @@ def _notify_agent(service, agent, note, activity_type_id):
 
 
 def compute_summary(env, company_id=None):
-    """Compute pipeline summary grouped by stage.
 
-    Returns a dict with stage counts + orphan_agent count:
-
-    {
-        'total': int,
-        'orphan_agent': int,
-        'by_stage': {
-            'no_service': int,
-            'in_service': int,
-            'visit': int,
-            'proposal': int,
-            'formalization': int,
-            'won': int,
-            'lost': int,
-        }
-    }
-
-    Args:
-        env: Odoo environment.
-        company_id (int|None): Filter to specific company; defaults to env.company.
-    """
     company_id = company_id or env.company.id
 
     Service = env['real.estate.service']

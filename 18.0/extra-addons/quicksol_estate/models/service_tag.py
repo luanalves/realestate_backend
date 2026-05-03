@@ -1,12 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Model: real.estate.service.tag — Feature 015 (Service Pipeline)
 
-Categorization labels for services, scoped by company.
-Tags with is_system=True are immutable (FR-018) and drive pipeline rules (FR-007).
-
-data-model.md: E2
-"""
 import re
 import logging
 

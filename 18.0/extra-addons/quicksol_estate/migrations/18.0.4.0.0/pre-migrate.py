@@ -1,16 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Pre-migration: Feature 015 — Service Pipeline (Atendimentos)
 
-Creates the PostgreSQL EXCLUDE constraint for conditional uniqueness on
-real_estate_service: one active service per (client, operation_type, agent)
-ignoring archived/terminal records (won/lost).
-
-Standard _sql_constraints cannot express a WHERE clause — hence the migration.
-idempotent: skips if constraint already exists.
-
-Research: R1 (specs/015-service-pipeline-atendimentos/research.md)
-"""
 import logging
 
 _logger = logging.getLogger(__name__)

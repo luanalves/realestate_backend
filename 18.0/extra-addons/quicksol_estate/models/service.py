@@ -1,15 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Model: real.estate.service — Feature 015 (Service Pipeline / Atendimentos)
 
-Core entity tracking each agent-client engagement through a 7-stage kanban pipeline.
-Inherits mail.thread + mail.activity.mixin for full audit and activity management.
-
-data-model.md: E1
-research.md: R1 (EXCLUDE), R2 (last_activity_date), R3 (formalization gate),
-             R7 (lead_id independence)
-spec.md: FR-001 through FR-026
-"""
 import logging
 from datetime import timedelta
 

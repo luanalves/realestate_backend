@@ -1,12 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Model: thedevkitchen.service.settings — Feature 015 (Service Pipeline)
 
-Singleton configuration per company (like thedevkitchen.email.link.settings).
-Stores pendency threshold and optional auto-close days.
-
-data-model.md: E5
-"""
 import logging
 
 from odoo import models, fields, api, _

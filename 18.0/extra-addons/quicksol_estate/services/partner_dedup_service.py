@@ -1,20 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Partner Deduplication Service — Feature 015
 
-Finds or creates a res.partner based on phone and/or email lookup.
-
-Conflict resolution (FR-022):
-  a) Phone match takes precedence over email match.
-  b) Single provided phone matches multiple distinct partners → raises DomainError
-     (controller maps to HTTP 409 with candidate partner IDs).
-  c) Phone and email match different partners → prefer phone match and post an
-     audit message on the service noting the divergence.
-
-Usage:
-    from .partner_dedup_service import find_or_create_partner
-    partner, conflict = find_or_create_partner(env, name, email, phones)
-"""
 import logging
 
 from odoo.exceptions import UserError
@@ -23,42 +8,14 @@ _logger = logging.getLogger(__name__)
 
 
 class PartnerDeduplicationConflict(Exception):
-    """Raised when a single phone number matches multiple distinct partners.
 
-    Attributes:
-        candidate_ids: list of res.partner IDs matching the conflicting phone.
-    """
     def __init__(self, message, candidate_ids=None):
         super().__init__(message)
         self.candidate_ids = candidate_ids or []
 
 
 def find_or_create_partner(env, name, email=None, phones=None):
-    """Find an existing partner or create a new one.
 
-    Resolution order (FR-022):
-    1. If phones provided: search res.partner.phone by number for each phone.
-       - If exactly one partner found across all phones: use it.
-       - If multiple distinct partners found across all phones: raise
-         PartnerDeduplicationConflict with candidate IDs.
-    2. If no phone match and email provided: search res.partner by email.
-    3. If phone match and email match differ: use phone match, log divergence.
-    4. If no match: create new partner with all provided phones.
-
-    Args:
-        env: Odoo environment.
-        name (str): Client name (required for creation).
-        email (str|None): Client email address.
-        phones (list[dict]|None): List of dicts with keys:
-            - type (str): 'mobile'|'home'|'work'|'whatsapp'|'fax'
-            - number (str): phone number string
-            - is_primary (bool, optional)
-
-    Returns:
-        tuple: (res.partner record, divergence_info: str|None)
-               divergence_info is non-None when phone and email matched
-               different partners (FR-022c).
-    """
     phones = phones or []
     ResPartner = env['res.partner']
     PartnerPhone = env['real.estate.partner.phone']

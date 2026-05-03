@@ -1,18 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Post-init hook: Feature 015 — Service Pipeline (Atendimentos)
 
-Creates per-company defaults on module install/upgrade:
-  - thedevkitchen.service.settings singleton
-  - System tag 'closed' (is_system=True)
-  - 4 default non-system tags (Follow Up, Qualificado, Lançamento, Parceria)
-  - 5 default service sources (Site, Indicação, Portal Imobiliário, WhatsApp, Plantão)
-
-All operations are idempotent (checked via xml_id or domain search).
-
-Research: R6 (specs/015-service-pipeline-atendimentos/research.md)
-data-model.md: E2 (tag), E3 (source), E5 (settings)
-"""
 import logging
 
 _logger = logging.getLogger(__name__)

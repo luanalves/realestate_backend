@@ -1,13 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Model: real.estate.partner.phone — Feature 015 (Service Pipeline)
-Also extends res.partner with phone_ids One2many.
 
-Multi-phone support for clients with type classification (FR-021).
-At most one phone per partner can be marked is_primary (FR-022 / dedup).
-
-data-model.md: E4
-"""
 import logging
 
 from odoo import models, fields, api, _
