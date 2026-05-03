@@ -44,9 +44,11 @@ def find_or_create_partner(env, name, email=None, phones=None):
                 )
 
     # ------------------------------------------------------------------ #
-    # Step 2: email lookup (only when no phone match)                     #
+    # Step 2: email lookup                                                #
+    # Always performed when email provided — needed for divergence check  #
+    # (FR-022c) even when phone already matched.                          #
     # ------------------------------------------------------------------ #
-    if not phone_partner and email:
+    if email:
         email_partners = ResPartner.search([('email', '=ilike', email.strip())], limit=2)
         if len(email_partners) == 1:
             email_partner = email_partners

@@ -196,14 +196,14 @@ description: "Tasks for feature 015 — Service Pipeline (Atendimentos)"
 
 ### Tests for US5
 
-- [ ] T059 [P] [US5] Unit test `18.0/extra-addons/quicksol_estate/tests/unit/test_partner_dedup.py` — covers phone-only match, email-only match, both match (consistent partner), no match (creates new), invalid phone_type rejected, **conflict cases per FR-022**: (i) single phone matches multiple partners → raises mapped to 409 with candidate IDs; (ii) phone matches partner A while email matches partner B → prefers partner A and audit message recorded
-- [ ] T060 [P] [US5] Integration shell test `integration_tests/test_us15_s7_partner_dedup_multiphone.sh` — two consecutive POSTs reuse same partner
+- [X] T059 [P] [US5] Unit test `18.0/extra-addons/quicksol_estate/tests/unit/test_partner_dedup.py` — covers phone-only match, email-only match, both match (consistent partner), no match (creates new), invalid phone_type rejected, **conflict cases per FR-022**: (i) single phone matches multiple partners → raises mapped to 409 with candidate IDs; (ii) phone matches partner A while email matches partner B → prefers partner A and audit message recorded
+- [X] T060 [P] [US5] Integration shell test `integration_tests/test_us15_s7_partner_dedup_multiphone.sh` — two consecutive POSTs reuse same partner
 
 ### Implementation for US5
 
-- [ ] T061 [US5] Verify `partner_dedup_service.py` (T024) handles all dedup paths; add edge-case handling for normalized phone comparison (strip non-digits) and case-insensitive email match
-- [ ] T062 [US5] Update validation schema for `phones[].type` to enforce enum (`mobile|home|work|whatsapp|fax`) returning 400 on invalid (FR-023)
-- [ ] T063 [US5] Run T059–T060 and confirm GREEN
+- [X] T061 [US5] Verify `partner_dedup_service.py` (T024) handles all dedup paths; add edge-case handling for normalized phone comparison (strip non-digits) and case-insensitive email match
+- [X] T062 [US5] Update validation schema for `phones[].type` to enforce enum (`mobile|home|work|whatsapp|fax`) returning 400 on invalid (FR-023)
+- [X] T063 [US5] Run T059–T060 and confirm GREEN
 
 **Checkpoint** ✅: All 5 user stories independently functional.
 
