@@ -155,3 +155,33 @@ access_manager_proposal,Manager: Proposals,model_real_estate_proposal,group_real
 access_agent_proposal,Agent: Proposals,model_real_estate_proposal,group_real_estate_agent,1,1,1,0
 access_receptionist_proposal,Receptionist: Proposals (Read),model_real_estate_proposal,group_real_estate_receptionist,1,0,0,0
 access_system_admin_proposal,System Admin: Proposals,model_real_estate_proposal,base.group_system,1,1,1,1
+access_owner_service,Owner: Services,model_real_estate_service,group_real_estate_owner,1,1,1,1
+access_manager_service,Manager: Services,model_real_estate_service,group_real_estate_manager,1,1,1,1
+access_agent_service,Agent: Services (own via record rule),model_real_estate_service,group_real_estate_agent,1,1,1,0
+access_receptionist_service,Receptionist: Services (read+create),model_real_estate_service,group_real_estate_receptionist,1,0,1,0
+access_prospector_service,Prospector: Services (own via record rule),model_real_estate_service,group_real_estate_prospector,1,1,1,0
+access_system_admin_service,System Admin: Services,model_real_estate_service,base.group_system,1,1,1,1
+access_owner_service_tag,Owner: Service Tags,model_real_estate_service_tag,group_real_estate_owner,1,1,1,1
+access_manager_service_tag,Manager: Service Tags,model_real_estate_service_tag,group_real_estate_manager,1,1,1,1
+access_agent_service_tag,Agent: Service Tags (read),model_real_estate_service_tag,group_real_estate_agent,1,0,0,0
+access_receptionist_service_tag,Receptionist: Service Tags (read),model_real_estate_service_tag,group_real_estate_receptionist,1,0,0,0
+access_prospector_service_tag,Prospector: Service Tags (read),model_real_estate_service_tag,group_real_estate_prospector,1,0,0,0
+access_system_admin_service_tag,System Admin: Service Tags,model_real_estate_service_tag,base.group_system,1,1,1,1
+access_owner_service_source,Owner: Service Sources,model_real_estate_service_source,group_real_estate_owner,1,1,1,1
+access_manager_service_source,Manager: Service Sources,model_real_estate_service_source,group_real_estate_manager,1,1,1,1
+access_agent_service_source,Agent: Service Sources (read),model_real_estate_service_source,group_real_estate_agent,1,0,0,0
+access_receptionist_service_source,Receptionist: Service Sources (read),model_real_estate_service_source,group_real_estate_receptionist,1,0,0,0
+access_prospector_service_source,Prospector: Service Sources (read),model_real_estate_service_source,group_real_estate_prospector,1,0,0,0
+access_system_admin_service_source,System Admin: Service Sources,model_real_estate_service_source,base.group_system,1,1,1,1
+access_owner_partner_phone,Owner: Partner Phones,model_real_estate_partner_phone,group_real_estate_owner,1,1,1,1
+access_manager_partner_phone,Manager: Partner Phones,model_real_estate_partner_phone,group_real_estate_manager,1,1,1,1
+access_agent_partner_phone,Agent: Partner Phones,model_real_estate_partner_phone,group_real_estate_agent,1,1,1,0
+access_receptionist_partner_phone,Receptionist: Partner Phones,model_real_estate_partner_phone,group_real_estate_receptionist,1,1,1,0
+access_prospector_partner_phone,Prospector: Partner Phones,model_real_estate_partner_phone,group_real_estate_prospector,1,1,1,0
+access_system_admin_partner_phone,System Admin: Partner Phones,model_real_estate_partner_phone,base.group_system,1,1,1,1
+access_owner_service_settings,Owner: Service Settings,model_thedevkitchen_service_settings,group_real_estate_owner,1,1,1,1
+access_manager_service_settings,Manager: Service Settings,model_thedevkitchen_service_settings,group_real_estate_manager,1,1,0,0
+access_agent_service_settings,Agent: Service Settings (read),model_thedevkitchen_service_settings,group_real_estate_agent,1,0,0,0
+access_receptionist_service_settings,Receptionist: Service Settings (read),model_thedevkitchen_service_settings,group_real_estate_receptionist,1,0,0,0
+access_prospector_service_settings,Prospector: Service Settings (read),model_thedevkitchen_service_settings,group_real_estate_prospector,1,0,0,0
+access_system_admin_service_settings,System Admin: Service Settings,model_thedevkitchen_service_settings,base.group_system,1,1,1,1

@@ -1,6 +1,6 @@
 {
     'name': 'Real Estate Management - Kenlo Imóveis Edition',
-    'version': '18.0.2.2.0',  # Feature 013: Property Proposals
+    'version': '18.0.4.0.0',  # Feature 015: Service Pipeline (Atendimentos)
     'category': 'Real Estate',
     'summary': 'Complete property management system following Kenlo Imóveis standards with RBAC',
     'description': """
@@ -54,7 +54,8 @@ Property Form Sections:
 """,
     'author': 'Quicksol Technologies',
     'website': 'https://quicksol.ca',
-    'depends': ['base', 'portal', 'mail', 'thedevkitchen_apigateway'],
+    'depends': ['base', 'portal', 'mail', 'thedevkitchen_apigateway', 'thedevkitchen_user_onboarding'],
+    'post_init_hook': 'post_init',
     'data': [
         # Security files (must be loaded first)
         'security/groups.xml',
@@ -88,6 +89,12 @@ Property Form Sections:
         'data/seed_proposals.xml',  # Seed: Proposals em todos os 8 estados FSM para testes de jornada
         'data/seed_proposals_states.xml',  # Seed: Fase 2 — corrige estados FSM via SQL
         # 'data/default_groups.xml',  # Demo data temporarily disabled - complex dependencies
+
+        # Feature 015: Service Pipeline (Atendimentos)
+        'security/service_record_rules.xml',
+        'data/service_sequence_data.xml',
+        'data/service_tags_data.xml',
+        'data/service_cron_data.xml',
         
         # Views (actions must be loaded before menus that reference them)
         'views/property_views.xml',
@@ -104,6 +111,12 @@ Property Form Sections:
         'views/lead_filter_views.xml',  # FR-048: Saved search filters (REATIVADO)
         'views/res_users_views.xml',
         'views/proposal_views.xml',  # Feature 013: Proposal Kanban/List/Form
+        # Feature 015: Service Pipeline (Atendimentos) views
+        'views/service_tag_views.xml',
+        'views/service_source_views.xml',
+        'views/service_settings_views.xml',
+        'views/service_views.xml',
+        'views/service_menu.xml',
     ],
     'assets': {
         'web.assets_backend': [

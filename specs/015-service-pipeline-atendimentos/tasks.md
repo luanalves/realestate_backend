@@ -39,11 +39,11 @@ description: "Tasks for feature 015 — Service Pipeline (Atendimentos)"
 
 **Purpose**: Create skeleton files, register new models in the addon, prepare migration scaffold.
 
-- [ ] T001 Create directory scaffolding under `18.0/extra-addons/quicksol_estate/` for new files (`migrations/18.0.x.x.x/`, `hooks/`, `tests/unit/`, `tests/api/` if missing) and add empty `__init__.py` where needed
-- [ ] T002 Update `18.0/extra-addons/quicksol_estate/__manifest__.py` — bump version, add new data files (sequence, sources, tags, settings, cron, record rules, views, menus, seed) in `data` key; declare `post_init_hook='post_init'` and `pre_init_hook=None`; ensure `depends` lists `mail`, `thedevkitchen_apigateway`, `thedevkitchen_user_onboarding`
-- [ ] T003 [P] Create `18.0/extra-addons/quicksol_estate/migrations/18.0.x.x.x/pre-migrate.py` with the PostgreSQL `EXCLUDE` constraint creation script (research R1) — idempotent (`IF NOT EXISTS`)
-- [ ] T004 [P] Create `18.0/extra-addons/quicksol_estate/hooks/post_init.py` with `post_init(env)` iterating `res.company` to create singleton settings + system tag `closed` + the four default non-system tags (`Follow Up`, `Qualificado`, `Lançamento`, `Parceria`) + 5 default sources per company (research R6 / data-model.md E2 · E3 · E5); idempotent via `xml_id` lookup
-- [ ] T005 [P] Create `18.0/extra-addons/quicksol_estate/data/service_sequence_data.xml` defining sequence `quicksol_estate.service.seq` with prefix `ATD/%(year)s/` and padding 5
+- [X] T001 Create directory scaffolding under `18.0/extra-addons/quicksol_estate/` for new files (`migrations/18.0.x.x.x/`, `hooks/`, `tests/unit/`, `tests/api/` if missing) and add empty `__init__.py` where needed
+- [X] T002 Update `18.0/extra-addons/quicksol_estate/__manifest__.py` — bump version, add new data files (sequence, sources, tags, settings, cron, record rules, views, menus, seed) in `data` key; declare `post_init_hook='post_init'` and `pre_init_hook=None`; ensure `depends` lists `mail`, `thedevkitchen_apigateway`, `thedevkitchen_user_onboarding`
+- [X] T003 [P] Create `18.0/extra-addons/quicksol_estate/migrations/18.0.x.x.x/pre-migrate.py` with the PostgreSQL `EXCLUDE` constraint creation script (research R1) — idempotent (`IF NOT EXISTS`)
+- [X] T004 [P] Create `18.0/extra-addons/quicksol_estate/hooks/post_init.py` with `post_init(env)` iterating `res.company` to create singleton settings + system tag `closed` + the four default non-system tags (`Follow Up`, `Qualificado`, `Lançamento`, `Parceria`) + 5 default sources per company (research R6 / data-model.md E2 · E3 · E5); idempotent via `xml_id` lookup
+- [X] T005 [P] Create `18.0/extra-addons/quicksol_estate/data/service_sequence_data.xml` defining sequence `quicksol_estate.service.seq` with prefix `ATD/%(year)s/` and padding 5
 
 **Checkpoint**: Skeleton ready, addon manifest updated, migration scaffold in place.
 
@@ -57,27 +57,27 @@ description: "Tasks for feature 015 — Service Pipeline (Atendimentos)"
 
 ### 2.A Models
 
-- [ ] T006 [P] Create `18.0/extra-addons/quicksol_estate/models/service_tag.py` — model `real.estate.service.tag` per data-model.md E2 (fields, `_sql_constraints` for unique name+company and color regex, `@api.constrains` blocking writes when `is_system=True` without admin context)
-- [ ] T007 [P] Create `18.0/extra-addons/quicksol_estate/models/service_source.py` — model `real.estate.service.source` per data-model.md E3 (fields + `_sql_constraints` unique code per company)
-- [ ] T008 [P] Create `18.0/extra-addons/quicksol_estate/models/partner_phone.py` — model `real.estate.partner.phone` per data-model.md E4 (fields + `@api.constrains` for at-most-one primary per partner) AND extend `res.partner` with `phone_ids = One2many('real.estate.partner.phone','partner_id')` in same file
-- [ ] T009 [P] Create `18.0/extra-addons/quicksol_estate/models/service_settings.py` — singleton `thedevkitchen.service.settings` per data-model.md E5 (fields, `@api.constrains` ranges, `get_settings()` class method)
-- [ ] T010 Create `18.0/extra-addons/quicksol_estate/models/service.py` — main model `real.estate.service` per data-model.md E1 (all fields, `mail.thread` + `mail.activity.mixin` inherits, `_track_visibility='onchange'` on `stage`, sequence-driven `name`, computed `last_activity_date` and `is_pending` and `is_orphan_agent` per research R2; depends on T006–T009)
-- [ ] T011 Modify `18.0/extra-addons/quicksol_estate/models/proposal.py` — add additive nullable field `service_id = fields.Many2one('real.estate.service', ondelete='set null', index=True)` (research R3); update `_inherit` chain only if needed; ensure backward compatible
-- [ ] T012 Update `18.0/extra-addons/quicksol_estate/models/__init__.py` to import the 5 new model modules in correct dependency order
+- [X] T006 [P] Create `18.0/extra-addons/quicksol_estate/models/service_tag.py` — model `real.estate.service.tag` per data-model.md E2 (fields, `_sql_constraints` for unique name+company and color regex, `@api.constrains` blocking writes when `is_system=True` without admin context)
+- [X] T007 [P] Create `18.0/extra-addons/quicksol_estate/models/service_source.py` — model `real.estate.service.source` per data-model.md E3 (fields + `_sql_constraints` unique code per company)
+- [X] T008 [P] Create `18.0/extra-addons/quicksol_estate/models/partner_phone.py` — model `real.estate.partner.phone` per data-model.md E4 (fields + `@api.constrains` for at-most-one primary per partner) AND extend `res.partner` with `phone_ids = One2many('real.estate.partner.phone','partner_id')` in same file
+- [X] T009 [P] Create `18.0/extra-addons/quicksol_estate/models/service_settings.py` — singleton `thedevkitchen.service.settings` per data-model.md E5 (fields, `@api.constrains` ranges, `get_settings()` class method)
+- [X] T010 Create `18.0/extra-addons/quicksol_estate/models/service.py` — main model `real.estate.service` per data-model.md E1 (all fields, `mail.thread` + `mail.activity.mixin` inherits, `_track_visibility='onchange'` on `stage`, sequence-driven `name`, computed `last_activity_date` and `is_pending` and `is_orphan_agent` per research R2; depends on T006–T009)
+- [X] T011 Modify `18.0/extra-addons/quicksol_estate/models/proposal.py` — add additive nullable field `service_id = fields.Many2one('real.estate.service', ondelete='set null', index=True)` (research R3); update `_inherit` chain only if needed; ensure backward compatible
+- [X] T012 Update `18.0/extra-addons/quicksol_estate/models/__init__.py` to import the 5 new model modules in correct dependency order
 
 ### 2.B Python Constraints (stage gates) — on `real.estate.service`
 
-- [ ] T013 Implement in service.py: `_check_proposal_stage_requires_property` (FR-004), `_check_formalization_requires_approved_proposal` (FR-005, R3), `_check_lost_requires_reason` (FR-006), `_check_closed_tag_locks_stage` (FR-007), `_check_orphan_agent_blocks_stage_change` (FR-024a), `_check_terminal_stages_require_explicit_reopen` (FR-003a)
+- [X] T013 Implement in service.py: `_check_proposal_stage_requires_property` (FR-004), `_check_formalization_requires_approved_proposal` (FR-005, R3), `_check_lost_requires_reason` (FR-006), `_check_closed_tag_locks_stage` (FR-007), `_check_orphan_agent_blocks_stage_change` (FR-024a), `_check_terminal_stages_require_explicit_reopen` (FR-003a)
 
 ### 2.C Security baseline
 
-- [ ] T014 Update `18.0/extra-addons/quicksol_estate/security/ir.model.access.csv` — add ACLs for the 5 new models per profile group (Owner/Manager: full; Agent: read+write own; Reception: read all + create services; Prospector: read+write own services); reference profile groups from `thedevkitchen_user_onboarding`
-- [ ] T015 [P] Create `18.0/extra-addons/quicksol_estate/security/service_record_rules.xml` — record rules per data-model.md (company isolation + agent_own + prospector_own); register file in manifest
+- [X] T014 Update `18.0/extra-addons/quicksol_estate/security/ir.model.access.csv` — add ACLs for the 5 new models per profile group (Owner/Manager: full; Agent: read+write own; Reception: read all + create services; Prospector: read+write own services); reference profile groups from `thedevkitchen_user_onboarding`
+- [X] T015 [P] Create `18.0/extra-addons/quicksol_estate/security/service_record_rules.xml` — record rules per data-model.md (company isolation + agent_own + prospector_own); register file in manifest
 
 ### 2.D Data XML defaults
 
-- [ ] T016 [P] Create `18.0/extra-addons/quicksol_estate/data/service_tags_data.xml` defining the system tag `closed` with `is_system=True` and stable `xml_id` `seed_service_tag_closed` (used by post_init hook)
-- [ ] T017 [P] Create `18.0/extra-addons/quicksol_estate/data/service_cron_data.xml` defining a daily cron job `service_recompute_pendency_cron` running at 03:00 UTC to recompute `is_pending` for active services (FR-015)
+- [X] T016 [P] Create `18.0/extra-addons/quicksol_estate/data/service_tags_data.xml` defining the system tag `closed` with `is_system=True` and stable `xml_id` `seed_service_tag_closed` (used by post_init hook)
+- [X] T017 [P] Create `18.0/extra-addons/quicksol_estate/data/service_cron_data.xml` defining a daily cron job `service_recompute_pendency_cron` running at 03:00 UTC to recompute `is_pending` for active services (FR-015)
 
 **Checkpoint**: Models load, constraints fire, ACLs/record rules in place. User story phases can begin in parallel.
 

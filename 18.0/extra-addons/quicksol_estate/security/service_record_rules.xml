@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+
+        <!-- ============================================================ -->
+        <!-- 1. Base company isolation (all users) — real.estate.service  -->
+        <!-- ============================================================ -->
+        <record id="rule_service_company_isolation" model="ir.rule">
+            <field name="name">Service: company isolation</field>
+            <field name="model_id" ref="model_real_estate_service"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+            <field name="groups" eval="[(5, 0, 0)]"/>
+            <field name="perm_read"   eval="True"/>
+            <field name="perm_write"  eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <!-- ============================================================ -->
+        <!-- 2. Agent: own services only                                   -->
+        <!-- ============================================================ -->
+        <record id="rule_service_agent_own" model="ir.rule">
+            <field name="name">Service: agent sees own services only</field>
+            <field name="model_id" ref="model_real_estate_service"/>
+            <field name="groups" eval="[(4, ref('quicksol_estate.group_real_estate_agent'))]"/>
+            <field name="domain_force">[('agent_id', '=', user.id), ('company_id', 'in', company_ids)]</field>
+            <field name="perm_read"   eval="True"/>
+            <field name="perm_write"  eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <!-- ============================================================ -->
+        <!-- 3. Prospector: own services only                              -->
+        <!-- ============================================================ -->
+        <record id="rule_service_prospector_own" model="ir.rule">
+            <field name="name">Service: prospector sees own services only</field>
+            <field name="model_id" ref="model_real_estate_service"/>
+            <field name="groups" eval="[(4, ref('quicksol_estate.group_real_estate_prospector'))]"/>
+            <field name="domain_force">[('agent_id', '=', user.id), ('company_id', 'in', company_ids)]</field>
+            <field name="perm_read"   eval="True"/>
+            <field name="perm_write"  eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <!-- ============================================================ -->
+        <!-- 4. Owner: all services in company                             -->
+        <!-- ============================================================ -->
+        <record id="rule_service_owner_all" model="ir.rule">
+            <field name="name">Service: owner sees all in company</field>
+            <field name="model_id" ref="model_real_estate_service"/>
+            <field name="groups" eval="[(4, ref('quicksol_estate.group_real_estate_owner'))]"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+            <field name="perm_read"   eval="True"/>
+            <field name="perm_write"  eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <!-- ============================================================ -->
+        <!-- 5. Manager: all services in company                           -->
+        <!-- ============================================================ -->
+        <record id="rule_service_manager_all" model="ir.rule">
+            <field name="name">Service: manager sees all in company</field>
+            <field name="model_id" ref="model_real_estate_service"/>
+            <field name="groups" eval="[(4, ref('quicksol_estate.group_real_estate_manager'))]"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+            <field name="perm_read"   eval="True"/>
+            <field name="perm_write"  eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <!-- ============================================================ -->
+        <!-- 6. Receptionist: read all in company (create only)           -->
+        <!-- ============================================================ -->
+        <record id="rule_service_receptionist" model="ir.rule">
+            <field name="name">Service: receptionist reads all in company</field>
+            <field name="model_id" ref="model_real_estate_service"/>
+            <field name="groups" eval="[(4, ref('quicksol_estate.group_real_estate_receptionist'))]"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+            <field name="perm_read"   eval="True"/>
+            <field name="perm_write"  eval="False"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <!-- ============================================================ -->
+        <!-- Tags: company isolation (all users)                           -->
+        <!-- ============================================================ -->
+        <record id="rule_service_tag_company" model="ir.rule">
+            <field name="name">Service Tag: company isolation</field>
+            <field name="model_id" ref="model_real_estate_service_tag"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+            <field name="groups" eval="[(5, 0, 0)]"/>
+            <field name="perm_read"   eval="True"/>
+            <field name="perm_write"  eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <!-- ============================================================ -->
+        <!-- Sources: company isolation (all users)                        -->
+        <!-- ============================================================ -->
+        <record id="rule_service_source_company" model="ir.rule">
+            <field name="name">Service Source: company isolation</field>
+            <field name="model_id" ref="model_real_estate_service_source"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+            <field name="groups" eval="[(5, 0, 0)]"/>
+            <field name="perm_read"   eval="True"/>
+            <field name="perm_write"  eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <!-- ============================================================ -->
+        <!-- Settings: company isolation (all users)                       -->
+        <!-- ============================================================ -->
+        <record id="rule_service_settings_company" model="ir.rule">
+            <field name="name">Service Settings: company isolation</field>
+            <field name="model_id" ref="model_thedevkitchen_service_settings"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+            <field name="groups" eval="[(5, 0, 0)]"/>
+            <field name="perm_read"   eval="True"/>
+            <field name="perm_write"  eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+    </data>
+</odoo>
