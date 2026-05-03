@@ -227,16 +227,16 @@ description: "Tasks for feature 015 — Service Pipeline (Atendimentos)"
 
 **Purpose**: Performance, lint, docs, ADR, seed expansion, post-impl artifacts.
 
-- [ ] T071 [P] Add database indexes per data-model.md (`idx_service_company_stage`, `idx_service_company_agent`, `idx_service_company_lastactivity`, partial `idx_service_active`) via the same `pre-migrate.py` (T003) or new migration step; idempotent
-- [ ] T072 [P] Create `18.0/extra-addons/quicksol_estate/data/seed_services_data.xml` per spec-idea.md Seed Data section — 5 profiles × 2 companies × all 7 stages with `seed_*` xml_id prefix; idempotent
-- [ ] T073 [P] Run linters: `cd 18.0 && ./lint.sh` (Python: black, isort, flake8, pylint ≥ 8.0; XML: `lint_xml.sh`); fix issues
-- [ ] T074 [P] Performance verification: run `integration_tests/test_us15_s3_filters_and_summary.sh` and `integration_tests/test_us15_s1_agent_creates_service_lifecycle.sh` capturing latencies; assert GET list < 300ms p95 (10k rows), GET /summary < 100ms p95, **PATCH /services/{id}/stage end-to-end < 1s p95 (SC-002)**; if /summary fails budget, revisit research R4 and add Redis caching
-- [ ] T075 Run full quickstart end-to-end: follow [quickstart.md](./quickstart.md) section by section against a fresh Docker stack; record any deviations
-- [ ] T076 Generate Postman collection `docs/postman/feature015_services_v1.0_postman_collection.json` per ADR-016 (skill postman-collection-manager) — covers all 9 endpoints + OAuth flow + auto-save tokens
-- [ ] T077 [P] Sync Swagger from DB end-to-end: upgrade module on dev DB, verify all entries present in `/api/docs` (skill swagger-updater); export YAML diff for review
-- [ ] T078 [P] Create `docs/adr/ADR-028-service-pipeline-domain-boundaries.md` documenting why `real.estate.service` is distinct from `real.estate.lead` and the lifecycle independence rule (clarifies clarification 5)
-- [ ] T079 Update `.github/copilot-instructions.md` (already auto-updated by setup script — review and trim if needed)
-- [ ] T080 Final test run — execute all unit + api + integration + Cypress test suites; assert ≥ 80% coverage (ADR-003 / Constitution Principle II)
+- [X] T071 [P] Add database indexes per data-model.md (`idx_service_company_stage`, `idx_service_company_agent`, `idx_service_company_lastactivity`, partial `idx_service_active`) via the same `pre-migrate.py` (T003) or new migration step; idempotent
+- [X] T072 [P] Create `18.0/extra-addons/quicksol_estate/data/seed_services_data.xml` per spec-idea.md Seed Data section — 5 profiles × 2 companies × all 7 stages with `seed_*` xml_id prefix; idempotent
+- [X] T073 [P] Run linters: `cd 18.0 && ./lint.sh` (Python: black, isort, flake8, pylint ≥ 8.0; XML: `lint_xml.sh`); fix issues
+- [X] T074 [P] Performance verification: run `integration_tests/test_us15_s3_filters_and_summary.sh` and `integration_tests/test_us15_s1_agent_creates_service_lifecycle.sh` capturing latencies; assert GET list < 300ms p95 (10k rows), GET /summary < 100ms p95, **PATCH /services/{id}/stage end-to-end < 1s p95 (SC-002)**; if /summary fails budget, revisit research R4 and add Redis caching
+- [X] T075 Run full quickstart end-to-end: follow [quickstart.md](./quickstart.md) section by section against a fresh Docker stack; record any deviations
+- [X] T076 Generate Postman collection `docs/postman/feature015_services_v1.0_postman_collection.json` per ADR-016 (skill postman-collection-manager) — covers all 9 endpoints + OAuth flow + auto-save tokens
+- [X] T077 [P] Sync Swagger from DB end-to-end: upgrade module on dev DB, verify all entries present in `/api/docs` (skill swagger-updater); export YAML diff for review
+- [X] T078 [P] Create `docs/adr/ADR-028-service-pipeline-domain-boundaries.md` documenting why `real.estate.service` is distinct from `real.estate.lead` and the lifecycle independence rule (clarifies clarification 5)
+- [X] T079 Update `.github/copilot-instructions.md` (already auto-updated by setup script — review and trim if needed)
+- [X] T080 Final test run — execute all unit + api + integration + Cypress test suites; assert ≥ 80% coverage (ADR-003 / Constitution Principle II)
 
 ---
 

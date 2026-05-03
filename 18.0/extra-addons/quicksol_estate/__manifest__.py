@@ -96,6 +96,7 @@ Property Form Sections:
         'data/service_tags_data.xml',
         'data/service_cron_data.xml',
         'data/service_api_endpoints.xml',
+        'data/seed_services_data.xml',  # T072: Seed services all 7 stages
         
         # Views (actions must be loaded before menus that reference them)
         'views/property_views.xml',
