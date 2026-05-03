@@ -42,7 +42,7 @@ description: "Tasks for feature 015 — Service Pipeline (Atendimentos)"
 - [ ] T001 Create directory scaffolding under `18.0/extra-addons/quicksol_estate/` for new files (`migrations/18.0.x.x.x/`, `hooks/`, `tests/unit/`, `tests/api/` if missing) and add empty `__init__.py` where needed
 - [ ] T002 Update `18.0/extra-addons/quicksol_estate/__manifest__.py` — bump version, add new data files (sequence, sources, tags, settings, cron, record rules, views, menus, seed) in `data` key; declare `post_init_hook='post_init'` and `pre_init_hook=None`; ensure `depends` lists `mail`, `thedevkitchen_apigateway`, `thedevkitchen_user_onboarding`
 - [ ] T003 [P] Create `18.0/extra-addons/quicksol_estate/migrations/18.0.x.x.x/pre-migrate.py` with the PostgreSQL `EXCLUDE` constraint creation script (research R1) — idempotent (`IF NOT EXISTS`)
-- [ ] T004 [P] Create `18.0/extra-addons/quicksol_estate/hooks/post_init.py` with `post_init(env)` iterating `res.company` to create singleton settings + system tag `closed` + 5 default sources per company (research R6); idempotent via `xml_id` lookup
+- [ ] T004 [P] Create `18.0/extra-addons/quicksol_estate/hooks/post_init.py` with `post_init(env)` iterating `res.company` to create singleton settings + system tag `closed` + the four default non-system tags (`Follow Up`, `Qualificado`, `Lançamento`, `Parceria`) + 5 default sources per company (research R6 / data-model.md E2 · E3 · E5); idempotent via `xml_id` lookup
 - [ ] T005 [P] Create `18.0/extra-addons/quicksol_estate/data/service_sequence_data.xml` defining sequence `quicksol_estate.service.seq` with prefix `ATD/%(year)s/` and padding 5
 
 **Checkpoint**: Skeleton ready, addon manifest updated, migration scaffold in place.
@@ -124,14 +124,14 @@ description: "Tasks for feature 015 — Service Pipeline (Atendimentos)"
 - [ ] T032 [P] [US2] API test `18.0/extra-addons/quicksol_estate/tests/api/test_service_summary.py` — verifies `/api/v1/services/summary` returns counts per stage scoped by company, respects RBAC visibility (Agent/Prospector get only own counts), latency budget < 100 ms (smoke timing)
 - [ ] T033 [P] [US2] API test `18.0/extra-addons/quicksol_estate/tests/api/test_service_rbac.py` — exercises full authorization matrix (FR-010) for all 5 profiles × 7 operations (create/read/update/delete/stage/reassign/manage-tags)
 - [ ] T034 [P] [US2] API test `18.0/extra-addons/quicksol_estate/tests/api/test_service_isolation.py` — multi-tenant isolation tests (Company A user cannot see/modify Company B services; same for tags/sources/settings)
-- [ ] T035 [P] [US2] Integration shell test `integration_tests/test_us15_s2_manager_reassigns_service.sh` — full reassign flow + verifies audit message + non-manager gets 403
+- [ ] T035 [P] [US2] Integration shell test `integration_tests/test_us15_s2_manager_reassigns_service.sh` — full reassign flow + verifies audit message + verifies `mail.activity` notifications created for both previous and new agent (FR-024b) + non-manager gets 403
 - [ ] T036 [P] [US2] Integration shell test `integration_tests/test_us15_s5_multitenancy_isolation.sh` — cross-company access tests (404 expected)
 - [ ] T037 [P] [US2] Integration shell test `integration_tests/test_us15_s6_rbac_matrix.sh` — exercises matrix end-to-end via HTTP
 
 ### Implementation for US2
 
 - [ ] T038 [US2] Add to `service_controller.py`: GET `/api/v1/services/summary` endpoint using `read_group()` over `(company_id, stage)` with `orphan_agent` extra count (research R4 — no Redis cache initially); return matches `SummaryOutput` schema with HATEOAS `links` to filtered list
-- [ ] T039 [US2] Add to `service_controller.py`: PATCH `/api/v1/services/{id}/reassign` endpoint — validates `new_agent_id` belongs to same company, blocks reassign on terminal stages (409), posts audit message, optionally posts internal notification via `mail.activity` to both agents (FR-024)
+- [ ] T039 [US2] Add to `service_controller.py`: PATCH `/api/v1/services/{id}/reassign` endpoint — validates `new_agent_id` belongs to same company, blocks reassign on terminal stages (409), posts audit message, **and posts `mail.activity` notifications to BOTH the previous and the new agent** (FR-024 + FR-024b)
 - [ ] T040 [US2] Add Manager-only authorization check (`current_user has Owner OR Manager group`) inside reassign + delete + tags/sources writes; return 403 otherwise
 - [ ] T041 [US2] Update Swagger DB entries for `/summary` and `/reassign` endpoints (skill swagger-updater pattern)
 - [ ] T042 [US2] Run T032–T037 and confirm GREEN
@@ -154,7 +154,7 @@ description: "Tasks for feature 015 — Service Pipeline (Atendimentos)"
 
 ### Implementation for US3
 
-- [ ] T046 [US3] Extend `service_controller.py` GET `/api/v1/services` to parse all filter query params per `contracts/openapi.yaml`, build Odoo domain, apply ordering map (`pendency` → `last_activity_date asc`, `recent` → `write_date desc`, `oldest` → `create_date asc`, `best_potential` → optional fallback to `id desc` if no budget field), apply pagination + total count, return `ListResponse` with HATEOAS pagination links
+- [ ] T046 [US3] Extend `service_controller.py` GET `/api/v1/services` to parse all filter query params per `contracts/openapi.yaml`, build Odoo domain, apply ordering map (`pendency` → `last_activity_date asc`, `recent` → `write_date desc`, `oldest` → `create_date asc`), apply pagination + total count, return `ListResponse` with HATEOAS pagination links
 - [ ] T047 [US3] Implement search `q` param: domain `OR` over `client_partner_id.name|email|phone_ids.number|property_ids.name`; case-insensitive; ensure indexes (T071) cover key columns
 - [ ] T048 [US3] Confirm `is_pending` cron job (T017) runs and recomputes correctly; add `_recompute_pendency()` method on the model triggered by cron
 - [ ] T049 [US3] Update Swagger DB entry for GET `/api/v1/services` to reflect full filter set

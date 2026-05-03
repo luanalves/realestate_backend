@@ -156,7 +156,7 @@ Clientes potenciais frequentemente fornecem múltiplos contatos (celular + Whats
 **Filtros e visualização**
 
 - **FR-011**: O sistema MUST permitir filtrar atendimentos por: tipo (Venda/Locação), etapa, corretor responsável, etiquetas, origem, status de pendência, e busca textual em cliente/telefone/imóvel.
-- **FR-012**: O sistema MUST oferecer ordenações: pendências (mais antigos sem interação primeiro), mais recentes, mais antigos, melhor potencial.
+- **FR-012**: O sistema MUST oferecer ordenações: pendências (mais antigos sem interação primeiro), mais recentes, mais antigos.
 - **FR-013**: O sistema MUST oferecer paginação com tamanho de página configurável (default razoável para dispositivos web).
 - **FR-014**: O sistema MUST disponibilizar contagem de atendimentos por etapa para apresentação em painel kanban.
 - **FR-015**: O sistema MUST sinalizar atendimentos como "pendentes" quando a última interação for mais antiga que um limite configurável pela imobiliária. Considera-se **interação** qualquer uma das seguintes ações atribuíveis a um usuário: (a) alteração manual de campos do atendimento (write explícito), (b) mensagem postada no timeline do atendimento, ou (c) transição de etapa. Atualizações automáticas (recomputação de campos calculados, jobs em background) NÃO contam como interação.
@@ -178,6 +178,7 @@ Clientes potenciais frequentemente fornecem múltiplos contatos (celular + Whats
 **Reatribuição e auditoria**
 
 - **FR-024**: O sistema MUST permitir reatribuição de corretor por Owner/Manager, registrando a mudança no histórico do atendimento.
+- **FR-024b**: O sistema MUST notificar, via `mail.activity` (mensageria interna), tanto o corretor anterior quanto o novo corretor sempre que ocorrer uma reatribuição (FR-024). A notificação conterá referencia ao atendimento, motivo (se informado) e usuário que executou a ação.
 - **FR-024a**: O sistema MUST sinalizar como "Sem corretor responsável" todo atendimento ativo cujo `agent_id` aponte para um usuário desativado (`active=False`); esses atendimentos:
   - permanecem com o `agent_id` original preservado para auditoria;
   - tornam-se visíveis a Owners e Managers da imobiliária por meio de uma fila/filtro dedicado ("Sem corretor responsável");

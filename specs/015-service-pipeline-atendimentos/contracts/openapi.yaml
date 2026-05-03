@@ -272,7 +272,7 @@ paths:
         - { in: query, name: orphan_agent, schema: { type: boolean, description: 'Filter services with deactivated agent (FR-024a)' } }
         - { in: query, name: q, schema: { type: string, description: 'Search in client name/phone/email/property name' } }
         - { in: query, name: archived, schema: { type: boolean, default: false } }
-        - { in: query, name: ordering, schema: { type: string, enum: [pendency, recent, oldest, best_potential], default: recent } }
+        - { in: query, name: ordering, schema: { type: string, enum: [pendency, recent, oldest], default: recent } }
         - { $ref: '#/components/parameters/pageParam' }
         - { $ref: '#/components/parameters/perPageParam' }
       responses:
