@@ -1,0 +1,229 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+
+        <!-- ================================================================ -->
+        <!-- Feature 015: Service Pipeline (Atendimentos)                     -->
+        <!-- ================================================================ -->
+
+        <record id="api_endpoint_services_create" model="thedevkitchen.api.endpoint">
+            <field name="name">Create Service</field>
+            <field name="path">/api/v1/services</field>
+            <field name="method">POST</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Services</field>
+            <field name="summary">Create a new service (atendimento)</field>
+            <field name="description">Creates a new service record for an agent.
+
+Deduplicates the client partner by phone (primary) or email fallback.
+Returns HTTP 409 if a provided phone matches multiple distinct partners.
+
+**Required Headers:**
+- `Authorization: Bearer {access_token}`
+- `X-Session-Id: {session_id}`
+- `X-Company-ID: {company_id}`
+
+**Request Body (application/json):**
+```json
+{
+  "client": {
+    "name": "Maria Silva",
+    "email": "maria@example.com",
+    "phones": [{"type": "mobile", "number": "11999990000", "is_primary": true}]
+  },
+  "operation_type": "rent",
+  "source_id": 1,
+  "tag_ids": [],
+  "property_ids": [],
+  "notes": "Interested in 2-bedroom apartments"
+}
+```
+
+**Response Example (201 Created):**
+```json
+{"id": 42, "name": "ATD/2026/00042", "stage": "no_service", "links": [...]}
+```
+
+**Error Responses:**
+- **400**: Validation error
+- **401**: Unauthorized
+- **403**: Forbidden
+- **409**: Client phone matches multiple partners (candidate_partner_ids returned)
+- **422**: Business rule violation
+</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_services_list" model="thedevkitchen.api.endpoint">
+            <field name="name">List Services</field>
+            <field name="path">/api/v1/services</field>
+            <field name="method">GET</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Services</field>
+            <field name="summary">List services with filtering, ordering, pagination</field>
+            <field name="description">Returns a paginated list of services for the authenticated company.
+
+**Query Parameters:**
+- `stage` (string): Filter by stage (no_service|in_service|visit|proposal|formalization|won|lost)
+- `operation_type` (string): Filter by sale|rent
+- `agent_id` (integer): Filter by agent
+- `source_id` (integer): Filter by source
+- `tag_ids` (string): Comma-separated tag IDs
+- `is_pending` (boolean): Filter pending services
+- `is_orphan_agent` (boolean): Filter orphan-agent services
+- `archived` (boolean): Include archived services
+- `q` (string): Free-text search on client name/email/phone/property
+- `ordering` (string): pendency|recent|oldest|stage (default: recent)
+- `page` (integer): Page number (default: 1)
+- `per_page` (integer): Page size (default: 20, max: 100)
+
+**Error Responses:**
+- **401**: Unauthorized
+- **403**: Forbidden
+</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_services_summary" model="thedevkitchen.api.endpoint">
+            <field name="name">Get Services Summary</field>
+            <field name="path">/api/v1/services/summary</field>
+            <field name="method">GET</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Services</field>
+            <field name="summary">Pipeline summary grouped by stage</field>
+            <field name="description">Returns pipeline count grouped by stage + orphan-agent count.
+
+**Response Example (200 OK):**
+```json
+{
+  "total": 48,
+  "orphan_agent": 3,
+  "by_stage": {
+    "no_service": 10,
+    "in_service": 15,
+    "visit": 8,
+    "proposal": 5,
+    "formalization": 4,
+    "won": 4,
+    "lost": 2
+  },
+  "links": [{"rel": "list", "href": "/api/v1/services", "method": "GET"}]
+}
+```
+
+**Error Responses:**
+- **401**: Unauthorized
+- **403**: Forbidden
+</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_services_get" model="thedevkitchen.api.endpoint">
+            <field name="name">Get Service by ID</field>
+            <field name="path">/api/v1/services/{id}</field>
+            <field name="method">GET</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Services</field>
+            <field name="summary">Get a single service by ID</field>
+            <field name="description">Returns full service detail including client phones, properties, tags, and HATEOAS links.
+
+**Path Parameters:**
+- `id` (integer, required): Service ID
+
+**Error Responses:**
+- **401**: Unauthorized
+- **403**: Forbidden
+- **404**: Service not found
+</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_services_update" model="thedevkitchen.api.endpoint">
+            <field name="name">Update Service</field>
+            <field name="path">/api/v1/services/{id}</field>
+            <field name="method">PUT</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Services</field>
+            <field name="summary">Update service metadata (not stage)</field>
+            <field name="description">Updates editable fields: operation_type, source_id, tag_ids, property_ids, notes.
+Stage changes must go through PATCH /stage.
+
+**Path Parameters:**
+- `id` (integer, required): Service ID
+
+**Error Responses:**
+- **400**: Validation error
+- **401**: Unauthorized
+- **403**: Forbidden
+- **404**: Service not found
+- **422**: Business rule violation
+</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_services_delete" model="thedevkitchen.api.endpoint">
+            <field name="name">Delete Service</field>
+            <field name="path">/api/v1/services/{id}</field>
+            <field name="method">DELETE</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Services</field>
+            <field name="summary">Delete a service record</field>
+            <field name="description">Permanently deletes a service. Only allowed for Owner/Manager profiles.
+
+**Path Parameters:**
+- `id` (integer, required): Service ID
+
+**Error Responses:**
+- **401**: Unauthorized
+- **403**: Forbidden (insufficient role)
+- **404**: Service not found
+- **422**: Cannot delete terminal-stage service with linked proposals
+</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_services_stage" model="thedevkitchen.api.endpoint">
+            <field name="name">Change Service Stage</field>
+            <field name="path">/api/v1/services/{id}/stage</field>
+            <field name="method">PATCH</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Services</field>
+            <field name="summary">Advance or roll back service stage in the pipeline</field>
+            <field name="description">Changes the service stage with business-rule enforcement.
+
+**Gates enforced:**
+- FR-004: `proposal` requires at least one property linked
+- FR-005: `formalization` requires at least one accepted proposal
+- FR-006: `lost` requires non-empty `lost_reason`
+- FR-007: Any system tag (is_system=True) locks stage changes (HTTP 423)
+- FR-003a: Terminal stages (won/lost) require `allow_reopen` context flag
+- FR-024a: Orphan agent blocks stage transitions (HTTP 423)
+
+**Path Parameters:**
+- `id` (integer, required): Service ID
+
+**Request Body:**
+```json
+{"stage": "visit", "comment": "Client visited property A", "lost_reason": null}
+```
+
+**Error Responses:**
+- **400**: Validation error (invalid stage value)
+- **401**: Unauthorized
+- **403**: Forbidden
+- **404**: Service not found
+- **422**: Business rule violation (missing property, missing lost_reason, etc.)
+- **423**: Locked (closed tag / orphan agent / terminal without reopen flag)
+</field>
+            <field name="active" eval="True"/>
+        </record>
+
+    </data>
+</odoo>

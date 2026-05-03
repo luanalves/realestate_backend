@@ -9,3 +9,4 @@ from . import profile_api  # Feature 010: Unified profile CRUD API
 from . import lease_api  # Feature 008: Lease lifecycle API
 from . import sale_api  # Feature 008: Sale management API
 from . import proposal_controller  # Feature 013: Property Proposals API
+from . import service_controller   # Feature 015: Service Pipeline (Atendimentos)

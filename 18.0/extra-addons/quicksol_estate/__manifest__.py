@@ -95,6 +95,7 @@ Property Form Sections:
         'data/service_sequence_data.xml',
         'data/service_tags_data.xml',
         'data/service_cron_data.xml',
+        'data/service_api_endpoints.xml',
         
         # Views (actions must be loaded before menus that reference them)
         'views/property_views.xml',
