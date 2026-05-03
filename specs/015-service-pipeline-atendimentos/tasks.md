@@ -172,17 +172,17 @@ description: "Tasks for feature 015 — Service Pipeline (Atendimentos)"
 
 ### Tests for US4
 
-- [ ] T051 [P] [US4] API test `18.0/extra-addons/quicksol_estate/tests/api/test_service_tags_endpoints.py` — full CRUD tags including `is_system` immutability + 403 for non-Owner/Manager + multi-tenant isolation
-- [ ] T052 [P] [US4] API test `18.0/extra-addons/quicksol_estate/tests/api/test_service_sources_endpoints.py` — full CRUD sources + RBAC + isolation
-- [ ] T053 [P] [US4] Integration shell test `integration_tests/test_us15_s4_tags_and_sources_crud.sh`
+- [X] T051 [P] [US4] API test `18.0/extra-addons/quicksol_estate/tests/api/test_service_tags_endpoints.py` — full CRUD tags including `is_system` immutability + 403 for non-Owner/Manager + multi-tenant isolation
+- [X] T052 [P] [US4] API test `18.0/extra-addons/quicksol_estate/tests/api/test_service_sources_endpoints.py` — full CRUD sources + RBAC + isolation
+- [X] T053 [P] [US4] Integration shell test `integration_tests/test_us15_s4_tags_and_sources_crud.sh`
 
 ### Implementation for US4
 
-- [ ] T054 [P] [US4] Create `18.0/extra-addons/quicksol_estate/controllers/service_tag_controller.py` — endpoints GET/POST `/api/v1/service-tags`, PUT/DELETE `/api/v1/service-tags/{id}`. Triple decorator + role check (Owner/Manager for writes; everyone authenticated for reads). Soft delete via `active=False` (FR-019). Reject writes when target tag has `is_system=True` (FR-018) returning 403
-- [ ] T055 [P] [US4] Create `18.0/extra-addons/quicksol_estate/controllers/service_source_controller.py` — endpoints GET/POST `/api/v1/service-sources`, PUT/DELETE `/api/v1/service-sources/{id}` with same patterns
-- [ ] T056 [US4] Update `controllers/__init__.py` to import the two new controllers
-- [ ] T057 [US4] Add Swagger DB entries for the 8 tag+source endpoints
-- [ ] T058 [US4] Run T051–T053 and confirm GREEN
+- [X] T054 [P] [US4] Create `18.0/extra-addons/quicksol_estate/controllers/service_tag_controller.py` — endpoints GET/POST `/api/v1/service-tags`, PUT/DELETE `/api/v1/service-tags/{id}`. Triple decorator + role check (Owner/Manager for writes; everyone authenticated for reads). Soft delete via `active=False` (FR-019). Reject writes when target tag has `is_system=True` (FR-018) returning 403
+- [X] T055 [P] [US4] Create `18.0/extra-addons/quicksol_estate/controllers/service_source_controller.py` — endpoints GET/POST `/api/v1/service-sources`, PUT/DELETE `/api/v1/service-sources/{id}` with same patterns
+- [X] T056 [US4] Update `controllers/__init__.py` to import the two new controllers
+- [X] T057 [US4] Add Swagger DB entries for the 8 tag+source endpoints
+- [X] T058 [US4] Run T051–T053 and confirm GREEN
 
 **Checkpoint** ✅: Tag/source administration available to Owners/Managers.
 

@@ -258,6 +258,128 @@ Posts mail.activity notifications to both previous and new agent (FR-024b).
             <field name="active" eval="True"/>
         </record>
 
+        <!-- Tags CRUD -->
+        <record id="api_endpoint_tags_list" model="thedevkitchen.api.endpoint">
+            <field name="name">List Service Tags</field>
+            <field name="path">/api/v1/service-tags</field>
+            <field name="method">GET</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Service Tags</field>
+            <field name="summary">List all tags for the company</field>
+            <field name="description">Returns all active service tags scoped by company.</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_tags_create" model="thedevkitchen.api.endpoint">
+            <field name="name">Create Service Tag</field>
+            <field name="path">/api/v1/service-tags</field>
+            <field name="method">POST</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Service Tags</field>
+            <field name="summary">Create a new tag (Owner/Manager only)</field>
+            <field name="description">Creates a new non-system tag scoped to the company. Requires Owner or Manager role.</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_tags_get" model="thedevkitchen.api.endpoint">
+            <field name="name">Get Service Tag</field>
+            <field name="path">/api/v1/service-tags/{id}</field>
+            <field name="method">GET</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Service Tags</field>
+            <field name="summary">Get a single tag by ID</field>
+            <field name="description">Returns tag detail. Returns 404 if not found.</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_tags_update" model="thedevkitchen.api.endpoint">
+            <field name="name">Update Service Tag</field>
+            <field name="path">/api/v1/service-tags/{id}</field>
+            <field name="method">PUT</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Service Tags</field>
+            <field name="summary">Update tag name/color (Owner/Manager only)</field>
+            <field name="description">Updates tag. Returns 403 if tag is_system=True (FR-018).</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_tags_delete" model="thedevkitchen.api.endpoint">
+            <field name="name">Archive Service Tag</field>
+            <field name="path">/api/v1/service-tags/{id}</field>
+            <field name="method">DELETE</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Service Tags</field>
+            <field name="summary">Soft-archive a tag (Owner/Manager only, FR-019)</field>
+            <field name="description">Sets active=False (soft delete). Returns 403 for system tags.</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <!-- Sources CRUD -->
+        <record id="api_endpoint_sources_list" model="thedevkitchen.api.endpoint">
+            <field name="name">List Service Sources</field>
+            <field name="path">/api/v1/service-sources</field>
+            <field name="method">GET</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Service Sources</field>
+            <field name="summary">List all sources for the company</field>
+            <field name="description">Returns all active service sources scoped by company.</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_sources_create" model="thedevkitchen.api.endpoint">
+            <field name="name">Create Service Source</field>
+            <field name="path">/api/v1/service-sources</field>
+            <field name="method">POST</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Service Sources</field>
+            <field name="summary">Create a new source (Owner/Manager only)</field>
+            <field name="description">Creates a new source. code must be unique per company.</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_sources_get" model="thedevkitchen.api.endpoint">
+            <field name="name">Get Service Source</field>
+            <field name="path">/api/v1/service-sources/{id}</field>
+            <field name="method">GET</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Service Sources</field>
+            <field name="summary">Get a single source by ID</field>
+            <field name="description">Returns source detail. Returns 404 if not found.</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_sources_update" model="thedevkitchen.api.endpoint">
+            <field name="name">Update Service Source</field>
+            <field name="path">/api/v1/service-sources/{id}</field>
+            <field name="method">PUT</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Service Sources</field>
+            <field name="summary">Update source name/code (Owner/Manager only)</field>
+            <field name="description">Updates source fields.</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_sources_delete" model="thedevkitchen.api.endpoint">
+            <field name="name">Archive Service Source</field>
+            <field name="path">/api/v1/service-sources/{id}</field>
+            <field name="method">DELETE</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Service Sources</field>
+            <field name="summary">Soft-archive a source (Owner/Manager only)</field>
+            <field name="description">Sets active=False (soft delete).</field>
+            <field name="active" eval="True"/>
+        </record>
+
     </data>
 </odoo>
 
