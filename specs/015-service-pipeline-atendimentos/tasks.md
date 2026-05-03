@@ -121,20 +121,20 @@ description: "Tasks for feature 015 — Service Pipeline (Atendimentos)"
 
 ### Tests for US2
 
-- [ ] T032 [P] [US2] API test `18.0/extra-addons/quicksol_estate/tests/api/test_service_summary.py` — verifies `/api/v1/services/summary` returns counts per stage scoped by company, respects RBAC visibility (Agent/Prospector get only own counts), latency budget < 100 ms (smoke timing)
-- [ ] T033 [P] [US2] API test `18.0/extra-addons/quicksol_estate/tests/api/test_service_rbac.py` — exercises full authorization matrix (FR-010) for all 5 profiles × 7 operations (create/read/update/delete/stage/reassign/manage-tags)
-- [ ] T034 [P] [US2] API test `18.0/extra-addons/quicksol_estate/tests/api/test_service_isolation.py` — multi-tenant isolation tests (Company A user cannot see/modify Company B services; same for tags/sources/settings)
-- [ ] T035 [P] [US2] Integration shell test `integration_tests/test_us15_s2_manager_reassigns_service.sh` — full reassign flow + verifies audit message + verifies `mail.activity` notifications created for both previous and new agent (FR-024b) + non-manager gets 403
-- [ ] T036 [P] [US2] Integration shell test `integration_tests/test_us15_s5_multitenancy_isolation.sh` — cross-company access tests (404 expected)
-- [ ] T037 [P] [US2] Integration shell test `integration_tests/test_us15_s6_rbac_matrix.sh` — exercises matrix end-to-end via HTTP
+- [X] T032 [P] [US2] API test `18.0/extra-addons/quicksol_estate/tests/api/test_service_summary.py` — verifies `/api/v1/services/summary` returns counts per stage scoped by company, respects RBAC visibility (Agent/Prospector get only own counts), latency budget < 100 ms (smoke timing)
+- [X] T033 [P] [US2] API test `18.0/extra-addons/quicksol_estate/tests/api/test_service_rbac.py` — exercises full authorization matrix (FR-010) for all 5 profiles × 7 operations (create/read/update/delete/stage/reassign/manage-tags)
+- [X] T034 [P] [US2] API test `18.0/extra-addons/quicksol_estate/tests/api/test_service_isolation.py` — multi-tenant isolation tests (Company A user cannot see/modify Company B services; same for tags/sources/settings)
+- [X] T035 [P] [US2] Integration shell test `integration_tests/test_us15_s2_manager_reassigns_service.sh` — full reassign flow + verifies audit message + verifies `mail.activity` notifications created for both previous and new agent (FR-024b) + non-manager gets 403
+- [X] T036 [P] [US2] Integration shell test `integration_tests/test_us15_s5_multitenancy_isolation.sh` — cross-company access tests (404 expected)
+- [X] T037 [P] [US2] Integration shell test `integration_tests/test_us15_s6_rbac_matrix.sh` — exercises matrix end-to-end via HTTP
 
 ### Implementation for US2
 
-- [ ] T038 [US2] Add to `service_controller.py`: GET `/api/v1/services/summary` endpoint using `read_group()` over `(company_id, stage)` with `orphan_agent` extra count (research R4 — no Redis cache initially); return matches `SummaryOutput` schema with HATEOAS `links` to filtered list
-- [ ] T039 [US2] Add to `service_controller.py`: PATCH `/api/v1/services/{id}/reassign` endpoint — validates `new_agent_id` belongs to same company, blocks reassign on terminal stages (409), posts audit message, **and posts `mail.activity` notifications to BOTH the previous and the new agent** (FR-024 + FR-024b)
-- [ ] T040 [US2] Add Manager-only authorization check (`current_user has Owner OR Manager group`) inside reassign + delete + tags/sources writes; return 403 otherwise
-- [ ] T041 [US2] Update Swagger DB entries for `/summary` and `/reassign` endpoints (skill swagger-updater pattern)
-- [ ] T042 [US2] Run T032–T037 and confirm GREEN
+- [X] T038 [US2] Add to `service_controller.py`: GET `/api/v1/services/summary` endpoint using `read_group()` over `(company_id, stage)` with `orphan_agent` extra count (research R4 — no Redis cache initially); return matches `SummaryOutput` schema with HATEOAS `links` to filtered list
+- [X] T039 [US2] Add to `service_controller.py`: PATCH `/api/v1/services/{id}/reassign` endpoint — validates `new_agent_id` belongs to same company, blocks reassign on terminal stages (409), posts audit message, **and posts `mail.activity` notifications to BOTH the previous and the new agent** (FR-024 + FR-024b)
+- [X] T040 [US2] Add Manager-only authorization check (`current_user has Owner OR Manager group`) inside reassign + delete + tags/sources writes; return 403 otherwise
+- [X] T041 [US2] Update Swagger DB entries for `/summary` and `/reassign` endpoints (skill swagger-updater pattern)
+- [X] T042 [US2] Run T032–T037 and confirm GREEN
 
 **Checkpoint** ✅: US1 + US2 work independently. Managers have full operational visibility.
 

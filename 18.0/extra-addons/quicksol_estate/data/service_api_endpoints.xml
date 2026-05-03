@@ -225,5 +225,39 @@ Stage changes must go through PATCH /stage.
             <field name="active" eval="True"/>
         </record>
 
+        <record id="api_endpoint_services_reassign" model="thedevkitchen.api.endpoint">
+            <field name="name">Reassign Service Agent</field>
+            <field name="path">/api/v1/services/{id}/reassign</field>
+            <field name="method">PATCH</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Services</field>
+            <field name="summary">Reassign a service to a different agent (Owner/Manager only)</field>
+            <field name="description">Reassigns the responsible agent for a service.
+Blocked on terminal stages (won/lost) — returns HTTP 409.
+Posts mail.activity notifications to both previous and new agent (FR-024b).
+
+**Required role:** Owner or Manager.
+
+**Path Parameters:**
+- `id` (integer, required): Service ID
+
+**Request Body:**
+```json
+{"new_agent_id": 5, "reason": "Load balancing"}
+```
+
+**Error Responses:**
+- **400**: Validation error
+- **401**: Unauthorized
+- **403**: Forbidden (not Owner/Manager)
+- **404**: Service not found
+- **409**: Service is in terminal stage (won/lost)
+- **422**: Agent not in same company
+</field>
+            <field name="active" eval="True"/>
+        </record>
+
     </data>
 </odoo>
+

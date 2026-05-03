@@ -182,6 +182,17 @@ def _build_domain(params):
     return domain
 
 
+_MANAGER_GROUPS = (
+    'quicksol_estate.group_real_estate_owner',
+    'quicksol_estate.group_real_estate_manager',
+)
+
+
+def _is_manager_or_owner(env):
+    user = env.user
+    return any(user.has_group(g) for g in _MANAGER_GROUPS)
+
+
 # --------------------------------------------------------------------------- #
 # Controller                                                                   #
 # --------------------------------------------------------------------------- #
@@ -420,6 +431,8 @@ class ServiceController(http.Controller):
     @require_company
     def delete_service(self, service_id, **kwargs):
         try:
+            if not _is_manager_or_owner(request.env):
+                return error_response('FORBIDDEN', 'Only Owner/Manager can delete services.', 403)
             service = request.env['real.estate.service'].browse(service_id)
             if not service.exists():
                 return error_response('NOT_FOUND', 'Service not found.', 404)
@@ -474,4 +487,52 @@ class ServiceController(http.Controller):
             return error_response('BUSINESS_RULE_VIOLATION', msg, status_code)
         except Exception:
             _logger.exception('Unexpected error in change_service_stage id=%d', service_id)
+            return error_response('INTERNAL_ERROR', 'Internal server error.', 500)
+
+    # ---------------------------------------------------------------------- #
+    # PATCH /api/v1/services/{id}/reassign                                    #
+    # ---------------------------------------------------------------------- #
+    @http.route('/api/v1/services/<int:service_id>/reassign', type='http', auth='none',
+                methods=['PATCH'], csrf=False, cors='*')
+    @trace_http_request
+    @require_jwt
+    @require_session
+    @require_company
+    def reassign_service(self, service_id, **kwargs):
+        try:
+            if not _is_manager_or_owner(request.env):
+                return error_response('FORBIDDEN', 'Only Owner/Manager can reassign services.', 403)
+
+            body = json.loads(request.httprequest.data or '{}')
+            errors = _validate_body(body, 'reassign')
+            if errors:
+                return error_response('VALIDATION_ERROR', 'Validation failed.', 400,
+                                      details=errors)
+
+            service = request.env['real.estate.service'].browse(service_id)
+            if not service.exists():
+                return error_response('NOT_FOUND', 'Service not found.', 404)
+
+            TERMINAL_STAGES = {'won', 'lost'}
+            if service.stage in TERMINAL_STAGES:
+                return error_response(
+                    'CONFLICT',
+                    f'Cannot reassign a service in terminal stage "{service.stage}".',
+                    409,
+                )
+
+            pipeline_svc.reassign(
+                service,
+                new_agent_id=body['new_agent_id'],
+                reason=body.get('reason'),
+            )
+
+            return success_response(_serialize_service(service))
+
+        except AccessError as exc:
+            return error_response('FORBIDDEN', str(exc), 403)
+        except (ValidationError, UserError) as exc:
+            return error_response('VALIDATION_ERROR', str(exc), 422)
+        except Exception:
+            _logger.exception('Unexpected error in reassign_service id=%d', service_id)
             return error_response('INTERNAL_ERROR', 'Internal server error.', 500)
