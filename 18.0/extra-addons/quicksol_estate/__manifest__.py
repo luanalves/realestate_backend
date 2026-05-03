@@ -118,6 +118,8 @@ Property Form Sections:
         'views/service_settings_views.xml',
         'views/service_views.xml',
         'views/service_menu.xml',
+        # Feature 015: Wizards
+        'wizards/service_reassign_wizard_views.xml',
     ],
     'assets': {
         'web.assets_backend': [

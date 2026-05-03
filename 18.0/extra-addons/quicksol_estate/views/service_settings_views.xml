@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- ============================================================
+             Action: Service Settings (singleton form per company)
+             ============================================================ -->
+        <record id="action_service_settings" model="ir.actions.act_window">
+            <field name="name">Configurações de Atendimento</field>
+            <field name="res_model">thedevkitchen.service.settings</field>
+            <field name="view_mode">form</field>
+            <field name="target">current</field>
+            <field name="context">{'form_view_initial_mode': 'edit'}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Configure os parâmetros do pipeline de atendimentos.
+                </p>
+            </field>
+        </record>
+
+        <!-- ============================================================
+             Form View — singleton (auto-create one record per company)
+             ============================================================ -->
+        <record id="view_service_settings_form" model="ir.ui.view">
+            <field name="name">thedevkitchen.service.settings.form</field>
+            <field name="model">thedevkitchen.service.settings</field>
+            <field name="arch" type="xml">
+                <form string="Configurações de Atendimento">
+                    <sheet>
+                        <div class="oe_title">
+                            <h2>Configurações do Pipeline de Atendimentos</h2>
+                        </div>
+                        <group string="Pendência">
+                            <field name="pendency_threshold_days"
+                                   string="Dias sem interação para marcar como pendente"
+                                   help="1–30 dias. Atendimentos sem interação há mais dias ficam marcados como pendentes."/>
+                        </group>
+                        <group string="Fechamento Automático">
+                            <field name="auto_close_after_days"
+                                   string="Arquivar automaticamente após (dias)"
+                                   help="0 = desativado. Arquiva automaticamente atendimentos inativos após N dias."/>
+                        </group>
+                        <group string="Empresa">
+                            <field name="company_id" readonly="1" string="Empresa"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+    </data>
+</odoo>

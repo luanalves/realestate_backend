@@ -213,13 +213,13 @@ description: "Tasks for feature 015 — Service Pipeline (Atendimentos)"
 
 **Purpose**: Provide Odoo Web interface for the platform admin per Constitution Principle VI.
 
-- [ ] T064 [P] Create `18.0/extra-addons/quicksol_estate/views/service_views.xml` — list (`<list>`, NOT `<tree>`), form, kanban, search views per data-model.md; uses `optional="show|hide"` for columns (KB-10); NO `attrs`, NO `column_invisible` with Python expressions; menus declared without `groups` attribute
-- [ ] T065 [P] Create `18.0/extra-addons/quicksol_estate/views/service_tag_views.xml` — list + form
-- [ ] T066 [P] Create `18.0/extra-addons/quicksol_estate/views/service_source_views.xml` — list + form
-- [ ] T067 [P] Create `18.0/extra-addons/quicksol_estate/views/service_settings_views.xml` — singleton form (auto-open one record per company)
-- [ ] T068 [P] Create `18.0/extra-addons/quicksol_estate/views/service_menu.xml` — top-level "Atendimentos" menu + child menus for Services / Tags / Sources / Settings (no `groups` attribute — admin only)
-- [ ] T069 [P] Create `18.0/extra-addons/quicksol_estate/wizards/service_reassign_wizard.py` + matching XML view — Manager reassign action wizard
-- [ ] T070 [P] Cypress E2E spec `cypress/e2e/015_services_admin.cy.js` — login as admin, open list, open form, open settings (validators trigger), create tag, assert zero console errors
+- [X] T064 [P] Create `18.0/extra-addons/quicksol_estate/views/service_views.xml` — list (`<list>`, NOT `<tree>`), form, kanban, search views per data-model.md; uses `optional="show|hide"` for columns (KB-10); NO `attrs`, NO `column_invisible` with Python expressions; menus declared without `groups` attribute
+- [X] T065 [P] Create `18.0/extra-addons/quicksol_estate/views/service_tag_views.xml` — list + form
+- [X] T066 [P] Create `18.0/extra-addons/quicksol_estate/views/service_source_views.xml` — list + form
+- [X] T067 [P] Create `18.0/extra-addons/quicksol_estate/views/service_settings_views.xml` — singleton form (auto-open one record per company)
+- [X] T068 [P] Create `18.0/extra-addons/quicksol_estate/views/service_menu.xml` — top-level "Atendimentos" menu + child menus for Services / Tags / Sources / Settings (no `groups` attribute — admin only)
+- [X] T069 [P] Create `18.0/extra-addons/quicksol_estate/wizards/service_reassign_wizard.py` + matching XML view — Manager reassign action wizard
+- [X] T070 [P] Cypress E2E spec `cypress/e2e/015_services_admin.cy.js` — login as admin, open list, open form, open settings (validators trigger), create tag, assert zero console errors
 
 ---
 

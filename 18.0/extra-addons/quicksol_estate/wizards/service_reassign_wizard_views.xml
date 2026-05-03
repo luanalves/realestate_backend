@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- ============================================================
+             Server Action: Open Reassign Wizard from Service form
+             ============================================================ -->
+        <record id="action_service_reassign_wizard" model="ir.actions.act_window">
+            <field name="name">Reatribuir Atendimento</field>
+            <field name="res_model">service.reassign.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+            <field name="context">{'default_service_id': active_id}</field>
+        </record>
+
+        <!-- ============================================================
+             Wizard Form View
+             ============================================================ -->
+        <record id="view_service_reassign_wizard_form" model="ir.ui.view">
+            <field name="name">service.reassign.wizard.form</field>
+            <field name="model">service.reassign.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Reatribuir Atendimento">
+                    <group>
+                        <field name="service_id" invisible="1"/>
+                        <field name="company_id" invisible="1"/>
+                        <field name="current_agent_id" string="Agente Atual" readonly="1"/>
+                        <field name="new_agent_id" string="Novo Agente"/>
+                        <field name="reason" string="Motivo" placeholder="Descreva o motivo da reatribuição..."/>
+                    </group>
+                    <footer>
+                        <button name="action_confirm_reassign" string="Confirmar" type="object"
+                                class="btn-primary"/>
+                        <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <!-- ============================================================
+             Access rules for the wizard model
+             ============================================================ -->
+        <record id="access_service_reassign_wizard_manager" model="ir.model.access">
+            <field name="name">service.reassign.wizard.manager</field>
+            <field name="model_id" ref="model_service_reassign_wizard"/>
+            <field name="group_id" ref="quicksol_estate.group_real_estate_manager"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <record id="access_service_reassign_wizard_owner" model="ir.model.access">
+            <field name="name">service.reassign.wizard.owner</field>
+            <field name="model_id" ref="model_service_reassign_wizard"/>
+            <field name="group_id" ref="quicksol_estate.group_real_estate_owner"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+    </data>
+</odoo>

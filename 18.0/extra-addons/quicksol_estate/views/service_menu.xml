@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ================================================================
+         Feature 015: Service Pipeline (Atendimentos) — Menu Entries
+         Attached to existing Real Estate root menu (menu_real_estate_root)
+         ================================================================ -->
+
+    <!-- Separator: Atendimentos section -->
+    <menuitem id="menu_service_root"
+              name="Atendimentos"
+              parent="menu_real_estate_root"
+              sequence="35"/>
+
+    <!-- Services list -->
+    <menuitem id="menu_real_estate_services"
+              name="Atendimentos"
+              parent="menu_service_root"
+              sequence="10"
+              action="action_real_estate_services"/>
+
+    <!-- Tags -->
+    <menuitem id="menu_real_estate_service_tags"
+              name="Tags"
+              parent="menu_service_root"
+              sequence="20"
+              action="action_real_estate_service_tags"/>
+
+    <!-- Sources -->
+    <menuitem id="menu_real_estate_service_sources"
+              name="Origens"
+              parent="menu_service_root"
+              sequence="30"
+              action="action_real_estate_service_sources"/>
+
+    <!-- Settings -->
+    <menuitem id="menu_real_estate_service_settings"
+              name="Configurações"
+              parent="menu_service_root"
+              sequence="90"
+              action="action_service_settings"/>
+
+</odoo>
