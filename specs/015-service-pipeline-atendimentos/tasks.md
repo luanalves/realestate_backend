@@ -10,7 +10,7 @@ description: "Tasks for feature 015 — Service Pipeline (Atendimentos)"
 
 **Tests**: Tests are **REQUIRED** for this feature per Constitution v1.6.0 Principle II (Test Coverage Mandatory, NON-NEGOTIABLE — minimum 80% coverage; ADR-003).
 
-**Organization**: Tasks grouped by user story (US1–US5) so each story can be developed, tested, and delivered as an independent increment. US1 alone is a viable MVP.
+**Organization**: Tasks grouped by user story (US1–US5) for clarity and to allow parallel work across teams. **All 80 tasks will be developed in this delivery** — there is no MVP cut.
 
 ## Format: `[ID] [P?] [Story?] Description with file path`
 
@@ -83,7 +83,7 @@ description: "Tasks for feature 015 — Service Pipeline (Atendimentos)"
 
 ---
 
-## Phase 3: User Story 1 — Agent creates and moves through pipeline (Priority: P1) 🎯 MVP
+## Phase 3: User Story 1 — Agent creates and moves through pipeline (Priority: P1)
 
 **Goal**: Authenticated agent can create a service, attach client + property, and move through pipeline stages with full audit and validation.
 
@@ -258,10 +258,7 @@ description: "Tasks for feature 015 — Service Pipeline (Atendimentos)"
 
 ### MVP Strategy
 
-**Smallest viable delivery = Phase 1 + Phase 2 + Phase 3 (US1) + minimal subset of Phase 9 (T073, T080)**.
-This delivers: agent can create services, walk pipeline with full validation, multi-tenancy and audit working — enough value to start using.
-
-Subsequent slices: + Phase 4 (US2 manager view), + Phase 5 (US3 filters), + Phase 6 (US4 tag/source admin), + Phase 7 (US5 multi-phone), + Phase 8 (admin UI).
+_Not applicable for this feature — all 80 tasks across all 9 phases will be implemented in this delivery._
 
 ---
 
@@ -280,7 +277,7 @@ T003, T004, T005 can run in parallel (different files).
 
 All five user stories (US1–US5) have **independent test/impl files** so a team can split:
 
-- Dev A → Phase 3 (US1, MVP) + Phase 8 admin UI
+- Dev A → Phase 3 (US1) + Phase 8 admin UI
 - Dev B → Phase 4 (US2 manager) + Phase 5 (US3 filters)
 - Dev C → Phase 6 (US4 tags/sources) + Phase 7 (US5 dedup)
 
@@ -309,7 +306,7 @@ All `[P]` tests in a single story (e.g., T018–T023 in US1) can be authored con
 | Total tasks | 80 |
 | Setup (Phase 1) | 5 |
 | Foundational (Phase 2) | 12 |
-| US1 — MVP (Phase 3) | 14 |
+| US1 (Phase 3) | 14 |
 | US2 — Manager view (Phase 4) | 11 |
 | US3 — Filters (Phase 5) | 8 |
 | US4 — Tags/Sources (Phase 6) | 8 |
@@ -319,4 +316,4 @@ All `[P]` tests in a single story (e.g., T018–T023 in US1) can be authored con
 | Parallelizable tasks | ~50 (`[P]` marker) |
 | Independent test points | 5 user stories, each independently verifiable |
 
-**Suggested MVP scope**: Phase 1 + 2 + 3 (US1) + minimal Phase 9 (T073 lint, T080 final test run) = 31 tasks for first deliverable.
+**Suggested MVP scope**: not applicable — the full 80-task scope ships together as a single delivery.
