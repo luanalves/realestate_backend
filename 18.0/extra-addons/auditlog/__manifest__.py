@@ -20,4 +20,5 @@
     ],
     "application": True,
     "installable": True,
+    "assets": {},
 }

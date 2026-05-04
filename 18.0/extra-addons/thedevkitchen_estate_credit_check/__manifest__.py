@@ -51,4 +51,5 @@ Technical:
     "installable": True,
     "application": False,
     "auto_install": False,
+    "assets": {},
 }
