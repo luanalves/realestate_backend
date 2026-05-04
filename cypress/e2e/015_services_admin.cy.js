@@ -19,7 +19,10 @@ describe('Feature 015: Services Admin UI', () => {
 
     before(() => {
         if (!adminEmail || !adminPass) {
-            throw new Error('ADMIN_EMAIL and ADMIN_PASSWORD must be set in cypress.env.json (generated from 18.0/.env)');
+            throw new Error(
+                'Missing required Cypress env vars: ADMIN_EMAIL and ADMIN_PASSWORD. ' +
+                'Set them in cypress.env.json (gitignored) or via CYPRESS_ADMIN_EMAIL / CYPRESS_ADMIN_PASSWORD.'
+            );
         }
     });
 

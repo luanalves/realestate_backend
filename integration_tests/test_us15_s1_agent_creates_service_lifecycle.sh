@@ -6,29 +6,21 @@
 # FRs: FR-001, FR-003, FR-004, FR-005, FR-006, FR-007, FR-008, FR-009
 # ============================================================
 # Usage:
-#   Ensure 18.0/.env is populated (copy from 18.0/.env.example).
-#   Required vars: AGENT_EMAIL, AGENT_PASS, OAUTH_CLIENT_ID, OAUTH_CLIENT_SECRET
-#   Optional override: BASE_URL=http://localhost:8069
+#   BASE_URL=http://localhost:8069 \
+#   AGENT_EMAIL=agent@imob-a.com \
+#   AGENT_PASS=agent123 \
 #   bash integration_tests/test_us15_s1_agent_creates_service_lifecycle.sh
 # ============================================================
 set -euo pipefail
 
-# Load environment variables — REQUIRED
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ENV_FILE="$SCRIPT_DIR/../18.0/.env"
-if [ -f "$ENV_FILE" ]; then
-    set -a; source "$ENV_FILE"; set +a
-else
-    echo "❌ ERROR: .env file not found at $ENV_FILE"
-    echo "   Copy 18.0/.env.example to 18.0/.env and fill in credentials"
-    exit 1
-fi
+[ -f "${SCRIPT_DIR}/../18.0/.env" ] && source "${SCRIPT_DIR}/../18.0/.env" || true
 
 BASE_URL="${BASE_URL:-http://localhost:8069}"
-: "${AGENT_EMAIL:?AGENT_EMAIL is required — set it in 18.0/.env}"
-: "${AGENT_PASS:?AGENT_PASS is required — set it in 18.0/.env}"
-: "${OAUTH_CLIENT_ID:?OAUTH_CLIENT_ID is required — set it in 18.0/.env}"
-: "${OAUTH_CLIENT_SECRET:?OAUTH_CLIENT_SECRET is required — set it in 18.0/.env}"
+AGENT_EMAIL="${AGENT_EMAIL:?'AGENT_EMAIL is required — set it in 18.0/.env or export before running'}"
+AGENT_PASS="${AGENT_PASS:?'AGENT_PASS is required — set it in 18.0/.env or export before running'}"
+OAUTH_CLIENT_ID="${OAUTH_CLIENT_ID:?'OAUTH_CLIENT_ID is required — set it in 18.0/.env or export before running'}"
+OAUTH_CLIENT_SECRET="${OAUTH_CLIENT_SECRET:?'OAUTH_CLIENT_SECRET is required — set it in 18.0/.env or export before running'}"
 PASS=0
 FAIL=0
 

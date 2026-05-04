@@ -7,25 +7,17 @@
 # ============================================================
 set -euo pipefail
 
-# Load environment variables — REQUIRED
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ENV_FILE="$SCRIPT_DIR/../18.0/.env"
-if [ -f "$ENV_FILE" ]; then
-    set -a; source "$ENV_FILE"; set +a
-else
-    echo "❌ ERROR: .env file not found at $ENV_FILE"
-    echo "   Copy 18.0/.env.example to 18.0/.env and fill in credentials"
-    exit 1
-fi
+[ -f "${SCRIPT_DIR}/../18.0/.env" ] && source "${SCRIPT_DIR}/../18.0/.env" || true
 
 BASE_URL="${BASE_URL:-http://localhost:8069}"
-: "${MANAGER_EMAIL:?MANAGER_EMAIL is required — set it in 18.0/.env}"
-: "${MANAGER_PASS:?MANAGER_PASS is required — set it in 18.0/.env}"
-: "${AGENT_EMAIL:?AGENT_EMAIL is required — set it in 18.0/.env}"
-: "${AGENT_PASS:?AGENT_PASS is required — set it in 18.0/.env}"
-NEW_AGENT_ID="${NEW_AGENT_ID:-}"
-: "${OAUTH_CLIENT_ID:?OAUTH_CLIENT_ID is required — set it in 18.0/.env}"
-: "${OAUTH_CLIENT_SECRET:?OAUTH_CLIENT_SECRET is required — set it in 18.0/.env}"
+MANAGER_EMAIL="${MANAGER_EMAIL:?'MANAGER_EMAIL is required — set it in 18.0/.env or export before running'}"
+MANAGER_PASS="${MANAGER_PASS:?'MANAGER_PASS is required — set it in 18.0/.env or export before running'}"
+AGENT_EMAIL="${AGENT_EMAIL:?'AGENT_EMAIL is required — set it in 18.0/.env or export before running'}"
+AGENT_PASS="${AGENT_PASS:?'AGENT_PASS is required — set it in 18.0/.env or export before running'}"
+NEW_AGENT_ID="${NEW_AGENT_ID:-15}"
+OAUTH_CLIENT_ID="${OAUTH_CLIENT_ID:?'OAUTH_CLIENT_ID is required — set it in 18.0/.env or export before running'}"
+OAUTH_CLIENT_SECRET="${OAUTH_CLIENT_SECRET:?'OAUTH_CLIENT_SECRET is required — set it in 18.0/.env or export before running'}"
 PASS=0; FAIL=0
 
 _log()  { echo "[$(date '+%H:%M:%S')] $*"; }

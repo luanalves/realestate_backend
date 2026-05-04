@@ -10,23 +10,15 @@
 # ============================================================
 set -euo pipefail
 
-# Load environment variables — REQUIRED
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ENV_FILE="$SCRIPT_DIR/../18.0/.env"
-if [ -f "$ENV_FILE" ]; then
-    set -a; source "$ENV_FILE"; set +a
-else
-    echo "❌ ERROR: .env file not found at $ENV_FILE"
-    echo "   Copy 18.0/.env.example to 18.0/.env and fill in credentials"
-    exit 1
-fi
+[ -f "${SCRIPT_DIR}/../18.0/.env" ] && source "${SCRIPT_DIR}/../18.0/.env" || true
 
 BASE_URL="${BASE_URL:-http://localhost:8069}"
-: "${COMPANY_A_EMAIL:?COMPANY_A_EMAIL is required — set it in 18.0/.env}"
-: "${COMPANY_A_PASS:?COMPANY_A_PASS is required — set it in 18.0/.env}"
-COMPANY_B_SERVICE_ID="${COMPANY_B_SERVICE_ID:-}"  # must be set externally
-: "${OAUTH_CLIENT_ID:?OAUTH_CLIENT_ID is required — set it in 18.0/.env}"
-: "${OAUTH_CLIENT_SECRET:?OAUTH_CLIENT_SECRET is required — set it in 18.0/.env}"
+COMPANY_A_EMAIL="${COMPANY_A_EMAIL:?'COMPANY_A_EMAIL is required — set it in 18.0/.env or export before running'}"
+COMPANY_A_PASS="${COMPANY_A_PASS:?'COMPANY_A_PASS is required — set it in 18.0/.env or export before running'}"
+COMPANY_B_SERVICE_ID="${COMPANY_B_SERVICE_ID:-}"  # optional — cross-company test skipped if unset
+OAUTH_CLIENT_ID="${OAUTH_CLIENT_ID:?'OAUTH_CLIENT_ID is required — set it in 18.0/.env or export before running'}"
+OAUTH_CLIENT_SECRET="${OAUTH_CLIENT_SECRET:?'OAUTH_CLIENT_SECRET is required — set it in 18.0/.env or export before running'}"
 PASS=0; FAIL=0
 
 _log()  { echo "[$(date '+%H:%M:%S')] $*"; }
