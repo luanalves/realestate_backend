@@ -6,18 +6,29 @@
 # FRs: FR-001, FR-003, FR-004, FR-005, FR-006, FR-007, FR-008, FR-009
 # ============================================================
 # Usage:
-#   BASE_URL=http://localhost:8069 \
-#   AGENT_EMAIL=agent@imob-a.com \
-#   AGENT_PASS=agent123 \
+#   Ensure 18.0/.env is populated (copy from 18.0/.env.example).
+#   Required vars: AGENT_EMAIL, AGENT_PASS, OAUTH_CLIENT_ID, OAUTH_CLIENT_SECRET
+#   Optional override: BASE_URL=http://localhost:8069
 #   bash integration_tests/test_us15_s1_agent_creates_service_lifecycle.sh
 # ============================================================
 set -euo pipefail
 
+# Load environment variables — REQUIRED
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENV_FILE="$SCRIPT_DIR/../18.0/.env"
+if [ -f "$ENV_FILE" ]; then
+    set -a; source "$ENV_FILE"; set +a
+else
+    echo "❌ ERROR: .env file not found at $ENV_FILE"
+    echo "   Copy 18.0/.env.example to 18.0/.env and fill in credentials"
+    exit 1
+fi
+
 BASE_URL="${BASE_URL:-http://localhost:8069}"
-AGENT_EMAIL="${AGENT_EMAIL:-agent@seed.com.br}"
-AGENT_PASS="${AGENT_PASS:-seed123}"
-OAUTH_CLIENT_ID="${OAUTH_CLIENT_ID:-test-client-id}"
-OAUTH_SECRET="${OAUTH_SECRET:-test-client-secret-12345}"
+: "${AGENT_EMAIL:?AGENT_EMAIL is required — set it in 18.0/.env}"
+: "${AGENT_PASS:?AGENT_PASS is required — set it in 18.0/.env}"
+: "${OAUTH_CLIENT_ID:?OAUTH_CLIENT_ID is required — set it in 18.0/.env}"
+: "${OAUTH_CLIENT_SECRET:?OAUTH_CLIENT_SECRET is required — set it in 18.0/.env}"
 PASS=0
 FAIL=0
 
@@ -33,7 +44,7 @@ _two_step_auth() {
     local jwt
     jwt=$(curl -s -X POST "$BASE_URL/api/v1/auth/token" \
         -H "Content-Type: application/json" \
-        -d "{\"grant_type\":\"client_credentials\",\"client_id\":\"$OAUTH_CLIENT_ID\",\"client_secret\":\"$OAUTH_SECRET\"}" \
+        -d "{\"grant_type\":\"client_credentials\",\"client_id\":\"$OAUTH_CLIENT_ID\",\"client_secret\":\"$OAUTH_CLIENT_SECRET\"}" \
         | python3 -c "import sys,json; print(json.load(sys.stdin).get('access_token',''))" 2>/dev/null || echo "")
     [ -z "$jwt" ] && echo "" && return 1
     local sid

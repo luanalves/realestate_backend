@@ -10,12 +10,23 @@
 # ============================================================
 set -euo pipefail
 
+# Load environment variables — REQUIRED
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENV_FILE="$SCRIPT_DIR/../18.0/.env"
+if [ -f "$ENV_FILE" ]; then
+    set -a; source "$ENV_FILE"; set +a
+else
+    echo "❌ ERROR: .env file not found at $ENV_FILE"
+    echo "   Copy 18.0/.env.example to 18.0/.env and fill in credentials"
+    exit 1
+fi
+
 BASE_URL="${BASE_URL:-http://localhost:8069}"
-COMPANY_A_EMAIL="${COMPANY_A_EMAIL:-owner@seed.com.br}"
-COMPANY_A_PASS="${COMPANY_A_PASS:-seed123}"
+: "${COMPANY_A_EMAIL:?COMPANY_A_EMAIL is required — set it in 18.0/.env}"
+: "${COMPANY_A_PASS:?COMPANY_A_PASS is required — set it in 18.0/.env}"
 COMPANY_B_SERVICE_ID="${COMPANY_B_SERVICE_ID:-}"  # must be set externally
-OAUTH_CLIENT_ID="${OAUTH_CLIENT_ID:-test-client-id}"
-OAUTH_SECRET="${OAUTH_SECRET:-test-client-secret-12345}"
+: "${OAUTH_CLIENT_ID:?OAUTH_CLIENT_ID is required — set it in 18.0/.env}"
+: "${OAUTH_CLIENT_SECRET:?OAUTH_CLIENT_SECRET is required — set it in 18.0/.env}"
 PASS=0; FAIL=0
 
 _log()  { echo "[$(date '+%H:%M:%S')] $*"; }
@@ -31,7 +42,7 @@ _two_step_auth() {
     local jwt
     jwt=$(curl -s -X POST "$BASE_URL/api/v1/auth/token" \
         -H "Content-Type: application/json" \
-        -d "{\"grant_type\":\"client_credentials\",\"client_id\":\"$OAUTH_CLIENT_ID\",\"client_secret\":\"$OAUTH_SECRET\"}" \
+        -d "{\"grant_type\":\"client_credentials\",\"client_id\":\"$OAUTH_CLIENT_ID\",\"client_secret\":\"$OAUTH_CLIENT_SECRET\"}" \
         | python3 -c "import sys,json; print(json.load(sys.stdin).get('access_token',''))" 2>/dev/null || echo "")
     [ -z "$jwt" ] && echo "" && return 1
     local sid

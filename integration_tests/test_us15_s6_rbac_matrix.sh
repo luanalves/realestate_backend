@@ -10,11 +10,22 @@
 # ============================================================
 set -euo pipefail
 
+# Load environment variables — REQUIRED
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENV_FILE="$SCRIPT_DIR/../18.0/.env"
+if [ -f "$ENV_FILE" ]; then
+    set -a; source "$ENV_FILE"; set +a
+else
+    echo "❌ ERROR: .env file not found at $ENV_FILE"
+    echo "   Copy 18.0/.env.example to 18.0/.env and fill in credentials"
+    exit 1
+fi
+
 BASE_URL="${BASE_URL:-http://localhost:8069}"
-OWNER_EMAIL="${OWNER_EMAIL:-owner@seed.com.br}"
-OWNER_PASS="${OWNER_PASS:-seed123}"
-OAUTH_CLIENT_ID="${OAUTH_CLIENT_ID:-test-client-id}"
-OAUTH_SECRET="${OAUTH_SECRET:-test-client-secret-12345}"
+: "${OWNER_EMAIL:?OWNER_EMAIL is required — set it in 18.0/.env}"
+: "${OWNER_PASS:?OWNER_PASS is required — set it in 18.0/.env}"
+: "${OAUTH_CLIENT_ID:?OAUTH_CLIENT_ID is required — set it in 18.0/.env}"
+: "${OAUTH_CLIENT_SECRET:?OAUTH_CLIENT_SECRET is required — set it in 18.0/.env}"
 PASS=0; FAIL=0
 
 _log()  { echo "[$(date '+%H:%M:%S')] $*"; }
@@ -30,7 +41,7 @@ _auth() {
     local jwt
     jwt=$(curl -s -X POST "$BASE_URL/api/v1/auth/token" \
         -H "Content-Type: application/json" \
-        -d "{\"grant_type\":\"client_credentials\",\"client_id\":\"$OAUTH_CLIENT_ID\",\"client_secret\":\"$OAUTH_SECRET\"}" \
+        -d "{\"grant_type\":\"client_credentials\",\"client_id\":\"$OAUTH_CLIENT_ID\",\"client_secret\":\"$OAUTH_CLIENT_SECRET\"}" \
         | python3 -c "import sys,json; print(json.load(sys.stdin).get('access_token',''))" 2>/dev/null || echo "")
     [ -z "$jwt" ] && echo "{}" && return 0
     local sid

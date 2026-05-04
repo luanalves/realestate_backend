@@ -14,8 +14,14 @@
  */
 
 describe('Feature 015: Services Admin UI', () => {
-    const adminEmail = Cypress.env('ADMIN_EMAIL') || 'admin@test.com';
-    const adminPass  = Cypress.env('ADMIN_PASSWORD') || 'admin';
+    const adminEmail = Cypress.env('ADMIN_EMAIL');
+    const adminPass  = Cypress.env('ADMIN_PASSWORD');
+
+    before(() => {
+        if (!adminEmail || !adminPass) {
+            throw new Error('ADMIN_EMAIL and ADMIN_PASSWORD must be set in cypress.env.json (generated from 18.0/.env)');
+        }
+    });
 
     beforeEach(() => {
         cy.odooLoginSession(adminEmail, adminPass);
