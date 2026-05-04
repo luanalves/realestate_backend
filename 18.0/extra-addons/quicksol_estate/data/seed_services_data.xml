@@ -12,7 +12,6 @@
             <field name="name">Site</field>
             <field name="code">site</field>
             <field name="company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
-            <field name="agent_id" ref="quicksol_estate.user_seed_agent"/>
         </record>
 
         <!-- Seed partners for services -->
