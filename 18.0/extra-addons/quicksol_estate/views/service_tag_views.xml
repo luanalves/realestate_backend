@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- ============================================================
+             Action: Service Tags
+             ============================================================ -->
+        <record id="action_real_estate_service_tags" model="ir.actions.act_window">
+            <field name="name">Tags de Atendimento</field>
+            <field name="res_model">real.estate.service.tag</field>
+            <field name="view_mode">list,form</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Nenhuma tag encontrada.
+                </p>
+                <p>
+                    Crie tags para categorizar seus atendimentos.
+                </p>
+            </field>
+        </record>
+
+        <!-- ============================================================
+             List View
+             ============================================================ -->
+        <record id="view_real_estate_service_tag_list" model="ir.ui.view">
+            <field name="name">real.estate.service.tag.list</field>
+            <field name="model">real.estate.service.tag</field>
+            <field name="arch" type="xml">
+                <list string="Tags de Atendimento">
+                    <field name="name" string="Nome"/>
+                    <field name="color" string="Cor" widget="color_picker" optional="show"/>
+                    <field name="is_system" string="Sistema" optional="show"/>
+                    <field name="active" string="Ativo" optional="show"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- ============================================================
+             Form View
+             ============================================================ -->
+        <record id="view_real_estate_service_tag_form" model="ir.ui.view">
+            <field name="name">real.estate.service.tag.form</field>
+            <field name="model">real.estate.service.tag</field>
+            <field name="arch" type="xml">
+                <form string="Tag de Atendimento">
+                    <sheet>
+                        <group>
+                            <field name="name" string="Nome"/>
+                            <field name="color" string="Cor" widget="color_picker"/>
+                            <field name="is_system" string="Tag de Sistema" readonly="1"/>
+                            <field name="active" string="Ativo"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+    </data>
+</odoo>

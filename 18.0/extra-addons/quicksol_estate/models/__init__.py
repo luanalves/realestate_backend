@@ -36,3 +36,11 @@ from . import profile  # Feature 010: Unified profile model
 from . import res_users
 from . import res_company_iap_patch  # prevent IAP deadlock during seed loading
 from . import proposal  # Feature 013: Property Proposals (ADR-027)
+
+# Feature 015: Service Pipeline (Atendimentos)
+# Import order: tag/source/phone/settings before main service model
+from . import service_tag      # real.estate.service.tag (E2)
+from . import service_source   # real.estate.service.source (E3)
+from . import partner_phone    # real.estate.partner.phone + res.partner extension (E4)
+from . import service_settings # thedevkitchen.service.settings (E5)
+from . import service          # real.estate.service — depends on all above (E1)

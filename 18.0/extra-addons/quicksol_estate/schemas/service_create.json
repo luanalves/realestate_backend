@@ -1,0 +1,49 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ServiceCreateInput",
+  "description": "Request body for POST /api/v1/services",
+  "type": "object",
+  "required": ["client", "operation_type"],
+  "properties": {
+    "client": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1, "maxLength": 200},
+        "email": {"type": "string", "format": "email"},
+        "phones": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["type", "number"],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["mobile", "home", "work", "whatsapp", "fax"]
+              },
+              "number": {"type": "string", "minLength": 1, "maxLength": 30},
+              "is_primary": {"type": "boolean"}
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "operation_type": {
+      "type": "string",
+      "enum": ["sale", "rent"]
+    },
+    "source_id": {"type": "integer", "minimum": 1},
+    "tag_ids": {
+      "type": "array",
+      "items": {"type": "integer", "minimum": 1}
+    },
+    "property_ids": {
+      "type": "array",
+      "items": {"type": "integer", "minimum": 1}
+    },
+    "notes": {"type": "string", "maxLength": 5000}
+  },
+  "additionalProperties": false
+}

@@ -5,6 +5,61 @@ All notable changes to the quicksol_estate module will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [18.0.4.0.0] - 2026-01-30
+
+### Added - Feature 015: Service Pipeline (Atendimentos)
+
+#### Models
+- `real.estate.service` (E1): Main service/attendance model — 7-stage FSM (no_service→prospecting→visit→proposal→negotiation→won/lost), mail.thread + activity.mixin, computed `is_pending`/`is_orphan_agent`, cron recomputation, EXCLUDE constraint for uniqueness
+- `real.estate.service.tag` (E2): Per-company tags with `is_system` immutability guard (FR-018)
+- `real.estate.service.source` (E3): Lead origin channels
+- `real.estate.partner.phone` (E4): Multi-phone support on `res.partner`
+- `thedevkitchen.service.settings` (E5): Per-company singleton settings (pendency threshold, auto-close)
+- Extended `real.estate.lead` with nullable `service_id` FK
+
+#### REST API (9 endpoints)
+- `POST /api/v1/services` — create with partner dedup (FR-022)
+- `GET /api/v1/services` — list with 10+ filters + ordering + pagination
+- `GET /api/v1/services/summary` — pipeline summary by stage
+- `GET /api/v1/services/{id}` — get single
+- `PUT /api/v1/services/{id}` — update
+- `DELETE /api/v1/services/{id}` — soft-archive (Manager/Owner)
+- `PATCH /api/v1/services/{id}/stage` — stage transition (422/423)
+- `PATCH /api/v1/services/{id}/reassign` — agent reassignment (Manager/Owner, 409 on terminal)
+- `GET/POST /api/v1/service-tags` + `GET/PUT/DELETE /api/v1/service-tags/{id}` — tags CRUD
+- `GET/POST /api/v1/service-sources` + `GET/PUT/DELETE /api/v1/service-sources/{id}` — sources CRUD
+
+#### Services
+- `services/partner_dedup_service.py`: `find_or_create_partner()` — FR-022a (single match reuse), FR-022b (multi-phone conflict → 409 with candidate_ids), FR-022c (phone/email divergence → prefer phone)
+- `services/service_pipeline_service.py`: `change_stage()`, `reassign()`, `compute_summary()`
+
+#### UI Views
+- `service_views.xml` — list (Odoo 18 `<list>` tag), kanban, form, search
+- `service_tag_views.xml`, `service_source_views.xml`, `service_settings_views.xml`, `service_menu.xml`
+- `wizards/service_reassign_wizard.py` — TransientModel for Manager/Owner reassign via UI
+
+#### Data
+- `service_sequence_data.xml` — ATD/YYYY/NNNNN sequence
+- `service_tags_data.xml` — system tags (quente, frio, urgente, vip, indicação)
+- `service_cron_data.xml` — nightly pendency recomputation cron
+- `service_api_endpoints.xml` — 18 Swagger DB entries
+- `seed_services_data.xml` — 10 seed services covering all 7 stages
+
+#### Security
+- `service_record_rules.xml` — company isolation + RBAC record rules
+- `ir.model.access.csv` — updated with all new models
+
+#### Tests (69+ tests)
+- 57 unit tests (test_service_pipeline, test_service_uniqueness, test_service_tag_system, test_orphan_agent, test_service_pendency)
+- 12 unit tests for partner dedup (test_partner_dedup)
+- 6 API smoke/auth test files
+- 7 integration shell scripts (test_us15_s1 through test_us15_s7)
+- Cypress E2E spec (015_services_admin.cy.js)
+
+#### Architecture
+- `docs/adr/ADR-028-service-pipeline-domain-boundaries.md` — rationale for independent model vs lead extension
+- Performance indexes via migration: `idx_service_company_stage`, `idx_service_company_agent`, `idx_service_company_lastactivity`, `idx_service_active` (partial), `idx_service_client_partner`, `idx_service_is_pending` (partial), `idx_service_is_orphan` (partial)
+
 ## [1.2.0] - 2026-01-12
 
 ### Added - Phase 8: Polish & Cross-Cutting Concerns

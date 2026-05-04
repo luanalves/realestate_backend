@@ -21,7 +21,7 @@ class SwaggerController(http.Controller):
     def openapi_spec(self, **kwargs):
         # Get all registered endpoints from database
         Endpoint = request.env['thedevkitchen.api.endpoint'].sudo()
-        endpoints = Endpoint.search([('active', '=', True)])
+        endpoints = Endpoint.search([('active', '=', True)], order='path asc, method asc')
         
         # Build OpenAPI spec base structure
         spec = {
@@ -98,7 +98,7 @@ class SwaggerController(http.Controller):
 
         spec["tags"] = [
             {"name": name, "description": desc} if desc else {"name": name}
-            for name, desc in all_tags.items()
+            for name, desc in sorted(all_tags.items(), key=lambda x: x[0].lower())
         ]
 
         # Add registered endpoints from database
@@ -161,4 +161,5 @@ class SwaggerController(http.Controller):
             
             spec["paths"][path][method] = operation
         
+        spec["paths"] = dict(sorted(spec["paths"].items(), key=lambda x: x[0].lower()))
         return request.make_json_response(spec)

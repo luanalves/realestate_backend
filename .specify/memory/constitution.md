@@ -9,6 +9,60 @@ Para garantir unicidade, integridade e reutilização de validação de document
 
 Essas funções devem ser usadas em todos os endpoints e modelos que aceitam documentos fiscais, garantindo padronização e governança de dados.
 <!--
+Sync Impact Report - Constitution v1.6.0
+========================================
+
+Version Change: 1.5.0 → 1.6.0
+Change Type: MINOR (new architectural patterns from Feature 015 — Service Pipeline)
+Date: 2026-05-03
+
+Sections Added:
+- **Pipeline State Machine Pattern**: Linear-with-rollback FSM with mail.thread auditing
+- **Aggregation Endpoint Pattern**: GET /resource/summary for kanban-style counters
+- **Conditional Uniqueness via PostgreSQL EXCLUDE Constraint**: Unique only for active/non-final records
+- **System Tag Pattern**: Immutable tags driving business rules (`is_system=True`)
+- **Pipeline Stage Gate Validators**: @api.constrains gating stage transitions on related records
+- Feature 015 entry in Reference Implementations (planned/spec stage)
+
+New Patterns Documented:
+1. **Pipeline State Machine**: Stages declared as Selection field; @api.constrains gate transitions; mail.thread mixin records every transition with timestamp + user; rollback permitted with audit; terminal states (won/lost) prevent further movement.
+2. **Aggregation Endpoint**: GET /resource/summary returning counts per stage filtered by company; SQL GROUP BY query; optional Redis cache TTL 30s; respects record rules.
+3. **EXCLUDE Constraint**: PostgreSQL EXCLUDE constraint with WHERE clause for conditional uniqueness (e.g., "unique active record per natural key, ignoring archived/terminal"). Requires PostgreSQL 14+.
+4. **System Tag**: Boolean `is_system` flag on tag entities; system tags are immutable by users (validated in @api.constrains on write/unlink); they drive business rules (e.g., presence locks pipeline movement).
+5. **Stage Gate Validator**: @api.constrains validating that target stage's required relations exist (e.g., proposal stage requires property_ids; formalization requires approved proposal). ValidationError with user-facing reason.
+
+Feature 015 — Service Pipeline (Atendimentos) [SPEC STAGE]:
+- New entity `real.estate.service` distinct from `real.estate.lead` (different responsibilities)
+- 7-stage pipeline: no_service → in_service → visit → proposal → formalization → won/lost
+- Auxiliary entities: service.tag, service.source, partner.phone, service.settings (singleton per company)
+- 9 REST endpoints with triple decorator (ADR-011); summary endpoint for kanban
+- RBAC matrix covering Owner/Manager/Agent/Reception/Prospector
+- Conditional unique active service per (client, type, agent) via EXCLUDE
+- Multi-tenancy + soft delete + HATEOAS + audit via mail.thread
+- Spec: `specs/015-service-pipeline-atendimentos/spec.md` (+ `spec-idea.md` for technical detail)
+- Status: Specification approved; plan/implementation pending
+
+Constitutional Compliance Verification - Feature 015 (spec):
+✅ Principle I (Security First): Triple decorator on all 9 authenticated endpoints, multi-tenancy via record rules
+✅ Principle II (Test Coverage): Unit tests for all stage gates, EXCLUDE constraint, RBAC; E2E API + Cypress admin
+✅ Principle III (API-First): 9 REST endpoints with HATEOAS, OpenAPI via thedevkitchen_api_endpoint, Postman planned
+✅ Principle IV (Multi-Tenancy): company_id on every entity (service, tag, source, settings), record rules per profile
+✅ Principle V (ADR Governance): References ADR-001/003/004/005/007/008/009/011/015/016/017/018/019/022
+✅ Principle VI (Headless Architecture): API for all 9 profiles via headless frontend; Odoo UI restricted to admin
+
+Template Files Status:
+✅ constitution.md - Updated with Feature 015 patterns and reference implementation
+✅ Architectural Patterns section expanded (state machine, aggregation, EXCLUDE, system tags)
+✅ Reference Implementations updated
+
+Propagation: Pending implementation (plan → tasks → implement phases)
+
+Previous Amendments:
+- 2026-04-27 (v1.5.0)
+- 2026-02-16 (v1.3.0 Feature 009 reference implementation)
+- 2026-02-08 (v1.2.0 Feature 007 reference implementation)
+-->
+<!--
 Sync Impact Report - Constitution v1.3.0
 ========================================
 
@@ -381,6 +435,50 @@ def _invalidate_user_sessions(self, user):
 
 **Rationale**: Session invalidation prevents session hijacking after password change. Attacker with stolen session token loses access. User receives security notification. Audit log enables forensic analysis.
 
+## Architectural Patterns
+
+### Pipeline State Machine Pattern (Feature 015)
+For domain entities that flow through a sequence of stages (atendimentos, propostas, contratos):
+1. **Stages as Selection field**: Declare all stages explicitly (`fields.Selection`) with stable codes (snake_case English) and translated labels.
+2. **Linear flow with auditable rollback**: Forward transitions are the happy path; backward transitions are allowed but every transition (forward or backward) is recorded in `mail.thread` with timestamp + user + optional comment.
+3. **Terminal states**: Final states (e.g., `won`, `lost`) prevent further movement except by explicit reopen (audited).
+4. **Stage gate validators**: Use `@api.constrains('stage', '<related_field>')` to enforce that required relations exist before reaching certain stages (e.g., proposal stage requires `property_ids`; formalization requires approved proposal). Raise `ValidationError` with user-facing reason in pt_BR.
+5. **System-tag locks**: A boolean `is_system` tag (e.g., `closed`) attached to the entity blocks `stage` writes; validated in `@api.constrains('stage','tag_ids')`.
+6. **Mixin**: Inherit `mail.thread` and `mail.activity.mixin` for free audit timeline and activities.
+
+**Rationale**: Centralizes pipeline rules in the model (single source of truth), prevents invalid states at the ORM level, gives free audit trail via Odoo's mail subsystem, and exposes uniform UX for backward compatibility (rollback allowed but accountable).
+
+### Aggregation Endpoint Pattern (Kanban Summaries)
+For pipeline UIs requiring per-stage counters or KPIs:
+1. **Endpoint shape**: `GET /api/v1/{resource}/summary` returning `{stage_code: count, ...}` filtered by current company and respecting record rules.
+2. **SQL strategy**: Single `GROUP BY` query (avoid N reads); leverage stored computed fields when filters are complex.
+3. **Caching (optional)**: Redis cache (DB index 1) keyed by `summary:{model}:{company_id}:{user_id_or_role}` with TTL 30s; invalidate on write hooks of the underlying model.
+4. **Auth**: Triple decorator (`@require_jwt + @require_session + @require_company`).
+5. **Response < 100ms**: Mandatory for kanban responsiveness.
+6. **HATEOAS**: Include `links` to filtered list endpoints (`?stage={code}`).
+
+**Rationale**: Frontend kanbans need sub-second feedback. A dedicated aggregation endpoint avoids over-fetching list payloads just to count, scales linearly with stage count, and remains cacheable safely (short TTL).
+
+### Conditional Uniqueness via PostgreSQL EXCLUDE Constraint
+When a natural-key uniqueness rule applies only to **active/non-terminal** records (allowing historical duplicates):
+1. **Use `EXCLUDE` constraint** with a `WHERE` predicate, not a partial UNIQUE index in `_sql_constraints` (Odoo `_sql_constraints` does not natively support partial UNIQUE; declare via migration script or `init.sql`).
+2. **Example**: `EXCLUDE (client_partner_id WITH =, operation_type WITH =, agent_id WITH =) WHERE (active AND stage NOT IN ('won','lost'))`.
+3. **Requires PostgreSQL 14+** (project standard).
+4. **Pair with Python validation**: Catch `IntegrityError` in service layer and translate to user-facing 409 Conflict response.
+5. **Idempotent migration**: Wrap constraint creation in `IF NOT EXISTS` check or Odoo migration script.
+
+**Rationale**: Real-world domain rules frequently require uniqueness only on the "open" subset (one active proposal per property, one active service per client+type+agent). EXCLUDE constraint enforces this at the database level — the strongest guarantee — while preserving historical records for analytics.
+
+### System Tag Pattern
+For tag entities where some tags must be immutable and drive business rules:
+1. **Schema**: Add `is_system = fields.Boolean(default=False)` to tag model.
+2. **Seed in XML data**: System tags created with `is_system=True` and stable `xml_id` (e.g., `seed_service_tag_closed`).
+3. **Immutability validators**: `@api.constrains('name','active','is_system')` rejects edits/deactivation when `is_system=True` (unless context flag explicitly bypasses, restricted to admin).
+4. **Behavior coupling**: Models referencing tags use `tag_ids.filtered(lambda t: t.name == 'closed')` or check via xml_id (`env.ref('module.seed_service_tag_closed')`); presence triggers business rules (lock pipeline, flag, etc.).
+5. **UI**: Read-only display in form views; CRUD restricted in controllers (403 for `is_system` writes).
+
+**Rationale**: Some tags carry semantic weight beyond categorization (e.g., `closed` = locks pipeline). Marking them as system prevents accidental rename/deletion that would break business logic, while still allowing user-defined tags freely.
+
 ## Quality & Testing Standards
 
 ### Test Pyramid (ADR-002, ADR-003)
@@ -430,7 +528,23 @@ def _invalidate_user_sessions(self, user):
 - **Location**: `18.0/extra-addons/quicksol_estate/models/proposal.py`, `controllers/proposal_controller.py`
 - **ADRs**: ADR-027 (pessimistic locking), ADR-011 (security), ADR-016 (Postman), ADR-017 (performance)
 
-Use Feature 007 for standard CRUD patterns with HATEOAS. Use Feature 009 for security-sensitive flows requiring token-based authentication, anti-enumeration, and session management. Use Feature 013 for FSM-driven domain entities with concurrent access control, FIFO queues, and async notifications.
+**Feature 015 - Service Pipeline (Atendimentos)** [SPEC STAGE — Pipeline State Machine + Aggregation Template]:
+- **Domain Boundary**: New entity `real.estate.service` distinct from `real.estate.lead` (one client may originate multiple services across operation types/agents)
+- **Pipeline**: 7-stage state machine (no_service → in_service → visit → proposal → formalization → won/lost) with linear-with-audited-rollback flow; mail.thread mixin records every transition
+- **Stage Gates**: @api.constrains validators — `proposal` requires `property_ids`; `formalization` requires approved proposal (013); `lost` requires `lost_reason`
+- **System Tag**: `closed` tag (is_system=True) locks all pipeline movement
+- **Conditional Uniqueness**: PostgreSQL EXCLUDE constraint — one active service per (client, operation_type, agent), historical duplicates allowed
+- **Aggregation Endpoint**: `GET /api/v1/services/summary` returns per-stage counters for kanban (target < 100ms, optional Redis cache TTL 30s)
+- **API**: 9 REST endpoints under `/api/v1/services/` and `/api/v1/service-tags`, `/api/v1/service-sources` (all authenticated with triple decorators)
+- **RBAC Matrix**: Owner/Manager full; Agent/Prospector own only; Reception read-all + create
+- **Auxiliary Entities**: `service.tag` (per company, with system flag), `service.source` (per company), `partner.phone` (multi-phone for clients), `service.settings` (singleton per company — pendency threshold 1-30 days)
+- **Multi-Tenancy**: company_id on every entity + record rules per profile
+- **Soft Delete**: ADR-015 active flag; archived services preserved for audit
+- **Spec**: `specs/015-service-pipeline-atendimentos/spec.md` + `spec-idea.md` (technical detail)
+- **ADRs Referenced**: 001, 003, 004, 005, 007, 008, 009, 011, 015, 016, 017, 018, 019, 022
+- **Status**: Specification approved (2026-05-03); plan/implementation pending
+
+Use Feature 007 for standard CRUD patterns with HATEOAS. Use Feature 009 for security-sensitive flows requiring token-based authentication, anti-enumeration, and session management. Use Feature 013 for FSM-driven domain entities with concurrent access control, FIFO queues, and async notifications. Use Feature 015 for kanban-style pipeline domains with stage gates, conditional uniqueness, system tags, and aggregation endpoints.
 
 ### Required Tests per Feature
 - **Unit**: Services, helpers, serializers, decorators
@@ -513,4 +627,4 @@ Para criação de testes, **DEVEM ser utilizados** os prompts e agents especiali
 - Constitution provides strategic direction; copilot-instructions provides tactical rules
 - Conflicts resolved in favor of constitution (strategic supersedes tactical)
 
-**Version**: 1.5.0 | **Ratified**: 2026-01-03 | **Last Amended**: 2026-04-27
+**Version**: 1.6.0 | **Ratified**: 2026-01-03 | **Last Amended**: 2026-05-03

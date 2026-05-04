@@ -1,0 +1,521 @@
+openapi: 3.0.3
+info:
+  title: Service Pipeline (Atendimentos) API
+  description: |
+    REST API for the service pipeline (atendimentos) — kanban-style flow
+    tracking each engagement between an agent and a client over a specific
+    operation (Sale or Rent).
+    All endpoints require triple-decorator authentication
+    (@require_jwt + @require_session + @require_company) per ADR-011.
+    Responses include HATEOAS `links` per ADR-007.
+  version: 1.0.0
+  contact:
+    name: TheDevKitchen Real Estate Backend
+servers:
+  - url: https://{host}/api/v1
+    variables:
+      host:
+        default: localhost:8069
+
+tags:
+  - name: Services
+    description: Atendimento (service) lifecycle and pipeline
+  - name: Service Tags
+    description: CRUD of categorization labels
+  - name: Service Sources
+    description: CRUD of captation origins
+
+security:
+  - bearerAuth: []
+    sessionAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    sessionAuth:
+      type: apiKey
+      in: header
+      name: X-Openerp-Session-Id
+
+  parameters:
+    pageParam:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    perPageParam:
+      name: per_page
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid JWT/session
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Forbidden:
+      description: RBAC denies the operation
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: Not found or out of company scope
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    ValidationError:
+      description: Schema validation error (ADR-018)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Conflict:
+      description: Conflict (e.g., duplicate active service for same client+type+agent)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+
+  schemas:
+    Stage:
+      type: string
+      enum: [no_service, in_service, visit, proposal, formalization, won, lost]
+    OperationType:
+      type: string
+      enum: [sale, rent]
+    PhoneType:
+      type: string
+      enum: [mobile, home, work, whatsapp, fax]
+    HateoasLink:
+      type: object
+      required: [href, rel, type]
+      properties:
+        href: { type: string }
+        rel: { type: string }
+        type: { type: string, enum: [GET, POST, PUT, PATCH, DELETE] }
+    Phone:
+      type: object
+      required: [type, number]
+      properties:
+        type: { $ref: '#/components/schemas/PhoneType' }
+        number: { type: string, example: "(11) 98133-0379" }
+        is_primary: { type: boolean, default: false }
+    ClientInput:
+      type: object
+      required: [name, phones]
+      properties:
+        id: { type: integer, description: 'If provided, reuses existing partner' }
+        name: { type: string, maxLength: 80 }
+        email: { type: string, format: email }
+        phones:
+          type: array
+          minItems: 1
+          items: { $ref: '#/components/schemas/Phone' }
+    ClientOutput:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        email: { type: string, format: email, nullable: true }
+        phones:
+          type: array
+          items: { $ref: '#/components/schemas/Phone' }
+    ServiceCreateInput:
+      type: object
+      required: [client, operation_type, source_id]
+      properties:
+        client: { $ref: '#/components/schemas/ClientInput' }
+        operation_type: { $ref: '#/components/schemas/OperationType' }
+        source_id: { type: integer }
+        agent_id: { type: integer, description: 'Defaults to current user if omitted; Owner/Manager may set explicitly' }
+        lead_id: { type: integer, nullable: true }
+        property_ids: { type: array, items: { type: integer } }
+        tag_ids: { type: array, items: { type: integer } }
+        notes: { type: string }
+    ServiceUpdateInput:
+      type: object
+      properties:
+        source_id: { type: integer }
+        property_ids: { type: array, items: { type: integer } }
+        tag_ids: { type: array, items: { type: integer } }
+        notes: { type: string }
+    ServiceOutput:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string, example: 'ATD/2026/00101' }
+        client: { $ref: '#/components/schemas/ClientOutput' }
+        agent_id: { type: integer }
+        agent_active: { type: boolean }
+        is_orphan_agent: { type: boolean, description: 'True if responsible agent is deactivated (FR-024a)' }
+        operation_type: { $ref: '#/components/schemas/OperationType' }
+        stage: { $ref: '#/components/schemas/Stage' }
+        source_id: { type: integer }
+        tag_ids: { type: array, items: { type: integer } }
+        property_ids: { type: array, items: { type: integer } }
+        proposal_ids: { type: array, items: { type: integer } }
+        lead_id: { type: integer, nullable: true }
+        notes: { type: string, nullable: true }
+        last_activity_date: { type: string, format: date-time, nullable: true }
+        is_pending: { type: boolean }
+        lost_reason: { type: string, nullable: true }
+        won_date: { type: string, format: date-time, nullable: true }
+        company_id: { type: integer }
+        active: { type: boolean }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        links:
+          type: array
+          items: { $ref: '#/components/schemas/HateoasLink' }
+    StageChangeInput:
+      type: object
+      required: [stage]
+      properties:
+        stage: { $ref: '#/components/schemas/Stage' }
+        comment: { type: string, description: 'Optional audit comment' }
+        lost_reason: { type: string, description: 'Required when stage=lost' }
+    ReassignInput:
+      type: object
+      required: [new_agent_id]
+      properties:
+        new_agent_id: { type: integer }
+        reason: { type: string }
+    SummaryOutput:
+      type: object
+      properties:
+        no_service: { type: integer }
+        in_service: { type: integer }
+        visit: { type: integer }
+        proposal: { type: integer }
+        formalization: { type: integer }
+        won: { type: integer }
+        lost: { type: integer }
+        orphan_agent: { type: integer, description: 'Subset count: services whose agent is deactivated (FR-024a)' }
+        links:
+          type: array
+          items: { $ref: '#/components/schemas/HateoasLink' }
+    ListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/ServiceOutput' }
+        pagination:
+          type: object
+          properties:
+            page: { type: integer }
+            per_page: { type: integer }
+            total: { type: integer }
+            total_pages: { type: integer }
+        links:
+          type: array
+          items: { $ref: '#/components/schemas/HateoasLink' }
+    ServiceTag:
+      type: object
+      required: [name]
+      properties:
+        id: { type: integer, readOnly: true }
+        name: { type: string, maxLength: 50 }
+        color: { type: string, pattern: '^#[0-9A-Fa-f]{6}$', default: '#808080' }
+        is_system: { type: boolean, readOnly: true }
+        active: { type: boolean }
+    ServiceSource:
+      type: object
+      required: [name, code]
+      properties:
+        id: { type: integer, readOnly: true }
+        name: { type: string, maxLength: 80 }
+        code: { type: string, maxLength: 30 }
+        active: { type: boolean }
+    Error:
+      type: object
+      properties:
+        error: { type: string, example: 'validation_error' }
+        details:
+          oneOf:
+            - { type: array, items: { type: string } }
+            - { type: object }
+        reason: { type: string }
+        field: { type: string }
+
+paths:
+  /services:
+    post:
+      tags: [Services]
+      summary: Create service
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ServiceCreateInput' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ServiceOutput' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    get:
+      tags: [Services]
+      summary: List services with filters
+      parameters:
+        - { in: query, name: operation_type, schema: { $ref: '#/components/schemas/OperationType' } }
+        - { in: query, name: stage, schema: { $ref: '#/components/schemas/Stage' } }
+        - { in: query, name: agent_id, schema: { type: integer } }
+        - { in: query, name: tag_ids, schema: { type: string, description: 'CSV of ids' } }
+        - { in: query, name: source_id, schema: { type: integer } }
+        - { in: query, name: is_pending, schema: { type: boolean } }
+        - { in: query, name: orphan_agent, schema: { type: boolean, description: 'Filter services with deactivated agent (FR-024a)' } }
+        - { in: query, name: q, schema: { type: string, description: 'Search in client name/phone/email/property name' } }
+        - { in: query, name: archived, schema: { type: boolean, default: false } }
+        - { in: query, name: ordering, schema: { type: string, enum: [pendency, recent, oldest], default: recent } }
+        - { $ref: '#/components/parameters/pageParam' }
+        - { $ref: '#/components/parameters/perPageParam' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ListResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /services/summary:
+    get:
+      tags: [Services]
+      summary: Aggregated counters per stage (kanban summary)
+      description: |
+        Returns counts grouped by stage, scoped to current company and the
+        caller's role visibility (Agent/Prospector → only own services).
+        Target latency p95 < 100 ms.
+      parameters:
+        - { in: query, name: operation_type, schema: { $ref: '#/components/schemas/OperationType' } }
+        - { in: query, name: agent_id, schema: { type: integer } }
+        - { in: query, name: tag_ids, schema: { type: string } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SummaryOutput' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /services/{id}:
+    parameters:
+      - { in: path, name: id, required: true, schema: { type: integer } }
+    get:
+      tags: [Services]
+      summary: Retrieve service
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ServiceOutput' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Services]
+      summary: Update service (non-stage fields)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ServiceUpdateInput' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ServiceOutput' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Services]
+      summary: Soft delete (archive)
+      responses:
+        '204':
+          description: Archived
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /services/{id}/stage:
+    parameters:
+      - { in: path, name: id, required: true, schema: { type: integer } }
+    patch:
+      tags: [Services]
+      summary: Move service to another stage
+      description: |
+        Forward jumps allowed if stage gates pass (FR-003 / FR-004 / FR-005).
+        Backward (rollback) allowed except from terminal states.
+        Closed system tag locks transitions (FR-007).
+        Orphan agent (deactivated) blocks transitions (FR-024a).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/StageChangeInput' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ServiceOutput' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422':
+          description: Pipeline rule violation (gate failed)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '423':
+          description: Locked by closed tag
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /services/{id}/reassign:
+    parameters:
+      - { in: path, name: id, required: true, schema: { type: integer } }
+    patch:
+      tags: [Services]
+      summary: Reassign agent (Owner/Manager only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReassignInput' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ServiceOutput' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Conflict (e.g., terminal stage cannot be reassigned)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /service-tags:
+    get:
+      tags: [Service Tags]
+      summary: List tags
+      parameters:
+        - { in: query, name: active, schema: { type: boolean } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ServiceTag' }
+    post:
+      tags: [Service Tags]
+      summary: Create tag (Owner/Manager only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ServiceTag' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ServiceTag' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /service-tags/{id}:
+    parameters:
+      - { in: path, name: id, required: true, schema: { type: integer } }
+    put:
+      tags: [Service Tags]
+      summary: Update tag (Owner/Manager only; system tags rejected)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ServiceTag' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ServiceTag' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Service Tags]
+      summary: Soft delete tag
+      responses:
+        '204': { description: Archived }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /service-sources:
+    get:
+      tags: [Service Sources]
+      summary: List sources
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ServiceSource' }
+    post:
+      tags: [Service Sources]
+      summary: Create source (Owner/Manager only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ServiceSource' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ServiceSource' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /service-sources/{id}:
+    parameters:
+      - { in: path, name: id, required: true, schema: { type: integer } }
+    put:
+      tags: [Service Sources]
+      summary: Update source (Owner/Manager only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ServiceSource' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ServiceSource' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Service Sources]
+      summary: Soft delete source
+      responses:
+        '204': { description: Archived }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
