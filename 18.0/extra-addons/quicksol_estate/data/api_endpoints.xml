@@ -267,10 +267,6 @@ Use this endpoint when an API client needs to render dropdowns or understand whi
 - `for_sale`: Filter by for_sale flag ('true' or 'false')
 - `for_rent`: Filter by for_rent flag ('true' or 'false')
 
-**Feature 016 Mapping Fields:**
-Each property item includes the Mapping_Property fields marked as missing:
-`owner_email`, `owner_home_phone`, `owner_business_phone`, `owner_mobile_phone`, `source_medium`, `send_activities_to_owner`, `search_street`, `registered_by`, `alternative_reference`, `intention`, `iptu_payment_condition`, `iptu_value`, `rental_guarantee_insurance`, `fire_insurance`, `exclusivity`, `property_situation`, `year_of_renovation`, `zoning`, `internal_comments`, `tags`, `key_location`, `property_images`, `advertise`, `featured_property`, `virtual_tour`, `sign_on_site`, `super_featured`, `youtube_video`, `commission_type`, `captured_intention`, `included_in_commission_date`, `commercial_condition`, `iptu_code`, `registration_number`, `electricity_network_code`, `water_network_code`, `titles_rights`, `approved_environmental_agency`, `approved_project`, `documentation_observations`, `property_files`.
-
 Image and file fields return metadata only (`id`, `name`, `mimetype`, `size`, `download_url`). Binary content is never returned inline.
 
 **Security:**
@@ -1985,10 +1981,6 @@ Validation notes:
 **Path Parameters:**
 - `id`: Property ID (integer, e.g., 2)
 
-**Feature 016 Mapping Fields:**
-The response includes all Mapping_Property fields marked as missing:
-`owner_email`, `owner_home_phone`, `owner_business_phone`, `owner_mobile_phone`, `source_medium`, `send_activities_to_owner`, `search_street`, `registered_by`, `alternative_reference`, `intention`, `iptu_payment_condition`, `iptu_value`, `rental_guarantee_insurance`, `fire_insurance`, `exclusivity`, `property_situation`, `year_of_renovation`, `zoning`, `internal_comments`, `tags`, `key_location`, `property_images`, `advertise`, `featured_property`, `virtual_tour`, `sign_on_site`, `super_featured`, `youtube_video`, `commission_type`, `captured_intention`, `included_in_commission_date`, `commercial_condition`, `iptu_code`, `registration_number`, `electricity_network_code`, `water_network_code`, `titles_rights`, `approved_environmental_agency`, `approved_project`, `documentation_observations`, `property_files`.
-
 Defaults are stable: strings/dates return `null`, booleans return `false`, and collections return `[]`. Images/files return metadata only.
 
 **Error Responses:**
@@ -2558,10 +2550,6 @@ Defaults are stable: strings/dates return `null`, booleans return `false`, and c
 - `zip_code`: ZIP code (string)
 - `property_type_id`: Property type ID (integer)
 - `agent_id`: Agent ID (integer)
-
-**Feature 016 Mapping Fields:**
-The endpoint accepts partial updates for the Mapping_Property fields marked as missing:
-`owner_email`, `owner_home_phone`, `owner_business_phone`, `owner_mobile_phone`, `source_medium`, `send_activities_to_owner`, `search_street`, `registered_by`, `alternative_reference`, `intention`, `iptu_payment_condition`, `iptu_value`, `rental_guarantee_insurance`, `fire_insurance`, `exclusivity`, `property_situation`, `year_of_renovation`, `zoning`, `internal_comments`, `tags`, `key_location`, `property_images`, `advertise`, `featured_property`, `virtual_tour`, `sign_on_site`, `super_featured`, `youtube_video`, `commission_type`, `captured_intention`, `included_in_commission_date`, `commercial_condition`, `iptu_code`, `registration_number`, `electricity_network_code`, `water_network_code`, `titles_rights`, `approved_environmental_agency`, `approved_project`, `documentation_observations`, `property_files`.
 
 Omitted arrays do not clear existing collections. Sent arrays replace the corresponding collection.
 
