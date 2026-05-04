@@ -39,7 +39,7 @@ XML data file → module upgrade → DB table → Swagger UI
 | `method` | Selection | ✅ | `GET`, `POST`, `PUT`, `PATCH`, `DELETE` |
 | `module_name` | Char | ✅ | Odoo module that owns the endpoint |
 | `summary` | Char | ✅ | Short one-line summary for Swagger UI |
-| `description` | Text | ✅ | Full Markdown description with examples |
+| `description` | Text | ✅ | Markdown description for behavior, auth, validation, query/path parameters, and error notes. Do not duplicate request/response payload examples here when schema fields exist. |
 | `tags` | Char | ✅ | Comma-separated tags for grouping (e.g., `Agents`) |
 | `protected` | Boolean | ✅ | `True` = requires JWT auth; `False` = public |
 | `active` | Boolean | ✅ | `True` = visible in Swagger UI |
@@ -77,22 +77,33 @@ Create or update `<module>/data/api_endpoints.xml`:
 - `limit` (int, optional): Max results. Default: 20
 - `offset` (int, optional): Pagination offset. Default: 0
 
-**Response Example (200 OK):**
-```json
-{
-  "data": [
-    {"id": 1, "name": "João Silva", "creci": "12345-F"}
-  ],
-  "total": 42,
-  "limit": 20,
-  "offset": 0
-}
-```
-
 **Error Responses:**
 - **401 Unauthorized**: Missing or invalid JWT token
 - **403 Forbidden**: Insufficient permissions
 </field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "AgentListResponse",
+  "properties": {
+    "data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "title": "AgentResponse",
+        "properties": {
+          "id": {"type": "integer", "example": 1},
+          "name": {"type": "string", "example": "Joao Silva"},
+          "creci": {"type": "string", "example": "12345-F"}
+        }
+      }
+    },
+    "total": {"type": "integer", "example": 42},
+    "limit": {"type": "integer", "example": 20},
+    "offset": {"type": "integer", "example": 0}
+  }
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 
@@ -191,10 +202,25 @@ docker compose exec db psql -U odoo -d realestate -c \
 
 All endpoints MUST comply with ADR-005:
 
+### Payload Example Rule
+
+Request/response payload examples MUST live in `request_schema` and `response_schema` using JSON Schema `example` fields.
+
+Do not add Markdown payload blocks such as `Request Example`, `Response Example`, or `Response Format` inside `description` when the endpoint has structured schemas. This creates duplicate Swagger examples and makes the UI show stale manual examples above the generated OpenAPI payload.
+
+Use `description` only for:
+- Functional behavior and business rules
+- Auth/session/company requirements
+- Query/path parameter explanation
+- Validation notes
+- Error response notes
+
+For endpoints that do not yet have `request_schema`/`response_schema`, either add the schema first or explicitly track the endpoint in technical debt before using a temporary Markdown example.
+
 | Requirement | Rule |
 |-------------|------|
 | Naming | `{Model}Create`, `{Model}Update`, `{Model}Response`, `{Model}ListResponse` |
-| POST/PUT/PATCH | Must include request body example in `description` |
+| POST/PUT/PATCH | Must include `request_schema`; examples belong in schema `example` fields, not Markdown description blocks |
 | All responses | Must document `200`, `400`, `401`, `403`, `404` where applicable |
 | All fields | Must include examples in schema documentation |
 | Error schema | Use `{"error": "...", "message": "...", "code": 400}` pattern |
