@@ -4,6 +4,266 @@
         
         <!-- Property API Endpoints -->
 
+        <record id="api_endpoint_property_options" model="thedevkitchen.api.endpoint">
+            <field name="name">List Property Options</field>
+            <field name="path">/api/v1/properties/options</field>
+            <field name="method">GET</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Properties</field>
+            <field name="summary">List selectable property field options</field>
+            <field name="description">Returns option metadata for property fields that use fixed selections and collection fields.
+
+**Authentication:** Bearer Token + Session ID required
+**Multi-tenancy:** Company isolation active (@require_company)
+**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)
+
+**IMPORTANT:** For GET requests, `session_id` MUST be sent via header `X-Openerp-Session-Id`, NOT in the request body.
+
+Use this endpoint when an API client needs to render dropdowns or understand which fields accept multiple values.
+
+**Selection fields returned:**
+- `source_medium`: API alias for `origin_media`
+- `zoning`: API alias for `zoning_type`
+- `property_purpose`
+- `property_status`
+- `condition`
+- `activity_notification`
+- `sign_type`
+
+**Multi-value fields returned:**
+- `tags`: accepts tag names or existing tag IDs. Existing options are available at `GET /api/v1/tags`.
+- `property_images`: accepts an array of image payload objects. No options endpoint exists because values are uploaded files.
+- `property_files`: accepts an array of document payload objects. No options endpoint exists because values are uploaded files.
+
+**Response Example (200 OK):**
+```json
+{
+  "source_medium": [
+    {"value": "website", "label": "Website"},
+    {"value": "social_media", "label": "Social Media"}
+  ],
+  "zoning": [
+    {"value": "residential", "label": "Residential"},
+    {"value": "commercial", "label": "Commercial"}
+  ],
+  "multi_value_fields": [
+    {
+      "field": "tags",
+      "type": "many2many",
+      "accepted_values": ["string", "integer"],
+      "options_endpoint": "/api/v1/tags"
+    }
+  ],
+  "related_options": {
+    "property_type_id": "/api/v1/property-types",
+    "location_type_id": "/api/v1/location-types",
+    "state_id": "/api/v1/states",
+    "tags": "/api/v1/tags",
+    "amenities": "/api/v1/amenities"
+  }
+}
+```
+
+**Error Responses:**
+- **401 Unauthorized**: Invalid or missing JWT token
+- **403 Forbidden**: Missing or invalid session/company context</field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "PropertyOptionsResponse",
+  "additionalProperties": false,
+  "properties": {
+    "source_medium": {
+      "type": "array",
+      "description": "Options accepted by the source_medium API field.",
+      "items": {
+        "type": "object",
+        "title": "PropertyOptionItem",
+        "properties": {
+          "value": {
+            "type": "string",
+            "example": "website"
+          },
+          "label": {
+            "type": "string",
+            "example": "Website"
+          }
+        }
+      },
+      "example": [
+        {
+          "value": "website",
+          "label": "Website"
+        }
+      ]
+    },
+    "zoning": {
+      "type": "array",
+      "description": "Options accepted by the zoning API field.",
+      "items": {
+        "type": "object",
+        "title": "PropertyOptionItem",
+        "properties": {
+          "value": {
+            "type": "string",
+            "example": "website"
+          },
+          "label": {
+            "type": "string",
+            "example": "Website"
+          }
+        }
+      },
+      "example": [
+        {
+          "value": "residential",
+          "label": "Residential"
+        }
+      ]
+    },
+    "property_purpose": {
+      "type": "array",
+      "description": "Options accepted by property_purpose.",
+      "items": {
+        "type": "object",
+        "title": "PropertyOptionItem",
+        "properties": {
+          "value": {
+            "type": "string",
+            "example": "website"
+          },
+          "label": {
+            "type": "string",
+            "example": "Website"
+          }
+        }
+      }
+    },
+    "property_status": {
+      "type": "array",
+      "description": "Options accepted by property_status.",
+      "items": {
+        "type": "object",
+        "title": "PropertyOptionItem",
+        "properties": {
+          "value": {
+            "type": "string",
+            "example": "website"
+          },
+          "label": {
+            "type": "string",
+            "example": "Website"
+          }
+        }
+      }
+    },
+    "condition": {
+      "type": "array",
+      "description": "Options accepted by condition.",
+      "items": {
+        "type": "object",
+        "title": "PropertyOptionItem",
+        "properties": {
+          "value": {
+            "type": "string",
+            "example": "website"
+          },
+          "label": {
+            "type": "string",
+            "example": "Website"
+          }
+        }
+      }
+    },
+    "activity_notification": {
+      "type": "array",
+      "description": "Options accepted by activity_notification.",
+      "items": {
+        "type": "object",
+        "title": "PropertyOptionItem",
+        "properties": {
+          "value": {
+            "type": "string",
+            "example": "website"
+          },
+          "label": {
+            "type": "string",
+            "example": "Website"
+          }
+        }
+      }
+    },
+    "sign_type": {
+      "type": "array",
+      "description": "Options accepted by sign_type.",
+      "items": {
+        "type": "object",
+        "title": "PropertyOptionItem",
+        "properties": {
+          "value": {
+            "type": "string",
+            "example": "website"
+          },
+          "label": {
+            "type": "string",
+            "example": "Website"
+          }
+        }
+      }
+    },
+    "multi_value_fields": {
+      "type": "array",
+      "description": "Fields that accept multiple values or arrays.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string",
+            "example": "tags"
+          },
+          "type": {
+            "type": "string",
+            "example": "many2many"
+          },
+          "accepted_values": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "string",
+              "integer"
+            ]
+          },
+          "options_endpoint": {
+            "type": "string",
+            "nullable": true,
+            "example": "/api/v1/tags"
+          }
+        }
+      }
+    },
+    "related_options": {
+      "type": "object",
+      "description": "Existing master-data endpoints for related property fields.",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "example": {
+        "property_type_id": "/api/v1/property-types",
+        "location_type_id": "/api/v1/location-types",
+        "state_id": "/api/v1/states",
+        "tags": "/api/v1/tags",
+        "amenities": "/api/v1/amenities"
+      }
+    }
+  }
+}
+]]></field>
+            <field name="active" eval="True"/>
+        </record>
+
         <record id="api_endpoint_list_properties" model="thedevkitchen.api.endpoint">
             <field name="name">List Properties</field>
             <field name="path">/api/v1/properties</field>

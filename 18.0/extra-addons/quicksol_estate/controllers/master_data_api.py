@@ -9,6 +9,67 @@ from odoo.addons.thedevkitchen_apigateway.middleware import require_session, req
 _logger = logging.getLogger(__name__)
 
 class MasterDataApiController(http.Controller):
+    def _selection_options(self, model_name, field_name):
+        field = request.env[model_name]._fields[field_name]
+        return [
+            {
+                'value': value,
+                'label': label,
+            }
+            for value, label in field.selection
+        ]
+
+    @http.route('/api/v1/properties/options', type='http', auth='none', methods=['GET'], csrf=False, cors='*')
+    @require_jwt
+    @require_session
+    @require_company
+    def list_property_options(self, **kwargs):
+        try:
+            model_name = 'real.estate.property'
+
+            options = {
+                'source_medium': self._selection_options(model_name, 'origin_media'),
+                'zoning': self._selection_options(model_name, 'zoning_type'),
+                'property_purpose': self._selection_options(model_name, 'property_purpose'),
+                'property_status': self._selection_options(model_name, 'property_status'),
+                'condition': self._selection_options(model_name, 'condition'),
+                'activity_notification': self._selection_options(model_name, 'activity_notification'),
+                'sign_type': self._selection_options(model_name, 'sign_type'),
+                'multi_value_fields': [
+                    {
+                        'field': 'tags',
+                        'type': 'many2many',
+                        'accepted_values': ['string', 'integer'],
+                        'options_endpoint': '/api/v1/tags',
+                    },
+                    {
+                        'field': 'property_images',
+                        'type': 'array',
+                        'accepted_values': ['object'],
+                        'options_endpoint': None,
+                    },
+                    {
+                        'field': 'property_files',
+                        'type': 'array',
+                        'accepted_values': ['object'],
+                        'options_endpoint': None,
+                    },
+                ],
+                'related_options': {
+                    'property_type_id': '/api/v1/property-types',
+                    'location_type_id': '/api/v1/location-types',
+                    'state_id': '/api/v1/states',
+                    'tags': '/api/v1/tags',
+                    'amenities': '/api/v1/amenities',
+                },
+            }
+
+            return success_response(options)
+
+        except Exception as e:
+            _logger.error(f"Error in list_property_options: {e}")
+            return error_response(500, 'Internal server error')
+
     @http.route('/api/v1/property-types', type='http', auth='none', methods=['GET'], csrf=False, cors='*')
     @require_jwt
     @require_session
