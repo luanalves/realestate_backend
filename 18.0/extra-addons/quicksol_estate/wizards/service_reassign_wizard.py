@@ -1,13 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Wizard: Service Reassign — Feature 015 (US2)
 
-Allows Manager/Owner to reassign a service to another agent directly
-from the Odoo UI form, triggering the same business logic as the REST API.
-
-Task: T069
-FR: FR-024b
-"""
 from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError, UserError
 

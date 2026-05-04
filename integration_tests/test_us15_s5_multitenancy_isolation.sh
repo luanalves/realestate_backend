@@ -11,9 +11,11 @@
 set -euo pipefail
 
 BASE_URL="${BASE_URL:-http://localhost:8069}"
-COMPANY_A_EMAIL="${COMPANY_A_EMAIL:-owner_a@seed.com}"
-COMPANY_A_PASS="${COMPANY_A_PASS:-owner123}"
+COMPANY_A_EMAIL="${COMPANY_A_EMAIL:-owner@seed.com.br}"
+COMPANY_A_PASS="${COMPANY_A_PASS:-seed123}"
 COMPANY_B_SERVICE_ID="${COMPANY_B_SERVICE_ID:-}"  # must be set externally
+OAUTH_CLIENT_ID="${OAUTH_CLIENT_ID:-test-client-id}"
+OAUTH_SECRET="${OAUTH_SECRET:-test-client-secret-12345}"
 PASS=0; FAIL=0
 
 _log()  { echo "[$(date '+%H:%M:%S')] $*"; }
@@ -22,6 +24,23 @@ _fail() { _log "❌ FAIL: $*"; FAIL=$((FAIL+1)); }
 _assert_code() {
     local label="$1" expected="$2" actual="$3"
     [ "$actual" -eq "$expected" ] && _pass "$label (HTTP $actual)" || _fail "$label (expected $expected, got $actual)"
+}
+
+_two_step_auth() {
+    local email="$1" pass="$2"
+    local jwt
+    jwt=$(curl -s -X POST "$BASE_URL/api/v1/auth/token" \
+        -H "Content-Type: application/json" \
+        -d "{\"grant_type\":\"client_credentials\",\"client_id\":\"$OAUTH_CLIENT_ID\",\"client_secret\":\"$OAUTH_SECRET\"}" \
+        | python3 -c "import sys,json; print(json.load(sys.stdin).get('access_token',''))" 2>/dev/null || echo "")
+    [ -z "$jwt" ] && echo "" && return 1
+    local sid
+    sid=$(curl -s -X POST "$BASE_URL/api/v1/users/login" \
+        -H "Content-Type: application/json" \
+        -H "Authorization: Bearer $jwt" \
+        -d "{\"email\":\"$email\",\"password\":\"$pass\"}" \
+        | python3 -c "import sys,json; print(json.load(sys.stdin).get('session_id',''))" 2>/dev/null || echo "")
+    echo "{\"access_token\":\"$jwt\",\"session_id\":\"$sid\"}"
 }
 
 # ------------------------------------------------------------------ #
@@ -38,14 +57,10 @@ _assert_code "Unauth GET /service-sources" 401 "$(curl -s -o /dev/null -w '%{htt
 # ------------------------------------------------------------------ #
 if [ -n "$COMPANY_B_SERVICE_ID" ]; then
     _log "Step 2: Auth Company A and attempt to access Company B service"
-    AUTH=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/api/v1/auth/token" \
-        -H "Content-Type: application/json" \
-        -d "{\"email\":\"$COMPANY_A_EMAIL\",\"password\":\"$COMPANY_A_PASS\"}")
-    CODE=$(echo "$AUTH" | tail -1)
-    BODY=$(echo "$AUTH" | head -n -1)
-    _assert_code "Company A auth" 200 "$CODE"
-    JWT=$(echo "$BODY" | python3 -c "import sys,json; print(json.load(sys.stdin).get('access_token',''))" 2>/dev/null || echo "")
-    SID=$(echo "$BODY" | python3 -c "import sys,json; print(json.load(sys.stdin).get('session_id',''))" 2>/dev/null || echo "")
+    AUTH_DATA=$(_two_step_auth "$COMPANY_A_EMAIL" "$COMPANY_A_PASS")
+    JWT=$(echo "$AUTH_DATA" | python3 -c "import sys,json; print(json.load(sys.stdin).get('access_token',''))" 2>/dev/null || echo "")
+    SID=$(echo "$AUTH_DATA" | python3 -c "import sys,json; print(json.load(sys.stdin).get('session_id',''))" 2>/dev/null || echo "")
+    [ -n "$JWT" ] && [ -n "$SID" ] && _pass "Company A auth" || _fail "Company A auth failed"
 
     if [ -n "$JWT" ]; then
         H=(-H "Authorization: Bearer $JWT" -H "X-Openerp-Session-Id: $SID")

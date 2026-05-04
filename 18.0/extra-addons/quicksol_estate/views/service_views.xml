@@ -115,7 +115,7 @@
                 <form string="Atendimento">
                     <header>
                         <field name="stage" widget="statusbar"
-                               statusbar_visible="no_service,prospecting,visit,proposal,negotiation,won,lost"/>
+                               statusbar_visible="no_service,in_service,visit,proposal,formalization,won,lost"/>
                     </header>
                     <sheet>
                         <div class="oe_title">
@@ -125,18 +125,12 @@
                         </div>
                         <group>
                             <group string="Cliente">
-                                <field name="client_partner_id" string="Parceiro"/>
-                                <field name="client_name" string="Nome do Cliente"/>
-                                <field name="client_email" string="E-mail"/>
-                                <field name="phone_ids" string="Telefones"
-                                       widget="one2many_list" mode="list"/>
+                                <field name="client_partner_id" string="Cliente"/>
                             </group>
                             <group string="Detalhes do Atendimento">
                                 <field name="operation_type" string="Tipo de Operação"/>
                                 <field name="source_id" string="Origem"/>
                                 <field name="agent_id" string="Agente"/>
-                                <field name="property_id" string="Imóvel" optional="show"/>
-                                <field name="proposal_id" string="Proposta" readonly="1" optional="show"/>
                             </group>
                         </group>
                         <group>
@@ -155,7 +149,7 @@
                                 <field name="tag_ids" widget="many2many_tags"/>
                             </page>
                             <page string="Notas">
-                                <field name="description" string="Descrição" placeholder="Observações..."/>
+                                <field name="notes" string="Descrição" placeholder="Observações..."/>
                             </page>
                             <page string="Histórico de Mensagens">
                                 <div class="oe_chatter">

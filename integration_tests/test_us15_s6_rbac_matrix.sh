@@ -11,8 +11,10 @@
 set -euo pipefail
 
 BASE_URL="${BASE_URL:-http://localhost:8069}"
-OWNER_EMAIL="${OWNER_EMAIL:-owner@seed.com}"
-OWNER_PASS="${OWNER_PASS:-owner123}"
+OWNER_EMAIL="${OWNER_EMAIL:-owner@seed.com.br}"
+OWNER_PASS="${OWNER_PASS:-seed123}"
+OAUTH_CLIENT_ID="${OAUTH_CLIENT_ID:-test-client-id}"
+OAUTH_SECRET="${OAUTH_SECRET:-test-client-secret-12345}"
 PASS=0; FAIL=0
 
 _log()  { echo "[$(date '+%H:%M:%S')] $*"; }
@@ -25,9 +27,19 @@ _assert_code() {
 
 _auth() {
     local email="$1" pass="$2"
-    curl -s -X POST "$BASE_URL/api/v1/auth/token" \
+    local jwt
+    jwt=$(curl -s -X POST "$BASE_URL/api/v1/auth/token" \
         -H "Content-Type: application/json" \
-        -d "{\"email\":\"$email\",\"password\":\"$pass\"}"
+        -d "{\"grant_type\":\"client_credentials\",\"client_id\":\"$OAUTH_CLIENT_ID\",\"client_secret\":\"$OAUTH_SECRET\"}" \
+        | python3 -c "import sys,json; print(json.load(sys.stdin).get('access_token',''))" 2>/dev/null || echo "")
+    [ -z "$jwt" ] && echo "{}" && return 0
+    local sid
+    sid=$(curl -s -X POST "$BASE_URL/api/v1/users/login" \
+        -H "Content-Type: application/json" \
+        -H "Authorization: Bearer $jwt" \
+        -d "{\"email\":\"$email\",\"password\":\"$pass\"}" \
+        | python3 -c "import sys,json; print(json.load(sys.stdin).get('session_id',''))" 2>/dev/null || echo "")
+    echo "{\"access_token\":\"$jwt\",\"session_id\":\"$sid\"}"
 }
 
 # ------------------------------------------------------------------ #
@@ -49,10 +61,10 @@ SID=$(echo "$AUTH" | python3 -c "import sys,json; print(json.load(sys.stdin).get
 if [ -n "$JWT" ]; then
     H=(-H "Authorization: Bearer $JWT" -H "X-Openerp-Session-Id: $SID" -H "Content-Type: application/json")
     CR=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/api/v1/services" "${H[@]}" \
-        -d '{"client":{"name":"RBAC Test Client","phones":[{"type":"mobile","number":"11988002200","is_primary":true}]},"operation_type":"rent"}')
+        -d '{"client":{"name":"RBAC Test Client","phones":[{"type":"mobile","number":"11988002200","is_primary":true}]},"operation_type":"rent","source_id":1}')
     CR_CODE=$(echo "$CR" | tail -1)
     _assert_code "Owner create service" 201 "$CR_CODE"
-    SVC_ID=$(echo "$CR" | head -n -1 | python3 -c "import sys,json; print(json.load(sys.stdin).get('id',''))" 2>/dev/null || echo "")
+    SVC_ID=$(echo "$CR" | sed '$d' | python3 -c "import sys,json; print(json.load(sys.stdin).get('id',''))" 2>/dev/null || echo "")
     [ -n "$SVC_ID" ] && _pass "Service ID obtained: $SVC_ID" || _fail "No service ID"
 
     # Owner can list

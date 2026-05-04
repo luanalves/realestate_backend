@@ -219,9 +219,11 @@ class ServiceController(http.Controller):
             env = request.env
             client_data = body['client']
 
+            # Use sudo env for partner creation to allow agents without contact-creation rights
+            sudo_env = request.env(su=True)
             try:
                 partner, divergence = find_or_create_partner(
-                    env,
+                    sudo_env,
                     name=client_data['name'],
                     email=client_data.get('email'),
                     phones=client_data.get('phones', []),
@@ -247,6 +249,11 @@ class ServiceController(http.Controller):
                 vals['property_ids'] = [(6, 0, body['property_ids'])]
             if body.get('tag_ids'):
                 vals['tag_ids'] = [(6, 0, body['tag_ids'])]
+            if body.get('agent_id'):
+                vals['agent_id'] = body['agent_id']
+            else:
+                # Auto-assign agent_id to current user (agent_id is Many2one to res.users)
+                vals['agent_id'] = env.user.id
 
             service = env['real.estate.service'].create(vals)
 
@@ -277,7 +284,10 @@ class ServiceController(http.Controller):
     def get_service_summary(self, **kwargs):
         try:
             env = request.env
-            summary = pipeline_svc.compute_summary(env)
+            sudo_env = env(su=True)
+            company_id = env.company.id
+            agent_id = None if _is_manager_or_owner(env) else env.user.id
+            summary = pipeline_svc.compute_summary(sudo_env, company_id=company_id, agent_id=agent_id)
             data = {
                 'total': summary['total'],
                 'orphan_agent': summary['orphan_agent'],
@@ -319,9 +329,15 @@ class ServiceController(http.Controller):
 
             offset = (page - 1) * per_page
 
-            Service = request.env['real.estate.service']
-            total = Service.search_count(domain)
-            services = Service.search(domain, order=ordering, limit=per_page, offset=offset)
+            # Use sudo + explicit access domain (record rules not reliable in Odoo 18)
+            env = request.env
+            access_domain = [('company_id', 'in', request.user_company_ids)]
+            if not _is_manager_or_owner(env):
+                access_domain.append(('agent_id', '=', env.user.id))
+            full_domain = domain + access_domain
+            Service = env['real.estate.service'].sudo()
+            total = Service.search_count(full_domain)
+            services = Service.search(full_domain, order=ordering, limit=per_page, offset=offset)
 
             total_pages = math.ceil(total / per_page) if per_page else 1
             base_url = '/api/v1/services'
@@ -366,8 +382,11 @@ class ServiceController(http.Controller):
     @require_company
     def get_service(self, service_id, **kwargs):
         try:
-            service = request.env['real.estate.service'].browse(service_id)
-            if not service.exists():
+            env = request.env
+            service = env['real.estate.service'].sudo().browse(service_id)
+            if not service.exists() or service.company_id.id not in request.user_company_ids:
+                return error_response('NOT_FOUND', 'Service not found.', 404)
+            if not _is_manager_or_owner(env) and service.agent_id.id != env.user.id:
                 return error_response('NOT_FOUND', 'Service not found.', 404)
             return success_response(_serialize_service(service))
         except AccessError as exc:
@@ -393,9 +412,12 @@ class ServiceController(http.Controller):
                 return error_response('VALIDATION_ERROR', 'Validation failed.', 400,
                                       details=errors)
 
-            service = request.env['real.estate.service'].browse(service_id)
-            if not service.exists():
+            env = request.env
+            service = env['real.estate.service'].sudo().browse(service_id)
+            if not service.exists() or service.company_id.id not in request.user_company_ids:
                 return error_response('NOT_FOUND', 'Service not found.', 404)
+            if not _is_manager_or_owner(env) and service.agent_id.id != env.user.id:
+                return error_response('FORBIDDEN', 'Agents can only update their own services.', 403)
 
             vals = {}
             if 'operation_type' in body:
@@ -433,8 +455,8 @@ class ServiceController(http.Controller):
         try:
             if not _is_manager_or_owner(request.env):
                 return error_response('FORBIDDEN', 'Only Owner/Manager can delete services.', 403)
-            service = request.env['real.estate.service'].browse(service_id)
-            if not service.exists():
+            service = request.env['real.estate.service'].sudo().browse(service_id)
+            if not service.exists() or service.company_id.id not in request.user_company_ids:
                 return error_response('NOT_FOUND', 'Service not found.', 404)
             service.unlink()
             return success_response(None, status_code=204)
@@ -463,9 +485,12 @@ class ServiceController(http.Controller):
                 return error_response('VALIDATION_ERROR', 'Validation failed.', 400,
                                       details=errors)
 
-            service = request.env['real.estate.service'].browse(service_id)
-            if not service.exists():
+            env = request.env
+            service = env['real.estate.service'].sudo().browse(service_id)
+            if not service.exists() or service.company_id.id not in request.user_company_ids:
                 return error_response('NOT_FOUND', 'Service not found.', 404)
+            if not _is_manager_or_owner(env) and service.agent_id.id != env.user.id:
+                return error_response('FORBIDDEN', 'Agents can only change stage of their own services.', 403)
 
             pipeline_svc.change_stage(
                 service,
@@ -509,8 +534,8 @@ class ServiceController(http.Controller):
                 return error_response('VALIDATION_ERROR', 'Validation failed.', 400,
                                       details=errors)
 
-            service = request.env['real.estate.service'].browse(service_id)
-            if not service.exists():
+            service = request.env['real.estate.service'].sudo().browse(service_id)
+            if not service.exists() or service.company_id.id not in request.user_company_ids:
                 return error_response('NOT_FOUND', 'Service not found.', 404)
 
             TERMINAL_STAGES = {'won', 'lost'}

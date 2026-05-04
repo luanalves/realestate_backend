@@ -89,12 +89,14 @@ def _notify_agent(service, agent, note, activity_type_id):
         _logger.exception('Failed to create mail.activity for agent %d', agent.id)
 
 
-def compute_summary(env, company_id=None):
+def compute_summary(env, company_id=None, agent_id=None):
 
     company_id = company_id or env.company.id
 
     Service = env['real.estate.service']
     base_domain = [('company_id', '=', company_id)]
+    if agent_id:
+        base_domain.append(('agent_id', '=', agent_id))
 
     groups = Service.read_group(
         domain=base_domain,

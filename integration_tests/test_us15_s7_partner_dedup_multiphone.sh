@@ -19,8 +19,10 @@ BASE_URL="${BASE_URL:-http://localhost:8069}"
 TOKEN="${TOKEN:-}"
 SESSION_ID="${SESSION_ID:-}"
 COMPANY_ID="${COMPANY_ID:-1}"
-OWNER_EMAIL="${OWNER_EMAIL:-owner@test.com}"
-OWNER_PASS="${OWNER_PASS:-Test@1234!}"
+OWNER_EMAIL="${OWNER_EMAIL:-owner@seed.com.br}"
+OWNER_PASS="${OWNER_PASS:-seed123}"
+OAUTH_CLIENT_ID="${OAUTH_CLIENT_ID:-test-client-id}"
+OAUTH_SECRET="${OAUTH_SECRET:-test-client-secret-12345}"
 
 PASS=0
 FAIL=0
@@ -33,20 +35,27 @@ _skip() { echo "[SKIP] $*"; ((SKIP+=1)); }
 
 # ── Authenticate ─────────────────────────────────────────────────────────────
 authenticate() {
-    local resp
-    resp=$(curl -sf -X POST "${BASE_URL}/api/v1/auth/login" \
+    local jwt
+    jwt=$(curl -sf -X POST "${BASE_URL}/api/v1/auth/token" \
         -H 'Content-Type: application/json' \
-        -d "{\"email\":\"${OWNER_EMAIL}\",\"password\":\"${OWNER_PASS}\"}" 2>/dev/null) || true
-    if [[ -z "$resp" ]]; then
-        _skip "Cannot reach ${BASE_URL} — skipping all integration tests"
+        -d "{\"grant_type\":\"client_credentials\",\"client_id\":\"${OAUTH_CLIENT_ID}\",\"client_secret\":\"${OAUTH_SECRET}\"}" 2>/dev/null \
+        | python3 -c "import sys,json; print(json.load(sys.stdin).get('access_token',''))" 2>/dev/null) || true
+    if [[ -z "$jwt" ]]; then
+        _skip "Cannot reach ${BASE_URL} or OAuth failed — skipping all integration tests"
         return 1
     fi
-    TOKEN=$(echo "$resp" | grep -o '"access_token":"[^"]*"' | head -1 | sed 's/"access_token":"//;s/"//')
-    SESSION_ID=$(echo "$resp" | grep -o '"session_id":"[^"]*"' | head -1 | sed 's/"session_id":"//;s/"//')
-    if [[ -z "$TOKEN" ]]; then
-        _skip "Auth failed — no token. Skipping integration tests."
+    local sid
+    sid=$(curl -sf -X POST "${BASE_URL}/api/v1/users/login" \
+        -H 'Content-Type: application/json' \
+        -H "Authorization: Bearer $jwt" \
+        -d "{\"email\":\"${OWNER_EMAIL}\",\"password\":\"${OWNER_PASS}\"}" 2>/dev/null \
+        | python3 -c "import sys,json; print(json.load(sys.stdin).get('session_id',''))" 2>/dev/null) || true
+    if [[ -z "$sid" ]]; then
+        _skip "Login failed — no session. Skipping integration tests."
         return 1
     fi
+    TOKEN="$jwt"
+    SESSION_ID="$sid"
     _log "Authenticated as ${OWNER_EMAIL}"
     return 0
 }
@@ -60,8 +69,7 @@ create_service() {
     local body="$1"
     curl -sf -X POST "${BASE_URL}/api/v1/services" \
         -H "Authorization: Bearer ${TOKEN}" \
-        -H "X-Session-Id: ${SESSION_ID}" \
-        -H "X-Company-Id: ${COMPANY_ID}" \
+        -H "X-Openerp-Session-Id: ${SESSION_ID}" \
         -H 'Content-Type: application/json' \
         -d "$body" 2>/dev/null
 }
@@ -72,8 +80,7 @@ http_status() {
     local method="${3:-POST}"
     curl -so /dev/null -w "%{http_code}" -X "$method" "${BASE_URL}${url}" \
         -H "Authorization: Bearer ${TOKEN}" \
-        -H "X-Session-Id: ${SESSION_ID}" \
-        -H "X-Company-Id: ${COMPANY_ID}" \
+        -H "X-Openerp-Session-Id: ${SESSION_ID}" \
         -H 'Content-Type: application/json' \
         -d "$body" 2>/dev/null
 }
@@ -84,9 +91,9 @@ test_create_service_new_client() {
     _log "T-S7-01: Create service with new client (unique phone) → 201 + partner created"
     local phone="5511$(date +%s | tail -c 9)"
     local body="{
-        \"client_name\": \"Test Dedup Client\",
-        \"operation_type\": \"rental\",
-        \"phones\": [{\"type\": \"mobile\", \"number\": \"${phone}\"}]
+        \"client\": {\"name\": \"Test Dedup Client\", \"phones\": [{\"type\": \"mobile\", \"number\": \"${phone}\"}]},
+        \"operation_type\": \"rent\",
+        \"source_id\": 1
     }"
     local status
     status=$(http_status "$body" '/api/v1/services')
@@ -101,26 +108,26 @@ test_create_service_same_phone_reuses_partner() {
     _log "T-S7-02: Create two services with same phone → same partner reused (FR-022a)"
     local phone="5511$(date +%s | tail -c 8)77"
     local body1="{
-        \"client_name\": \"Dedup Partner A\",
-        \"operation_type\": \"rental\",
-        \"phones\": [{\"type\": \"mobile\", \"number\": \"${phone}\"}]
+        \"client\": {\"name\": \"Dedup Partner A\", \"phones\": [{\"type\": \"mobile\", \"number\": \"${phone}\"}]},
+        \"operation_type\": \"rent\",
+        \"source_id\": 1
     }"
     local body2="{
-        \"client_name\": \"Different Name Same Phone\",
+        \"client\": {\"name\": \"Different Name Same Phone\", \"phones\": [{\"type\": \"mobile\", \"number\": \"${phone}\"}]},
         \"operation_type\": \"sale\",
-        \"phones\": [{\"type\": \"mobile\", \"number\": \"${phone}\"}]
+        \"source_id\": 1
     }"
     local resp1 resp2 pid1 pid2
     resp1=$(create_service "$body1") || true
     resp2=$(create_service "$body2") || true
 
-    pid1=$(echo "$resp1" | grep -o '"client_partner_id":[0-9]*' | grep -o '[0-9]*')
-    pid2=$(echo "$resp2" | grep -o '"client_partner_id":[0-9]*' | grep -o '[0-9]*')
+    pid1=$(echo "$resp1" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('client',{}).get('id',''))" 2>/dev/null || echo "")
+    pid2=$(echo "$resp2" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('client',{}).get('id',''))" 2>/dev/null || echo "")
 
     if [[ -n "$pid1" && -n "$pid2" && "$pid1" == "$pid2" ]]; then
         _pass "T-S7-02: Same phone → same partner_id ${pid1} (FR-022a)"
     elif [[ -z "$pid1" || -z "$pid2" ]]; then
-        _skip "T-S7-02: Could not parse partner_ids from response — check API format"
+        _fail "T-S7-02: Could not parse partner IDs from response — check API format"
     else
         _fail "T-S7-02: Expected same partner, got ${pid1} vs ${pid2}"
     fi
@@ -146,27 +153,27 @@ test_create_service_no_phones_email_match_reuses() {
 
     # Create first service to seed the partner
     local body1="{
-        \"client_name\": \"Email Dedup Client\",
-        \"client_email\": \"${email}\",
-        \"operation_type\": \"rental\"
+        \"client\": {\"name\": \"Email Dedup Client\", \"email\": \"${email}\", \"phones\": []},
+        \"operation_type\": \"rent\",
+        \"source_id\": 1
     }"
     local body2="{
-        \"client_name\": \"Same Email Partner\",
-        \"client_email\": \"${email}\",
-        \"operation_type\": \"sale\"
+        \"client\": {\"name\": \"Same Email Partner\", \"email\": \"${email}\", \"phones\": []},
+        \"operation_type\": \"sale\",
+        \"source_id\": 1
     }"
 
     local resp1 resp2 pid1 pid2
     resp1=$(create_service "$body1") || true
     resp2=$(create_service "$body2") || true
 
-    pid1=$(echo "$resp1" | grep -o '"client_partner_id":[0-9]*' | grep -o '[0-9]*')
-    pid2=$(echo "$resp2" | grep -o '"client_partner_id":[0-9]*' | grep -o '[0-9]*')
+    pid1=$(echo "$resp1" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('client',{}).get('id',''))" 2>/dev/null || echo "")
+    pid2=$(echo "$resp2" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('client',{}).get('id',''))" 2>/dev/null || echo "")
 
     if [[ -n "$pid1" && -n "$pid2" && "$pid1" == "$pid2" ]]; then
         _pass "T-S7-05: Same email → same partner_id ${pid1} (FR-022a email)"
     elif [[ -z "$pid1" || -z "$pid2" ]]; then
-        _skip "T-S7-05: Could not parse partner_ids — check API format"
+        _fail "T-S7-05: Could not parse partner IDs — check API format"
     else
         _fail "T-S7-05: Expected same partner, got ${pid1} vs ${pid2}"
     fi

@@ -14,8 +14,10 @@
 set -euo pipefail
 
 BASE_URL="${BASE_URL:-http://localhost:8069}"
-AGENT_EMAIL="${AGENT_EMAIL:-agent@seed.com}"
-AGENT_PASS="${AGENT_PASS:-agent123}"
+AGENT_EMAIL="${AGENT_EMAIL:-agent@seed.com.br}"
+AGENT_PASS="${AGENT_PASS:-seed123}"
+OAUTH_CLIENT_ID="${OAUTH_CLIENT_ID:-test-client-id}"
+OAUTH_SECRET="${OAUTH_SECRET:-test-client-secret-12345}"
 PASS=0
 FAIL=0
 
@@ -25,6 +27,23 @@ FAIL=0
 _log()  { echo "[$(date '+%H:%M:%S')] $*"; }
 _pass() { _log "✅ PASS: $*"; PASS=$((PASS+1)); }
 _fail() { _log "❌ FAIL: $*"; FAIL=$((FAIL+1)); }
+
+_two_step_auth() {
+    local email="$1" pass="$2"
+    local jwt
+    jwt=$(curl -s -X POST "$BASE_URL/api/v1/auth/token" \
+        -H "Content-Type: application/json" \
+        -d "{\"grant_type\":\"client_credentials\",\"client_id\":\"$OAUTH_CLIENT_ID\",\"client_secret\":\"$OAUTH_SECRET\"}" \
+        | python3 -c "import sys,json; print(json.load(sys.stdin).get('access_token',''))" 2>/dev/null || echo "")
+    [ -z "$jwt" ] && echo "" && return 1
+    local sid
+    sid=$(curl -s -X POST "$BASE_URL/api/v1/users/login" \
+        -H "Content-Type: application/json" \
+        -H "Authorization: Bearer $jwt" \
+        -d "{\"email\":\"$email\",\"password\":\"$pass\"}" \
+        | python3 -c "import sys,json; print(json.load(sys.stdin).get('session_id',''))" 2>/dev/null || echo "")
+    echo "{\"access_token\":\"$jwt\",\"session_id\":\"$sid\"}"
+}
 
 _assert_code() {
     local label="$1" expected="$2" actual="$3"
@@ -47,26 +66,18 @@ _assert_field() {
 # ------------------------------------------------------------------ #
 # Step 1 — Authenticate agent                                          #
 # ------------------------------------------------------------------ #
-_log "Step 1: Authenticate agent $AGENT_EMAIL"
+_log "Step 1: Authenticate agent $AGENT_EMAIL (two-step)"
 
-AUTH_RESP=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/api/v1/auth/token" \
-    -H "Content-Type: application/json" \
-    -d "{\"email\":\"$AGENT_EMAIL\",\"password\":\"$AGENT_PASS\"}")
+AUTH_DATA=$(_two_step_auth "$AGENT_EMAIL" "$AGENT_PASS")
+JWT_TOKEN=$(echo "$AUTH_DATA" | python3 -c "import sys,json; print(json.load(sys.stdin).get('access_token',''))" 2>/dev/null || echo "")
+SESSION_ID=$(echo "$AUTH_DATA" | python3 -c "import sys,json; print(json.load(sys.stdin).get('session_id',''))" 2>/dev/null || echo "")
 
-AUTH_CODE=$(echo "$AUTH_RESP" | tail -1)
-AUTH_BODY=$(echo "$AUTH_RESP" | head -n -1)
-
-_assert_code "Auth" 200 "$AUTH_CODE"
-
-JWT_TOKEN=$(echo "$AUTH_BODY" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('access_token',''))" 2>/dev/null || echo "")
-SESSION_ID=$(echo "$AUTH_BODY" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('session_id',''))" 2>/dev/null || echo "")
-
-if [ -z "$JWT_TOKEN" ]; then
-    _fail "JWT token not obtained — skipping remaining tests"
-    echo ""
+if [ -z "$JWT_TOKEN" ] || [ -z "$SESSION_ID" ]; then
+    _fail "Auth failed — JWT or session missing"
     echo "Results: PASS=$PASS FAIL=$FAIL"
     exit 1
 fi
+_pass "Auth two-step OK"
 
 AUTH_HEADERS=(-H "Authorization: Bearer $JWT_TOKEN" -H "X-Openerp-Session-Id: $SESSION_ID" -H "Content-Type: application/json")
 
@@ -85,7 +96,7 @@ CREATE_BODY='{
 CREATE_RESP=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/api/v1/services" \
     "${AUTH_HEADERS[@]}" -d "$CREATE_BODY")
 CREATE_CODE=$(echo "$CREATE_RESP" | tail -1)
-CREATE_BODY_RESP=$(echo "$CREATE_RESP" | head -n -1)
+CREATE_BODY_RESP=$(echo "$CREATE_RESP" | sed '$d')
 
 _assert_code "POST /services" 201 "$CREATE_CODE"
 _assert_field "POST /services response" "id" "$CREATE_BODY_RESP"
@@ -108,7 +119,7 @@ _log "Step 3: Verify initial stage = no_service"
 
 GET_RESP=$(curl -s -w "\n%{http_code}" "$BASE_URL/api/v1/services/$SERVICE_ID" "${AUTH_HEADERS[@]}")
 GET_CODE=$(echo "$GET_RESP" | tail -1)
-GET_BODY=$(echo "$GET_RESP" | head -n -1)
+GET_BODY=$(echo "$GET_RESP" | sed '$d')
 
 _assert_code "GET /services/$SERVICE_ID" 200 "$GET_CODE"
 STAGE=$(echo "$GET_BODY" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('stage',''))" 2>/dev/null || echo "")

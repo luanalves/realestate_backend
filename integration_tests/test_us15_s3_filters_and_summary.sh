@@ -8,8 +8,10 @@
 set -euo pipefail
 
 BASE_URL="${BASE_URL:-http://localhost:8069}"
-OWNER_EMAIL="${OWNER_EMAIL:-owner@seed.com}"
-OWNER_PASS="${OWNER_PASS:-owner123}"
+OWNER_EMAIL="${OWNER_EMAIL:-owner@seed.com.br}"
+OWNER_PASS="${OWNER_PASS:-seed123}"
+OAUTH_CLIENT_ID="${OAUTH_CLIENT_ID:-test-client-id}"
+OAUTH_SECRET="${OAUTH_SECRET:-test-client-secret-12345}"
 PASS=0; FAIL=0
 
 _log()  { echo "[$(date '+%H:%M:%S')] $*"; }
@@ -25,18 +27,31 @@ _assert_field() {
         && _pass "$label — '$field' present" || _fail "$label — '$field' missing"
 }
 
+_two_step_auth() {
+    local email="$1" pass="$2"
+    local jwt
+    jwt=$(curl -s -X POST "$BASE_URL/api/v1/auth/token" \
+        -H "Content-Type: application/json" \
+        -d "{\"grant_type\":\"client_credentials\",\"client_id\":\"$OAUTH_CLIENT_ID\",\"client_secret\":\"$OAUTH_SECRET\"}" \
+        | python3 -c "import sys,json; print(json.load(sys.stdin).get('access_token',''))" 2>/dev/null || echo "")
+    [ -z "$jwt" ] && echo "" && return 1
+    local sid
+    sid=$(curl -s -X POST "$BASE_URL/api/v1/users/login" \
+        -H "Content-Type: application/json" \
+        -H "Authorization: Bearer $jwt" \
+        -d "{\"email\":\"$email\",\"password\":\"$pass\"}" \
+        | python3 -c "import sys,json; print(json.load(sys.stdin).get('session_id',''))" 2>/dev/null || echo "")
+    echo "{\"access_token\":\"$jwt\",\"session_id\":\"$sid\"}"
+}
+
 # ------------------------------------------------------------------ #
 # Step 1 — Auth                                                       #
 # ------------------------------------------------------------------ #
-_log "Step 1: Auth owner"
-AUTH=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/api/v1/auth/token" \
-    -H "Content-Type: application/json" \
-    -d "{\"email\":\"$OWNER_EMAIL\",\"password\":\"$OWNER_PASS\"}")
-CODE=$(echo "$AUTH" | tail -1); BODY=$(echo "$AUTH" | head -n -1)
-_assert_code "Auth" 200 "$CODE"
-JWT=$(echo "$BODY" | python3 -c "import sys,json; print(json.load(sys.stdin).get('access_token',''))" 2>/dev/null || echo "")
-SID=$(echo "$BODY" | python3 -c "import sys,json; print(json.load(sys.stdin).get('session_id',''))" 2>/dev/null || echo "")
-[ -z "$JWT" ] && { _fail "No JWT"; echo "PASS=$PASS FAIL=$FAIL"; exit 1; }
+_log "Step 1: Auth owner (two-step)"
+AUTH_DATA=$(_two_step_auth "$OWNER_EMAIL" "$OWNER_PASS")
+JWT=$(echo "$AUTH_DATA" | python3 -c "import sys,json; print(json.load(sys.stdin).get('access_token',''))" 2>/dev/null || echo "")
+SID=$(echo "$AUTH_DATA" | python3 -c "import sys,json; print(json.load(sys.stdin).get('session_id',''))" 2>/dev/null || echo "")
+[ -n "$JWT" ] && [ -n "$SID" ] && _pass "Auth" || { _fail "Auth failed"; echo "PASS=$PASS FAIL=$FAIL"; exit 1; }
 H=(-H "Authorization: Bearer $JWT" -H "X-Openerp-Session-Id: $SID" -H "Content-Type: application/json")
 
 # ------------------------------------------------------------------ #
@@ -45,7 +60,7 @@ H=(-H "Authorization: Bearer $JWT" -H "X-Openerp-Session-Id: $SID" -H "Content-T
 _log "Step 2: List services with pagination"
 LIST=$(curl -s -w "\n%{http_code}" "$BASE_URL/api/v1/services?page=1&per_page=5" "${H[@]}")
 LIST_CODE=$(echo "$LIST" | tail -1)
-LIST_BODY=$(echo "$LIST" | head -n -1)
+LIST_BODY=$(echo "$LIST" | sed '$d')
 _assert_code "GET /services" 200 "$LIST_CODE"
 _assert_field "Pagination meta.total" "meta" "$LIST_BODY"
 _assert_field "Pagination links" "links" "$LIST_BODY"
@@ -84,7 +99,7 @@ _assert_code "Search q=test" 200 "$SQ"
 _log "Step 7: GET /services/summary structure"
 SUM=$(curl -s -w "\n%{http_code}" "$BASE_URL/api/v1/services/summary" "${H[@]}")
 SUM_CODE=$(echo "$SUM" | tail -1)
-SUM_BODY=$(echo "$SUM" | head -n -1)
+SUM_BODY=$(echo "$SUM" | sed '$d')
 _assert_code "GET /services/summary" 200 "$SUM_CODE"
 _assert_field "Summary total" "total" "$SUM_BODY"
 _assert_field "Summary orphan_agent" "orphan_agent" "$SUM_BODY"

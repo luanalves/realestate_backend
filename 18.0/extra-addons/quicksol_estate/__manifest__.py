@@ -54,7 +54,7 @@ Property Form Sections:
 """,
     'author': 'Quicksol Technologies',
     'website': 'https://quicksol.ca',
-    'depends': ['base', 'portal', 'mail', 'thedevkitchen_apigateway', 'thedevkitchen_user_onboarding'],
+    'depends': ['base', 'portal', 'mail', 'thedevkitchen_apigateway'],
     'post_init_hook': 'post_init',
     'data': [
         # Security files (must be loaded first)
