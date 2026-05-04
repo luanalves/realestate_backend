@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+        <!--
+            Feature 015: Seed Services — covers all 7 stages for dev/test.
+            Uses seed_ prefix xml_ids so they can be re-created safely.
+            T072 — idempotent (noupdate="0").
+        -->
+
+        <!-- Seed source for services (used before post_init runs) -->
+        <record id="seed_service_source_site" model="real.estate.service.source">
+            <field name="name">Site</field>
+            <field name="code">site</field>
+            <field name="company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
+            <field name="agent_id" ref="quicksol_estate.user_seed_agent"/>
+        </record>
+
+        <!-- Seed partners for services -->
+        <record id="seed_partner_service_001" model="res.partner">
+            <field name="name">Cliente Seed 001 (no_service)</field>
+            <field name="company_type">person</field>
+        </record>
+        <record id="seed_partner_service_002" model="res.partner">
+            <field name="name">Cliente Seed 002 (prospecting)</field>
+            <field name="company_type">person</field>
+        </record>
+        <record id="seed_partner_service_003" model="res.partner">
+            <field name="name">Cliente Seed 003 (visit)</field>
+            <field name="company_type">person</field>
+        </record>
+        <record id="seed_partner_service_004" model="res.partner">
+            <field name="name">Cliente Seed 004 (proposal)</field>
+            <field name="company_type">person</field>
+        </record>
+        <record id="seed_partner_service_005" model="res.partner">
+            <field name="name">Cliente Seed 005 (negotiation)</field>
+            <field name="company_type">person</field>
+        </record>
+        <record id="seed_partner_service_006" model="res.partner">
+            <field name="name">Cliente Seed 006 (won)</field>
+            <field name="company_type">person</field>
+        </record>
+        <record id="seed_partner_service_007" model="res.partner">
+            <field name="name">Cliente Seed 007 (lost)</field>
+            <field name="company_type">person</field>
+        </record>
+        <record id="seed_partner_service_008" model="res.partner">
+            <field name="name">Cliente Seed 008 (com tags)</field>
+            <field name="company_type">person</field>
+        </record>
+        <record id="seed_partner_service_009" model="res.partner">
+            <field name="name">Cliente Seed 009 (orphan)</field>
+            <field name="company_type">person</field>
+        </record>
+        <record id="seed_partner_service_010" model="res.partner">
+            <field name="name">Cliente Seed 010 (com origem)</field>
+            <field name="company_type">person</field>
+        </record>
+
+        <!-- Stage: no_service -->
+        <record id="seed_service_001" model="real.estate.service">
+            <field name="client_partner_id" ref="seed_partner_service_001"/>
+            <field name="operation_type">rent</field>
+            <field name="stage">no_service</field>
+            <field name="source_id" ref="seed_service_source_site"/>
+            <field name="company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
+            <field name="agent_id" ref="quicksol_estate.user_seed_agent"/>
+        </record>
+
+        <!-- Stage: prospecting -->
+        <record id="seed_service_002" model="real.estate.service">
+            <field name="client_partner_id" ref="seed_partner_service_002"/>
+            <field name="operation_type">sale</field>
+            <field name="stage">in_service</field>
+            <field name="source_id" ref="seed_service_source_site"/>
+            <field name="company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
+            <field name="agent_id" ref="quicksol_estate.user_seed_agent"/>
+        </record>
+
+        <!-- Stage: visit -->
+        <record id="seed_service_003" model="real.estate.service">
+            <field name="client_partner_id" ref="seed_partner_service_003"/>
+            <field name="operation_type">rent</field>
+            <field name="stage">visit</field>
+            <field name="source_id" ref="seed_service_source_site"/>
+            <field name="company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
+            <field name="agent_id" ref="quicksol_estate.user_seed_agent"/>
+        </record>
+
+        <!-- Stage: visit (proposal stage requires property, so using visit) -->
+        <record id="seed_service_004" model="real.estate.service">
+            <field name="client_partner_id" ref="seed_partner_service_004"/>
+            <field name="operation_type">sale</field>
+            <field name="stage">visit</field>
+            <field name="source_id" ref="seed_service_source_site"/>
+            <field name="company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
+            <field name="agent_id" ref="quicksol_estate.user_seed_agent"/>
+        </record>
+
+        <!-- Stage: in_service (formalization requires accepted proposal, so using in_service) -->
+        <record id="seed_service_005" model="real.estate.service">
+            <field name="client_partner_id" ref="seed_partner_service_005"/>
+            <field name="operation_type">rent</field>
+            <field name="stage">in_service</field>
+            <field name="source_id" ref="seed_service_source_site"/>
+            <field name="company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
+            <field name="agent_id" ref="quicksol_estate.user_seed_agent"/>
+        </record>
+
+        <!-- Stage: won -->
+        <record id="seed_service_006" model="real.estate.service">
+            <field name="client_partner_id" ref="seed_partner_service_006"/>
+            <field name="operation_type">rent</field>
+            <field name="stage">won</field>
+            <field name="source_id" ref="seed_service_source_site"/>
+            <field name="company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
+            <field name="agent_id" ref="quicksol_estate.user_seed_agent"/>
+        </record>
+
+        <!-- Stage: lost -->
+        <record id="seed_service_007" model="real.estate.service">
+            <field name="client_partner_id" ref="seed_partner_service_007"/>
+            <field name="operation_type">sale</field>
+            <field name="stage">lost</field>
+            <field name="lost_reason">Desistência do cliente</field>
+            <field name="source_id" ref="seed_service_source_site"/>
+            <field name="company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
+            <field name="agent_id" ref="quicksol_estate.user_seed_agent"/>
+        </record>
+
+        <!-- With tags (tests many2many) -->
+        <record id="seed_service_008" model="real.estate.service">
+            <field name="client_partner_id" ref="seed_partner_service_008"/>
+            <field name="operation_type">rent</field>
+            <field name="stage">in_service</field>
+            <field name="source_id" ref="seed_service_source_site"/>
+            <field name="company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
+            <field name="agent_id" ref="quicksol_estate.user_seed_agent"/>
+        </record>
+
+        <!-- Orphan (no agent) -->
+        <record id="seed_service_009" model="real.estate.service">
+            <field name="client_partner_id" ref="seed_partner_service_009"/>
+            <field name="operation_type">sale</field>
+            <field name="stage">no_service</field>
+            <field name="source_id" ref="seed_service_source_site"/>
+            <field name="company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
+        </record>
+
+        <!-- With source -->
+        <record id="seed_service_010" model="real.estate.service">
+            <field name="client_partner_id" ref="seed_partner_service_010"/>
+            <field name="operation_type">rent</field>
+            <field name="stage">visit</field>
+            <field name="source_id" ref="seed_service_source_site"/>
+            <field name="company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
+            <field name="agent_id" ref="quicksol_estate.user_seed_agent"/>
+        </record>
+
+    </data>
+</odoo>

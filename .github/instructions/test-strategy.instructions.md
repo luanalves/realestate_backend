@@ -67,6 +67,86 @@ Endpoints REST deste projeto usam **JSON direto** no body:
 {"jsonrpc": "2.0", "method": "call", "params": {"email": "...", "password": "..."}}
 ```
 
+## 🔒 Dados Sensíveis — Regra Obrigatória
+
+> **Nenhum teste pode conter dados sensíveis hardcoded no código.** Toda informação sensível deve vir de variáveis de ambiente definidas em `18.0/.env`.
+
+### O que é considerado dado sensível?
+
+- Senhas, tokens, API keys e secrets
+- Credenciais de usuários (login, e-mail, CPF, CNPJ de teste)
+- URLs de ambiente (BASE_URL, endpoints internos)
+- IDs de registros fixos do banco (company_id, user_id hardcoded)
+- Qualquer valor que mude entre ambientes (dev, staging, prod)
+
+### Como usar o `.env` por tipo de teste
+
+**Shell/curl (`integration_tests/`):**
+```bash
+#!/bin/bash
+set -e
+# Carregar variáveis do .env — OBRIGATÓRIO no início de todo teste shell
+source "$(dirname "$0")/../18.0/.env"
+
+# ✅ CORRETO
+TOKEN=$(curl -s -X POST "$BASE_URL/api/v1/auth/token" \
+  -d "{\"username\":\"${TEST_USER_MANAGER}\",\"password\":\"${TEST_PASSWORD_MANAGER}\"}" \
+  | jq -r '.access_token')
+
+# ❌ ERRADO — dados hardcoded
+TOKEN=$(curl -s -X POST "http://localhost:8069/api/v1/auth/token" \
+  -d '{"username":"manager@test.com","password":"Admin@123"}' \
+  | jq -r '.access_token')
+```
+
+**Cypress (`cypress/e2e/`):**
+```javascript
+// ✅ CORRETO — dados vêm do cypress.env.json (gerado a partir do .env)
+const username = Cypress.env('MANAGER_USERNAME')
+const password = Cypress.env('MANAGER_PASSWORD')
+const baseUrl  = Cypress.env('BASE_URL')
+
+// ❌ ERRADO
+const username = 'manager@realestate.com'
+const password = 'Senha@123'
+```
+
+**Python Unitário (`tests/unit/`):**
+```python
+import os
+
+# ✅ CORRETO — mock de dados ou variáveis de ambiente
+TEST_CNPJ = os.environ.get('TEST_CNPJ', '')  # nunca hardcode em produção
+
+# ❌ ERRADO
+TEST_CNPJ = '12.345.678/0001-95'  # hardcoded
+```
+
+### Variáveis obrigatórias no `18.0/.env`
+
+O arquivo `18.0/.env` deve conter (ao menos):
+
+```dotenv
+BASE_URL=http://localhost:8069
+
+# Usuários de teste por perfil
+TEST_USER_OWNER=owner@test.com
+TEST_PASSWORD_OWNER=...
+TEST_USER_MANAGER=manager@test.com
+TEST_PASSWORD_MANAGER=...
+TEST_USER_AGENT=agent@test.com
+TEST_PASSWORD_AGENT=...
+
+# Dados de teste
+TEST_CNPJ=12.345.678/0001-95
+TEST_CPF=123.456.789-09
+```
+
+> ⚠️ O arquivo `18.0/.env` está no `.gitignore`. **Nunca faça commit deste arquivo.**  
+> Use `18.0/.env.example` para documentar as variáveis necessárias sem valores reais.
+
+---
+
 ## ✅ Regras ao Criar/Modificar Testes
 
 ### Para Testes Unitários:

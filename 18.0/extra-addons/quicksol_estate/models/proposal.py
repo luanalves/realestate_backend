@@ -105,6 +105,15 @@ class RealEstateProposal(models.Model):
         ondelete='set null',
         index=True,
     )
+    # Feature 015: additive nullable back-reference to the service this
+    # proposal belongs to. ondelete='set null' keeps proposal intact if the
+    # service is archived. Backward-compatible (R3 / data-model.md E6).
+    service_id = fields.Many2one(
+        'real.estate.service',
+        'Service (Atendimento)',
+        ondelete='set null',
+        index=True,
+    )
     agent_id = fields.Many2one(
         'real.estate.agent',
         'Agent',

@@ -21,6 +21,8 @@ Auto-generated from all feature plans. Last updated: 2026-01-15
 - PostgreSQL 14+ (primary persistence; partial unique index + `SELECT FOR UPDATE` row locking), Redis 7-alpine (DB index 1 for Odoo sessions/cache, DB 2 for Celery results), `ir.attachment` for documents (Odoo's built-in filestore) (013-property-proposals)
 - Python 3.11 (Odoo 18.0) + Odoo ORM, `mail.thread`, `mail.activity.mixin`, `thedevkitchen_apigateway` (JWT/session auth), `quicksol_estate` (proposal/property models), `thedevkitchen_user_onboarding` (RBAC groups) (014-rental-credit-check)
 - PostgreSQL 15 (primary persistence) + Redis DB1 (sessions, HTTP cache — existing infrastructure) (014-rental-credit-check)
+- Python 3.11 (Odoo 18.0) + Odoo 18.0 (`mail.thread`, `mail.activity.mixin`, `res.partner`, `res.users`, `res.company`), `quicksol_estate` (existing — provides `real.estate.lead`, `real.estate.property`, `real.estate.proposal`, `real.estate.agent`), `thedevkitchen_apigateway` (OAuth2/JWT/session), `thedevkitchen_user_onboarding` (RBAC profile groups) (015-service-pipeline-atendimentos)
+- PostgreSQL ≥14 (required for partial `EXCLUDE` constraint with `WHERE`); Redis 7 DB index 1 (optional cache for `/summary`, deferred per research R4) (015-service-pipeline-atendimentos)
 
 - Python 3.11 (Odoo 18.0) + Odoo 18.0, PyJWT, Redis 7-alpine, PostgreSQL 16 (001-bearer-token-validation)
 
@@ -41,9 +43,9 @@ cd src [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECHNOLO
 Python 3.11 (Odoo 18.0): Follow standard conventions
 
 ## Recent Changes
+- 015-service-pipeline-atendimentos: Added Python 3.11 (Odoo 18.0) + Odoo 18.0 (`mail.thread`, `mail.activity.mixin`, `res.partner`, `res.users`, `res.company`), `quicksol_estate` (existing — provides `real.estate.lead`, `real.estate.property`, `real.estate.proposal`, `real.estate.agent`), `thedevkitchen_apigateway` (OAuth2/JWT/session), `thedevkitchen_user_onboarding` (RBAC profile groups)
 - 014-rental-credit-check: Added Python 3.11 (Odoo 18.0) + Odoo ORM, `mail.thread`, `mail.activity.mixin`, `thedevkitchen_apigateway` (JWT/session auth), `quicksol_estate` (proposal/property models), `thedevkitchen_user_onboarding` (RBAC groups)
 - 014-rental-credit-check: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
-- 013-property-proposals: Added Python 3.11 (Odoo 18.0) + Odoo 18.0 framework, `quicksol_estate` (existing module — property, lead, agent), `thedevkitchen_apigateway` (auth: JWT + session + company), `mail` (Odoo built-in: `mail.thread`, `mail.template`, `mail.activity.mixin`), Celery 5.3.4 with Redis backend, `psycopg2` (PostgreSQL driver)
 
 
 <!-- MANUAL ADDITIONS START -->

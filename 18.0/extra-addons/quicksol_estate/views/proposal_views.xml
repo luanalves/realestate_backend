@@ -228,11 +228,18 @@
 
         <!-- ============================================================
              Menu entry (under Real Estate main menu)
+             Folder menu — children defined below and in credit_check module
              ============================================================ -->
         <menuitem id="menu_real_estate_proposals"
                   name="Proposals"
                   parent="quicksol_estate.menu_real_estate_root"
-                  action="action_real_estate_proposals"
                   sequence="27"/>
+
+        <!-- Sub-menu: Lista de Propostas -->
+        <menuitem id="menu_real_estate_proposals_list"
+                  name="Lista de Propostas"
+                  parent="menu_real_estate_proposals"
+                  action="action_real_estate_proposals"
+                  sequence="10"/>
     </data>
 </odoo>

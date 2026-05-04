@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- ============================================================
+             Action: Services (Atendimentos)
+             ============================================================ -->
+        <record id="action_real_estate_services" model="ir.actions.act_window">
+            <field name="name">Atendimentos</field>
+            <field name="res_model">real.estate.service</field>
+            <field name="view_mode">list,kanban,form</field>
+            <field name="context">{}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Nenhum atendimento encontrado.
+                </p>
+                <p>
+                    Registre atendimentos de clientes, acompanhe o pipeline
+                    e distribua oportunidades entre os agentes.
+                </p>
+            </field>
+        </record>
+
+        <!-- ============================================================
+             Search View
+             ============================================================ -->
+        <record id="view_real_estate_service_search" model="ir.ui.view">
+            <field name="name">real.estate.service.search</field>
+            <field name="model">real.estate.service</field>
+            <field name="arch" type="xml">
+                <search string="Atendimentos">
+                    <field name="name" string="Código"/>
+                    <field name="client_partner_id" string="Cliente"/>
+                    <field name="agent_id" string="Agente"/>
+                    <separator/>
+                    <filter string="Meus Atendimentos" name="my_services"
+                            domain="[('agent_id.user_id', '=', uid)]"/>
+                    <filter string="Sem Agente" name="orphan_agent"
+                            domain="[('is_orphan_agent', '=', True)]"/>
+                    <filter string="Pendentes" name="pending"
+                            domain="[('is_pending', '=', True)]"/>
+                    <separator/>
+                    <filter string="Sem Serviço" name="stage_no_service"
+                            domain="[('stage', '=', 'no_service')]"/>
+                    <filter string="Prospecção" name="stage_prospecting"
+                            domain="[('stage', '=', 'prospecting')]"/>
+                    <filter string="Visita" name="stage_visit"
+                            domain="[('stage', '=', 'visit')]"/>
+                    <filter string="Proposta" name="stage_proposal"
+                            domain="[('stage', '=', 'proposal')]"/>
+                    <filter string="Negociação" name="stage_negotiation"
+                            domain="[('stage', '=', 'negotiation')]"/>
+                    <filter string="Ganho" name="stage_won"
+                            domain="[('stage', '=', 'won')]"/>
+                    <filter string="Perdido" name="stage_lost"
+                            domain="[('stage', '=', 'lost')]"/>
+                    <separator/>
+                    <filter string="Locação" name="op_rental"
+                            domain="[('operation_type', '=', 'rental')]"/>
+                    <filter string="Venda" name="op_sale"
+                            domain="[('operation_type', '=', 'sale')]"/>
+                    <filter string="Compra" name="op_purchase"
+                            domain="[('operation_type', '=', 'purchase')]"/>
+                    <separator/>
+                    <filter string="Arquivados" name="archived" domain="[('active', '=', False)]"/>
+                    <group expand="0" string="Agrupar por">
+                        <filter name="group_stage" string="Estágio"
+                                context="{'group_by': 'stage'}"/>
+                        <filter name="group_agent" string="Agente"
+                                context="{'group_by': 'agent_id'}"/>
+                        <filter name="group_source" string="Origem"
+                                context="{'group_by': 'source_id'}"/>
+                        <filter name="group_op_type" string="Tipo de Operação"
+                                context="{'group_by': 'operation_type'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- ============================================================
+             List View
+             ============================================================ -->
+        <record id="view_real_estate_service_list" model="ir.ui.view">
+            <field name="name">real.estate.service.list</field>
+            <field name="model">real.estate.service</field>
+            <field name="arch" type="xml">
+                <list string="Atendimentos" decoration-danger="is_pending" multi_edit="1">
+                    <field name="name" string="Código"/>
+                    <field name="client_partner_id" string="Cliente"/>
+                    <field name="stage" string="Estágio"
+                           widget="badge"
+                           decoration-info="stage in ('no_service','prospecting')"
+                           decoration-warning="stage in ('visit','proposal','negotiation')"
+                           decoration-success="stage == 'won'"
+                           decoration-danger="stage == 'lost'"/>
+                    <field name="operation_type" string="Operação" optional="show"/>
+                    <field name="agent_id" string="Agente" optional="show"/>
+                    <field name="source_id" string="Origem" optional="hide"/>
+                    <field name="tag_ids" string="Tags" widget="many2many_tags" optional="hide"/>
+                    <field name="is_pending" string="Pendente" optional="show"/>
+                    <field name="is_orphan_agent" string="Sem Agente" optional="hide"/>
+                    <field name="last_activity_date" string="Última Atividade" optional="show"/>
+                    <field name="create_date" string="Criado em" optional="hide"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- ============================================================
+             Form View
+             ============================================================ -->
+        <record id="view_real_estate_service_form" model="ir.ui.view">
+            <field name="name">real.estate.service.form</field>
+            <field name="model">real.estate.service</field>
+            <field name="arch" type="xml">
+                <form string="Atendimento">
+                    <header>
+                        <field name="stage" widget="statusbar"
+                               statusbar_visible="no_service,in_service,visit,proposal,formalization,won,lost"/>
+                    </header>
+                    <sheet>
+                        <div class="oe_title">
+                            <h1>
+                                <field name="name" readonly="1" string="Código"/>
+                            </h1>
+                        </div>
+                        <group>
+                            <group string="Cliente">
+                                <field name="client_partner_id" string="Cliente"/>
+                            </group>
+                            <group string="Detalhes do Atendimento">
+                                <field name="operation_type" string="Tipo de Operação"/>
+                                <field name="source_id" string="Origem"/>
+                                <field name="agent_id" string="Agente"/>
+                            </group>
+                        </group>
+                        <group>
+                            <group string="Flags">
+                                <field name="is_pending" string="Pendente" readonly="1"/>
+                                <field name="is_orphan_agent" string="Sem Agente" readonly="1"/>
+                                <field name="last_activity_date" string="Última Atividade" readonly="1"/>
+                            </group>
+                            <group string="Perda">
+                                <field name="lost_reason" string="Motivo da Perda"
+                                       placeholder="Preencha se o atendimento foi perdido"/>
+                            </group>
+                        </group>
+                        <notebook>
+                            <page string="Tags">
+                                <field name="tag_ids" widget="many2many_tags"/>
+                            </page>
+                            <page string="Notas">
+                                <field name="notes" string="Descrição" placeholder="Observações..."/>
+                            </page>
+                            <page string="Histórico de Mensagens">
+                                <div class="oe_chatter">
+                                    <field name="message_follower_ids" widget="mail_followers"/>
+                                    <field name="activity_ids" widget="mail_activity"/>
+                                    <field name="message_ids" widget="mail_thread"/>
+                                </div>
+                            </page>
+                        </notebook>
+                    </sheet>
+                    <div class="oe_chatter">
+                        <field name="message_follower_ids" widget="mail_followers"/>
+                        <field name="activity_ids" widget="mail_activity"/>
+                        <field name="message_ids" widget="mail_thread"/>
+                    </div>
+                </form>
+            </field>
+        </record>
+
+        <!-- ============================================================
+             Kanban View
+             ============================================================ -->
+        <record id="view_real_estate_service_kanban" model="ir.ui.view">
+            <field name="name">real.estate.service.kanban</field>
+            <field name="model">real.estate.service</field>
+            <field name="arch" type="xml">
+                <kanban default_group_by="stage" class="o_kanban_small_column">
+                    <field name="name"/>
+                    <field name="stage"/>
+                    <field name="client_partner_id"/>
+                    <field name="agent_id"/>
+                    <field name="operation_type"/>
+                    <field name="is_pending"/>
+                    <field name="tag_ids"/>
+                    <field name="last_activity_date"/>
+                    <templates>
+                        <t t-name="card">
+                            <div class="oe_kanban_global_click">
+                                <div class="o_kanban_record_top">
+                                    <div class="o_kanban_record_headings">
+                                        <strong class="o_kanban_record_title">
+                                            <field name="name"/>
+                                        </strong>
+                                    </div>
+                                </div>
+                                <div class="o_kanban_record_body">
+                                    <field name="client_partner_id"/>
+                                    <field name="operation_type" widget="badge"/>
+                                </div>
+                                <div class="o_kanban_record_bottom">
+                                    <div class="oe_kanban_bottom_left">
+                                        <field name="tag_ids" widget="many2many_tags"/>
+                                    </div>
+                                    <div class="oe_kanban_bottom_right">
+                                        <field name="agent_id" widget="many2one_avatar_user"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </t>
+                    </templates>
+                </kanban>
+            </field>
+        </record>
+
+    </data>
+</odoo>

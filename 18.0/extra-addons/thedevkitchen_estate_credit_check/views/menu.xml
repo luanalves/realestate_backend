@@ -2,8 +2,8 @@
 <odoo>
     <data>
 
-        <!-- Sub-menu under Real Estate → Análises de Ficha -->
-        <!-- Accessible only to Owner and Manager (FR-026)  -->
+        <!-- Sub-menu under Real Estate → Proposals → Análises de Ficha -->
+        <!-- Accessible only to Owner and Manager (FR-026)               -->
         <menuitem
             id="menu_real_estate_credit_checks"
             name="Análises de Ficha"
