@@ -906,10 +906,6 @@ Image and file fields return metadata only (`id`, `name`, `mimetype`, `size`, `d
 - `accepts_financing`: Accepts financing (boolean)
 - `accepts_fgts`: Accepts FGTS (boolean)
 
-**Feature 016 Mapping Fields:**
-The endpoint also accepts the Mapping_Property fields marked as missing:
-`owner_email`, `owner_home_phone`, `owner_business_phone`, `owner_mobile_phone`, `source_medium`, `send_activities_to_owner`, `search_street`, `registered_by`, `alternative_reference`, `intention`, `iptu_payment_condition`, `iptu_value`, `rental_guarantee_insurance`, `fire_insurance`, `exclusivity`, `property_situation`, `year_of_renovation`, `zoning`, `internal_comments`, `tags`, `key_location`, `property_images`, `advertise`, `featured_property`, `virtual_tour`, `sign_on_site`, `super_featured`, `youtube_video`, `commission_type`, `captured_intention`, `included_in_commission_date`, `commercial_condition`, `iptu_code`, `registration_number`, `electricity_network_code`, `water_network_code`, `titles_rights`, `approved_environmental_agency`, `approved_project`, `documentation_observations`, `property_files`.
-
 Validation notes:
 - `owner_email` must be a valid email when present.
 - `included_in_commission_date` must be ISO date (`YYYY-MM-DD`) when present.
