@@ -23,13 +23,13 @@ docker compose exec odoo odoo -u quicksol_estate -d realestate --stop-after-init
 ```bash
 TOKEN=$(curl -s -X POST http://localhost:8069/api/v1/auth/token \
   -H 'Content-Type: application/json' \
-  -d '{"login":"seed_owner_a@test.com","password":"Owner@123"}' \
+  -d '{"grant_type":"client_credentials","client_id":"test-client-id","client_secret":"test-client-secret-12345"}' \
   | jq -r .access_token)
 
-SESSION_ID=$(curl -s -X POST http://localhost:8069/api/v1/auth/login \
+SESSION_ID=$(curl -s -X POST http://localhost:8069/api/v1/users/login \
   -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' \
-  -d '{"company_id":1}' \
+  -d '{"email":"seed_owner_a@test.com","password":"Owner@123"}' \
   | jq -r .session_id)
 
 H_AUTH="Authorization: Bearer $TOKEN"
