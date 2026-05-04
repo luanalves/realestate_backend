@@ -10,12 +10,15 @@
 # ============================================================
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+[ -f "${SCRIPT_DIR}/../18.0/.env" ] && source "${SCRIPT_DIR}/../18.0/.env" || true
+
 BASE_URL="${BASE_URL:-http://localhost:8069}"
-COMPANY_A_EMAIL="${COMPANY_A_EMAIL:-owner@seed.com.br}"
-COMPANY_A_PASS="${COMPANY_A_PASS:-seed123}"
-COMPANY_B_SERVICE_ID="${COMPANY_B_SERVICE_ID:-}"  # must be set externally
-OAUTH_CLIENT_ID="${OAUTH_CLIENT_ID:-test-client-id}"
-OAUTH_SECRET="${OAUTH_SECRET:-test-client-secret-12345}"
+COMPANY_A_EMAIL="${COMPANY_A_EMAIL:?'COMPANY_A_EMAIL is required — set it in 18.0/.env or export before running'}"
+COMPANY_A_PASS="${COMPANY_A_PASS:?'COMPANY_A_PASS is required — set it in 18.0/.env or export before running'}"
+COMPANY_B_SERVICE_ID="${COMPANY_B_SERVICE_ID:-}"  # optional — cross-company test skipped if unset
+OAUTH_CLIENT_ID="${OAUTH_CLIENT_ID:?'OAUTH_CLIENT_ID is required — set it in 18.0/.env or export before running'}"
+OAUTH_CLIENT_SECRET="${OAUTH_CLIENT_SECRET:?'OAUTH_CLIENT_SECRET is required — set it in 18.0/.env or export before running'}"
 PASS=0; FAIL=0
 
 _log()  { echo "[$(date '+%H:%M:%S')] $*"; }
@@ -31,7 +34,7 @@ _two_step_auth() {
     local jwt
     jwt=$(curl -s -X POST "$BASE_URL/api/v1/auth/token" \
         -H "Content-Type: application/json" \
-        -d "{\"grant_type\":\"client_credentials\",\"client_id\":\"$OAUTH_CLIENT_ID\",\"client_secret\":\"$OAUTH_SECRET\"}" \
+        -d "{\"grant_type\":\"client_credentials\",\"client_id\":\"$OAUTH_CLIENT_ID\",\"client_secret\":\"$OAUTH_CLIENT_SECRET\"}" \
         | python3 -c "import sys,json; print(json.load(sys.stdin).get('access_token',''))" 2>/dev/null || echo "")
     [ -z "$jwt" ] && echo "" && return 1
     local sid
