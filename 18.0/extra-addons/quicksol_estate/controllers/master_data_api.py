@@ -3,12 +3,25 @@ import logging
 from odoo import http
 from odoo.http import request
 from .utils.auth import require_jwt
+from .utils.property_options import build_property_options
 from .utils.response import error_response, success_response
 from odoo.addons.thedevkitchen_apigateway.middleware import require_session, require_company
 
 _logger = logging.getLogger(__name__)
 
 class MasterDataApiController(http.Controller):
+    @http.route('/api/v1/properties/options', type='http', auth='none', methods=['GET'], csrf=False, cors='*')
+    @require_jwt
+    @require_session
+    @require_company
+    def list_property_options(self, **kwargs):
+        try:
+            return success_response(build_property_options(request.env))
+
+        except Exception as e:
+            _logger.error(f"Error in list_property_options: {e}")
+            return error_response(500, 'Internal server error')
+
     @http.route('/api/v1/property-types', type='http', auth='none', methods=['GET'], csrf=False, cors='*')
     @require_jwt
     @require_session

@@ -4,6 +4,237 @@
         
         <!-- Property API Endpoints -->
 
+        <record id="api_endpoint_property_options" model="thedevkitchen.api.endpoint">
+            <field name="name">List Property Options</field>
+            <field name="path">/api/v1/properties/options</field>
+            <field name="method">GET</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Properties</field>
+            <field name="summary">List selectable property field options</field>
+            <field name="description">Returns option metadata for property fields that use fixed selections and collection fields.
+
+**Authentication:** Bearer Token + Session ID required
+**Multi-tenancy:** Company isolation active (@require_company)
+**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)
+
+**IMPORTANT:** For GET requests, `session_id` MUST be sent via header `X-Openerp-Session-Id`, NOT in the request body.
+
+Use this endpoint when an API client needs to render dropdowns or understand which fields accept multiple values.
+
+**Selection fields returned:**
+- `source_medium`: API alias for `origin_media`
+- `zoning`: API alias for `zoning_type`
+- `property_purpose`
+- `property_status`
+- `condition`
+- `activity_notification`
+- `sign_type`
+
+**Multi-value fields returned:**
+- `tags`: accepts tag names or existing tag IDs. Existing options are available at `GET /api/v1/tags`.
+- `property_images`: accepts an array of image payload objects. No options endpoint exists because values are uploaded files.
+- `property_files`: accepts an array of document payload objects. No options endpoint exists because values are uploaded files.
+
+**Error Responses:**
+- **401 Unauthorized**: Invalid or missing JWT token
+- **403 Forbidden**: Missing or invalid session/company context</field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "PropertyOptionsResponse",
+  "additionalProperties": false,
+  "properties": {
+    "source_medium": {
+      "type": "array",
+      "description": "Options accepted by the source_medium API field.",
+      "items": {
+        "type": "object",
+        "title": "PropertyOptionItem",
+        "properties": {
+          "value": {
+            "type": "string",
+            "example": "website"
+          },
+          "label": {
+            "type": "string",
+            "example": "Website"
+          }
+        }
+      },
+      "example": [
+        {
+          "value": "website",
+          "label": "Website"
+        }
+      ]
+    },
+    "zoning": {
+      "type": "array",
+      "description": "Options accepted by the zoning API field.",
+      "items": {
+        "type": "object",
+        "title": "PropertyOptionItem",
+        "properties": {
+          "value": {
+            "type": "string",
+            "example": "website"
+          },
+          "label": {
+            "type": "string",
+            "example": "Website"
+          }
+        }
+      },
+      "example": [
+        {
+          "value": "residential",
+          "label": "Residential"
+        }
+      ]
+    },
+    "property_purpose": {
+      "type": "array",
+      "description": "Options accepted by property_purpose.",
+      "items": {
+        "type": "object",
+        "title": "PropertyOptionItem",
+        "properties": {
+          "value": {
+            "type": "string",
+            "example": "website"
+          },
+          "label": {
+            "type": "string",
+            "example": "Website"
+          }
+        }
+      }
+    },
+    "property_status": {
+      "type": "array",
+      "description": "Options accepted by property_status.",
+      "items": {
+        "type": "object",
+        "title": "PropertyOptionItem",
+        "properties": {
+          "value": {
+            "type": "string",
+            "example": "website"
+          },
+          "label": {
+            "type": "string",
+            "example": "Website"
+          }
+        }
+      }
+    },
+    "condition": {
+      "type": "array",
+      "description": "Options accepted by condition.",
+      "items": {
+        "type": "object",
+        "title": "PropertyOptionItem",
+        "properties": {
+          "value": {
+            "type": "string",
+            "example": "website"
+          },
+          "label": {
+            "type": "string",
+            "example": "Website"
+          }
+        }
+      }
+    },
+    "activity_notification": {
+      "type": "array",
+      "description": "Options accepted by activity_notification.",
+      "items": {
+        "type": "object",
+        "title": "PropertyOptionItem",
+        "properties": {
+          "value": {
+            "type": "string",
+            "example": "website"
+          },
+          "label": {
+            "type": "string",
+            "example": "Website"
+          }
+        }
+      }
+    },
+    "sign_type": {
+      "type": "array",
+      "description": "Options accepted by sign_type.",
+      "items": {
+        "type": "object",
+        "title": "PropertyOptionItem",
+        "properties": {
+          "value": {
+            "type": "string",
+            "example": "website"
+          },
+          "label": {
+            "type": "string",
+            "example": "Website"
+          }
+        }
+      }
+    },
+    "multi_value_fields": {
+      "type": "array",
+      "description": "Fields that accept multiple values or arrays.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string",
+            "example": "tags"
+          },
+          "type": {
+            "type": "string",
+            "example": "many2many"
+          },
+          "accepted_values": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "string",
+              "integer"
+            ]
+          },
+          "options_endpoint": {
+            "type": "string",
+            "nullable": true,
+            "example": "/api/v1/tags"
+          }
+        }
+      }
+    },
+    "related_options": {
+      "type": "object",
+      "description": "Existing master-data endpoints for related property fields.",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "example": {
+        "property_type_id": "/api/v1/property-types",
+        "location_type_id": "/api/v1/location-types",
+        "state_id": "/api/v1/states",
+        "tags": "/api/v1/tags",
+        "amenities": "/api/v1/amenities"
+      }
+    }
+  }
+}
+]]></field>
+            <field name="active" eval="True"/>
+        </record>
+
         <record id="api_endpoint_list_properties" model="thedevkitchen.api.endpoint">
             <field name="name">List Properties</field>
             <field name="path">/api/v1/properties</field>
@@ -36,42 +267,585 @@
 - `for_sale`: Filter by for_sale flag ('true' or 'false')
 - `for_rent`: Filter by for_rent flag ('true' or 'false')
 
+Image and file fields return metadata only (`id`, `name`, `mimetype`, `size`, `download_url`). Binary content is never returned inline.
+
 **Security:**
 - Requires JWT + Session authentication
 - Multi-tenancy: User can only access properties from companies they belong to
 - Admin users can access properties from any company
 - Agents can only see their assigned properties
 
-**Response Format (200 OK):**
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": 1,
-      "name": "Casa Moderna",
-      "price": 850000.0,
-      "price_formatted": "R$ 850.000,00",
-      "status": "available",
-      "property_type": { "id": 2, "name": "House" },
-      "agent": { "id": 1, "name": "Agent Name" },
-      "company": { "id": 1, "name": "Company Name" },
-      "address": { "city": "São Paulo", "state": { "code": "SP" } },
-      "_links": { "self": "/api/v1/properties/1" }
-    }
-  ],
-  "count": 10,
-  "total": 50,
-  "limit": 20,
-  "offset": 0,
-  "_links": { "self": "/api/v1/properties?company_ids=1&amp;limit=20&amp;offset=0", "next": "..." }
-}
-```
-
 **Error Responses:**
 - 400: company_ids parameter is required
 - 400: Invalid company_ids format
 - 403: Access denied to company IDs (user doesn't have access)</field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "PropertyListResponse",
+  "additionalProperties": false,
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "description": "Operation status.",
+      "example": true
+    },
+    "data": {
+      "type": "array",
+      "description": "Paginated properties.",
+      "items": {
+        "type": "object",
+        "title": "PropertyResponse",
+        "additionalProperties": true,
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Property ID.",
+            "example": 17
+          },
+          "name": {
+            "type": "string",
+            "description": "Property name.",
+            "example": "Casa Moderna em Sao Jose dos Campos"
+          },
+          "description": {
+            "type": "string",
+            "description": "Property description.",
+            "example": "<p>Descricao atualizada</p>"
+          },
+          "price": {
+            "type": "number",
+            "description": "Sale price.",
+            "example": 850000
+          },
+          "price_formatted": {
+            "type": "string",
+            "description": "Localized sale price.",
+            "example": "R$ 850.000,00"
+          },
+          "status": {
+            "type": "string",
+            "description": "Property status.",
+            "example": "available"
+          },
+          "property_type": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "id": {
+                "type": "integer",
+                "description": "Property type ID.",
+                "example": 2
+              },
+              "name": {
+                "type": "string",
+                "description": "Property type name.",
+                "example": "House"
+              }
+            }
+          },
+          "agent": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "id": {
+                "type": "integer",
+                "description": "Agent ID.",
+                "example": 3
+              },
+              "name": {
+                "type": "string",
+                "description": "Agent name.",
+                "example": "Carmen Rodriguez"
+              },
+              "email": {
+                "type": "string",
+                "format": "email",
+                "example": "carmen@example.com"
+              }
+            }
+          },
+          "company": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer",
+                "nullable": true,
+                "example": 1
+              },
+              "name": {
+                "type": "string",
+                "nullable": true,
+                "example": "Quicksol Real Estate"
+              }
+            }
+          },
+          "address": {
+            "type": "object",
+            "properties": {
+              "street": {
+                "type": "string",
+                "description": "Street.",
+                "example": "Rua das Flores"
+              },
+              "number": {
+                "type": "string",
+                "description": "Street number.",
+                "example": "123"
+              },
+              "complement": {
+                "type": "string",
+                "description": "Complement.",
+                "example": "apto 12"
+              },
+              "neighborhood": {
+                "type": "string",
+                "description": "Neighborhood.",
+                "example": "Jardim Aquarius"
+              },
+              "city": {
+                "type": "string",
+                "description": "City.",
+                "example": "Sao Jose dos Campos"
+              },
+              "state": {
+                "type": "object",
+                "nullable": true,
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "description": "State ID.",
+                    "example": 25
+                  },
+                  "name": {
+                    "type": "string",
+                    "description": "State name.",
+                    "example": "Sao Paulo"
+                  },
+                  "code": {
+                    "type": "string",
+                    "description": "State code.",
+                    "example": "SP"
+                  }
+                }
+              },
+              "zip_code": {
+                "type": "string",
+                "description": "ZIP/CEP.",
+                "example": "12245-000"
+              },
+              "location_type": {
+                "type": "object",
+                "nullable": true,
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "description": "Location type ID.",
+                    "example": 1
+                  },
+                  "name": {
+                    "type": "string",
+                    "description": "Location type name.",
+                    "example": "Urbano"
+                  },
+                  "code": {
+                    "type": "string",
+                    "description": "Location type code.",
+                    "example": "urban"
+                  }
+                }
+              }
+            }
+          },
+          "features": {
+            "type": "object",
+            "properties": {
+              "bedrooms": {
+                "type": "integer",
+                "description": "Bedroom count.",
+                "example": 4
+              },
+              "suites": {
+                "type": "integer",
+                "description": "Suite count.",
+                "example": 1
+              },
+              "bathrooms": {
+                "type": "integer",
+                "description": "Bathroom count.",
+                "example": 3
+              },
+              "parking_spaces": {
+                "type": "integer",
+                "description": "Parking space count.",
+                "example": 2
+              },
+              "area": {
+                "type": "number",
+                "description": "Built area.",
+                "example": 180.5
+              },
+              "total_area": {
+                "type": "number",
+                "description": "Total area.",
+                "example": 250
+              }
+            }
+          },
+          "created_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "example": "2026-05-04T12:45:00.123456"
+          },
+          "updated_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "example": "2026-05-04T13:10:00.123456"
+          },
+          "owner_email": {
+            "type": "string",
+            "format": "email",
+            "nullable": true,
+            "description": "Owner email. Normalized to lowercase when persisted.",
+            "example": "owner@example.com"
+          },
+          "owner_home_phone": {
+            "type": "string",
+            "nullable": true,
+            "description": "Owner home phone.",
+            "example": "+55 11 3000-1000"
+          },
+          "owner_business_phone": {
+            "type": "string",
+            "nullable": true,
+            "description": "Owner business phone.",
+            "example": "+55 11 3000-2000"
+          },
+          "owner_mobile_phone": {
+            "type": "string",
+            "nullable": true,
+            "description": "Owner mobile phone.",
+            "example": "+55 11 98888-7777"
+          },
+          "source_medium": {
+            "type": "string",
+            "nullable": true,
+            "description": "Mapped to origin_media.",
+            "example": "website"
+          },
+          "send_activities_to_owner": {
+            "type": "boolean",
+            "description": "Whether property activities should be sent to the owner.",
+            "example": true
+          },
+          "search_street": {
+            "type": "string",
+            "nullable": true,
+            "description": "Search street alias. Mapped to street.",
+            "example": "Rua das Flores"
+          },
+          "registered_by": {
+            "type": "string",
+            "nullable": true,
+            "description": "User or source that registered the property.",
+            "example": "CRM Import"
+          },
+          "alternative_reference": {
+            "type": "string",
+            "nullable": true,
+            "description": "Alternative external reference.",
+            "example": "ALT-2026-0001"
+          },
+          "intention": {
+            "type": "string",
+            "nullable": true,
+            "description": "Owner intention.",
+            "example": "sale"
+          },
+          "iptu_payment_condition": {
+            "type": "string",
+            "nullable": true,
+            "description": "IPTU payment condition.",
+            "example": "owner_pays"
+          },
+          "iptu_value": {
+            "type": "string",
+            "nullable": true,
+            "description": "IPTU value as mapped by the source spreadsheet.",
+            "example": "250.00"
+          },
+          "rental_guarantee_insurance": {
+            "type": "string",
+            "nullable": true,
+            "description": "Rental guarantee insurance information.",
+            "example": "Porto Seguro"
+          },
+          "fire_insurance": {
+            "type": "string",
+            "nullable": true,
+            "description": "Fire insurance information.",
+            "example": "included"
+          },
+          "exclusivity": {
+            "type": "boolean",
+            "description": "Whether this property is exclusive.",
+            "example": true
+          },
+          "property_situation": {
+            "type": "string",
+            "nullable": true,
+            "description": "Property situation.",
+            "example": "occupied"
+          },
+          "year_of_renovation": {
+            "type": "string",
+            "nullable": true,
+            "description": "Renovation year returned as string.",
+            "example": "2024"
+          },
+          "zoning": {
+            "type": "string",
+            "nullable": true,
+            "description": "Mapped to zoning_type.",
+            "example": "ZR2"
+          },
+          "internal_comments": {
+            "type": "string",
+            "nullable": true,
+            "description": "Mapped to internal_notes.",
+            "example": "Owner prefers weekday visits."
+          },
+          "tags": {
+            "type": "array",
+            "description": "Property tag names.",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "premium",
+              "sea-view"
+            ]
+          },
+          "key_location": {
+            "type": "string",
+            "nullable": true,
+            "description": "Property key location.",
+            "example": "Concierge desk"
+          },
+          "property_images": {
+            "type": "array",
+            "description": "Property image metadata. Binary content is never returned inline.",
+            "items": {
+              "type": "object",
+              "title": "AttachmentMetadata",
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "description": "Attachment record ID.",
+                  "example": 10
+                },
+                "name": {
+                  "type": "string",
+                  "description": "Attachment display name.",
+                  "example": "fachada.jpg"
+                },
+                "mimetype": {
+                  "type": "string",
+                  "description": "Detected MIME type.",
+                  "example": "image/jpeg"
+                },
+                "size": {
+                  "type": "integer",
+                  "description": "Decoded binary size in bytes.",
+                  "example": 24816
+                },
+                "download_url": {
+                  "type": "string",
+                  "description": "Relative URL to download the attachment content.",
+                  "example": "/web/content/real.estate.property.photo/10/image?download=true"
+                }
+              }
+            }
+          },
+          "advertise": {
+            "type": "boolean",
+            "description": "Mapped to publish_website.",
+            "example": true
+          },
+          "featured_property": {
+            "type": "boolean",
+            "description": "Mapped to publish_featured.",
+            "example": false
+          },
+          "virtual_tour": {
+            "type": "string",
+            "nullable": true,
+            "description": "Mapped to virtual_tour_url.",
+            "example": "https://example.com/tour/property-17"
+          },
+          "sign_on_site": {
+            "type": "boolean",
+            "description": "Mapped to has_sign.",
+            "example": true
+          },
+          "super_featured": {
+            "type": "boolean",
+            "description": "Mapped to publish_super_featured.",
+            "example": false
+          },
+          "youtube_video": {
+            "type": "string",
+            "nullable": true,
+            "description": "Mapped to youtube_video_url.",
+            "example": "https://youtube.com/watch?v=abc123"
+          },
+          "commission_type": {
+            "type": "string",
+            "nullable": true,
+            "description": "Commission type.",
+            "example": "percentage"
+          },
+          "captured_intention": {
+            "type": "string",
+            "nullable": true,
+            "description": "Captured business intention.",
+            "example": "sell"
+          },
+          "included_in_commission_date": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "description": "Date when included in commission workflow.",
+            "example": "2026-05-04"
+          },
+          "commercial_condition": {
+            "type": "string",
+            "nullable": true,
+            "description": "Commercial condition.",
+            "example": "standard"
+          },
+          "iptu_code": {
+            "type": "string",
+            "nullable": true,
+            "description": "IPTU code.",
+            "example": "IPTU-123456"
+          },
+          "registration_number": {
+            "type": "string",
+            "nullable": true,
+            "description": "Mapped to matricula_number.",
+            "example": "MAT-98765"
+          },
+          "electricity_network_code": {
+            "type": "string",
+            "nullable": true,
+            "description": "Electricity utility code.",
+            "example": "ENEL-001122"
+          },
+          "water_network_code": {
+            "type": "string",
+            "nullable": true,
+            "description": "Water utility code.",
+            "example": "SABESP-998877"
+          },
+          "titles_rights": {
+            "type": "string",
+            "nullable": true,
+            "description": "Titles and rights notes.",
+            "example": "Owner holds full title rights."
+          },
+          "approved_environmental_agency": {
+            "type": "boolean",
+            "description": "Whether the environmental agency approval exists.",
+            "example": true
+          },
+          "approved_project": {
+            "type": "boolean",
+            "description": "Whether the project is approved.",
+            "example": true
+          },
+          "documentation_observations": {
+            "type": "string",
+            "nullable": true,
+            "description": "Documentation observations.",
+            "example": "Registration pending registry update."
+          },
+          "property_files": {
+            "type": "array",
+            "description": "Property document metadata. Binary content is never returned inline.",
+            "items": {
+              "type": "object",
+              "title": "AttachmentMetadata",
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "description": "Attachment record ID.",
+                  "example": 10
+                },
+                "name": {
+                  "type": "string",
+                  "description": "Attachment display name.",
+                  "example": "fachada.jpg"
+                },
+                "mimetype": {
+                  "type": "string",
+                  "description": "Detected MIME type.",
+                  "example": "image/jpeg"
+                },
+                "size": {
+                  "type": "integer",
+                  "description": "Decoded binary size in bytes.",
+                  "example": 24816
+                },
+                "download_url": {
+                  "type": "string",
+                  "description": "Relative URL to download the attachment content.",
+                  "example": "/web/content/real.estate.property.photo/10/image?download=true"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "count": {
+      "type": "integer",
+      "description": "Number of items in this page.",
+      "example": 10
+    },
+    "total": {
+      "type": "integer",
+      "description": "Total matching records.",
+      "example": 50
+    },
+    "limit": {
+      "type": "integer",
+      "description": "Page size.",
+      "example": 20
+    },
+    "offset": {
+      "type": "integer",
+      "description": "Pagination offset.",
+      "example": 0
+    },
+    "_links": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "example": {
+        "self": "/api/v1/properties?company_ids=1&limit=20&offset=0",
+        "next": "/api/v1/properties?company_ids=1&limit=20&offset=20"
+      }
+    }
+  }
+}
+]]></field>
+
             <field name="active" eval="True"/>
         </record>
         
@@ -128,81 +902,1196 @@
 - `accepts_financing`: Accepts financing (boolean)
 - `accepts_fgts`: Accepts FGTS (boolean)
 
-**Request Example:**
-```json
-{
-  "name": "Casa Moderna em São José dos Campos",
-  "property_type_id": 2,
-  "area": 180.5,
-  "zip_code": "12245-000",
-  "state_id": 25,
-  "city": "São José dos Campos",
-  "street": "Rua das Flores",
-  "street_number": "123",
-  "location_type_id": 1,
-  "price": 850000,
-  "num_rooms": 4,
-  "num_bathrooms": 3,
-  "num_parking": 2,
-  "neighborhood": "Jardim Aquarius",
-  "for_sale": true
-}
-```
-
-**Response Format (201 Created):**
-```json
-{
-  "id": 17,
-  "name": "Casa Moderna em São José dos Campos",
-  "description": "",
-  "price": 850000.0,
-  "price_formatted": "R$ 850.000,00",
-  "status": "available",
-  "property_type": {
-    "id": 2,
-    "name": "House"
-  },
-  "agent": null,
-  "company": {
-    "id": 1,
-    "name": "Quicksol Real Estate"
-  },
-  "address": {
-    "street": "Rua das Flores",
-    "number": "123",
-    "complement": "",
-    "neighborhood": "Jardim Aquarius",
-    "city": "São José dos Campos",
-    "state": {
-      "id": 25,
-      "name": "São Paulo",
-      "code": "SP"
-    },
-    "zip_code": "12245-000",
-    "location_type": {
-      "id": 1,
-      "name": "Urbano",
-      "code": "urban"
-    }
-  },
-  "features": {
-    "bedrooms": 4,
-    "suites": 0,
-    "bathrooms": 3,
-    "parking_spaces": 2,
-    "area": 180.5,
-    "total_area": 0.0
-  },
-  "created_date": "2025-11-24T12:45:00.123456",
-  "updated_date": "2025-11-24T12:45:00.123456"
-}
-```
+Validation notes:
+- `owner_email` must be a valid email when present.
+- `included_in_commission_date` must be ISO date (`YYYY-MM-DD`) when present.
+- Boolean fields must be JSON booleans, not strings.
+- `tags`, `property_images`, and `property_files` must be arrays.
+- Images/files are persisted from supported payload objects and returned as metadata only.
 
 **Error Responses:**
 - **400 Bad Request**: Missing required fields or validation error
   - Missing required fields: name, property_type_id, area, zip_code, state_id, city, street, street_number, location_type_id
 - **401 Unauthorized**: Invalid or missing JWT token
 - **403 Forbidden**: User doesn't have permission to create properties</field>
+            <field name="request_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "PropertyCreate",
+  "required": [
+    "session_id",
+    "name",
+    "property_type_id",
+    "area",
+    "zip_code",
+    "state_id",
+    "city",
+    "street",
+    "street_number",
+    "location_type_id"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "session_id": {
+      "type": "string",
+      "description": "Session ID for fingerprint validation on POST/PUT/PATCH requests.",
+      "example": "{{session_id}}"
+    },
+    "name": {
+      "type": "string",
+      "description": "Property name.",
+      "example": "Casa Moderna em Sao Jose dos Campos"
+    },
+    "property_type_id": {
+      "type": "integer",
+      "description": "Property type ID.",
+      "example": 2
+    },
+    "area": {
+      "type": "number",
+      "description": "Built area in square meters.",
+      "example": 180.5
+    },
+    "zip_code": {
+      "type": "string",
+      "description": "ZIP/CEP code.",
+      "example": "12245-000"
+    },
+    "state_id": {
+      "type": "integer",
+      "description": "State ID.",
+      "example": 25
+    },
+    "city": {
+      "type": "string",
+      "description": "City name.",
+      "example": "Sao Jose dos Campos"
+    },
+    "street": {
+      "type": "string",
+      "description": "Street name.",
+      "example": "Rua das Flores"
+    },
+    "street_number": {
+      "type": "string",
+      "description": "Street number.",
+      "example": "123"
+    },
+    "location_type_id": {
+      "type": "integer",
+      "description": "Location type ID.",
+      "example": 1
+    },
+    "description": {
+      "type": "string",
+      "description": "Property description.",
+      "example": "<p>Casa reformada em excelente localizacao</p>"
+    },
+    "price": {
+      "type": "number",
+      "description": "Sale price.",
+      "example": 850000
+    },
+    "rent_price": {
+      "type": "number",
+      "description": "Rent price.",
+      "example": 4200
+    },
+    "property_status": {
+      "type": "string",
+      "description": "Property status.",
+      "example": "available"
+    },
+    "property_purpose": {
+      "type": "string",
+      "description": "Property purpose.",
+      "example": "residential"
+    },
+    "num_rooms": {
+      "type": "integer",
+      "description": "Number of bedrooms.",
+      "example": 4
+    },
+    "num_suites": {
+      "type": "integer",
+      "description": "Number of suites.",
+      "example": 1
+    },
+    "num_bathrooms": {
+      "type": "integer",
+      "description": "Number of bathrooms.",
+      "example": 3
+    },
+    "num_parking": {
+      "type": "integer",
+      "description": "Number of parking spaces.",
+      "example": 2
+    },
+    "total_area": {
+      "type": "number",
+      "description": "Total area in square meters.",
+      "example": 250
+    },
+    "agent_id": {
+      "type": "integer",
+      "description": "Responsible agent ID.",
+      "example": 3
+    },
+    "owner_id": {
+      "type": "integer",
+      "description": "Owner ID.",
+      "example": 12
+    },
+    "company_ids": {
+      "type": "array",
+      "description": "Company IDs allowed for the authenticated user.",
+      "items": {
+        "type": "integer"
+      },
+      "example": [
+        1
+      ]
+    },
+    "complement": {
+      "type": "string",
+      "description": "Address complement.",
+      "example": "Casa 2"
+    },
+    "neighborhood": {
+      "type": "string",
+      "description": "Neighborhood.",
+      "example": "Jardim Aquarius"
+    },
+    "latitude": {
+      "type": "number",
+      "description": "Latitude.",
+      "example": -23.2237
+    },
+    "longitude": {
+      "type": "number",
+      "description": "Longitude.",
+      "example": -45.9009
+    },
+    "condition": {
+      "type": "string",
+      "description": "Property condition.",
+      "example": "excellent"
+    },
+    "construction_year": {
+      "type": "integer",
+      "description": "Construction year.",
+      "example": 2018
+    },
+    "for_sale": {
+      "type": "boolean",
+      "description": "Available for sale.",
+      "example": true
+    },
+    "for_rent": {
+      "type": "boolean",
+      "description": "Available for rent.",
+      "example": false
+    },
+    "accepts_financing": {
+      "type": "boolean",
+      "description": "Accepts financing.",
+      "example": true
+    },
+    "accepts_fgts": {
+      "type": "boolean",
+      "description": "Accepts FGTS.",
+      "example": true
+    },
+    "owner_email": {
+      "type": "string",
+      "format": "email",
+      "nullable": true,
+      "description": "Owner email. Normalized to lowercase when persisted.",
+      "example": "owner@example.com"
+    },
+    "owner_home_phone": {
+      "type": "string",
+      "nullable": true,
+      "description": "Owner home phone.",
+      "example": "+55 11 3000-1000"
+    },
+    "owner_business_phone": {
+      "type": "string",
+      "nullable": true,
+      "description": "Owner business phone.",
+      "example": "+55 11 3000-2000"
+    },
+    "owner_mobile_phone": {
+      "type": "string",
+      "nullable": true,
+      "description": "Owner mobile phone.",
+      "example": "+55 11 98888-7777"
+    },
+    "source_medium": {
+      "type": "string",
+      "nullable": true,
+      "description": "Mapped to origin_media.",
+      "example": "website"
+    },
+    "send_activities_to_owner": {
+      "type": "boolean",
+      "description": "Whether property activities should be sent to the owner.",
+      "example": true
+    },
+    "search_street": {
+      "type": "string",
+      "nullable": true,
+      "description": "Search street alias. Mapped to street.",
+      "example": "Rua das Flores"
+    },
+    "registered_by": {
+      "type": "string",
+      "nullable": true,
+      "description": "User or source that registered the property.",
+      "example": "CRM Import"
+    },
+    "alternative_reference": {
+      "type": "string",
+      "nullable": true,
+      "description": "Alternative external reference.",
+      "example": "ALT-2026-0001"
+    },
+    "intention": {
+      "type": "string",
+      "nullable": true,
+      "description": "Owner intention.",
+      "example": "sale"
+    },
+    "iptu_payment_condition": {
+      "type": "string",
+      "nullable": true,
+      "description": "IPTU payment condition.",
+      "example": "owner_pays"
+    },
+    "iptu_value": {
+      "type": "string",
+      "nullable": true,
+      "description": "IPTU value as mapped by the source spreadsheet.",
+      "example": "250.00"
+    },
+    "rental_guarantee_insurance": {
+      "type": "string",
+      "nullable": true,
+      "description": "Rental guarantee insurance information.",
+      "example": "Porto Seguro"
+    },
+    "fire_insurance": {
+      "type": "string",
+      "nullable": true,
+      "description": "Fire insurance information.",
+      "example": "included"
+    },
+    "exclusivity": {
+      "type": "boolean",
+      "description": "Whether this property is exclusive.",
+      "example": true
+    },
+    "property_situation": {
+      "type": "string",
+      "nullable": true,
+      "description": "Property situation.",
+      "example": "occupied"
+    },
+    "year_of_renovation": {
+      "oneOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "string"
+        }
+      ],
+      "nullable": true,
+      "description": "Renovation year. Persisted as reform_year and returned as string.",
+      "example": 2024
+    },
+    "zoning": {
+      "type": "string",
+      "nullable": true,
+      "description": "Mapped to zoning_type.",
+      "example": "ZR2"
+    },
+    "internal_comments": {
+      "type": "string",
+      "nullable": true,
+      "description": "Mapped to internal_notes.",
+      "example": "Owner prefers weekday visits."
+    },
+    "tags": {
+      "type": "array",
+      "description": "Tag names or existing tag IDs. Sent array replaces property tags.",
+      "items": {
+        "oneOf": [
+          {
+            "type": "string",
+            "example": "premium"
+          },
+          {
+            "type": "integer",
+            "example": 7
+          }
+        ]
+      },
+      "example": [
+        "premium",
+        "sea-view"
+      ]
+    },
+    "key_location": {
+      "type": "string",
+      "nullable": true,
+      "description": "Property key location.",
+      "example": "Concierge desk"
+    },
+    "property_images": {
+      "type": "array",
+      "description": "Images to replace existing property images. Binary content is sent as base64; response returns metadata only.",
+      "items": {
+        "type": "object",
+        "title": "PropertyImagePayload",
+        "required": [
+          "image"
+        ],
+        "additionalProperties": true,
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Image display name.",
+            "example": "fachada.jpg"
+          },
+          "file_name": {
+            "type": "string",
+            "description": "Alternative file name accepted by the API.",
+            "example": "fachada.jpg"
+          },
+          "image": {
+            "type": "string",
+            "description": "Base64 encoded image content.",
+            "example": "iVBORw0KGgoAAAANSUhEUgAAAAUA"
+          },
+          "description": {
+            "type": "string",
+            "description": "Image description.",
+            "example": "Main facade"
+          },
+          "is_main": {
+            "type": "boolean",
+            "description": "Marks the image as the main property image.",
+            "example": true
+          },
+          "sequence": {
+            "type": "integer",
+            "description": "Display sequence.",
+            "example": 1
+          }
+        }
+      }
+    },
+    "advertise": {
+      "type": "boolean",
+      "description": "Mapped to publish_website.",
+      "example": true
+    },
+    "featured_property": {
+      "type": "boolean",
+      "description": "Mapped to publish_featured.",
+      "example": false
+    },
+    "virtual_tour": {
+      "type": "string",
+      "nullable": true,
+      "description": "Mapped to virtual_tour_url.",
+      "example": "https://example.com/tour/property-17"
+    },
+    "sign_on_site": {
+      "type": "boolean",
+      "description": "Mapped to has_sign.",
+      "example": true
+    },
+    "super_featured": {
+      "type": "boolean",
+      "description": "Mapped to publish_super_featured.",
+      "example": false
+    },
+    "youtube_video": {
+      "type": "string",
+      "nullable": true,
+      "description": "Mapped to youtube_video_url.",
+      "example": "https://youtube.com/watch?v=abc123"
+    },
+    "commission_type": {
+      "type": "string",
+      "nullable": true,
+      "description": "Commission type.",
+      "example": "percentage"
+    },
+    "captured_intention": {
+      "type": "string",
+      "nullable": true,
+      "description": "Captured business intention.",
+      "example": "sell"
+    },
+    "included_in_commission_date": {
+      "type": "string",
+      "format": "date",
+      "nullable": true,
+      "description": "Date when included in commission workflow.",
+      "example": "2026-05-04"
+    },
+    "commercial_condition": {
+      "type": "string",
+      "nullable": true,
+      "description": "Commercial condition.",
+      "example": "standard"
+    },
+    "iptu_code": {
+      "type": "string",
+      "nullable": true,
+      "description": "IPTU code.",
+      "example": "IPTU-123456"
+    },
+    "registration_number": {
+      "type": "string",
+      "nullable": true,
+      "description": "Mapped to matricula_number.",
+      "example": "MAT-98765"
+    },
+    "electricity_network_code": {
+      "type": "string",
+      "nullable": true,
+      "description": "Electricity utility code.",
+      "example": "ENEL-001122"
+    },
+    "water_network_code": {
+      "type": "string",
+      "nullable": true,
+      "description": "Water utility code.",
+      "example": "SABESP-998877"
+    },
+    "titles_rights": {
+      "type": "string",
+      "nullable": true,
+      "description": "Titles and rights notes.",
+      "example": "Owner holds full title rights."
+    },
+    "approved_environmental_agency": {
+      "type": "boolean",
+      "description": "Whether the environmental agency approval exists.",
+      "example": true
+    },
+    "approved_project": {
+      "type": "boolean",
+      "description": "Whether the project is approved.",
+      "example": true
+    },
+    "documentation_observations": {
+      "type": "string",
+      "nullable": true,
+      "description": "Documentation observations.",
+      "example": "Registration pending registry update."
+    },
+    "property_files": {
+      "type": "array",
+      "description": "Files to replace existing property documents. Binary content is sent as base64; response returns metadata only.",
+      "items": {
+        "type": "object",
+        "title": "PropertyFilePayload",
+        "required": [
+          "name"
+        ],
+        "additionalProperties": true,
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Document display name. Required when file_name is not sent.",
+            "example": "matricula.pdf"
+          },
+          "file_name": {
+            "type": "string",
+            "description": "Stored file name.",
+            "example": "matricula.pdf"
+          },
+          "file": {
+            "type": "string",
+            "description": "Base64 encoded file content.",
+            "example": "JVBERi0xLjQKJcTl8uXr"
+          },
+          "document_type": {
+            "type": "string",
+            "description": "Document classification.",
+            "example": "registration"
+          },
+          "description": {
+            "type": "string",
+            "description": "Document description.",
+            "example": "Updated property registration"
+          }
+        }
+      }
+    },
+    "floor_number": {
+      "type": "integer",
+      "description": "Floor number.",
+      "example": 8
+    },
+    "unit_number": {
+      "type": "string",
+      "description": "Unit number.",
+      "example": "81B"
+    },
+    "num_floors": {
+      "type": "integer",
+      "description": "Number of floors in the building.",
+      "example": 18
+    },
+    "private_area": {
+      "type": "number",
+      "description": "Private area in square meters.",
+      "example": 180
+    },
+    "land_area": {
+      "type": "number",
+      "description": "Land area in square meters.",
+      "example": 320
+    },
+    "iptu_annual": {
+      "type": "number",
+      "description": "Annual IPTU amount.",
+      "example": 3600
+    },
+    "insurance_value": {
+      "type": "number",
+      "description": "Insurance value.",
+      "example": 980
+    },
+    "condominium_fee": {
+      "type": "number",
+      "description": "Condominium fee.",
+      "example": 750
+    },
+    "authorization_start_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Authorization start date.",
+      "example": "2026-01-15"
+    },
+    "authorization_end_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Authorization end date.",
+      "example": "2026-12-15"
+    },
+    "zoning_restrictions": {
+      "type": "string",
+      "nullable": true,
+      "description": "Zoning restrictions notes.",
+      "example": "US16 zoning restriction note"
+    },
+    "meta_title": {
+      "type": "string",
+      "nullable": true,
+      "description": "SEO meta title.",
+      "example": "US16 Meta Title"
+    },
+    "meta_description": {
+      "type": "string",
+      "nullable": true,
+      "description": "SEO meta description.",
+      "example": "US16 meta description"
+    },
+    "meta_keywords": {
+      "type": "string",
+      "nullable": true,
+      "description": "SEO meta keywords.",
+      "example": "us16,property,mapping"
+    },
+    "description_short": {
+      "type": "string",
+      "nullable": true,
+      "description": "Short listing description.",
+      "example": "US16 short description"
+    },
+    "sign_type": {
+      "type": "string",
+      "nullable": true,
+      "description": "Sign/banner type.",
+      "example": "sale",
+      "enum": [
+        "sale",
+        "rent",
+        "sold",
+        "rented"
+      ]
+    },
+    "sign_installation_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Sign installation date.",
+      "example": "2026-02-01"
+    },
+    "sign_removal_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Sign removal date.",
+      "example": "2026-11-30"
+    },
+    "sign_notes": {
+      "type": "string",
+      "nullable": true,
+      "description": "Sign/banner notes.",
+      "example": "US16 sign note"
+    },
+    "amenities": {
+      "type": "array",
+      "description": "Amenity IDs to assign to the property.",
+      "items": {
+        "type": "integer"
+      },
+      "example": [
+        1,
+        2
+      ]
+    },
+    "tag_ids": {
+      "type": "array",
+      "description": "Property tag IDs to assign. Prefer `tags` when creating tags by name.",
+      "items": {
+        "type": "integer"
+      },
+      "example": [
+        1,
+        2
+      ]
+    }
+  }
+}
+]]></field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "PropertyResponse",
+  "additionalProperties": true,
+  "properties": {
+    "id": {
+      "type": "integer",
+      "description": "Property ID.",
+      "example": 17
+    },
+    "name": {
+      "type": "string",
+      "description": "Property name.",
+      "example": "Casa Moderna em Sao Jose dos Campos"
+    },
+    "description": {
+      "type": "string",
+      "description": "Property description.",
+      "example": "<p>Descricao atualizada</p>"
+    },
+    "price": {
+      "type": "number",
+      "description": "Sale price.",
+      "example": 850000
+    },
+    "price_formatted": {
+      "type": "string",
+      "description": "Localized sale price.",
+      "example": "R$ 850.000,00"
+    },
+    "status": {
+      "type": "string",
+      "description": "Property status.",
+      "example": "available"
+    },
+    "property_type": {
+      "type": "object",
+      "nullable": true,
+      "properties": {
+        "id": {
+          "type": "integer",
+          "description": "Property type ID.",
+          "example": 2
+        },
+        "name": {
+          "type": "string",
+          "description": "Property type name.",
+          "example": "House"
+        }
+      }
+    },
+    "agent": {
+      "type": "object",
+      "nullable": true,
+      "properties": {
+        "id": {
+          "type": "integer",
+          "description": "Agent ID.",
+          "example": 3
+        },
+        "name": {
+          "type": "string",
+          "description": "Agent name.",
+          "example": "Carmen Rodriguez"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "example": "carmen@example.com"
+        }
+      }
+    },
+    "company": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "nullable": true,
+          "example": 1
+        },
+        "name": {
+          "type": "string",
+          "nullable": true,
+          "example": "Quicksol Real Estate"
+        }
+      }
+    },
+    "address": {
+      "type": "object",
+      "properties": {
+        "street": {
+          "type": "string",
+          "description": "Street.",
+          "example": "Rua das Flores"
+        },
+        "number": {
+          "type": "string",
+          "description": "Street number.",
+          "example": "123"
+        },
+        "complement": {
+          "type": "string",
+          "description": "Complement.",
+          "example": "apto 12"
+        },
+        "neighborhood": {
+          "type": "string",
+          "description": "Neighborhood.",
+          "example": "Jardim Aquarius"
+        },
+        "city": {
+          "type": "string",
+          "description": "City.",
+          "example": "Sao Jose dos Campos"
+        },
+        "state": {
+          "type": "object",
+          "nullable": true,
+          "properties": {
+            "id": {
+              "type": "integer",
+              "description": "State ID.",
+              "example": 25
+            },
+            "name": {
+              "type": "string",
+              "description": "State name.",
+              "example": "Sao Paulo"
+            },
+            "code": {
+              "type": "string",
+              "description": "State code.",
+              "example": "SP"
+            }
+          }
+        },
+        "zip_code": {
+          "type": "string",
+          "description": "ZIP/CEP.",
+          "example": "12245-000"
+        },
+        "location_type": {
+          "type": "object",
+          "nullable": true,
+          "properties": {
+            "id": {
+              "type": "integer",
+              "description": "Location type ID.",
+              "example": 1
+            },
+            "name": {
+              "type": "string",
+              "description": "Location type name.",
+              "example": "Urbano"
+            },
+            "code": {
+              "type": "string",
+              "description": "Location type code.",
+              "example": "urban"
+            }
+          }
+        }
+      }
+    },
+    "features": {
+      "type": "object",
+      "properties": {
+        "bedrooms": {
+          "type": "integer",
+          "description": "Bedroom count.",
+          "example": 4
+        },
+        "suites": {
+          "type": "integer",
+          "description": "Suite count.",
+          "example": 1
+        },
+        "bathrooms": {
+          "type": "integer",
+          "description": "Bathroom count.",
+          "example": 3
+        },
+        "parking_spaces": {
+          "type": "integer",
+          "description": "Parking space count.",
+          "example": 2
+        },
+        "area": {
+          "type": "number",
+          "description": "Built area.",
+          "example": 180.5
+        },
+        "total_area": {
+          "type": "number",
+          "description": "Total area.",
+          "example": 250
+        }
+      }
+    },
+    "created_date": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true,
+      "example": "2026-05-04T12:45:00.123456"
+    },
+    "updated_date": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true,
+      "example": "2026-05-04T13:10:00.123456"
+    },
+    "owner_email": {
+      "type": "string",
+      "format": "email",
+      "nullable": true,
+      "description": "Owner email. Normalized to lowercase when persisted.",
+      "example": "owner@example.com"
+    },
+    "owner_home_phone": {
+      "type": "string",
+      "nullable": true,
+      "description": "Owner home phone.",
+      "example": "+55 11 3000-1000"
+    },
+    "owner_business_phone": {
+      "type": "string",
+      "nullable": true,
+      "description": "Owner business phone.",
+      "example": "+55 11 3000-2000"
+    },
+    "owner_mobile_phone": {
+      "type": "string",
+      "nullable": true,
+      "description": "Owner mobile phone.",
+      "example": "+55 11 98888-7777"
+    },
+    "source_medium": {
+      "type": "string",
+      "nullable": true,
+      "description": "Mapped to origin_media.",
+      "example": "website"
+    },
+    "send_activities_to_owner": {
+      "type": "boolean",
+      "description": "Whether property activities should be sent to the owner.",
+      "example": true
+    },
+    "search_street": {
+      "type": "string",
+      "nullable": true,
+      "description": "Search street alias. Mapped to street.",
+      "example": "Rua das Flores"
+    },
+    "registered_by": {
+      "type": "string",
+      "nullable": true,
+      "description": "User or source that registered the property.",
+      "example": "CRM Import"
+    },
+    "alternative_reference": {
+      "type": "string",
+      "nullable": true,
+      "description": "Alternative external reference.",
+      "example": "ALT-2026-0001"
+    },
+    "intention": {
+      "type": "string",
+      "nullable": true,
+      "description": "Owner intention.",
+      "example": "sale"
+    },
+    "iptu_payment_condition": {
+      "type": "string",
+      "nullable": true,
+      "description": "IPTU payment condition.",
+      "example": "owner_pays"
+    },
+    "iptu_value": {
+      "type": "string",
+      "nullable": true,
+      "description": "IPTU value as mapped by the source spreadsheet.",
+      "example": "250.00"
+    },
+    "rental_guarantee_insurance": {
+      "type": "string",
+      "nullable": true,
+      "description": "Rental guarantee insurance information.",
+      "example": "Porto Seguro"
+    },
+    "fire_insurance": {
+      "type": "string",
+      "nullable": true,
+      "description": "Fire insurance information.",
+      "example": "included"
+    },
+    "exclusivity": {
+      "type": "boolean",
+      "description": "Whether this property is exclusive.",
+      "example": true
+    },
+    "property_situation": {
+      "type": "string",
+      "nullable": true,
+      "description": "Property situation.",
+      "example": "occupied"
+    },
+    "year_of_renovation": {
+      "type": "string",
+      "nullable": true,
+      "description": "Renovation year returned as string.",
+      "example": "2024"
+    },
+    "zoning": {
+      "type": "string",
+      "nullable": true,
+      "description": "Mapped to zoning_type.",
+      "example": "ZR2"
+    },
+    "internal_comments": {
+      "type": "string",
+      "nullable": true,
+      "description": "Mapped to internal_notes.",
+      "example": "Owner prefers weekday visits."
+    },
+    "tags": {
+      "type": "array",
+      "description": "Property tag names.",
+      "items": {
+        "type": "string"
+      },
+      "example": [
+        "premium",
+        "sea-view"
+      ]
+    },
+    "key_location": {
+      "type": "string",
+      "nullable": true,
+      "description": "Property key location.",
+      "example": "Concierge desk"
+    },
+    "property_images": {
+      "type": "array",
+      "description": "Property image metadata. Binary content is never returned inline.",
+      "items": {
+        "type": "object",
+        "title": "AttachmentMetadata",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Attachment record ID.",
+            "example": 10
+          },
+          "name": {
+            "type": "string",
+            "description": "Attachment display name.",
+            "example": "fachada.jpg"
+          },
+          "mimetype": {
+            "type": "string",
+            "description": "Detected MIME type.",
+            "example": "image/jpeg"
+          },
+          "size": {
+            "type": "integer",
+            "description": "Decoded binary size in bytes.",
+            "example": 24816
+          },
+          "download_url": {
+            "type": "string",
+            "description": "Relative URL to download the attachment content.",
+            "example": "/web/content/real.estate.property.photo/10/image?download=true"
+          }
+        }
+      }
+    },
+    "advertise": {
+      "type": "boolean",
+      "description": "Mapped to publish_website.",
+      "example": true
+    },
+    "featured_property": {
+      "type": "boolean",
+      "description": "Mapped to publish_featured.",
+      "example": false
+    },
+    "virtual_tour": {
+      "type": "string",
+      "nullable": true,
+      "description": "Mapped to virtual_tour_url.",
+      "example": "https://example.com/tour/property-17"
+    },
+    "sign_on_site": {
+      "type": "boolean",
+      "description": "Mapped to has_sign.",
+      "example": true
+    },
+    "super_featured": {
+      "type": "boolean",
+      "description": "Mapped to publish_super_featured.",
+      "example": false
+    },
+    "youtube_video": {
+      "type": "string",
+      "nullable": true,
+      "description": "Mapped to youtube_video_url.",
+      "example": "https://youtube.com/watch?v=abc123"
+    },
+    "commission_type": {
+      "type": "string",
+      "nullable": true,
+      "description": "Commission type.",
+      "example": "percentage"
+    },
+    "captured_intention": {
+      "type": "string",
+      "nullable": true,
+      "description": "Captured business intention.",
+      "example": "sell"
+    },
+    "included_in_commission_date": {
+      "type": "string",
+      "format": "date",
+      "nullable": true,
+      "description": "Date when included in commission workflow.",
+      "example": "2026-05-04"
+    },
+    "commercial_condition": {
+      "type": "string",
+      "nullable": true,
+      "description": "Commercial condition.",
+      "example": "standard"
+    },
+    "iptu_code": {
+      "type": "string",
+      "nullable": true,
+      "description": "IPTU code.",
+      "example": "IPTU-123456"
+    },
+    "registration_number": {
+      "type": "string",
+      "nullable": true,
+      "description": "Mapped to matricula_number.",
+      "example": "MAT-98765"
+    },
+    "electricity_network_code": {
+      "type": "string",
+      "nullable": true,
+      "description": "Electricity utility code.",
+      "example": "ENEL-001122"
+    },
+    "water_network_code": {
+      "type": "string",
+      "nullable": true,
+      "description": "Water utility code.",
+      "example": "SABESP-998877"
+    },
+    "titles_rights": {
+      "type": "string",
+      "nullable": true,
+      "description": "Titles and rights notes.",
+      "example": "Owner holds full title rights."
+    },
+    "approved_environmental_agency": {
+      "type": "boolean",
+      "description": "Whether the environmental agency approval exists.",
+      "example": true
+    },
+    "approved_project": {
+      "type": "boolean",
+      "description": "Whether the project is approved.",
+      "example": true
+    },
+    "documentation_observations": {
+      "type": "string",
+      "nullable": true,
+      "description": "Documentation observations.",
+      "example": "Registration pending registry update."
+    },
+    "property_files": {
+      "type": "array",
+      "description": "Property document metadata. Binary content is never returned inline.",
+      "items": {
+        "type": "object",
+        "title": "AttachmentMetadata",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Attachment record ID.",
+            "example": 10
+          },
+          "name": {
+            "type": "string",
+            "description": "Attachment display name.",
+            "example": "fachada.jpg"
+          },
+          "mimetype": {
+            "type": "string",
+            "description": "Detected MIME type.",
+            "example": "image/jpeg"
+          },
+          "size": {
+            "type": "integer",
+            "description": "Decoded binary size in bytes.",
+            "example": 24816
+          },
+          "download_url": {
+            "type": "string",
+            "description": "Relative URL to download the attachment content.",
+            "example": "/web/content/real.estate.property.photo/10/image?download=true"
+          }
+        }
+      }
+    }
+  }
+}
+]]></field>
+
             <field name="active" eval="True"/>
         </record>
 
@@ -226,57 +2115,533 @@
 **Path Parameters:**
 - `id`: Property ID (integer, e.g., 2)
 
-**Testing Example:**
-Try with property ID = 2 (Apartamento Demo Urban)
-
-**Response Format (200 OK):**
-```json
-{
-  "id": 2,
-  "name": "Apartamento Demo Urban - updated",
-  "description": "&lt;p&gt;lorem ipsum xpto&lt;/p&gt;",
-  "price": 800000.0,
-  "price_formatted": "R$ 800.000,00",
-  "status": "available",
-  "property_type": {
-    "id": 1,
-    "name": "Apartment"
-  },
-  "agent": {
-    "id": 2,
-    "name": "Carmen Rodriguez",
-    "email": "carmen@luxurygroup.com"
-  },
-  "company": {
-    "id": 2,
-    "name": "Urban Properties Ltda"
-  },
-  "address": {
-    "street": "",
-    "number": "",
-    "complement": "",
-    "neighborhood": "",
-    "city": "",
-    "state": "",
-    "zip_code": ""
-  },
-  "features": {
-    "bedrooms": 4,
-    "suites": 0,
-    "bathrooms": 3,
-    "parking_spaces": 0,
-    "area": 200.0,
-    "total_area": 0.0
-  },
-  "created_date": "2025-11-17T14:48:58.686818",
-  "updated_date": "2025-11-17T14:48:58.686818"
-}
-```
+Defaults are stable: strings/dates return `null`, booleans return `false`, and collections return `[]`. Images/files return metadata only.
 
 **Error Responses:**
 - **401 Unauthorized**: Invalid or missing JWT token
 - **403 Forbidden**: User doesn't have access to this property
 - **404 Not Found**: Property doesn't exist</field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "PropertyResponse",
+  "additionalProperties": true,
+  "properties": {
+    "id": {
+      "type": "integer",
+      "description": "Property ID.",
+      "example": 17
+    },
+    "name": {
+      "type": "string",
+      "description": "Property name.",
+      "example": "Casa Moderna em Sao Jose dos Campos"
+    },
+    "description": {
+      "type": "string",
+      "description": "Property description.",
+      "example": "<p>Descricao atualizada</p>"
+    },
+    "price": {
+      "type": "number",
+      "description": "Sale price.",
+      "example": 850000
+    },
+    "price_formatted": {
+      "type": "string",
+      "description": "Localized sale price.",
+      "example": "R$ 850.000,00"
+    },
+    "status": {
+      "type": "string",
+      "description": "Property status.",
+      "example": "available"
+    },
+    "property_type": {
+      "type": "object",
+      "nullable": true,
+      "properties": {
+        "id": {
+          "type": "integer",
+          "description": "Property type ID.",
+          "example": 2
+        },
+        "name": {
+          "type": "string",
+          "description": "Property type name.",
+          "example": "House"
+        }
+      }
+    },
+    "agent": {
+      "type": "object",
+      "nullable": true,
+      "properties": {
+        "id": {
+          "type": "integer",
+          "description": "Agent ID.",
+          "example": 3
+        },
+        "name": {
+          "type": "string",
+          "description": "Agent name.",
+          "example": "Carmen Rodriguez"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "example": "carmen@example.com"
+        }
+      }
+    },
+    "company": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "nullable": true,
+          "example": 1
+        },
+        "name": {
+          "type": "string",
+          "nullable": true,
+          "example": "Quicksol Real Estate"
+        }
+      }
+    },
+    "address": {
+      "type": "object",
+      "properties": {
+        "street": {
+          "type": "string",
+          "description": "Street.",
+          "example": "Rua das Flores"
+        },
+        "number": {
+          "type": "string",
+          "description": "Street number.",
+          "example": "123"
+        },
+        "complement": {
+          "type": "string",
+          "description": "Complement.",
+          "example": "apto 12"
+        },
+        "neighborhood": {
+          "type": "string",
+          "description": "Neighborhood.",
+          "example": "Jardim Aquarius"
+        },
+        "city": {
+          "type": "string",
+          "description": "City.",
+          "example": "Sao Jose dos Campos"
+        },
+        "state": {
+          "type": "object",
+          "nullable": true,
+          "properties": {
+            "id": {
+              "type": "integer",
+              "description": "State ID.",
+              "example": 25
+            },
+            "name": {
+              "type": "string",
+              "description": "State name.",
+              "example": "Sao Paulo"
+            },
+            "code": {
+              "type": "string",
+              "description": "State code.",
+              "example": "SP"
+            }
+          }
+        },
+        "zip_code": {
+          "type": "string",
+          "description": "ZIP/CEP.",
+          "example": "12245-000"
+        },
+        "location_type": {
+          "type": "object",
+          "nullable": true,
+          "properties": {
+            "id": {
+              "type": "integer",
+              "description": "Location type ID.",
+              "example": 1
+            },
+            "name": {
+              "type": "string",
+              "description": "Location type name.",
+              "example": "Urbano"
+            },
+            "code": {
+              "type": "string",
+              "description": "Location type code.",
+              "example": "urban"
+            }
+          }
+        }
+      }
+    },
+    "features": {
+      "type": "object",
+      "properties": {
+        "bedrooms": {
+          "type": "integer",
+          "description": "Bedroom count.",
+          "example": 4
+        },
+        "suites": {
+          "type": "integer",
+          "description": "Suite count.",
+          "example": 1
+        },
+        "bathrooms": {
+          "type": "integer",
+          "description": "Bathroom count.",
+          "example": 3
+        },
+        "parking_spaces": {
+          "type": "integer",
+          "description": "Parking space count.",
+          "example": 2
+        },
+        "area": {
+          "type": "number",
+          "description": "Built area.",
+          "example": 180.5
+        },
+        "total_area": {
+          "type": "number",
+          "description": "Total area.",
+          "example": 250
+        }
+      }
+    },
+    "created_date": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true,
+      "example": "2026-05-04T12:45:00.123456"
+    },
+    "updated_date": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true,
+      "example": "2026-05-04T13:10:00.123456"
+    },
+    "owner_email": {
+      "type": "string",
+      "format": "email",
+      "nullable": true,
+      "description": "Owner email. Normalized to lowercase when persisted.",
+      "example": "owner@example.com"
+    },
+    "owner_home_phone": {
+      "type": "string",
+      "nullable": true,
+      "description": "Owner home phone.",
+      "example": "+55 11 3000-1000"
+    },
+    "owner_business_phone": {
+      "type": "string",
+      "nullable": true,
+      "description": "Owner business phone.",
+      "example": "+55 11 3000-2000"
+    },
+    "owner_mobile_phone": {
+      "type": "string",
+      "nullable": true,
+      "description": "Owner mobile phone.",
+      "example": "+55 11 98888-7777"
+    },
+    "source_medium": {
+      "type": "string",
+      "nullable": true,
+      "description": "Mapped to origin_media.",
+      "example": "website"
+    },
+    "send_activities_to_owner": {
+      "type": "boolean",
+      "description": "Whether property activities should be sent to the owner.",
+      "example": true
+    },
+    "search_street": {
+      "type": "string",
+      "nullable": true,
+      "description": "Search street alias. Mapped to street.",
+      "example": "Rua das Flores"
+    },
+    "registered_by": {
+      "type": "string",
+      "nullable": true,
+      "description": "User or source that registered the property.",
+      "example": "CRM Import"
+    },
+    "alternative_reference": {
+      "type": "string",
+      "nullable": true,
+      "description": "Alternative external reference.",
+      "example": "ALT-2026-0001"
+    },
+    "intention": {
+      "type": "string",
+      "nullable": true,
+      "description": "Owner intention.",
+      "example": "sale"
+    },
+    "iptu_payment_condition": {
+      "type": "string",
+      "nullable": true,
+      "description": "IPTU payment condition.",
+      "example": "owner_pays"
+    },
+    "iptu_value": {
+      "type": "string",
+      "nullable": true,
+      "description": "IPTU value as mapped by the source spreadsheet.",
+      "example": "250.00"
+    },
+    "rental_guarantee_insurance": {
+      "type": "string",
+      "nullable": true,
+      "description": "Rental guarantee insurance information.",
+      "example": "Porto Seguro"
+    },
+    "fire_insurance": {
+      "type": "string",
+      "nullable": true,
+      "description": "Fire insurance information.",
+      "example": "included"
+    },
+    "exclusivity": {
+      "type": "boolean",
+      "description": "Whether this property is exclusive.",
+      "example": true
+    },
+    "property_situation": {
+      "type": "string",
+      "nullable": true,
+      "description": "Property situation.",
+      "example": "occupied"
+    },
+    "year_of_renovation": {
+      "type": "string",
+      "nullable": true,
+      "description": "Renovation year returned as string.",
+      "example": "2024"
+    },
+    "zoning": {
+      "type": "string",
+      "nullable": true,
+      "description": "Mapped to zoning_type.",
+      "example": "ZR2"
+    },
+    "internal_comments": {
+      "type": "string",
+      "nullable": true,
+      "description": "Mapped to internal_notes.",
+      "example": "Owner prefers weekday visits."
+    },
+    "tags": {
+      "type": "array",
+      "description": "Property tag names.",
+      "items": {
+        "type": "string"
+      },
+      "example": [
+        "premium",
+        "sea-view"
+      ]
+    },
+    "key_location": {
+      "type": "string",
+      "nullable": true,
+      "description": "Property key location.",
+      "example": "Concierge desk"
+    },
+    "property_images": {
+      "type": "array",
+      "description": "Property image metadata. Binary content is never returned inline.",
+      "items": {
+        "type": "object",
+        "title": "AttachmentMetadata",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Attachment record ID.",
+            "example": 10
+          },
+          "name": {
+            "type": "string",
+            "description": "Attachment display name.",
+            "example": "fachada.jpg"
+          },
+          "mimetype": {
+            "type": "string",
+            "description": "Detected MIME type.",
+            "example": "image/jpeg"
+          },
+          "size": {
+            "type": "integer",
+            "description": "Decoded binary size in bytes.",
+            "example": 24816
+          },
+          "download_url": {
+            "type": "string",
+            "description": "Relative URL to download the attachment content.",
+            "example": "/web/content/real.estate.property.photo/10/image?download=true"
+          }
+        }
+      }
+    },
+    "advertise": {
+      "type": "boolean",
+      "description": "Mapped to publish_website.",
+      "example": true
+    },
+    "featured_property": {
+      "type": "boolean",
+      "description": "Mapped to publish_featured.",
+      "example": false
+    },
+    "virtual_tour": {
+      "type": "string",
+      "nullable": true,
+      "description": "Mapped to virtual_tour_url.",
+      "example": "https://example.com/tour/property-17"
+    },
+    "sign_on_site": {
+      "type": "boolean",
+      "description": "Mapped to has_sign.",
+      "example": true
+    },
+    "super_featured": {
+      "type": "boolean",
+      "description": "Mapped to publish_super_featured.",
+      "example": false
+    },
+    "youtube_video": {
+      "type": "string",
+      "nullable": true,
+      "description": "Mapped to youtube_video_url.",
+      "example": "https://youtube.com/watch?v=abc123"
+    },
+    "commission_type": {
+      "type": "string",
+      "nullable": true,
+      "description": "Commission type.",
+      "example": "percentage"
+    },
+    "captured_intention": {
+      "type": "string",
+      "nullable": true,
+      "description": "Captured business intention.",
+      "example": "sell"
+    },
+    "included_in_commission_date": {
+      "type": "string",
+      "format": "date",
+      "nullable": true,
+      "description": "Date when included in commission workflow.",
+      "example": "2026-05-04"
+    },
+    "commercial_condition": {
+      "type": "string",
+      "nullable": true,
+      "description": "Commercial condition.",
+      "example": "standard"
+    },
+    "iptu_code": {
+      "type": "string",
+      "nullable": true,
+      "description": "IPTU code.",
+      "example": "IPTU-123456"
+    },
+    "registration_number": {
+      "type": "string",
+      "nullable": true,
+      "description": "Mapped to matricula_number.",
+      "example": "MAT-98765"
+    },
+    "electricity_network_code": {
+      "type": "string",
+      "nullable": true,
+      "description": "Electricity utility code.",
+      "example": "ENEL-001122"
+    },
+    "water_network_code": {
+      "type": "string",
+      "nullable": true,
+      "description": "Water utility code.",
+      "example": "SABESP-998877"
+    },
+    "titles_rights": {
+      "type": "string",
+      "nullable": true,
+      "description": "Titles and rights notes.",
+      "example": "Owner holds full title rights."
+    },
+    "approved_environmental_agency": {
+      "type": "boolean",
+      "description": "Whether the environmental agency approval exists.",
+      "example": true
+    },
+    "approved_project": {
+      "type": "boolean",
+      "description": "Whether the project is approved.",
+      "example": true
+    },
+    "documentation_observations": {
+      "type": "string",
+      "nullable": true,
+      "description": "Documentation observations.",
+      "example": "Registration pending registry update."
+    },
+    "property_files": {
+      "type": "array",
+      "description": "Property document metadata. Binary content is never returned inline.",
+      "items": {
+        "type": "object",
+        "title": "AttachmentMetadata",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Attachment record ID.",
+            "example": 10
+          },
+          "name": {
+            "type": "string",
+            "description": "Attachment display name.",
+            "example": "fachada.jpg"
+          },
+          "mimetype": {
+            "type": "string",
+            "description": "Detected MIME type.",
+            "example": "image/jpeg"
+          },
+          "size": {
+            "type": "integer",
+            "description": "Decoded binary size in bytes.",
+            "example": 24816
+          },
+          "download_url": {
+            "type": "string",
+            "description": "Relative URL to download the attachment content.",
+            "example": "/web/content/real.estate.property.photo/10/image?download=true"
+          }
+        }
+      }
+    }
+  }
+}
+]]></field>
+
             <field name="active" eval="True"/>
         </record>
 
@@ -320,27 +2685,1150 @@ Try with property ID = 2 (Apartamento Demo Urban)
 - `property_type_id`: Property type ID (integer)
 - `agent_id`: Agent ID (integer)
 
-**Request Example:**
-```json
-{
-  "name": "Apartamento Atualizado Via API",
-  "price": 850000,
-  "num_rooms": 4,
-  "description": "&lt;p&gt;Descrição atualizada&lt;/p&gt;"
-}
-```
-
-**Testing Example:**
-Update property ID = 2 with new name and price
-
-**Response Format (200 OK):**
-Returns the updated property object (same format as GET)
+Omitted arrays do not clear existing collections. Sent arrays replace the corresponding collection.
 
 **Error Responses:**
 - **400 Bad Request**: Invalid field values
 - **401 Unauthorized**: Invalid or missing JWT token
 - **403 Forbidden**: User doesn't have permission to update this property
 - **404 Not Found**: Property doesn't exist</field>
+            <field name="request_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "PropertyUpdate",
+  "required": [
+    "session_id"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "session_id": {
+      "type": "string",
+      "description": "Session ID for fingerprint validation on POST/PUT/PATCH requests.",
+      "example": "{{session_id}}"
+    },
+    "name": {
+      "type": "string",
+      "description": "Property name.",
+      "example": "Casa Moderna em Sao Jose dos Campos"
+    },
+    "property_type_id": {
+      "type": "integer",
+      "description": "Property type ID.",
+      "example": 2
+    },
+    "area": {
+      "type": "number",
+      "description": "Built area in square meters.",
+      "example": 180.5
+    },
+    "zip_code": {
+      "type": "string",
+      "description": "ZIP/CEP code.",
+      "example": "12245-000"
+    },
+    "state_id": {
+      "type": "integer",
+      "description": "State ID.",
+      "example": 25
+    },
+    "city": {
+      "type": "string",
+      "description": "City name.",
+      "example": "Sao Jose dos Campos"
+    },
+    "street": {
+      "type": "string",
+      "description": "Street name.",
+      "example": "Rua das Flores"
+    },
+    "street_number": {
+      "type": "string",
+      "description": "Street number.",
+      "example": "123"
+    },
+    "location_type_id": {
+      "type": "integer",
+      "description": "Location type ID.",
+      "example": 1
+    },
+    "description": {
+      "type": "string",
+      "description": "Property description.",
+      "example": "<p>Casa reformada em excelente localizacao</p>"
+    },
+    "price": {
+      "type": "number",
+      "description": "Sale price.",
+      "example": 850000
+    },
+    "rent_price": {
+      "type": "number",
+      "description": "Rent price.",
+      "example": 4200
+    },
+    "property_status": {
+      "type": "string",
+      "description": "Property status.",
+      "example": "available"
+    },
+    "property_purpose": {
+      "type": "string",
+      "description": "Property purpose.",
+      "example": "residential"
+    },
+    "num_rooms": {
+      "type": "integer",
+      "description": "Number of bedrooms.",
+      "example": 4
+    },
+    "num_suites": {
+      "type": "integer",
+      "description": "Number of suites.",
+      "example": 1
+    },
+    "num_bathrooms": {
+      "type": "integer",
+      "description": "Number of bathrooms.",
+      "example": 3
+    },
+    "num_parking": {
+      "type": "integer",
+      "description": "Number of parking spaces.",
+      "example": 2
+    },
+    "total_area": {
+      "type": "number",
+      "description": "Total area in square meters.",
+      "example": 250
+    },
+    "agent_id": {
+      "type": "integer",
+      "description": "Responsible agent ID.",
+      "example": 3
+    },
+    "owner_id": {
+      "type": "integer",
+      "description": "Owner ID.",
+      "example": 12
+    },
+    "complement": {
+      "type": "string",
+      "description": "Address complement.",
+      "example": "Casa 2"
+    },
+    "neighborhood": {
+      "type": "string",
+      "description": "Neighborhood.",
+      "example": "Jardim Aquarius"
+    },
+    "latitude": {
+      "type": "number",
+      "description": "Latitude.",
+      "example": -23.2237
+    },
+    "longitude": {
+      "type": "number",
+      "description": "Longitude.",
+      "example": -45.9009
+    },
+    "condition": {
+      "type": "string",
+      "description": "Property condition.",
+      "example": "excellent"
+    },
+    "construction_year": {
+      "type": "integer",
+      "description": "Construction year.",
+      "example": 2018
+    },
+    "for_sale": {
+      "type": "boolean",
+      "description": "Available for sale.",
+      "example": true
+    },
+    "for_rent": {
+      "type": "boolean",
+      "description": "Available for rent.",
+      "example": false
+    },
+    "accepts_financing": {
+      "type": "boolean",
+      "description": "Accepts financing.",
+      "example": true
+    },
+    "accepts_fgts": {
+      "type": "boolean",
+      "description": "Accepts FGTS.",
+      "example": true
+    },
+    "owner_email": {
+      "type": "string",
+      "format": "email",
+      "nullable": true,
+      "description": "Owner email. Normalized to lowercase when persisted.",
+      "example": "owner@example.com"
+    },
+    "owner_home_phone": {
+      "type": "string",
+      "nullable": true,
+      "description": "Owner home phone.",
+      "example": "+55 11 3000-1000"
+    },
+    "owner_business_phone": {
+      "type": "string",
+      "nullable": true,
+      "description": "Owner business phone.",
+      "example": "+55 11 3000-2000"
+    },
+    "owner_mobile_phone": {
+      "type": "string",
+      "nullable": true,
+      "description": "Owner mobile phone.",
+      "example": "+55 11 98888-7777"
+    },
+    "source_medium": {
+      "type": "string",
+      "nullable": true,
+      "description": "Mapped to origin_media.",
+      "example": "website"
+    },
+    "send_activities_to_owner": {
+      "type": "boolean",
+      "description": "Whether property activities should be sent to the owner.",
+      "example": true
+    },
+    "search_street": {
+      "type": "string",
+      "nullable": true,
+      "description": "Search street alias. Mapped to street.",
+      "example": "Rua das Flores"
+    },
+    "registered_by": {
+      "type": "string",
+      "nullable": true,
+      "description": "User or source that registered the property.",
+      "example": "CRM Import"
+    },
+    "alternative_reference": {
+      "type": "string",
+      "nullable": true,
+      "description": "Alternative external reference.",
+      "example": "ALT-2026-0001"
+    },
+    "intention": {
+      "type": "string",
+      "nullable": true,
+      "description": "Owner intention.",
+      "example": "sale"
+    },
+    "iptu_payment_condition": {
+      "type": "string",
+      "nullable": true,
+      "description": "IPTU payment condition.",
+      "example": "owner_pays"
+    },
+    "iptu_value": {
+      "type": "string",
+      "nullable": true,
+      "description": "IPTU value as mapped by the source spreadsheet.",
+      "example": "250.00"
+    },
+    "rental_guarantee_insurance": {
+      "type": "string",
+      "nullable": true,
+      "description": "Rental guarantee insurance information.",
+      "example": "Porto Seguro"
+    },
+    "fire_insurance": {
+      "type": "string",
+      "nullable": true,
+      "description": "Fire insurance information.",
+      "example": "included"
+    },
+    "exclusivity": {
+      "type": "boolean",
+      "description": "Whether this property is exclusive.",
+      "example": true
+    },
+    "property_situation": {
+      "type": "string",
+      "nullable": true,
+      "description": "Property situation.",
+      "example": "occupied"
+    },
+    "year_of_renovation": {
+      "oneOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "string"
+        }
+      ],
+      "nullable": true,
+      "description": "Renovation year. Persisted as reform_year and returned as string.",
+      "example": 2024
+    },
+    "zoning": {
+      "type": "string",
+      "nullable": true,
+      "description": "Mapped to zoning_type.",
+      "example": "ZR2"
+    },
+    "internal_comments": {
+      "type": "string",
+      "nullable": true,
+      "description": "Mapped to internal_notes.",
+      "example": "Owner prefers weekday visits."
+    },
+    "tags": {
+      "type": "array",
+      "description": "Tag names or existing tag IDs. Sent array replaces property tags.",
+      "items": {
+        "oneOf": [
+          {
+            "type": "string",
+            "example": "premium"
+          },
+          {
+            "type": "integer",
+            "example": 7
+          }
+        ]
+      },
+      "example": [
+        "premium",
+        "sea-view"
+      ]
+    },
+    "key_location": {
+      "type": "string",
+      "nullable": true,
+      "description": "Property key location.",
+      "example": "Concierge desk"
+    },
+    "property_images": {
+      "type": "array",
+      "description": "Images to replace existing property images. Binary content is sent as base64; response returns metadata only.",
+      "items": {
+        "type": "object",
+        "title": "PropertyImagePayload",
+        "required": [
+          "image"
+        ],
+        "additionalProperties": true,
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Image display name.",
+            "example": "fachada.jpg"
+          },
+          "file_name": {
+            "type": "string",
+            "description": "Alternative file name accepted by the API.",
+            "example": "fachada.jpg"
+          },
+          "image": {
+            "type": "string",
+            "description": "Base64 encoded image content.",
+            "example": "iVBORw0KGgoAAAANSUhEUgAAAAUA"
+          },
+          "description": {
+            "type": "string",
+            "description": "Image description.",
+            "example": "Main facade"
+          },
+          "is_main": {
+            "type": "boolean",
+            "description": "Marks the image as the main property image.",
+            "example": true
+          },
+          "sequence": {
+            "type": "integer",
+            "description": "Display sequence.",
+            "example": 1
+          }
+        }
+      }
+    },
+    "advertise": {
+      "type": "boolean",
+      "description": "Mapped to publish_website.",
+      "example": true
+    },
+    "featured_property": {
+      "type": "boolean",
+      "description": "Mapped to publish_featured.",
+      "example": false
+    },
+    "virtual_tour": {
+      "type": "string",
+      "nullable": true,
+      "description": "Mapped to virtual_tour_url.",
+      "example": "https://example.com/tour/property-17"
+    },
+    "sign_on_site": {
+      "type": "boolean",
+      "description": "Mapped to has_sign.",
+      "example": true
+    },
+    "super_featured": {
+      "type": "boolean",
+      "description": "Mapped to publish_super_featured.",
+      "example": false
+    },
+    "youtube_video": {
+      "type": "string",
+      "nullable": true,
+      "description": "Mapped to youtube_video_url.",
+      "example": "https://youtube.com/watch?v=abc123"
+    },
+    "commission_type": {
+      "type": "string",
+      "nullable": true,
+      "description": "Commission type.",
+      "example": "percentage"
+    },
+    "captured_intention": {
+      "type": "string",
+      "nullable": true,
+      "description": "Captured business intention.",
+      "example": "sell"
+    },
+    "included_in_commission_date": {
+      "type": "string",
+      "format": "date",
+      "nullable": true,
+      "description": "Date when included in commission workflow.",
+      "example": "2026-05-04"
+    },
+    "commercial_condition": {
+      "type": "string",
+      "nullable": true,
+      "description": "Commercial condition.",
+      "example": "standard"
+    },
+    "iptu_code": {
+      "type": "string",
+      "nullable": true,
+      "description": "IPTU code.",
+      "example": "IPTU-123456"
+    },
+    "registration_number": {
+      "type": "string",
+      "nullable": true,
+      "description": "Mapped to matricula_number.",
+      "example": "MAT-98765"
+    },
+    "electricity_network_code": {
+      "type": "string",
+      "nullable": true,
+      "description": "Electricity utility code.",
+      "example": "ENEL-001122"
+    },
+    "water_network_code": {
+      "type": "string",
+      "nullable": true,
+      "description": "Water utility code.",
+      "example": "SABESP-998877"
+    },
+    "titles_rights": {
+      "type": "string",
+      "nullable": true,
+      "description": "Titles and rights notes.",
+      "example": "Owner holds full title rights."
+    },
+    "approved_environmental_agency": {
+      "type": "boolean",
+      "description": "Whether the environmental agency approval exists.",
+      "example": true
+    },
+    "approved_project": {
+      "type": "boolean",
+      "description": "Whether the project is approved.",
+      "example": true
+    },
+    "documentation_observations": {
+      "type": "string",
+      "nullable": true,
+      "description": "Documentation observations.",
+      "example": "Registration pending registry update."
+    },
+    "property_files": {
+      "type": "array",
+      "description": "Files to replace existing property documents. Binary content is sent as base64; response returns metadata only.",
+      "items": {
+        "type": "object",
+        "title": "PropertyFilePayload",
+        "required": [
+          "name"
+        ],
+        "additionalProperties": true,
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Document display name. Required when file_name is not sent.",
+            "example": "matricula.pdf"
+          },
+          "file_name": {
+            "type": "string",
+            "description": "Stored file name.",
+            "example": "matricula.pdf"
+          },
+          "file": {
+            "type": "string",
+            "description": "Base64 encoded file content.",
+            "example": "JVBERi0xLjQKJcTl8uXr"
+          },
+          "document_type": {
+            "type": "string",
+            "description": "Document classification.",
+            "example": "registration"
+          },
+          "description": {
+            "type": "string",
+            "description": "Document description.",
+            "example": "Updated property registration"
+          }
+        }
+      }
+    },
+    "floor_number": {
+      "type": "integer",
+      "description": "Floor number.",
+      "example": 8
+    },
+    "unit_number": {
+      "type": "string",
+      "description": "Unit number.",
+      "example": "81B"
+    },
+    "num_floors": {
+      "type": "integer",
+      "description": "Number of floors in the building.",
+      "example": 18
+    },
+    "private_area": {
+      "type": "number",
+      "description": "Private area in square meters.",
+      "example": 180
+    },
+    "land_area": {
+      "type": "number",
+      "description": "Land area in square meters.",
+      "example": 320
+    },
+    "iptu_annual": {
+      "type": "number",
+      "description": "Annual IPTU amount.",
+      "example": 3600
+    },
+    "insurance_value": {
+      "type": "number",
+      "description": "Insurance value.",
+      "example": 980
+    },
+    "condominium_fee": {
+      "type": "number",
+      "description": "Condominium fee.",
+      "example": 750
+    },
+    "authorization_start_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Authorization start date.",
+      "example": "2026-01-15"
+    },
+    "authorization_end_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Authorization end date.",
+      "example": "2026-12-15"
+    },
+    "zoning_restrictions": {
+      "type": "string",
+      "nullable": true,
+      "description": "Zoning restrictions notes.",
+      "example": "US16 zoning restriction note"
+    },
+    "meta_title": {
+      "type": "string",
+      "nullable": true,
+      "description": "SEO meta title.",
+      "example": "US16 Meta Title"
+    },
+    "meta_description": {
+      "type": "string",
+      "nullable": true,
+      "description": "SEO meta description.",
+      "example": "US16 meta description"
+    },
+    "meta_keywords": {
+      "type": "string",
+      "nullable": true,
+      "description": "SEO meta keywords.",
+      "example": "us16,property,mapping"
+    },
+    "description_short": {
+      "type": "string",
+      "nullable": true,
+      "description": "Short listing description.",
+      "example": "US16 short description"
+    },
+    "sign_type": {
+      "type": "string",
+      "nullable": true,
+      "description": "Sign/banner type.",
+      "example": "sale",
+      "enum": [
+        "sale",
+        "rent",
+        "sold",
+        "rented"
+      ]
+    },
+    "sign_installation_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Sign installation date.",
+      "example": "2026-02-01"
+    },
+    "sign_removal_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Sign removal date.",
+      "example": "2026-11-30"
+    },
+    "sign_notes": {
+      "type": "string",
+      "nullable": true,
+      "description": "Sign/banner notes.",
+      "example": "US16 sign note"
+    }
+  }
+}
+]]></field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "PropertyResponse",
+  "additionalProperties": true,
+  "properties": {
+    "id": {
+      "type": "integer",
+      "description": "Property ID.",
+      "example": 17
+    },
+    "name": {
+      "type": "string",
+      "description": "Property name.",
+      "example": "Casa Moderna em Sao Jose dos Campos"
+    },
+    "description": {
+      "type": "string",
+      "description": "Property description.",
+      "example": "<p>Descricao atualizada</p>"
+    },
+    "price": {
+      "type": "number",
+      "description": "Sale price.",
+      "example": 850000
+    },
+    "price_formatted": {
+      "type": "string",
+      "description": "Localized sale price.",
+      "example": "R$ 850.000,00"
+    },
+    "status": {
+      "type": "string",
+      "description": "Property status.",
+      "example": "available"
+    },
+    "property_type": {
+      "type": "object",
+      "nullable": true,
+      "properties": {
+        "id": {
+          "type": "integer",
+          "description": "Property type ID.",
+          "example": 2
+        },
+        "name": {
+          "type": "string",
+          "description": "Property type name.",
+          "example": "House"
+        }
+      }
+    },
+    "agent": {
+      "type": "object",
+      "nullable": true,
+      "properties": {
+        "id": {
+          "type": "integer",
+          "description": "Agent ID.",
+          "example": 3
+        },
+        "name": {
+          "type": "string",
+          "description": "Agent name.",
+          "example": "Carmen Rodriguez"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "example": "carmen@example.com"
+        }
+      }
+    },
+    "company": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "nullable": true,
+          "example": 1
+        },
+        "name": {
+          "type": "string",
+          "nullable": true,
+          "example": "Quicksol Real Estate"
+        }
+      }
+    },
+    "address": {
+      "type": "object",
+      "properties": {
+        "street": {
+          "type": "string",
+          "description": "Street.",
+          "example": "Rua das Flores"
+        },
+        "number": {
+          "type": "string",
+          "description": "Street number.",
+          "example": "123"
+        },
+        "complement": {
+          "type": "string",
+          "description": "Complement.",
+          "example": "apto 12"
+        },
+        "neighborhood": {
+          "type": "string",
+          "description": "Neighborhood.",
+          "example": "Jardim Aquarius"
+        },
+        "city": {
+          "type": "string",
+          "description": "City.",
+          "example": "Sao Jose dos Campos"
+        },
+        "state": {
+          "type": "object",
+          "nullable": true,
+          "properties": {
+            "id": {
+              "type": "integer",
+              "description": "State ID.",
+              "example": 25
+            },
+            "name": {
+              "type": "string",
+              "description": "State name.",
+              "example": "Sao Paulo"
+            },
+            "code": {
+              "type": "string",
+              "description": "State code.",
+              "example": "SP"
+            }
+          }
+        },
+        "zip_code": {
+          "type": "string",
+          "description": "ZIP/CEP.",
+          "example": "12245-000"
+        },
+        "location_type": {
+          "type": "object",
+          "nullable": true,
+          "properties": {
+            "id": {
+              "type": "integer",
+              "description": "Location type ID.",
+              "example": 1
+            },
+            "name": {
+              "type": "string",
+              "description": "Location type name.",
+              "example": "Urbano"
+            },
+            "code": {
+              "type": "string",
+              "description": "Location type code.",
+              "example": "urban"
+            }
+          }
+        }
+      }
+    },
+    "features": {
+      "type": "object",
+      "properties": {
+        "bedrooms": {
+          "type": "integer",
+          "description": "Bedroom count.",
+          "example": 4
+        },
+        "suites": {
+          "type": "integer",
+          "description": "Suite count.",
+          "example": 1
+        },
+        "bathrooms": {
+          "type": "integer",
+          "description": "Bathroom count.",
+          "example": 3
+        },
+        "parking_spaces": {
+          "type": "integer",
+          "description": "Parking space count.",
+          "example": 2
+        },
+        "area": {
+          "type": "number",
+          "description": "Built area.",
+          "example": 180.5
+        },
+        "total_area": {
+          "type": "number",
+          "description": "Total area.",
+          "example": 250
+        }
+      }
+    },
+    "created_date": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true,
+      "example": "2026-05-04T12:45:00.123456"
+    },
+    "updated_date": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true,
+      "example": "2026-05-04T13:10:00.123456"
+    },
+    "owner_email": {
+      "type": "string",
+      "format": "email",
+      "nullable": true,
+      "description": "Owner email. Normalized to lowercase when persisted.",
+      "example": "owner@example.com"
+    },
+    "owner_home_phone": {
+      "type": "string",
+      "nullable": true,
+      "description": "Owner home phone.",
+      "example": "+55 11 3000-1000"
+    },
+    "owner_business_phone": {
+      "type": "string",
+      "nullable": true,
+      "description": "Owner business phone.",
+      "example": "+55 11 3000-2000"
+    },
+    "owner_mobile_phone": {
+      "type": "string",
+      "nullable": true,
+      "description": "Owner mobile phone.",
+      "example": "+55 11 98888-7777"
+    },
+    "source_medium": {
+      "type": "string",
+      "nullable": true,
+      "description": "Mapped to origin_media.",
+      "example": "website"
+    },
+    "send_activities_to_owner": {
+      "type": "boolean",
+      "description": "Whether property activities should be sent to the owner.",
+      "example": true
+    },
+    "search_street": {
+      "type": "string",
+      "nullable": true,
+      "description": "Search street alias. Mapped to street.",
+      "example": "Rua das Flores"
+    },
+    "registered_by": {
+      "type": "string",
+      "nullable": true,
+      "description": "User or source that registered the property.",
+      "example": "CRM Import"
+    },
+    "alternative_reference": {
+      "type": "string",
+      "nullable": true,
+      "description": "Alternative external reference.",
+      "example": "ALT-2026-0001"
+    },
+    "intention": {
+      "type": "string",
+      "nullable": true,
+      "description": "Owner intention.",
+      "example": "sale"
+    },
+    "iptu_payment_condition": {
+      "type": "string",
+      "nullable": true,
+      "description": "IPTU payment condition.",
+      "example": "owner_pays"
+    },
+    "iptu_value": {
+      "type": "string",
+      "nullable": true,
+      "description": "IPTU value as mapped by the source spreadsheet.",
+      "example": "250.00"
+    },
+    "rental_guarantee_insurance": {
+      "type": "string",
+      "nullable": true,
+      "description": "Rental guarantee insurance information.",
+      "example": "Porto Seguro"
+    },
+    "fire_insurance": {
+      "type": "string",
+      "nullable": true,
+      "description": "Fire insurance information.",
+      "example": "included"
+    },
+    "exclusivity": {
+      "type": "boolean",
+      "description": "Whether this property is exclusive.",
+      "example": true
+    },
+    "property_situation": {
+      "type": "string",
+      "nullable": true,
+      "description": "Property situation.",
+      "example": "occupied"
+    },
+    "year_of_renovation": {
+      "type": "string",
+      "nullable": true,
+      "description": "Renovation year returned as string.",
+      "example": "2024"
+    },
+    "zoning": {
+      "type": "string",
+      "nullable": true,
+      "description": "Mapped to zoning_type.",
+      "example": "ZR2"
+    },
+    "internal_comments": {
+      "type": "string",
+      "nullable": true,
+      "description": "Mapped to internal_notes.",
+      "example": "Owner prefers weekday visits."
+    },
+    "tags": {
+      "type": "array",
+      "description": "Property tag names.",
+      "items": {
+        "type": "string"
+      },
+      "example": [
+        "premium",
+        "sea-view"
+      ]
+    },
+    "key_location": {
+      "type": "string",
+      "nullable": true,
+      "description": "Property key location.",
+      "example": "Concierge desk"
+    },
+    "property_images": {
+      "type": "array",
+      "description": "Property image metadata. Binary content is never returned inline.",
+      "items": {
+        "type": "object",
+        "title": "AttachmentMetadata",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Attachment record ID.",
+            "example": 10
+          },
+          "name": {
+            "type": "string",
+            "description": "Attachment display name.",
+            "example": "fachada.jpg"
+          },
+          "mimetype": {
+            "type": "string",
+            "description": "Detected MIME type.",
+            "example": "image/jpeg"
+          },
+          "size": {
+            "type": "integer",
+            "description": "Decoded binary size in bytes.",
+            "example": 24816
+          },
+          "download_url": {
+            "type": "string",
+            "description": "Relative URL to download the attachment content.",
+            "example": "/web/content/real.estate.property.photo/10/image?download=true"
+          }
+        }
+      }
+    },
+    "advertise": {
+      "type": "boolean",
+      "description": "Mapped to publish_website.",
+      "example": true
+    },
+    "featured_property": {
+      "type": "boolean",
+      "description": "Mapped to publish_featured.",
+      "example": false
+    },
+    "virtual_tour": {
+      "type": "string",
+      "nullable": true,
+      "description": "Mapped to virtual_tour_url.",
+      "example": "https://example.com/tour/property-17"
+    },
+    "sign_on_site": {
+      "type": "boolean",
+      "description": "Mapped to has_sign.",
+      "example": true
+    },
+    "super_featured": {
+      "type": "boolean",
+      "description": "Mapped to publish_super_featured.",
+      "example": false
+    },
+    "youtube_video": {
+      "type": "string",
+      "nullable": true,
+      "description": "Mapped to youtube_video_url.",
+      "example": "https://youtube.com/watch?v=abc123"
+    },
+    "commission_type": {
+      "type": "string",
+      "nullable": true,
+      "description": "Commission type.",
+      "example": "percentage"
+    },
+    "captured_intention": {
+      "type": "string",
+      "nullable": true,
+      "description": "Captured business intention.",
+      "example": "sell"
+    },
+    "included_in_commission_date": {
+      "type": "string",
+      "format": "date",
+      "nullable": true,
+      "description": "Date when included in commission workflow.",
+      "example": "2026-05-04"
+    },
+    "commercial_condition": {
+      "type": "string",
+      "nullable": true,
+      "description": "Commercial condition.",
+      "example": "standard"
+    },
+    "iptu_code": {
+      "type": "string",
+      "nullable": true,
+      "description": "IPTU code.",
+      "example": "IPTU-123456"
+    },
+    "registration_number": {
+      "type": "string",
+      "nullable": true,
+      "description": "Mapped to matricula_number.",
+      "example": "MAT-98765"
+    },
+    "electricity_network_code": {
+      "type": "string",
+      "nullable": true,
+      "description": "Electricity utility code.",
+      "example": "ENEL-001122"
+    },
+    "water_network_code": {
+      "type": "string",
+      "nullable": true,
+      "description": "Water utility code.",
+      "example": "SABESP-998877"
+    },
+    "titles_rights": {
+      "type": "string",
+      "nullable": true,
+      "description": "Titles and rights notes.",
+      "example": "Owner holds full title rights."
+    },
+    "approved_environmental_agency": {
+      "type": "boolean",
+      "description": "Whether the environmental agency approval exists.",
+      "example": true
+    },
+    "approved_project": {
+      "type": "boolean",
+      "description": "Whether the project is approved.",
+      "example": true
+    },
+    "documentation_observations": {
+      "type": "string",
+      "nullable": true,
+      "description": "Documentation observations.",
+      "example": "Registration pending registry update."
+    },
+    "property_files": {
+      "type": "array",
+      "description": "Property document metadata. Binary content is never returned inline.",
+      "items": {
+        "type": "object",
+        "title": "AttachmentMetadata",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Attachment record ID.",
+            "example": 10
+          },
+          "name": {
+            "type": "string",
+            "description": "Attachment display name.",
+            "example": "fachada.jpg"
+          },
+          "mimetype": {
+            "type": "string",
+            "description": "Detected MIME type.",
+            "example": "image/jpeg"
+          },
+          "size": {
+            "type": "integer",
+            "description": "Decoded binary size in bytes.",
+            "example": 24816
+          },
+          "download_url": {
+            "type": "string",
+            "description": "Relative URL to download the attachment content.",
+            "example": "/web/content/real.estate.property.photo/10/image?download=true"
+          }
+        }
+      }
+    }
+  }
+}
+]]></field>
+
             <field name="active" eval="True"/>
         </record>
 
@@ -364,27 +3852,40 @@ Returns the updated property object (same format as GET)
 **Path Parameters:**
 - `id`: Property ID (integer, e.g., 16)
 
-**Testing Example:**
-Delete property ID = 16 (Casa Teste API created earlier)
-
 **Important Notes:**
 - This operation is **irreversible**
 - Only users in the "Real Estate Manager" or higher groups can delete properties
 - Use with caution in production environments
 
-**Response Format (200 OK):**
-```json
-{
-  "message": "Property deleted successfully",
-  "id": 16,
-  "name": "Casa Teste API"
-}
-```
-
 **Error Responses:**
 - **401 Unauthorized**: Invalid or missing JWT token
 - **403 Forbidden**: User doesn't have permission to delete properties
 - **404 Not Found**: Property doesn't exist</field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "DeletePropertyResponse",
+  "additionalProperties": false,
+  "properties": {
+    "message": {
+      "type": "string",
+      "description": "Deletion confirmation message.",
+      "example": "Property deleted successfully"
+    },
+    "id": {
+      "type": "integer",
+      "description": "Deleted property ID.",
+      "example": 16
+    },
+    "name": {
+      "type": "string",
+      "description": "Deleted property name.",
+      "example": "Casa Teste API"
+    }
+  },
+  "required": ["message", "id", "name"]
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 
@@ -406,81 +3907,47 @@ Delete property ID = 16 (Casa Teste API created earlier)
 **Use Case:**
 Use this endpoint to get available property type IDs before creating a property. The `property_type_id` is required when creating properties via POST /api/v1/properties.
 
-**Response Format (200 OK):**
-```json
-[
-  {
-    "id": 1,
-    "name": "Apartment"
-  },
-  {
-    "id": 2,
-    "name": "House"
-  },
-  {
-    "id": 3,
-    "name": "Condominium"
-  },
-  {
-    "id": 4,
-    "name": "Commercial Building"
-  },
-  {
-    "id": 5,
-    "name": "Land"
-  },
-  {
-    "id": 6,
-    "name": "Farm/Ranch"
-  },
-  {
-    "id": 7,
-    "name": "Office"
-  },
-  {
-    "id": 8,
-    "name": "Store/Shop"
-  },
-  {
-    "id": 9,
-    "name": "Warehouse"
-  },
-  {
-    "id": 10,
-    "name": "Penthouse"
-  },
-  {
-    "id": 11,
-    "name": "Studio"
-  },
-  {
-    "id": 12,
-    "name": "Duplex"
-  },
-  {
-    "id": 13,
-    "name": "Triplex"
-  },
-  {
-    "id": 14,
-    "name": "Loft"
-  },
-  {
-    "id": 15,
-    "name": "Cottage/Beach House"
-  }
-]
-```
-
-**Testing Example:**
-```bash
-curl 'http://localhost:8069/api/v1/property-types' \
-  -H 'Authorization: Bearer [your_token]'
-```
-
 **Error Responses:**
 - **401 Unauthorized**: Invalid or missing JWT token
 - **500 Internal Server Error**: Server error</field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "array",
+  "title": "PropertyTypeListResponse",
+  "items": {
+    "type": "object",
+    "title": "PropertyType",
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "type": "integer",
+        "description": "Property type ID.",
+        "example": 2
+      },
+      "name": {
+        "type": "string",
+        "description": "Property type name.",
+        "example": "House"
+      }
+    },
+    "required": ["id", "name"]
+  },
+  "example": [
+    {
+      "id": 1,
+      "name": "Apartment"
+    },
+    {
+      "id": 2,
+      "name": "House"
+    },
+    {
+      "id": 3,
+      "name": "Condominium"
+    }
+  ]
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 
@@ -863,6 +4330,50 @@ Returns: Agent object with id, name, cpf, email, creci, company_id, company_name
             <field name="tags">Assignments</field>
             <field name="summary">List properties assigned to agent</field>
             <field name="description">Get all properties currently assigned to a specific agent.</field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "AgentPropertiesResponse",
+  "additionalProperties": false,
+  "properties": {
+    "agent_id": {
+      "type": "integer",
+      "description": "Agent ID.",
+      "example": 3
+    },
+    "agent_name": {
+      "type": "string",
+      "description": "Agent name.",
+      "example": "Maria Corretora"
+    },
+    "total_assignments": {
+      "type": "integer",
+      "description": "Total assigned properties returned.",
+      "example": 2
+    },
+    "properties": {
+      "type": "array",
+      "description": "Properties assigned to the agent.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "assignment_id": {"type": "integer", "example": 10},
+          "property_id": {"type": "integer", "example": 17},
+          "property_name": {"type": "string", "example": "Casa Moderna em Sao Jose dos Campos"},
+          "property_reference": {"type": "string", "nullable": true, "example": "REF-0017"},
+          "property_type": {"type": "string", "nullable": true, "example": "House"},
+          "price": {"type": "number", "example": 850000},
+          "responsibility_type": {"type": "string", "example": "primary"},
+          "assignment_date": {"type": "string", "format": "date", "nullable": true, "example": "2026-05-05"},
+          "active": {"type": "boolean", "example": true}
+        }
+      }
+    }
+  },
+  "required": ["agent_id", "agent_name", "total_assignments", "properties"]
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 
@@ -1471,6 +4982,82 @@ Returns: Owner object with id, name, email, cpf, phone, mobile, company_count, c
             <field name="tags">Companies</field>
             <field name="summary">List all properties of a company</field>
             <field name="description">Get paginated list of properties belonging to a specific company with filtering options. Multi-tenancy validated. RBAC: Admin/Manager see all, Agent sees only assigned properties.</field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "CompanyPropertiesResponse",
+  "additionalProperties": true,
+  "properties": {
+    "data": {
+      "type": "array",
+      "description": "Company properties for the current page.",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "id": {"type": "integer", "example": 17},
+          "name": {"type": "string", "example": "Casa Moderna em Sao Jose dos Campos"},
+          "property_type": {"type": "string", "nullable": true, "example": "House"},
+          "property_status": {"type": "string", "example": "available"},
+          "price": {"type": "number", "example": 850000},
+          "area": {"type": "number", "example": 180.5},
+          "city": {"type": "string", "example": "Sao Jose dos Campos"},
+          "state": {"type": "string", "nullable": true, "example": "Sao Paulo"},
+          "agent": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "id": {"type": "integer", "example": 3},
+              "name": {"type": "string", "example": "Maria Corretora"}
+            }
+          },
+          "for_sale": {"type": "boolean", "example": true},
+          "for_rent": {"type": "boolean", "example": false},
+          "num_rooms": {"type": "integer", "example": 4},
+          "num_bathrooms": {"type": "integer", "example": 3},
+          "created_date": {"type": "string", "format": "date-time", "nullable": true, "example": "2026-05-05T12:00:00"},
+          "links": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "href": {"type": "string", "example": "/api/v1/properties/17"},
+                "rel": {"type": "string", "example": "self"},
+                "type": {"type": "string", "example": "GET"},
+                "title": {"type": "string", "example": "Get property details"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "meta": {
+      "type": "object",
+      "description": "Pagination metadata.",
+      "additionalProperties": true,
+      "properties": {
+        "total": {"type": "integer", "example": 42},
+        "page": {"type": "integer", "example": 1},
+        "page_size": {"type": "integer", "example": 20},
+        "total_pages": {"type": "integer", "example": 3}
+      }
+    },
+    "_links": {
+      "type": "array",
+      "description": "HATEOAS pagination and parent links.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "href": {"type": "string", "example": "/api/v1/companies/1/properties?page=1&page_size=20"},
+          "rel": {"type": "string", "example": "self"},
+          "type": {"type": "string", "example": "GET"},
+          "title": {"type": "string", "example": "Get company details"}
+        }
+      }
+    }
+  }
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 

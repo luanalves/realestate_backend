@@ -76,13 +76,25 @@
                                     <field name="owner_name" readonly="1" invisible="not owner_id"/>
                                     <field name="origin_media" required="1"/>
                                     <field name="activity_notification"/>
+                                    <field name="send_activities_to_owner"/>
                                 </group>
                                 <group>
                                     <field name="agent_id"/>
                                     <field name="company_id"/>
                                 </group>
                             </group>
-                            
+
+                            <group string="Mapped Owner Contact">
+                                <group>
+                                    <field name="owner_email" widget="email"/>
+                                    <field name="owner_home_phone"/>
+                                </group>
+                                <group>
+                                    <field name="owner_business_phone"/>
+                                    <field name="owner_mobile_phone"/>
+                                </group>
+                            </group>
+
                             <group string="Contact Phones">
                                 <field name="phone_ids" nolabel="1">
                                     <list editable="bottom">
@@ -121,6 +133,8 @@
                                     <field name="construction_year"/>
                                     <field name="reform_year"/>
                                     <field name="property_age" readonly="1"/>
+                                    <field name="registered_by"/>
+                                    <field name="alternative_reference"/>
                                 </group>
                             </group>
                         </page>
@@ -169,7 +183,11 @@
                                 <group string="Taxes &amp; Fees">
                                     <field name="iptu_annual"/>
                                     <field name="iptu_monthly" readonly="1"/>
+                                    <field name="iptu_payment_condition"/>
+                                    <field name="iptu_value"/>
                                     <field name="insurance_value"/>
+                                    <field name="rental_guarantee_insurance"/>
+                                    <field name="fire_insurance"/>
                                     <field name="condominium_fee"/>
                                 </group>
                             </group>
@@ -179,6 +197,9 @@
                                     <field name="property_status" required="1"/>
                                     <field name="condition" required="1"/>
                                     <field name="status"/>
+                                    <field name="property_situation"/>
+                                    <field name="intention"/>
+                                    <field name="exclusivity"/>
                                 </group>
                                 <group string="Authorization Period">
                                     <field name="authorization_start_date"/>
@@ -245,6 +266,7 @@
                         <page string="Key Control" name="key_control">
                             <group>
                                 <field name="has_keys" widget="boolean" readonly="1"/>
+                                <field name="key_location"/>
                             </group>
                             <field name="key_ids" nolabel="1">
                                 <list editable="bottom">
@@ -331,6 +353,7 @@
                             <group>
                                 <group>
                                     <field name="has_sign"/>
+                                    <field name="publish_super_featured"/>
                                     <field name="sign_type" invisible="not has_sign"/>
                                     <field name="sign_installation_date" invisible="not has_sign"/>
                                     <field name="sign_removal_date" invisible="not has_sign"/>
@@ -344,7 +367,15 @@
                         <!-- TAB 12: COMMISSIONS -->
                         <page string="Commissions" name="commissions">
                             <group>
-                                <field name="total_commission" widget="monetary" readonly="1"/>
+                                <group>
+                                    <field name="commission_type"/>
+                                    <field name="captured_intention"/>
+                                    <field name="included_in_commission_date"/>
+                                    <field name="commercial_condition"/>
+                                </group>
+                                <group>
+                                    <field name="total_commission" widget="monetary" readonly="1"/>
+                                </group>
                             </group>
                             <field name="commission_ids" nolabel="1">
                                 <list editable="bottom">
@@ -366,8 +397,19 @@
                                 <group>
                                     <field name="matricula_number"/>
                                     <field name="iptu_code"/>
+                                    <field name="electricity_network_code"/>
+                                    <field name="water_network_code"/>
                                     <field name="cnpj_owner"/>
                                 </group>
+                                <group>
+                                    <field name="titles_rights"/>
+                                    <field name="approved_environmental_agency"/>
+                                    <field name="approved_project"/>
+                                </group>
+                            </group>
+
+                            <group string="Documentation Observations">
+                                <field name="documentation_observations" nolabel="1"/>
                             </group>
                             
                             <field name="document_ids" nolabel="1" context="{'default_property_id': id}">
