@@ -297,13 +297,17 @@ def _replace_property_images(property_record, images):
     if not isinstance(images, list):
         return [{'field': 'property_images', 'message': 'Must be an array'}]
 
-    property_record.photo_ids.unlink()
-    Photo = property_record.env['real.estate.property.photo'].sudo()
+    normalized_images = []
     for index, image in enumerate(images):
         if not isinstance(image, dict):
             return [{'field': 'property_images', 'message': 'Items must be objects'}]
         if not image.get('image'):
             return [{'field': f'property_images[{index}].image', 'message': 'Image content is required'}]
+        normalized_images.append(image)
+
+    property_record.photo_ids.unlink()
+    Photo = property_record.env['real.estate.property.photo'].sudo()
+    for index, image in enumerate(normalized_images):
         Photo.create({
             'property_id': property_record.id,
             'name': image.get('name') or image.get('file_name') or f'property-image-{index + 1}',
@@ -320,14 +324,20 @@ def _replace_property_files(property_record, files):
     if not isinstance(files, list):
         return [{'field': 'property_files', 'message': 'Must be an array'}]
 
-    property_record.document_ids.unlink()
-    Document = property_record.env['real.estate.property.document'].sudo()
+    normalized_files = []
     for index, file_data in enumerate(files):
         if not isinstance(file_data, dict):
             return [{'field': 'property_files', 'message': 'Items must be objects'}]
         name = file_data.get('name') or file_data.get('file_name')
         if not name:
             return [{'field': f'property_files[{index}].name', 'message': 'Name is required'}]
+        if not file_data.get('file'):
+            return [{'field': f'property_files[{index}].file', 'message': 'File content is required'}]
+        normalized_files.append((name, file_data))
+
+    property_record.document_ids.unlink()
+    Document = property_record.env['real.estate.property.document'].sudo()
+    for name, file_data in normalized_files:
         Document.create({
             'property_id': property_record.id,
             'name': name,

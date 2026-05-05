@@ -15,8 +15,33 @@ SPEC = importlib.util.spec_from_file_location('property_mapping_serializers', SE
 serializers = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(serializers)
 
+PROPERTY_OPTIONS_PATH = (
+    Path(__file__).parent.parent.parent / 'controllers' / 'utils' / 'property_options.py'
+)
+OPTIONS_SPEC = importlib.util.spec_from_file_location('property_mapping_options', PROPERTY_OPTIONS_PATH)
+property_options = importlib.util.module_from_spec(OPTIONS_SPEC)
+OPTIONS_SPEC.loader.exec_module(property_options)
+
 build_property_mapping_values = serializers.build_property_mapping_values
 serialize_property_mapping_fields = serializers.serialize_property_mapping_fields
+
+
+class TestPropertyOptions(unittest.TestCase):
+    def test_property_options_and_status_values_share_selection_source(self):
+        env = _FakeSelectionEnv()
+
+        options = property_options.build_property_options(env)
+        status_values = property_options.get_property_status_values(env)
+
+        self.assertEqual(
+            options['property_status'],
+            [
+                {'value': 'available', 'label': 'Available'},
+                {'value': 'maintenance', 'label': 'Under Maintenance'},
+            ],
+        )
+        self.assertEqual(status_values, ['available', 'maintenance'])
+        self.assertEqual(options['related_options']['tags'], '/api/v1/tags')
 
 
 class TestPropertyMappingValues(unittest.TestCase):
@@ -99,6 +124,35 @@ class TestSerializePropertyMappingFields(unittest.TestCase):
         self.assertNotIn('file', result['property_files'][0])
 
 
+class TestReplacePropertyAttachments(unittest.TestCase):
+    def test_replace_property_files_rejects_missing_file_before_unlink(self):
+        property_record = _property_record_with_relations()
+
+        errors = serializers._replace_property_files(property_record, [
+            {
+                'name': 'missing-file.pdf',
+                'file_name': 'missing-file.pdf',
+            },
+        ])
+
+        self.assertEqual(errors, [
+            {'field': 'property_files[0].file', 'message': 'File content is required'},
+        ])
+        self.assertFalse(property_record.document_ids.unlinked)
+        self.assertEqual(property_record.env['real.estate.property.document'].created, [])
+
+    def test_replace_property_images_rejects_invalid_item_before_unlink(self):
+        property_record = _property_record_with_relations()
+
+        errors = serializers._replace_property_images(property_record, ['not-an-object'])
+
+        self.assertEqual(errors, [
+            {'field': 'property_images', 'message': 'Items must be objects'},
+        ])
+        self.assertFalse(property_record.photo_ids.unlinked)
+        self.assertEqual(property_record.env['real.estate.property.photo'].created, [])
+
+
 def _property_record(**overrides):
     fields = {
         'owner_email': False,
@@ -145,6 +199,71 @@ def _property_record(**overrides):
     }
     fields.update(overrides)
     return SimpleNamespace(**fields)
+
+
+def _property_record_with_relations():
+    env = _FakeEnv()
+    return SimpleNamespace(
+        id=42,
+        env=env,
+        photo_ids=_FakeRelation(),
+        document_ids=_FakeRelation(),
+    )
+
+
+class _FakeRelation:
+    def __init__(self):
+        self.unlinked = False
+
+    def unlink(self):
+        self.unlinked = True
+
+
+class _FakeModel:
+    def __init__(self):
+        self.created = []
+
+    def sudo(self):
+        return self
+
+    def create(self, vals):
+        self.created.append(vals)
+        return SimpleNamespace(**vals)
+
+
+class _FakeEnv(dict):
+    def __init__(self):
+        super().__init__({
+            'real.estate.property.photo': _FakeModel(),
+            'real.estate.property.document': _FakeModel(),
+        })
+
+
+class _FakeField:
+    def __init__(self, selection):
+        self.selection = selection
+
+
+class _FakeSelectionModel:
+    _fields = {
+        'origin_media': _FakeField([('website', 'Website')]),
+        'zoning_type': _FakeField([('residential', 'Residential')]),
+        'property_purpose': _FakeField([('residential', 'Residential')]),
+        'property_status': _FakeField([
+            ('available', 'Available'),
+            ('maintenance', 'Under Maintenance'),
+        ]),
+        'condition': _FakeField([('good', 'Good')]),
+        'activity_notification': _FakeField([('important', 'Important Only')]),
+        'sign_type': _FakeField([('sale', 'For Sale')]),
+    }
+
+
+class _FakeSelectionEnv(dict):
+    def __init__(self):
+        super().__init__({
+            'real.estate.property': _FakeSelectionModel(),
+        })
 
 
 if __name__ == '__main__':

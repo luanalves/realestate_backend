@@ -6,6 +6,7 @@ from odoo import http
 from odoo.http import request
 from odoo.exceptions import AccessError, UserError, ValidationError
 from .utils.auth import require_jwt
+from .utils.property_options import get_property_status_values
 from .utils.response import error_response, success_response
 from .utils.serializers import (
     apply_property_mapping_relations,
@@ -77,8 +78,9 @@ class PropertyApiController(http.Controller):
 
             if kwargs.get('property_status'):
                 status = kwargs['property_status']
-                if status not in ['available', 'sold', 'rented', 'unavailable']:
-                    return error_response(400, 'Invalid property_status. Must be: available, sold, rented, unavailable')
+                valid_statuses = get_property_status_values(request.env)
+                if status not in valid_statuses:
+                    return error_response(400, f"Invalid property_status. Must be: {', '.join(valid_statuses)}")
                 domain.append(('property_status', '=', status))
 
             if kwargs.get('agent_id'):
@@ -340,15 +342,25 @@ class PropertyApiController(http.Controller):
 
             # Create property with savepoint to catch integrity errors
             Property = request.env['real.estate.property'].sudo()
+            relation_errors = []
 
             try:
                 with request.env.cr.savepoint():
                     property_record = Property.create(property_vals)
                     relation_errors = apply_property_mapping_relations(property_record, data)
                     if relation_errors:
-                        raise ValidationError(str(relation_errors))
+                        raise ValidationError('__relation_mapping_errors__')
                     # Force flush to catch integrity errors immediately
                     request.env.cr.flush()
+            except ValidationError as savepoint_error:
+                if savepoint_error.args and savepoint_error.args[0] == '__relation_mapping_errors__':
+                    return error_response(
+                        400,
+                        'Invalid relation mapping data',
+                        'validation_error',
+                        details=relation_errors,
+                    )
+                raise
             except Exception as savepoint_error:
                 # Handle errors that occur during creation/flush
                 error_str = str(savepoint_error)
@@ -475,6 +487,9 @@ class PropertyApiController(http.Controller):
             # Check if property exists and user has access
             if not property_record:
                 return error_response(404, 'Property not found')
+            has_access, access_error = validate_property_access(property_record, user, operation='read')
+            if not has_access:
+                return error_response(403, access_error, 'access_denied')
 
             # Serialize and return
             property_data = serialize_property(property_record)
@@ -515,6 +530,9 @@ class PropertyApiController(http.Controller):
             # Check if property exists and user has access
             if not property_record:
                 return error_response(404, 'Property not found')
+            has_access, access_error = validate_property_access(property_record, user, operation='write')
+            if not has_access:
+                return error_response(403, access_error, 'access_denied')
 
             # Build update values (only allowed fields)
             allowed_fields = {
@@ -556,12 +574,23 @@ class PropertyApiController(http.Controller):
                 return error_response(400, 'No valid fields to update')
 
             # Update property
-            with request.env.cr.savepoint():
-                if update_vals:
-                    property_record.write(update_vals)
-                relation_errors = apply_property_mapping_relations(property_record, data)
-                if relation_errors:
-                    raise ValidationError(str(relation_errors))
+            relation_errors = []
+            try:
+                with request.env.cr.savepoint():
+                    if update_vals:
+                        property_record.write(update_vals)
+                    relation_errors = apply_property_mapping_relations(property_record, data)
+                    if relation_errors:
+                        raise ValidationError('__relation_mapping_errors__')
+            except ValidationError as savepoint_error:
+                if savepoint_error.args and savepoint_error.args[0] == '__relation_mapping_errors__':
+                    return error_response(
+                        400,
+                        'Invalid relation mapping data',
+                        'validation_error',
+                        details=relation_errors,
+                    )
+                raise
 
             # Return updated property
             property_data = serialize_property(property_record)

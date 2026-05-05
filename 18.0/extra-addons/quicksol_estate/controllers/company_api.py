@@ -5,6 +5,7 @@ from odoo import http
 from odoo.http import request
 from odoo.exceptions import AccessError, ValidationError, UserError
 from .utils.auth import require_jwt
+from .utils.property_options import get_property_status_values
 from .utils.response import error_response, success_response
 from odoo.addons.thedevkitchen_apigateway.middleware import require_session, require_company
 from ..utils.responses import (
@@ -533,8 +534,9 @@ class CompanyApiController(http.Controller):
             
             if 'property_status' in kwargs:
                 status = kwargs['property_status']
-                if status not in ['available', 'sold', 'rented', 'unavailable']:
-                    return error_response(400, 'Invalid property_status. Must be: available, sold, rented, unavailable')
+                valid_statuses = get_property_status_values(request.env)
+                if status not in valid_statuses:
+                    return error_response(400, f"Invalid property_status. Must be: {', '.join(valid_statuses)}")
                 domain.append(('property_status', '=', status))
             
             if 'city' in kwargs:
