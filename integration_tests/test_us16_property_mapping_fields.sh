@@ -67,6 +67,15 @@ _assert_json_eq() {
     fi
 }
 
+_assert_json_true() {
+    local label="$1" file="$2" expression="$3"
+    if python3 -c "import json; data=json.load(open('$file')); assert bool($expression)" 2>/dev/null; then
+        _pass "$label"
+    else
+        _fail "$label"
+    fi
+}
+
 AUTH=$(_auth) || { _fail "Auth failed"; exit 1; }
 JWT="${AUTH%%|*}"
 REST="${AUTH#*|}"
@@ -90,15 +99,46 @@ CREATE_PAYLOAD=$(cat <<JSON
   "name": "US16 Mapping Property $TS",
   "property_type_id": $PROPERTY_TYPE_ID,
   "area": 120,
+  "total_area": 250,
+  "private_area": 180,
+  "land_area": 320,
   "zip_code": "01310-100",
   "state_id": $STATE_ID,
   "city": "Sao Paulo",
   "street": "Rua Original",
   "street_number": "100",
+  "complement": "Suite 12",
+  "neighborhood": "Bela Vista",
   "location_type_id": $LOCATION_TYPE_ID,
   "company_ids": [$COMPANY_ID],
+  "description": "<p>US16 complete property description</p>",
+  "description_short": "US16 short description",
+  "price": 850000,
+  "rent_price": 4200,
+  "property_status": "available",
+  "property_purpose": "residential",
+  "condition": "excellent",
+  "num_rooms": 4,
+  "num_suites": 1,
+  "num_bathrooms": 3,
+  "num_parking": 2,
+  "construction_year": 2012,
+  "for_sale": true,
+  "for_rent": true,
+  "accepts_financing": true,
+  "accepts_fgts": true,
+  "floor_number": 8,
+  "unit_number": "81B",
+  "num_floors": 18,
+  "iptu_annual": 3600,
+  "insurance_value": 980,
+  "condominium_fee": 750,
+  "authorization_start_date": "2026-01-15",
+  "authorization_end_date": "2026-12-15",
   "owner_email": "owner.us16.$TS@example.com",
   "owner_home_phone": "(11) 3333-4444",
+  "owner_business_phone": "(11) 2222-3333",
+  "owner_mobile_phone": "(11) 98888-7777",
   "source_medium": "website",
   "send_activities_to_owner": true,
   "search_street": "Rua API Mapping",
@@ -113,6 +153,7 @@ CREATE_PAYLOAD=$(cat <<JSON
   "property_situation": "available",
   "year_of_renovation": "2020",
   "zoning": "residential",
+  "zoning_restrictions": "US16 zoning restriction note",
   "internal_comments": "internal api note",
   "tags": ["US16 Mapping", "Property API"],
   "key_location": "front desk",
@@ -122,6 +163,13 @@ CREATE_PAYLOAD=$(cat <<JSON
   "sign_on_site": true,
   "super_featured": false,
   "youtube_video": "https://youtube.com/watch?v=abc123",
+  "meta_title": "US16 Meta Title",
+  "meta_description": "US16 meta description",
+  "meta_keywords": "us16,property,mapping",
+  "sign_type": "sale",
+  "sign_installation_date": "2026-02-01",
+  "sign_removal_date": "2026-11-30",
+  "sign_notes": "US16 sign note",
   "commission_type": "percentage",
   "captured_intention": "sale",
   "included_in_commission_date": "2026-05-04",
@@ -133,7 +181,16 @@ CREATE_PAYLOAD=$(cat <<JSON
   "titles_rights": "ok",
   "approved_environmental_agency": true,
   "approved_project": true,
-  "documentation_observations": "docs ok"
+  "documentation_observations": "docs ok",
+  "property_files": [
+    {
+      "name": "us16-document.txt",
+      "file_name": "us16-document.txt",
+      "file": "VVMxNiBkb2N1bWVudCBjb250ZW50",
+      "document_type": "other",
+      "description": "US16 API document"
+    }
+  ]
 }
 JSON
 )
@@ -146,14 +203,59 @@ PROPERTY_ID=$(python3 -c "import json; print(json.load(open('/tmp/us16_property_
 
 if [ -n "$PROPERTY_ID" ]; then
     _assert_json_eq "Create returns owner_email" /tmp/us16_property_create.json owner_email "owner.us16.$TS@example.com"
+    _assert_json_eq "Create returns price" /tmp/us16_property_create.json price "850000.0"
+    _assert_json_eq "Create returns description" /tmp/us16_property_create.json description "<p>US16 complete property description</p>"
+    _assert_json_eq "Create returns bedrooms" /tmp/us16_property_create.json features.bedrooms "4"
+    _assert_json_eq "Create returns suites" /tmp/us16_property_create.json features.suites "1"
+    _assert_json_eq "Create returns bathrooms" /tmp/us16_property_create.json features.bathrooms "3"
+    _assert_json_eq "Create returns parking spaces" /tmp/us16_property_create.json features.parking_spaces "2"
+    _assert_json_eq "Create returns total_area" /tmp/us16_property_create.json features.total_area "250.0"
+    _assert_json_eq "Create returns owner_home_phone" /tmp/us16_property_create.json owner_home_phone "(11) 3333-4444"
+    _assert_json_eq "Create returns owner_business_phone" /tmp/us16_property_create.json owner_business_phone "(11) 2222-3333"
+    _assert_json_eq "Create returns owner_mobile_phone" /tmp/us16_property_create.json owner_mobile_phone "(11) 98888-7777"
+    _assert_json_eq "Create returns source_medium" /tmp/us16_property_create.json source_medium "website"
+    _assert_json_eq "Create returns send_activities_to_owner" /tmp/us16_property_create.json send_activities_to_owner "True"
     _assert_json_eq "Create returns search_street alias" /tmp/us16_property_create.json search_street "Rua API Mapping"
-    _assert_json_eq "Create returns documentation flag" /tmp/us16_property_create.json approved_project "True"
+    _assert_json_eq "Create returns registered_by" /tmp/us16_property_create.json registered_by "Integration US16"
+    _assert_json_eq "Create returns alternative_reference" /tmp/us16_property_create.json alternative_reference "ALT-$TS"
+    _assert_json_eq "Create returns intention" /tmp/us16_property_create.json intention "sale"
+    _assert_json_eq "Create returns iptu_payment_condition" /tmp/us16_property_create.json iptu_payment_condition "annual"
+    _assert_json_eq "Create returns iptu_value" /tmp/us16_property_create.json iptu_value "1200.00"
+    _assert_json_eq "Create returns rental_guarantee_insurance" /tmp/us16_property_create.json rental_guarantee_insurance "required"
+    _assert_json_eq "Create returns fire_insurance" /tmp/us16_property_create.json fire_insurance "included"
+    _assert_json_eq "Create returns exclusivity" /tmp/us16_property_create.json exclusivity "True"
+    _assert_json_eq "Create returns property_situation" /tmp/us16_property_create.json property_situation "available"
+    _assert_json_eq "Create returns year_of_renovation" /tmp/us16_property_create.json year_of_renovation "2020"
+    _assert_json_eq "Create returns zoning" /tmp/us16_property_create.json zoning "residential"
+    _assert_json_eq "Create returns internal_comments" /tmp/us16_property_create.json internal_comments "internal api note"
+    _assert_json_true "Create returns tags" /tmp/us16_property_create.json "'US16 Mapping' in data.get('tags', []) and 'Property API' in data.get('tags', [])"
+    _assert_json_eq "Create returns key_location" /tmp/us16_property_create.json key_location "front desk"
+    _assert_json_eq "Create returns advertise" /tmp/us16_property_create.json advertise "True"
+    _assert_json_eq "Create returns featured_property" /tmp/us16_property_create.json featured_property "True"
+    _assert_json_eq "Create returns virtual_tour" /tmp/us16_property_create.json virtual_tour "https://example.com/tour"
+    _assert_json_eq "Create returns sign_on_site" /tmp/us16_property_create.json sign_on_site "True"
+    _assert_json_eq "Create returns super_featured" /tmp/us16_property_create.json super_featured "False"
+    _assert_json_eq "Create returns youtube_video" /tmp/us16_property_create.json youtube_video "https://youtube.com/watch?v=abc123"
+    _assert_json_eq "Create returns commission_type" /tmp/us16_property_create.json commission_type "percentage"
+    _assert_json_eq "Create returns captured_intention" /tmp/us16_property_create.json captured_intention "sale"
+    _assert_json_eq "Create returns included_in_commission_date" /tmp/us16_property_create.json included_in_commission_date "2026-05-04"
+    _assert_json_eq "Create returns commercial_condition" /tmp/us16_property_create.json commercial_condition "standard"
+    _assert_json_eq "Create returns iptu_code" /tmp/us16_property_create.json iptu_code "IPTU-$TS"
+    _assert_json_eq "Create returns registration_number" /tmp/us16_property_create.json registration_number "REG-$TS"
+    _assert_json_eq "Create returns electricity_network_code" /tmp/us16_property_create.json electricity_network_code "ELEC-$TS"
+    _assert_json_eq "Create returns water_network_code" /tmp/us16_property_create.json water_network_code "WATER-$TS"
+    _assert_json_eq "Create returns titles_rights" /tmp/us16_property_create.json titles_rights "ok"
+    _assert_json_eq "Create returns approved_environmental_agency" /tmp/us16_property_create.json approved_environmental_agency "True"
+    _assert_json_eq "Create returns approved_project" /tmp/us16_property_create.json approved_project "True"
+    _assert_json_eq "Create returns documentation_observations" /tmp/us16_property_create.json documentation_observations "docs ok"
+    _assert_json_true "Create returns property_files metadata" /tmp/us16_property_create.json "len(data.get('property_files', [])) == 1 and data['property_files'][0].get('name') == 'us16-document.txt' and data['property_files'][0].get('size', 0) > 0 and bool(data['property_files'][0].get('download_url'))"
 
     DETAIL_RESPONSE=$(curl -s -w "\n%{http_code}" "$BASE_URL/api/v1/properties/$PROPERTY_ID" "${H[@]}")
     DETAIL_CODE=$(echo "$DETAIL_RESPONSE" | tail -1)
     echo "$DETAIL_RESPONSE" | sed '$d' > /tmp/us16_property_detail.json
     _assert_code "Get property detail" 200 "$DETAIL_CODE"
     _assert_json_eq "Detail returns commission date" /tmp/us16_property_detail.json included_in_commission_date "2026-05-04"
+    _assert_json_true "Detail returns files metadata" /tmp/us16_property_detail.json "len(data.get('property_files', [])) == 1"
 
     LIST_RESPONSE=$(curl -s -w "\n%{http_code}" "$BASE_URL/api/v1/properties?company_ids=$COMPANY_ID&limit=5" "${H[@]}")
     LIST_CODE=$(echo "$LIST_RESPONSE" | tail -1)

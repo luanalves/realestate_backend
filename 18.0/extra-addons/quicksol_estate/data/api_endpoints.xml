@@ -1433,6 +1433,140 @@ Validation notes:
           }
         }
       }
+    },
+    "floor_number": {
+      "type": "integer",
+      "description": "Floor number.",
+      "example": 8
+    },
+    "unit_number": {
+      "type": "string",
+      "description": "Unit number.",
+      "example": "81B"
+    },
+    "num_floors": {
+      "type": "integer",
+      "description": "Number of floors in the building.",
+      "example": 18
+    },
+    "private_area": {
+      "type": "number",
+      "description": "Private area in square meters.",
+      "example": 180
+    },
+    "land_area": {
+      "type": "number",
+      "description": "Land area in square meters.",
+      "example": 320
+    },
+    "iptu_annual": {
+      "type": "number",
+      "description": "Annual IPTU amount.",
+      "example": 3600
+    },
+    "insurance_value": {
+      "type": "number",
+      "description": "Insurance value.",
+      "example": 980
+    },
+    "condominium_fee": {
+      "type": "number",
+      "description": "Condominium fee.",
+      "example": 750
+    },
+    "authorization_start_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Authorization start date.",
+      "example": "2026-01-15"
+    },
+    "authorization_end_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Authorization end date.",
+      "example": "2026-12-15"
+    },
+    "zoning_restrictions": {
+      "type": "string",
+      "nullable": true,
+      "description": "Zoning restrictions notes.",
+      "example": "US16 zoning restriction note"
+    },
+    "meta_title": {
+      "type": "string",
+      "nullable": true,
+      "description": "SEO meta title.",
+      "example": "US16 Meta Title"
+    },
+    "meta_description": {
+      "type": "string",
+      "nullable": true,
+      "description": "SEO meta description.",
+      "example": "US16 meta description"
+    },
+    "meta_keywords": {
+      "type": "string",
+      "nullable": true,
+      "description": "SEO meta keywords.",
+      "example": "us16,property,mapping"
+    },
+    "description_short": {
+      "type": "string",
+      "nullable": true,
+      "description": "Short listing description.",
+      "example": "US16 short description"
+    },
+    "sign_type": {
+      "type": "string",
+      "nullable": true,
+      "description": "Sign/banner type.",
+      "example": "sale",
+      "enum": [
+        "sale",
+        "rent",
+        "sold",
+        "rented"
+      ]
+    },
+    "sign_installation_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Sign installation date.",
+      "example": "2026-02-01"
+    },
+    "sign_removal_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Sign removal date.",
+      "example": "2026-11-30"
+    },
+    "sign_notes": {
+      "type": "string",
+      "nullable": true,
+      "description": "Sign/banner notes.",
+      "example": "US16 sign note"
+    },
+    "amenities": {
+      "type": "array",
+      "description": "Amenity IDs to assign to the property.",
+      "items": {
+        "type": "integer"
+      },
+      "example": [
+        1,
+        2
+      ]
+    },
+    "tag_ids": {
+      "type": "array",
+      "description": "Property tag IDs to assign. Prefer `tags` when creating tags by name.",
+      "items": {
+        "type": "integer"
+      },
+      "example": [
+        1,
+        2
+      ]
     }
   }
 }
@@ -3058,6 +3192,118 @@ Omitted arrays do not clear existing collections. Sent arrays replace the corres
           }
         }
       }
+    },
+    "floor_number": {
+      "type": "integer",
+      "description": "Floor number.",
+      "example": 8
+    },
+    "unit_number": {
+      "type": "string",
+      "description": "Unit number.",
+      "example": "81B"
+    },
+    "num_floors": {
+      "type": "integer",
+      "description": "Number of floors in the building.",
+      "example": 18
+    },
+    "private_area": {
+      "type": "number",
+      "description": "Private area in square meters.",
+      "example": 180
+    },
+    "land_area": {
+      "type": "number",
+      "description": "Land area in square meters.",
+      "example": 320
+    },
+    "iptu_annual": {
+      "type": "number",
+      "description": "Annual IPTU amount.",
+      "example": 3600
+    },
+    "insurance_value": {
+      "type": "number",
+      "description": "Insurance value.",
+      "example": 980
+    },
+    "condominium_fee": {
+      "type": "number",
+      "description": "Condominium fee.",
+      "example": 750
+    },
+    "authorization_start_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Authorization start date.",
+      "example": "2026-01-15"
+    },
+    "authorization_end_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Authorization end date.",
+      "example": "2026-12-15"
+    },
+    "zoning_restrictions": {
+      "type": "string",
+      "nullable": true,
+      "description": "Zoning restrictions notes.",
+      "example": "US16 zoning restriction note"
+    },
+    "meta_title": {
+      "type": "string",
+      "nullable": true,
+      "description": "SEO meta title.",
+      "example": "US16 Meta Title"
+    },
+    "meta_description": {
+      "type": "string",
+      "nullable": true,
+      "description": "SEO meta description.",
+      "example": "US16 meta description"
+    },
+    "meta_keywords": {
+      "type": "string",
+      "nullable": true,
+      "description": "SEO meta keywords.",
+      "example": "us16,property,mapping"
+    },
+    "description_short": {
+      "type": "string",
+      "nullable": true,
+      "description": "Short listing description.",
+      "example": "US16 short description"
+    },
+    "sign_type": {
+      "type": "string",
+      "nullable": true,
+      "description": "Sign/banner type.",
+      "example": "sale",
+      "enum": [
+        "sale",
+        "rent",
+        "sold",
+        "rented"
+      ]
+    },
+    "sign_installation_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Sign installation date.",
+      "example": "2026-02-01"
+    },
+    "sign_removal_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Sign removal date.",
+      "example": "2026-11-30"
+    },
+    "sign_notes": {
+      "type": "string",
+      "nullable": true,
+      "description": "Sign/banner notes.",
+      "example": "US16 sign note"
     }
   }
 }
@@ -3606,27 +3852,40 @@ Omitted arrays do not clear existing collections. Sent arrays replace the corres
 **Path Parameters:**
 - `id`: Property ID (integer, e.g., 16)
 
-**Testing Example:**
-Delete property ID = 16 (Casa Teste API created earlier)
-
 **Important Notes:**
 - This operation is **irreversible**
 - Only users in the "Real Estate Manager" or higher groups can delete properties
 - Use with caution in production environments
 
-**Response Format (200 OK):**
-```json
-{
-  "message": "Property deleted successfully",
-  "id": 16,
-  "name": "Casa Teste API"
-}
-```
-
 **Error Responses:**
 - **401 Unauthorized**: Invalid or missing JWT token
 - **403 Forbidden**: User doesn't have permission to delete properties
 - **404 Not Found**: Property doesn't exist</field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "DeletePropertyResponse",
+  "additionalProperties": false,
+  "properties": {
+    "message": {
+      "type": "string",
+      "description": "Deletion confirmation message.",
+      "example": "Property deleted successfully"
+    },
+    "id": {
+      "type": "integer",
+      "description": "Deleted property ID.",
+      "example": 16
+    },
+    "name": {
+      "type": "string",
+      "description": "Deleted property name.",
+      "example": "Casa Teste API"
+    }
+  },
+  "required": ["message", "id", "name"]
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 
@@ -3648,81 +3907,47 @@ Delete property ID = 16 (Casa Teste API created earlier)
 **Use Case:**
 Use this endpoint to get available property type IDs before creating a property. The `property_type_id` is required when creating properties via POST /api/v1/properties.
 
-**Response Format (200 OK):**
-```json
-[
-  {
-    "id": 1,
-    "name": "Apartment"
-  },
-  {
-    "id": 2,
-    "name": "House"
-  },
-  {
-    "id": 3,
-    "name": "Condominium"
-  },
-  {
-    "id": 4,
-    "name": "Commercial Building"
-  },
-  {
-    "id": 5,
-    "name": "Land"
-  },
-  {
-    "id": 6,
-    "name": "Farm/Ranch"
-  },
-  {
-    "id": 7,
-    "name": "Office"
-  },
-  {
-    "id": 8,
-    "name": "Store/Shop"
-  },
-  {
-    "id": 9,
-    "name": "Warehouse"
-  },
-  {
-    "id": 10,
-    "name": "Penthouse"
-  },
-  {
-    "id": 11,
-    "name": "Studio"
-  },
-  {
-    "id": 12,
-    "name": "Duplex"
-  },
-  {
-    "id": 13,
-    "name": "Triplex"
-  },
-  {
-    "id": 14,
-    "name": "Loft"
-  },
-  {
-    "id": 15,
-    "name": "Cottage/Beach House"
-  }
-]
-```
-
-**Testing Example:**
-```bash
-curl 'http://localhost:8069/api/v1/property-types' \
-  -H 'Authorization: Bearer [your_token]'
-```
-
 **Error Responses:**
 - **401 Unauthorized**: Invalid or missing JWT token
 - **500 Internal Server Error**: Server error</field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "array",
+  "title": "PropertyTypeListResponse",
+  "items": {
+    "type": "object",
+    "title": "PropertyType",
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "type": "integer",
+        "description": "Property type ID.",
+        "example": 2
+      },
+      "name": {
+        "type": "string",
+        "description": "Property type name.",
+        "example": "House"
+      }
+    },
+    "required": ["id", "name"]
+  },
+  "example": [
+    {
+      "id": 1,
+      "name": "Apartment"
+    },
+    {
+      "id": 2,
+      "name": "House"
+    },
+    {
+      "id": 3,
+      "name": "Condominium"
+    }
+  ]
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 
@@ -4105,6 +4330,50 @@ Returns: Agent object with id, name, cpf, email, creci, company_id, company_name
             <field name="tags">Assignments</field>
             <field name="summary">List properties assigned to agent</field>
             <field name="description">Get all properties currently assigned to a specific agent.</field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "AgentPropertiesResponse",
+  "additionalProperties": false,
+  "properties": {
+    "agent_id": {
+      "type": "integer",
+      "description": "Agent ID.",
+      "example": 3
+    },
+    "agent_name": {
+      "type": "string",
+      "description": "Agent name.",
+      "example": "Maria Corretora"
+    },
+    "total_assignments": {
+      "type": "integer",
+      "description": "Total assigned properties returned.",
+      "example": 2
+    },
+    "properties": {
+      "type": "array",
+      "description": "Properties assigned to the agent.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "assignment_id": {"type": "integer", "example": 10},
+          "property_id": {"type": "integer", "example": 17},
+          "property_name": {"type": "string", "example": "Casa Moderna em Sao Jose dos Campos"},
+          "property_reference": {"type": "string", "nullable": true, "example": "REF-0017"},
+          "property_type": {"type": "string", "nullable": true, "example": "House"},
+          "price": {"type": "number", "example": 850000},
+          "responsibility_type": {"type": "string", "example": "primary"},
+          "assignment_date": {"type": "string", "format": "date", "nullable": true, "example": "2026-05-05"},
+          "active": {"type": "boolean", "example": true}
+        }
+      }
+    }
+  },
+  "required": ["agent_id", "agent_name", "total_assignments", "properties"]
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 
@@ -4713,6 +4982,82 @@ Returns: Owner object with id, name, email, cpf, phone, mobile, company_count, c
             <field name="tags">Companies</field>
             <field name="summary">List all properties of a company</field>
             <field name="description">Get paginated list of properties belonging to a specific company with filtering options. Multi-tenancy validated. RBAC: Admin/Manager see all, Agent sees only assigned properties.</field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "CompanyPropertiesResponse",
+  "additionalProperties": true,
+  "properties": {
+    "data": {
+      "type": "array",
+      "description": "Company properties for the current page.",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "id": {"type": "integer", "example": 17},
+          "name": {"type": "string", "example": "Casa Moderna em Sao Jose dos Campos"},
+          "property_type": {"type": "string", "nullable": true, "example": "House"},
+          "property_status": {"type": "string", "example": "available"},
+          "price": {"type": "number", "example": 850000},
+          "area": {"type": "number", "example": 180.5},
+          "city": {"type": "string", "example": "Sao Jose dos Campos"},
+          "state": {"type": "string", "nullable": true, "example": "Sao Paulo"},
+          "agent": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "id": {"type": "integer", "example": 3},
+              "name": {"type": "string", "example": "Maria Corretora"}
+            }
+          },
+          "for_sale": {"type": "boolean", "example": true},
+          "for_rent": {"type": "boolean", "example": false},
+          "num_rooms": {"type": "integer", "example": 4},
+          "num_bathrooms": {"type": "integer", "example": 3},
+          "created_date": {"type": "string", "format": "date-time", "nullable": true, "example": "2026-05-05T12:00:00"},
+          "links": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "href": {"type": "string", "example": "/api/v1/properties/17"},
+                "rel": {"type": "string", "example": "self"},
+                "type": {"type": "string", "example": "GET"},
+                "title": {"type": "string", "example": "Get property details"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "meta": {
+      "type": "object",
+      "description": "Pagination metadata.",
+      "additionalProperties": true,
+      "properties": {
+        "total": {"type": "integer", "example": 42},
+        "page": {"type": "integer", "example": 1},
+        "page_size": {"type": "integer", "example": 20},
+        "total_pages": {"type": "integer", "example": 3}
+      }
+    },
+    "_links": {
+      "type": "array",
+      "description": "HATEOAS pagination and parent links.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "href": {"type": "string", "example": "/api/v1/companies/1/properties?page=1&page_size=20"},
+          "rel": {"type": "string", "example": "self"},
+          "type": {"type": "string", "example": "GET"},
+          "title": {"type": "string", "example": "Get company details"}
+        }
+      }
+    }
+  }
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 
