@@ -15,7 +15,10 @@ def serialize_property(property_record):
         'name': property_record.name or '',
         'description': property_record.description or '',
         'price': float(property_record.price) if property_record.price else 0.0,
-        'price_formatted': f"R$ {property_record.price:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.') if property_record.price else 'R$ 0,00',
+        'price_formatted': (
+            f"R$ {property_record.price:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
+            if property_record.price else 'R$ 0,00'
+        ),
         'status': property_record.property_status or 'available',
         'property_type': {
             'id': property_record.property_type_id.id,
