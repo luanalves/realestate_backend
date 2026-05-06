@@ -23,6 +23,8 @@ Auto-generated from all feature plans. Last updated: 2026-01-15
 - PostgreSQL 15 (primary persistence) + Redis DB1 (sessions, HTTP cache — existing infrastructure) (014-rental-credit-check)
 - Python 3.11 (Odoo 18.0) + Odoo 18.0 (`mail.thread`, `mail.activity.mixin`, `res.partner`, `res.users`, `res.company`), `quicksol_estate` (existing — provides `real.estate.lead`, `real.estate.property`, `real.estate.proposal`, `real.estate.agent`), `thedevkitchen_apigateway` (OAuth2/JWT/session), `thedevkitchen_user_onboarding` (RBAC profile groups) (015-service-pipeline-atendimentos)
 - PostgreSQL ≥14 (required for partial `EXCLUDE` constraint with `WHERE`); Redis 7 DB index 1 (optional cache for `/summary`, deferred per research R4) (015-service-pipeline-atendimentos)
+- Python 3.11 (Odoo 18.0) + Odoo 18.0 ORM, Werkzeug (multipart parsing via `request.httprequest.files`), `python-magic` (magic bytes — pip), `libmagic1` (apt — C library required by python-magic), `werkzeug.utils.secure_filename` (017-property-attachments-upload-api)
+- PostgreSQL (`ir_attachment` — metadados + `store_fname`); Odoo Filestore em disco (`/filestore/{db}/{2-char}/{hash}`) (017-property-attachments-upload-api)
 
 - Python 3.11 (Odoo 18.0) + Odoo 18.0, PyJWT, Redis 7-alpine, PostgreSQL 16 (001-bearer-token-validation)
 
@@ -43,9 +45,9 @@ cd src [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECHNOLO
 Python 3.11 (Odoo 18.0): Follow standard conventions
 
 ## Recent Changes
+- 017-property-attachments-upload-api: Added Python 3.11 (Odoo 18.0) + Odoo 18.0 ORM, Werkzeug (multipart parsing via `request.httprequest.files`), `python-magic` (magic bytes — pip), `libmagic1` (apt — C library required by python-magic), `werkzeug.utils.secure_filename`
 - 015-service-pipeline-atendimentos: Added Python 3.11 (Odoo 18.0) + Odoo 18.0 (`mail.thread`, `mail.activity.mixin`, `res.partner`, `res.users`, `res.company`), `quicksol_estate` (existing — provides `real.estate.lead`, `real.estate.property`, `real.estate.proposal`, `real.estate.agent`), `thedevkitchen_apigateway` (OAuth2/JWT/session), `thedevkitchen_user_onboarding` (RBAC profile groups)
 - 014-rental-credit-check: Added Python 3.11 (Odoo 18.0) + Odoo ORM, `mail.thread`, `mail.activity.mixin`, `thedevkitchen_apigateway` (JWT/session auth), `quicksol_estate` (proposal/property models), `thedevkitchen_user_onboarding` (RBAC groups)
-- 014-rental-credit-check: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
 
 
 <!-- MANUAL ADDITIONS START -->
