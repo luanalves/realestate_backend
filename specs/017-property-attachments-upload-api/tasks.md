@@ -244,7 +244,7 @@ curl -X DELETE ... -H "Authorization: Bearer $AGENT_JWT" ...
 
 > ⚠️ **Atenção**: Esta fase altera comportamento existente de `serialize_property()`. Coordenar com equipe mobile antes do merge — breaking change nos campos `property_images[].url` e `property_files[].url`.
 
-- [ ] T021 ⛔ **BLOCKED — aguarda decisão de PM + alinhamento com equipe mobile (breaking change)** Atualizar `serialize_property_mapping_fields()` em `18.0/extra-addons/quicksol_estate/controllers/utils/serializers.py` (linhas 125–142):
+- [X] T021 ⛔ **BLOCKED — aguarda decisão de PM + alinhamento com equipe mobile (breaking change)** Atualizar `serialize_property_mapping_fields()` em `18.0/extra-addons/quicksol_estate/controllers/utils/serializers.py` (linhas 125–142):
   - Mudar `f'/web/content/real.estate.property.photo/{photo.id}/image?download=true'` para `f'/api/v1/properties/{property_record.id}/attachments/{photo.id}/download'`
   - Mudar `f'/web/content/real.estate.property.document/{document.id}/file?download=true'` para `f'/api/v1/properties/{property_record.id}/attachments/{document.id}/download'`
   - **Importante**: Os IDs de `photo` e `document` aqui são IDs dos custom models (`real.estate.property.photo`, `real.estate.property.document`), NÃO IDs de `ir.attachment`. O endpoint de download deve aceitar ambos — ou este campo deve apontar apenas para `ir.attachment` IDs. Revisar com PM antes de implementar.

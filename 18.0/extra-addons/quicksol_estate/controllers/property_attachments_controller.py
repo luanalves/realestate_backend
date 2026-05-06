@@ -104,9 +104,16 @@ def _fetch_attachment(attachment_id, property_id):
     att = request.env['ir.attachment'].sudo().browse(attachment_id)
     if not att.exists():
         return None
-    if att.res_model != 'real.estate.property' or att.res_id != property_id:
-        return None
-    return att
+    # Feature 017 attachments: stored directly on real.estate.property
+    if att.res_model == 'real.estate.property' and att.res_id == property_id:
+        return att
+    # Legacy attachments: stored on real.estate.property.photo / real.estate.property.document
+    # Verify the parent record belongs to this property (T021)
+    if att.res_model in ('real.estate.property.photo', 'real.estate.property.document'):
+        legacy_record = request.env[att.res_model].sudo().browse(att.res_id)
+        if legacy_record.exists() and legacy_record.property_id.id == property_id:
+            return att
+    return None
 
 
 def _is_agent_only(user):
