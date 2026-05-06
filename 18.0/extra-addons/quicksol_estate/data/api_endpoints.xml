@@ -6222,25 +6222,6 @@ Returns: Owner object with id, name, email, cpf, phone, mobile, company_count, c
 - **Agent**: Upload only — cannot delete attachments
 - **Portal / Public**: No access (401)
 
-**Response (201 Created):**
-```json
-{
-  "status": "success",
-  "data": {
-    "id": 42,
-    "name": "fachada.jpg",
-    "mimetype": "image/jpeg",
-    "size": 204800,
-    "attachment_type": "image",
-    "download_url": "/api/v1/properties/17/attachments/42/download",
-    "_links": {
-      "self": "/api/v1/properties/17/attachments/42",
-      "download": "/api/v1/properties/17/attachments/42/download"
-    }
-  }
-}
-```
-
 **Error Responses:**
 - 400: No file provided
 - 401: Invalid or missing JWT token
@@ -6357,31 +6338,6 @@ Returns: Owner object with id, name, email, cpf, phone, mobile, company_count, c
 **Access Control:**
 - **Owner / Manager / Agent**: Read access (Agent only sees properties they are assigned to)
 - **Portal / Public**: No access (401)
-
-**Response (200 OK):**
-```json
-{
-  "status": "success",
-  "data": [
-    {
-      "id": 42,
-      "name": "fachada.jpg",
-      "mimetype": "image/jpeg",
-      "size": 204800,
-      "attachment_type": "image",
-      "download_url": "/api/v1/properties/17/attachments/42/download",
-      "_links": {
-        "self": "/api/v1/properties/17/attachments/42",
-        "download": "/api/v1/properties/17/attachments/42/download"
-      }
-    }
-  ],
-  "count": 1,
-  "total": 1,
-  "limit": 50,
-  "offset": 0
-}
-```
 
 **Error Responses:**
 - 401: Invalid or missing JWT token

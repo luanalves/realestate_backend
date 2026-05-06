@@ -39,12 +39,14 @@ API_BASE="${BASE_URL}/api/v1"
 DB_NAME="${POSTGRES_DB:-realestate}"
 DB_USER="${POSTGRES_USER:-odoo}"
 
-OWNER_EMAIL="${OWNER_EMAIL:-${TEST_USER_OWNER:-owner@example.com}}"
-OWNER_PASS="${OWNER_PASS:-${TEST_PASSWORD_OWNER:-SecurePass123!}}"
-MANAGER_EMAIL="${MANAGER_EMAIL:-${TEST_USER_MANAGER:-manager@example.com}}"
-MANAGER_PASS="${MANAGER_PASS:-${TEST_PASSWORD_MANAGER:-SecurePass123!}}"
-AGENT_EMAIL="${AGENT_EMAIL:-${TEST_USER_AGENT:-agent@example.com}}"
-AGENT_PASS="${AGENT_PASS:-${TEST_PASSWORD_AGENT:-SecurePass123!}}"
+# Credentials loaded from 18.0/.env (SEED_* variables).
+# No sensitive defaults here — script fails fast if .env is missing required vars.
+OWNER_EMAIL="${OWNER_EMAIL:-${SEED_OWNER_EMAIL:?'Missing SEED_OWNER_EMAIL in .env'}}"
+OWNER_PASS="${OWNER_PASS:-${SEED_OWNER_PASSWORD:?'Missing SEED_OWNER_PASSWORD in .env'}}"
+MANAGER_EMAIL="${MANAGER_EMAIL:-${SEED_MANAGER_EMAIL:?'Missing SEED_MANAGER_EMAIL in .env'}}"
+MANAGER_PASS="${MANAGER_PASS:-${SEED_MANAGER_PASSWORD:?'Missing SEED_MANAGER_PASSWORD in .env'}}"
+AGENT_EMAIL="${AGENT_EMAIL:-${SEED_AGENT_EMAIL:?'Missing SEED_AGENT_EMAIL in .env'}}"
+AGENT_PASS="${AGENT_PASS:-${SEED_AGENT_PASSWORD:?'Missing SEED_AGENT_PASSWORD in .env'}}"
 PROPERTY_ID="${PROPERTY_ID:-7}"
 
 FIXTURES_DIR="${SCRIPT_DIR}/../18.0/extra-addons/quicksol_estate/tests/fixtures"
