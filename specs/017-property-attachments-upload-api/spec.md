@@ -59,8 +59,8 @@ Esta spec fecha essa lacuna. Os campos `property_images` e `property_files` pass
 **Acceptance Criteria**:
 - [ ] `POST /api/v1/properties/{id}/attachments` com `attachment_type=image` e arquivo JPEG/PNG/WebP aceita e persiste o arquivo
 - [ ] Arquivo acima do limite configurado retorna `413 Payload Too Large` com `max_size_mb` no erro
-- [ ] MIME type não permitido retorna `400 Validation Error` com o tipo rejeitado
-- [ ] Magic bytes do arquivo divergindo do MIME declarado retorna `400 Validation Error`
+- [ ] MIME type não permitido retorna `415 Unsupported Media Type` com o tipo rejeitado
+- [ ] Magic bytes do arquivo divergindo do MIME declarado retorna `415 Unsupported Media Type`
 - [ ] Resposta inclui `id`, `name`, `mimetype`, `size`, `attachment_type`, `download_url` e `links` HATEOAS
 - [ ] O campo `download_url` SEMPRE aponta para `/api/v1/properties/{id}/attachments/{attachment_id}` (nunca `/web/content/{id}`)
 - [ ] Anexo criado é isolado à empresa da propriedade (multi-tenancy)
@@ -112,7 +112,7 @@ Esta spec fecha essa lacuna. Os campos `property_images` e `property_files` pass
 **So that** o API Gateway injete o JWT corretamente e o acesso seja autenticado
 
 **Acceptance Criteria**:
-- [ ] `GET /api/v1/properties/{id}/attachments/{attachment_id}` retorna stream do arquivo com `Content-Type` e `Content-Disposition` corretos
+- [ ] `GET /api/v1/properties/{id}/attachments/{attachment_id}/download` retorna stream do arquivo com `Content-Type` e `Content-Disposition` corretos
 - [ ] Requisição sem JWT (que chegaria apenas se houvesse bypass do Gateway) retorna `401`
 - [ ] Acesso a arquivo de outra empresa retorna `404` (anti-enumeração)
 - [ ] Acesso a `attachment_id` que não pertence à propriedade `{id}` retorna `404`
@@ -162,7 +162,7 @@ Esta spec fecha essa lacuna. Os campos `property_images` e `property_files` pass
 
 **Acceptance Criteria**:
 - [ ] `GET /api/v1/properties/{id}/attachments` retorna lista paginada de metadados de anexos
-- [ ] Resposta inclui `id`, `name`, `mimetype`, `size`, `attachment_type`, `download_url` e `created_at` por item
+- [ ] Resposta inclui `id`, `name`, `mimetype`, `size`, `attachment_type`, `download_url` e `uploaded_at` por item
 - [ ] Suporte a filtro por `attachment_type=image|document` via query param
 - [ ] Paginação via `offset` e `limit` (default: `limit=50`)
 - [ ] Acesso a propriedade de outra empresa retorna `404` (anti-enumeração)
@@ -214,16 +214,16 @@ Esta spec fecha essa lacuna. Os campos `property_images` e `property_files` pass
 ### Functional Requirements
 
 **FR1: Upload de Arquivos**
-- FR1.1: `POST /api/v1/properties/{id}/attachments` aceita `multipart/form-data` com campos `file` (required), `attachment_type=image|document` (required) e `description` (optional, max 500 chars)
+- FR1.1: `POST /api/v1/properties/{id}/attachments` aceita `multipart/form-data` com campos `file` (required) e `attachment_type=image|document` (required)
 - FR1.2: O sistema valida MIME type por magic bytes do conteúdo, não apenas pelo header Content-Type ou extensão do arquivo
 - FR1.3: Tamanho máximo é lido do parâmetro global `web.max_file_upload_size` via `env['ir.config_parameter'].sudo().get_param('web.max_file_upload_size', default=128*1024*1024)`. Nenhum modelo customizado de settings é necessário
 - FR1.4: Quantidade máxima de arquivos por propriedade é controlada por constantes no controller: `MAX_IMAGES_PER_PROPERTY = 50`, `MAX_DOCUMENTS_PER_PROPERTY = 20` (hardcoded — não há requisito de configurabilidade para quantidade)
 - FR1.5: Filename é sanitizado com `werkzeug.utils.secure_filename()` antes do armazenamento
 - FR1.6: O sistema armazena o arquivo como `ir.attachment` com `res_model='real.estate.property'` e `res_id=property.id`
-- FR1.7: A resposta inclui metadados completos: `id`, `name`, `mimetype`, `size`, `attachment_type`, `download_url` (rota `/api/v1/...`), `created_at`, `links`
+- FR1.7: A resposta inclui metadados completos: `id`, `name`, `mimetype`, `size`, `attachment_type`, `download_url` (rota `/api/v1/...`), `uploaded_at`, `links`
 
 **FR2: Download de Arquivos**
-- FR2.1: `GET /api/v1/properties/{id}/attachments/{attachment_id}` exige JWT válido e sessão Odoo (injetados pelo API Gateway)
+- FR2.1: `GET /api/v1/properties/{id}/attachments/{attachment_id}/download` exige JWT válido e sessão Odoo (injetados pelo API Gateway)
 - FR2.2: O controller valida que `attachment.res_id == property.id` e `property.company_id == request.env.company`
 - FR2.3: A resposta é construída via `attachment.raw` (bytes completos via ORM) e retornada como `werkzeug.wrappers.Response` com `Content-Type` correto, `Content-Disposition: attachment; filename="..."`, `Content-Security-Policy: default-src 'none'` e `X-Content-Type-Options: nosniff`
 - FR2.4: O controller NUNCA emite redirect para `/web/content/{id}` — esse endpoint bypassa o API Gateway e portanto bypassa autenticação
@@ -250,7 +250,7 @@ Esta spec fecha essa lacuna. Os campos `property_images` e `property_files` pass
 **FR7: Listagem de Arquivos**
 - FR7.1: `GET /api/v1/properties/{id}/attachments` retorna lista paginada dos metadados de `ir.attachment` vinculados à propriedade
 - FR7.2: Query params suportados: `attachment_type=image|document` (filtro opcional), `limit` (default 50, max 100), `offset` (default 0)
-- FR7.3: Cada item retorna: `id`, `name`, `mimetype`, `size`, `attachment_type`, `download_url` (rota `/api/v1/...`), `created_at`
+- FR7.3: Cada item retorna: `id`, `name`, `mimetype`, `size`, `attachment_type`, `download_url` (rota `/api/v1/...`), `uploaded_at`, `links` (apenas `links.download` — sem `links.self`)
 - FR7.4: Multi-tenancy: apenas anexos da empresa do usuário autenticado são retornados
 - FR7.5: Perfis Agent, Manager e Owner têm acesso de leitura à listagem
 
@@ -261,7 +261,7 @@ Esta spec fecha essa lacuna. Os campos `property_images` e `property_files` pass
 
 **FR6: Segurança**
 - FR6.1: Whitelist de MIME types por categoria (ver seção Data Model)
-- FR6.2: Validação de magic bytes com `python-magic` (fallback: `mimetypes.guess_type` com log de warning se `python-magic` não disponível)
+- FR6.2: Validação de magic bytes com `python-magic` — falha explícita se `libmagic1` não estiver instalado no sistema (T001 garante disponibilidade via Dockerfile)
 - FR6.3: Nenhum conteúdo binário retornado em respostas JSON — apenas metadados
 - FR6.4: Filename sanitizado antes de qualquer operação de storage
 - FR6.5: Logs de audit para uploads rejeitados (tipo inválido, tamanho excedido, acesso negado)
@@ -345,7 +345,6 @@ ALLOWED_DOCUMENT_MIMETYPES = {
 ```
 file            (required) — binário do arquivo
 attachment_type (required) — enum: "image" | "document"
-description     (optional) — string, max 500 chars
 ```
 
 **Response Success (201)**:
@@ -356,14 +355,12 @@ description     (optional) — string, max 500 chars
   "mimetype": "image/jpeg",
   "size": 1048576,
   "attachment_type": "image",
-  "description": null,
-  "download_url": "/api/v1/properties/7/attachments/42",
-  "created_at": "2026-05-05T14:00:00Z",
-  "links": [
-    {"rel": "self",     "href": "/api/v1/properties/7/attachments/42", "method": "GET"},
-    {"rel": "delete",   "href": "/api/v1/properties/7/attachments/42", "method": "DELETE"},
-    {"rel": "property", "href": "/api/v1/properties/7",                "method": "GET"}
-  ]
+  "download_url": "/api/v1/properties/7/attachments/42/download",
+  "uploaded_at": "2026-05-05T14:00:00Z",
+  "links": {
+    "self": "/api/v1/properties/7/attachments/42",
+    "download": "/api/v1/properties/7/attachments/42/download"
+  }
 }
 ```
 
@@ -374,8 +371,8 @@ description     (optional) — string, max 500 chars
 | Code | Condição |
 |------|----------|
 | 400 | `attachment_type` ausente ou inválido |
-| 400 | MIME type não permitido para a categoria |
-| 400 | Magic bytes divergem do MIME declarado |
+| 415 | MIME type não permitido para a categoria |
+| 415 | Magic bytes divergem do MIME declarado |
 | 400 | Nenhum arquivo enviado |
 | 403 | Perfil sem permissão de upload (Agent) |
 | 404 | Propriedade não encontrada ou de outra empresa (anti-enumeração) |
@@ -384,12 +381,12 @@ description     (optional) — string, max 500 chars
 
 ---
 
-#### `GET /api/v1/properties/{id}/attachments/{attachment_id}` — Download
+#### `GET /api/v1/properties/{id}/attachments/{attachment_id}/download` — Download
 
 | Atributo | Valor |
 |----------|-------|
 | **Method** | GET |
-| **Path** | `/api/v1/properties/{id}/attachments/{attachment_id}` |
+| **Path** | `/api/v1/properties/{id}/attachments/{attachment_id}/download` |
 | **Authentication** | `@require_jwt` + `@require_session` + `@require_company` — JWT injetado pelo API Gateway |
 | **Authorization** | Todos os perfis com acesso à propriedade |
 
@@ -443,8 +440,8 @@ offset           (optional) — inteiro, default 0
       "mimetype": "image/jpeg",
       "size": 1048576,
       "attachment_type": "image",
-      "download_url": "/api/v1/properties/7/attachments/42",
-      "created_at": "2026-05-05T14:00:00Z"
+      "download_url": "/api/v1/properties/7/attachments/42/download",
+      "uploaded_at": "2026-05-05T14:00:00Z"
     }
   ]
 }
@@ -548,7 +545,7 @@ env['ir.config_parameter'].sudo().set_param(
 **NFR3: Quality** (ADR-022)
 - `python-magic` declarado como dependência explícita no ambiente Docker
 - **`libmagic1` (biblioteca C) obrigatória no Dockerfile**: `RUN apt-get install -y libmagic1` — `python-magic` (pip) sozinho não funciona sem esta dependência de sistema
-- Fallback documentado: se `python-magic` não instalado, loga warning e usa `mimetypes.guess_type()` (menos seguro)
+- Sem fallback: ausência de `libmagic1` levanta erro explícito — validação silenciosa fraca seria uma vulnerabilidade de segurança (R002)
 - Pylint ≥ 8.0, black + isort passando
 
 **NFR4: Observabilidade**
@@ -584,11 +581,12 @@ env['ir.config_parameter'].sudo().set_param(
 - `description="image"` ou `description="document"`
 - Não requer herança de modelo nem campo customizado
 - Retrocompatível com Odoo nativo
+- ⚠️ `ir.attachment.description` é **exclusivamente um discriminador interno** — NÃO deve ser exposto como campo de texto livre ao usuário; não aparece na API request nem na API response
 
 **D003 — Validação de magic bytes com `python-magic`**
 - Detecta conteúdo real independente de extensão/header declarado pelo cliente
 - Impede upload de scripts (PHP, Python, JavaScript) mascarados como imagens
-- Fallback: `mimetypes.guess_type()` com log de warning se `python-magic` não instalado
+- Sem fallback: `libmagic1` é pré-requisito de sistema garantido pelo Dockerfile (T001) — falha explícita é mais segura que validação silenciosa fraca
 
 **D004 — Download via endpoint JWT próprio, streaming direto do filestore**
 - Lê binário do `ir.attachment` e entrega em stream HTTP
@@ -646,7 +644,7 @@ Odoo Filestore (disco do container)
 - [ ] Upload de imagem (JPEG, PNG, WebP) funciona via `POST /api/v1/properties/{id}/attachments`
 - [ ] Upload de documento (PDF, DOCX, XLSX) funciona via `POST /api/v1/properties/{id}/attachments`
 - [ ] Magic bytes validation rejeita scripts mascarados como imagens
-- [ ] Download via `GET /api/v1/properties/{id}/attachments/{attachment_id}` retorna stream com headers de segurança
+- [ ] Download via `GET /api/v1/properties/{id}/attachments/{attachment_id}/download` retorna stream com headers de segurança
 - [ ] `download_url` nos metadados SEMPRE aponta para rota `/api/v1/...` — nunca `/web/content/{id}`
 - [ ] DELETE funciona para Owner/Manager, retorna 403 para Agent
 - [ ] Multi-tenancy: acesso cross-company retorna 404 em todos os endpoints

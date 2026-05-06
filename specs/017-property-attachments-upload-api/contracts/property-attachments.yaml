@@ -67,8 +67,8 @@ components:
         type: integer
         minimum: 1
         maximum: 100
-        default: 20
-      example: 20
+        default: 50
+      example: 50
 
     Offset:
       name: offset
@@ -84,7 +84,7 @@ components:
   schemas:
     AttachmentItem:
       type: object
-      required: [id, name, mimetype, size, attachment_type, uploaded_at, links]
+      required: [id, name, mimetype, size, attachment_type, uploaded_at]
       properties:
         id:
           type: integer
@@ -142,7 +142,7 @@ components:
               example: 8
             limit:
               type: integer
-              example: 20
+              example: 50
             offset:
               type: integer
               example: 0
@@ -372,7 +372,7 @@ paths:
                         download: "/api/v1/properties/7/attachments/42/download"
                   pagination:
                     total: 3
-                    limit: 20
+                    limit: 50
                     offset: 0
         '401':
           $ref: '#/components/responses/401Unauthorized'

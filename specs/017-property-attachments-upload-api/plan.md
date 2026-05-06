@@ -64,11 +64,11 @@ specs/017-property-attachments-upload-api/
 ├── models/
 │   └── property_media.py                    # LER — PropertyPhoto, PropertyDocument existentes
 ├── tests/
-│   ├── unit/
-│   │   └── test_property_attachments_unit.py  # NOVO — testes unitários
-│   └── api/
-│       └── test_property_attachments_api.sh   # NOVO — E2E integration
+│   └── unit/
+│       └── test_property_attachments_unit.py  # NOVO — testes unitários
 └── 18.0/Dockerfile                             # ATUALIZAR — adicionar libmagic1
+integration_tests/
+└── test_property_attachments_api.sh           # NOVO — E2E integration (pasta raiz do repositório)
 ```
 
 **Structure Decision**: Single Odoo module (`quicksol_estate`). Novo controller separado (SRP). Sem novo modelo — usa `ir.attachment` nativo com discriminador via `description` field. Sistemas `ir.attachment` e custom models (`PropertyPhoto`/`PropertyDocument`) são paralelos intencionalmente.

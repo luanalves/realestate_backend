@@ -12,3 +12,4 @@ from . import proposal_controller  # Feature 013: Property Proposals API
 from . import service_controller   # Feature 015: Service Pipeline (Atendimentos)
 from . import service_tag_controller    # Feature 015: Service Tags CRUD
 from . import service_source_controller  # Feature 015: Service Sources CRUD
+from . import property_attachments_controller  # Feature 017: Property Attachments Upload API

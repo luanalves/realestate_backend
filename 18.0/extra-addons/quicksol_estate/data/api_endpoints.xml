@@ -6185,5 +6185,356 @@ Returns: Owner object with id, name, email, cpf, phone, mobile, company_count, c
             <field name="active" eval="True"/>
         </record>
 
+        <!-- Property Attachments Endpoints (Feature 017) -->
+
+        <record id="api_endpoint_property_attachments_upload" model="thedevkitchen.api.endpoint">
+            <field name="name">Upload Property Attachment</field>
+            <field name="path">/api/v1/properties/{id}/attachments</field>
+            <field name="method">POST</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Property Attachments</field>
+            <field name="summary">Upload an image or document to a property</field>
+            <field name="description">Upload a single file (image or document) as an attachment to a property. MIME type is validated from magic bytes (not filename extension). Returns 201 with attachment metadata on success.
+
+**Required Headers:**
+- `Authorization: Bearer {access_token}`
+- `X-Session-Id: {session_id}`
+- `Content-Type: multipart/form-data`
+
+**Path Parameters:**
+- `id` (int, required): Property ID
+
+**Form Data:**
+- `file` (file, required): The file to upload (multipart/form-data)
+
+**Accepted MIME Types:**
+- **Images**: image/jpeg, image/png, image/webp, image/gif, image/tiff, image/bmp
+- **Documents**: application/pdf, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document, application/vnd.ms-excel, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-powerpoint, application/vnd.openxmlformats-officedocument.presentationml.presentation
+
+**Limits:**
+- Maximum images per property: 50
+- Maximum documents per property: 20
+- Maximum file size: configurable via `web.max_file_upload_size` ir.config.parameter (default 128 MB)
+
+**Access Control:**
+- **Owner / Manager**: Full access
+- **Agent**: Upload only — cannot delete attachments
+- **Portal / Public**: No access (401)
+
+**Response (201 Created):**
+```json
+{
+  "status": "success",
+  "data": {
+    "id": 42,
+    "name": "fachada.jpg",
+    "mimetype": "image/jpeg",
+    "size": 204800,
+    "attachment_type": "image",
+    "download_url": "/api/v1/properties/17/attachments/42/download",
+    "_links": {
+      "self": "/api/v1/properties/17/attachments/42",
+      "download": "/api/v1/properties/17/attachments/42/download"
+    }
+  }
+}
+```
+
+**Error Responses:**
+- 400: No file provided
+- 401: Invalid or missing JWT token
+- 403: Agents cannot upload to properties they are not assigned to
+- 404: Property not found (or not accessible — anti-enumeration)
+- 413: File exceeds maximum allowed size
+- 415: Unsupported MIME type (detected from magic bytes)
+- 422: Image or document quantity limit reached</field>
+            <field name="request_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "PropertyAttachmentUpload",
+  "description": "multipart/form-data — send as form field named 'file'.",
+  "required": ["file"],
+  "properties": {
+    "file": {
+      "type": "string",
+      "format": "binary",
+      "description": "The file to upload. MIME type is validated from magic bytes."
+    }
+  }
+}
+]]></field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "PropertyAttachmentUploadResponse",
+  "additionalProperties": false,
+  "properties": {
+    "status": {
+      "type": "string",
+      "example": "success"
+    },
+    "data": {
+      "type": "object",
+      "title": "AttachmentDetail",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "integer",
+          "description": "Attachment record ID.",
+          "example": 42
+        },
+        "name": {
+          "type": "string",
+          "description": "Sanitized file name.",
+          "example": "fachada.jpg"
+        },
+        "mimetype": {
+          "type": "string",
+          "description": "Detected MIME type (from magic bytes).",
+          "example": "image/jpeg"
+        },
+        "size": {
+          "type": "integer",
+          "description": "File size in bytes.",
+          "example": 204800
+        },
+        "attachment_type": {
+          "type": "string",
+          "description": "Classification: image or document.",
+          "enum": ["image", "document"],
+          "example": "image"
+        },
+        "download_url": {
+          "type": "string",
+          "description": "Relative URL to download the attachment.",
+          "example": "/api/v1/properties/17/attachments/42/download"
+        },
+        "_links": {
+          "type": "object",
+          "description": "HATEOAS navigation links.",
+          "properties": {
+            "self": {
+              "type": "string",
+              "example": "/api/v1/properties/17/attachments/42"
+            },
+            "download": {
+              "type": "string",
+              "example": "/api/v1/properties/17/attachments/42/download"
+            }
+          }
+        }
+      }
+    }
+  }
+}
+]]></field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_property_attachments_list" model="thedevkitchen.api.endpoint">
+            <field name="name">List Property Attachments</field>
+            <field name="path">/api/v1/properties/{id}/attachments</field>
+            <field name="method">GET</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Property Attachments</field>
+            <field name="summary">List all attachments for a property</field>
+            <field name="description">Returns paginated metadata for all attachments (images and documents) belonging to a property. Binary content is never returned inline — use the download endpoint.
+
+**Required Headers:**
+- `Authorization: Bearer {access_token}`
+- `X-Session-Id: {session_id}`
+
+**Path Parameters:**
+- `id` (int, required): Property ID
+
+**Query Parameters:**
+- `attachment_type` (string, optional): Filter by type — `image` or `document`
+- `limit` (int, optional): Items per page (default: 50, max: 200)
+- `offset` (int, optional): Pagination offset (default: 0)
+
+**Access Control:**
+- **Owner / Manager / Agent**: Read access (Agent only sees properties they are assigned to)
+- **Portal / Public**: No access (401)
+
+**Response (200 OK):**
+```json
+{
+  "status": "success",
+  "data": [
+    {
+      "id": 42,
+      "name": "fachada.jpg",
+      "mimetype": "image/jpeg",
+      "size": 204800,
+      "attachment_type": "image",
+      "download_url": "/api/v1/properties/17/attachments/42/download",
+      "_links": {
+        "self": "/api/v1/properties/17/attachments/42",
+        "download": "/api/v1/properties/17/attachments/42/download"
+      }
+    }
+  ],
+  "count": 1,
+  "total": 1,
+  "limit": 50,
+  "offset": 0
+}
+```
+
+**Error Responses:**
+- 401: Invalid or missing JWT token
+- 403: Access denied
+- 404: Property not found (anti-enumeration)</field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "PropertyAttachmentsListResponse",
+  "additionalProperties": false,
+  "properties": {
+    "status": {
+      "type": "string",
+      "example": "success"
+    },
+    "data": {
+      "type": "array",
+      "description": "Attachment metadata list.",
+      "items": {
+        "type": "object",
+        "title": "AttachmentDetail",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Attachment record ID.",
+            "example": 42
+          },
+          "name": {
+            "type": "string",
+            "description": "Sanitized file name.",
+            "example": "fachada.jpg"
+          },
+          "mimetype": {
+            "type": "string",
+            "description": "Detected MIME type.",
+            "example": "image/jpeg"
+          },
+          "size": {
+            "type": "integer",
+            "description": "File size in bytes.",
+            "example": 204800
+          },
+          "attachment_type": {
+            "type": "string",
+            "description": "Classification: image or document.",
+            "enum": ["image", "document"],
+            "example": "image"
+          },
+          "download_url": {
+            "type": "string",
+            "description": "Relative URL to download the attachment.",
+            "example": "/api/v1/properties/17/attachments/42/download"
+          },
+          "_links": {
+            "type": "object",
+            "properties": {
+              "self": { "type": "string", "example": "/api/v1/properties/17/attachments/42" },
+              "download": { "type": "string", "example": "/api/v1/properties/17/attachments/42/download" }
+            }
+          }
+        }
+      }
+    },
+    "count": {
+      "type": "integer",
+      "description": "Number of items in this page.",
+      "example": 1
+    },
+    "total": {
+      "type": "integer",
+      "description": "Total attachments for this property.",
+      "example": 3
+    },
+    "limit": {
+      "type": "integer",
+      "description": "Page size.",
+      "example": 50
+    },
+    "offset": {
+      "type": "integer",
+      "description": "Pagination offset.",
+      "example": 0
+    }
+  }
+}
+]]></field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_property_attachments_download" model="thedevkitchen.api.endpoint">
+            <field name="name">Download Property Attachment</field>
+            <field name="path">/api/v1/properties/{id}/attachments/{attachment_id}/download</field>
+            <field name="method">GET</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Property Attachments</field>
+            <field name="summary">Download the binary content of a property attachment</field>
+            <field name="description">Returns the raw binary content of an attachment. The response Content-Type matches the stored MIME type (e.g., image/jpeg, application/pdf). Use the `download_url` value returned by upload or list endpoints — always `/api/v1/properties/{id}/attachments/{attachment_id}/download`.
+
+**IMPORTANT:** Never use `/web/content/{id}` for downloads — always use this endpoint.
+
+**Required Headers:**
+- `Authorization: Bearer {access_token}`
+- `X-Session-Id: {session_id}`
+
+**Path Parameters:**
+- `id` (int, required): Property ID
+- `attachment_id` (int, required): Attachment ID
+
+**Response (200 OK):** Raw binary file content with headers:
+- `Content-Type: image/jpeg` (or actual MIME type)
+- `Content-Disposition: attachment; filename="fachada.jpg"`
+- `Content-Length: 204800`
+
+**Error Responses:**
+- 401: Invalid or missing JWT token
+- 403: Access denied
+- 404: Property or attachment not found (anti-enumeration — attachment must belong to the specified property)</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_property_attachments_delete" model="thedevkitchen.api.endpoint">
+            <field name="name">Delete Property Attachment</field>
+            <field name="path">/api/v1/properties/{id}/attachments/{attachment_id}</field>
+            <field name="method">DELETE</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Property Attachments</field>
+            <field name="summary">Delete a property attachment</field>
+            <field name="description">Permanently deletes a single attachment from a property. This operation is irreversible.
+
+**Required Headers:**
+- `Authorization: Bearer {access_token}`
+- `X-Session-Id: {session_id}`
+
+**Path Parameters:**
+- `id` (int, required): Property ID
+- `attachment_id` (int, required): Attachment ID
+
+**Access Control:**
+- **Owner / Manager**: Can delete any attachment on accessible properties
+- **Agent**: Cannot delete attachments (403 Forbidden)
+- **Portal / Public**: No access (401)
+
+**Response (204 No Content):** Empty body on success.
+
+**Error Responses:**
+- 401: Invalid or missing JWT token
+- 403: Agents cannot delete attachments
+- 404: Property or attachment not found (anti-enumeration — attachment must belong to the specified property)</field>
+            <field name="active" eval="True"/>
+        </record>
+
     </data>
 </odoo>
