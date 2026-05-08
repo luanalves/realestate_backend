@@ -1,335 +1,294 @@
-# Tasks: Property Attachments Upload API (017)
+# Tasks: Property Attachments Upload API (017) — Gap Alignment & Missing Artifacts
 
 **Input**: Design documents from `specs/017-property-attachments-upload-api/`
-**Prerequisites**: plan.md ✅, spec.md ✅, research.md ✅, data-model.md ✅, contracts/property-attachments.yaml ✅, quickstart.md ✅
+**Prerequisites**: plan.md ✅, spec.md ✅, research.md ✅, data-model.md ✅, contracts/ ✅, quickstart.md ✅
 **Branch**: `017-property-attachments-upload-api`
 
-**Organization**: Tasks organized by User Story (US1/US2/US6 → MVP, US3 → Download, US4 → Delete, US5 → Config). Testes NOT included as separate tasks — seguir a estratégia de testes definida em spec.md (unit + E2E integration bash scripts).
+**Context**: Controller (`property_attachments_controller.py`, 420 lines) and unit tests (`test_property_attachments_unit.py`, 49 tests) are already implemented. This tasks.md covers the **12 gaps** between the existing implementation and the finalized spec (see `research.md`). The previous implementation sprint is complete; this sprint covers gap alignment + missing artifacts.
+
+**Organization**: Tasks grouped by User Story. Phase 2 (gap-06 constants) is foundational and must complete before US1/US2 upload tests can pass. Tests NOT generated as separate tasks — follow test strategy embedded within each phase.
 
 ## Format: `[ID] [P?] [Story] Description`
 
-- **[P]**: Can run in parallel (files distintos, sem dependência entre si)
-- **[Story]**: User Story mapeado em spec.md
-- Caminhos absolutos relativos à raiz do repositório
+- **[P]**: Can run in parallel (different files or independent code sections)
+- **[Story]**: User story from spec.md (US1–US6)
+- Paths relative to repository root
 
 ---
 
 ## Phase 1: Setup
 
-**Purpose**: Dependência de sistema (Docker) e registro do controller no módulo
+> ✅ **Completed in previous sprint** — `libmagic1` in Dockerfile, controller registered in `__init__.py`, all 4 endpoint methods implemented (420 lines), 49 unit tests created.
 
-- [X] T001 Adicionar `libmagic1` ao bloco apt-get em `18.0/Dockerfile` (requisito de R002 — python-magic sem essa lib levanta ImportError)
-- [X] T002 Registrar `property_attachments_controller` no `18.0/extra-addons/quicksol_estate/controllers/__init__.py`
-
----
-
-## Phase 2: Foundational (Blocking Prerequisites)
-
-**Purpose**: Infraestrutura partilhada pelo controller antes de qualquer endpoint
-
-**⚠️ CRITICAL**: Nenhum endpoint pode ser implementado antes desta fase
-
-- [X] T003 Criar arquivo `18.0/extra-addons/quicksol_estate/controllers/property_attachments_controller.py` com: imports, constantes (`ALLOWED_IMAGE_MIMETYPES`, `ALLOWED_DOCUMENT_MIMETYPES`, `MAX_IMAGES_PER_PROPERTY`, `MAX_DOCUMENTS_PER_PROPERTY`, `DEFAULT_MAX_FILE_BYTES`, `CONFIG_PARAM_MAX_SIZE`, `TYPE_IMAGE`, `TYPE_DOCUMENT`), helper `_fetch_property_for_company()` e classe `PropertyAttachmentsController(http.Controller)` vazia
-- [X] T004 [P] Implementar helper `_get_max_upload_bytes()` no controller (`ir.config_parameter.sudo().get_param(...)` com default 134217728) — R005
-- [X] T005 [P] Implementar helper `_detect_mime()` com `magic.from_buffer(content[:2048], mime=True)` — R002
-- [X] T006 [P] Implementar helper `_serialize_attachment()` que monta o dict de resposta (id, name, mimetype, size, attachment_type, uploaded_at, links) com `download_url` sempre em `/api/v1/...` — nunca `/web/content/` — R004, FR1.7, data-model.md
-- [X] T007 Implementar helper `_fetch_attachment()` com verificação `res_model='real.estate.property'` + `res_id == property_id` — FR2.2, R008
-
-**Checkpoint**: Infraestrutura base pronta — endpoints podem ser implementados
+No new setup tasks.
 
 ---
 
-## Phase 3: User Story 1 + 2 — Upload de imagens e documentos (Priority: P1) 🎯 MVP
+## Phase 2: Foundational — gap-06 Quantity Limits Constants
 
-**User Stories**: US1 (imagens) + US2 (documentos)
-**Goal**: `POST /api/v1/properties/{id}/attachments` funcionando para imagens e documentos com todas as validações
+**Purpose**: Replace `ir.config_parameter` lookup for **quantity** limits with hardcoded constants. Blocking for all US1/US2 tests that assert `422 attachment_limit_exceeded`.
+
+**⚠️ CRITICAL**: US1/US2 quantity-limit assertions fail until this phase is complete.
+
+- [ ] T001 Remove `_get_max_images_per_property()` and `_get_max_documents_per_property()` helper functions from `18.0/extra-addons/quicksol_estate/controllers/property_attachments_controller.py`; replace all call sites with direct references to module constants `MAX_IMAGES_PER_PROPERTY = 50` and `MAX_DOCUMENTS_PER_PROPERTY = 20` (gap-06, D005)
+- [ ] T002 [P] Update unit tests in `18.0/extra-addons/quicksol_estate/tests/unit/test_property_attachments_unit.py` that mock or reference `ir.config_parameter` keys `quicksol_estate.max_images_per_property` / `quicksol_estate.max_documents_per_property` — replace with assertions against the constant values 50 and 20 (gap-06)
+
+**Checkpoint**: `_get_max_images_per_property()` and `_get_max_documents_per_property()` removed; unit tests pass with hardcoded constants
+
+---
+
+## Phase 3: US1 + US2 — Upload Error Code Alignment (Priority: P1) 🎯 MVP
+
+**User Stories**: US1 (imagens), US2 (documentos)
+**Goal**: All 400/413/415/422 error bodies exactly match the spec error envelope (FR1.1a, FR1.3, FR1.4, FR6.7, FR6.9); zero-byte validation added (FR1.5a)
 
 **Independent Test**:
 ```bash
-# Upload de imagem válida
-curl -X POST http://localhost:8069/api/v1/properties/7/attachments \
+# 413 must include received_size field
+curl -X POST http://localhost:8069/api/v1/properties/1/attachments \
   -H "Authorization: Bearer $JWT" -H "Cookie: session_id=$SID" \
-  -F "file=@/tmp/test.jpg;type=image/jpeg" -F "attachment_type=image"
-# → HTTP 201 com id, download_url iniciando com /api/v1/
+  -F "file=@/tmp/large.bin" -F "attachment_type=image"
+# → {"error": "file_too_large", "detail": "...", "max_size_bytes": 134217728, "received_size": <N>}
 
-# Upload com MIME inválido
-curl -X POST ... -F "file=@/tmp/malicious.jpg" -F "attachment_type=image"
-# → HTTP 400 (magic bytes rejeitam o script)
+# 422 must include full body
+# (upload 51st image)
+# → {"error": "attachment_limit_exceeded", "detail": "...", "attachment_type": "image", "limit": 50, "current": 50}
 ```
 
-### Implementation — US1 + US2
+### Implementation
 
-- [X] T008 [US1] Implementar `POST /api/v1/properties/{id}/attachments` em `18.0/extra-addons/quicksol_estate/controllers/property_attachments_controller.py`:
-  - Decorators: `@http.route`, `@trace_http_request`, `@require_jwt`, `@require_session`, `@require_company`
-  - `_fetch_property_for_company(property_id)` — 404 anti-enumeração
-  - Ler `file` e `attachment_type` do form; validar campos obrigatórios (400)
-  - Verificar `attachment_type` em `[TYPE_IMAGE, TYPE_DOCUMENT]` (400)
-  - Ler bytes: `content = upload.read()`
-  - Verificar tamanho via `_get_max_upload_bytes()` → 413 com `max_size_bytes` se exceder
-  - Verificar limite de quantidade (`MAX_IMAGES` ou `MAX_DOCUMENTS`) com `search_count` → 422
-  - Detectar MIME via `_detect_mime()` e verificar whitelist → 415
-  - Verificar que `attachment_type` condiz com o MIME detectado → 400
-  - Sanitizar filename: `secure_filename(upload.filename) or 'untitled'`
-  - RBAC: Agent retorna 403 (FR3.1 / ADR-019)
-  - `ir.attachment.create({...})` com campos definidos em data-model.md
-  - Retornar `success_response(_serialize_attachment(...), status_code=201)`
+- [ ] T003 [US1] Fix 413 error body in `upload_attachment()` in `18.0/extra-addons/quicksol_estate/controllers/property_attachments_controller.py`: change error code from `PAYLOAD_TOO_LARGE` to `file_too_large`; add `received_size=len(content)` and a `detail` message to the error_response call (gap-01, FR1.3)
+- [ ] T004 [US1] Fix 422 error body in `upload_attachment()` in `property_attachments_controller.py`: change error code from `UNPROCESSABLE_ENTITY` to `attachment_limit_exceeded`; add extra fields `detail`, `attachment_type`, `limit`, `current` to the error_response call (gap-02, FR1.4)
+- [ ] T005 [P] [US1] Fix 400 missing-file error code in `upload_attachment()` in `property_attachments_controller.py`: replace generic `VALIDATION_ERROR` with `missing_file` (gap-03a, FR1.1a)
+- [ ] T006 [P] [US1] Fix 400 missing-attachment_type error code in `upload_attachment()` in `property_attachments_controller.py`: replace `VALIDATION_ERROR` with `missing_attachment_type` (gap-03b, FR1.1a)
+- [ ] T007 [P] [US1] Fix 400 invalid-attachment_type error in `upload_attachment()` in `property_attachments_controller.py`: replace `VALIDATION_ERROR` with `invalid_attachment_type` and add `received=attachment_type` as extra field (gap-03c, FR1.1a)
+- [ ] T008 [P] [US1] Fix 415 MIME error bodies in `upload_attachment()` in `property_attachments_controller.py`: split single 415 path into two — `unsupported_mime` (MIME not in any whitelist) and `mime_mismatch` (MIME valid globally but wrong for declared `attachment_type`); both return HTTP 415 and include detected MIME in `detail` (gap-04, FR6.7)
+- [ ] T009 [US1] Add zero-byte file validation (FR1.5a) in `upload_attachment()` in `property_attachments_controller.py`: immediately after `content = upload.read()`, if `len(content) == 0` return `400 Bad Request` with `{"error": "empty_file", "detail": "File content cannot be empty."}` (gap-05)
+- [ ] T010 [P] [US1] Add unit tests to `18.0/extra-addons/quicksol_estate/tests/unit/test_property_attachments_unit.py` covering all fixed error codes: `test_413_body_includes_received_size()`, `test_422_body_has_all_fields()`, `test_400_missing_file_code()`, `test_400_missing_type_code()`, `test_400_invalid_type_includes_received()`, `test_415_unsupported_mime_code()`, `test_415_mime_mismatch_code()`, `test_400_empty_file_rejected()`
 
-- [X] T009 [P] [US1] Criar arquivo de fixture `seed_image.jpg` (~1 MB JPEG válido) em `18.0/extra-addons/quicksol_estate/tests/fixtures/seed_image.jpg` — Seed Data spec.md
-- [X] T010 [P] [US2] Criar arquivo de fixture `seed_document.pdf` (~500 KB PDF válido) em `18.0/extra-addons/quicksol_estate/tests/fixtures/seed_document.pdf`
-- [X] T011 [P] [US1] Criar arquivo de fixture `seed_malicious.jpg` (extensão .jpg, magic bytes de script Python/PHP) em `18.0/extra-addons/quicksol_estate/tests/fixtures/seed_malicious.jpg` — test_magic_bytes_mismatch_rejected
-- [X] T012 [P] [US1] Criar arquivo de fixture `seed_large.jpg` (acima de 10 MB) em `18.0/extra-addons/quicksol_estate/tests/fixtures/seed_large.jpg` — test_image_size_limit_enforced
-- [X] T013 [US1] Criar testes unitários em `18.0/extra-addons/quicksol_estate/tests/unit/test_property_attachments_unit.py`:
-  - `test_image_mimetype_allowed()` — jpeg, png, webp aceitos
-  - `test_image_mimetype_rejected()` — pdf, html, exe rejeitados para tipo=image
-  - `test_magic_bytes_mismatch_rejected()` — seed_malicious.jpg rejeitado
-  - `test_image_size_limit_enforced()` — seed_large.jpg retorna 413
-  - `test_filename_sanitization()` — `../../../etc/passwd.jpg` → `etc_passwd.jpg`
-  - `test_download_url_uses_api_route()` — `_serialize_attachment()` nunca gera `/web/content/`
-  - `test_document_mimetype_allowed()` — pdf, docx, xlsx aceitos
-  - `test_document_size_limit_enforced()` — limite de documentos aplicado
-  - `test_upload_reads_ir_config_param()` — _get_max_upload_bytes() usa ir.config_parameter
-  - `test_upload_uses_default_when_param_absent()` — sem parâmetro → 134217728
-  - `test_agent_cannot_delete()` — Agent recebe 403 (adiantado aqui para completude unitária)
-
-**Checkpoint**: `POST /api/v1/properties/{id}/attachments` funcional para imagens e documentos, com validações completas e testes unitários
+**Checkpoint**: All upload error bodies match spec FR1.1a/FR1.3/FR1.4/FR6.7/FR6.9; 8 new unit tests pass
 
 ---
 
-## Phase 4: User Story 6 — Listagem paginada (Priority: P1) 🎯 MVP
+## Phase 4: US6 — List Endpoint Verification (Priority: P1) 🎯 MVP
 
 **User Story**: US6
-**Goal**: `GET /api/v1/properties/{id}/attachments` com paginação e filtro por tipo
+**Goal**: Confirm existing list handler matches `contracts/list.yaml` — especially FR7.4 (company-scoped `total`), pagination defaults, and `attachment_type` query-param validation
 
 **Independent Test**:
 ```bash
-# Listar todos
-curl -X GET http://localhost:8069/api/v1/properties/7/attachments \
+curl -X GET "http://localhost:8069/api/v1/properties/1/attachments?limit=5&offset=0" \
   -H "Authorization: Bearer $JWT" -H "Cookie: session_id=$SID"
-# → HTTP 200 com items[], pagination{total, limit, offset}
-
-# Filtrar por tipo
-curl -X GET "http://localhost:8069/api/v1/properties/7/attachments?attachment_type=image&limit=10&offset=0" ...
-# → Somente imagens
+# → {"items": [...], "pagination": {"total": N, "limit": 5, "offset": 0}}
+# total = company-scoped count (not global)
 ```
 
-### Implementation — US6
+- [ ] T011 [US6] Read list handler in `18.0/extra-addons/quicksol_estate/controllers/property_attachments_controller.py` and verify: `total` is computed by `search_count()` on the same company-scoped domain (FR7.4); default `limit=50`, max `limit=100`, `offset=0`; `attachment_type` query param validated against `{TYPE_IMAGE, TYPE_DOCUMENT}` before filtering; each item's `links` contains only `download` (no `self`)
 
-- [X] T014 [US6] Implementar `GET /api/v1/properties/{id}/attachments` em `property_attachments_controller.py`:
-  - Triple decorator (`@http.route` GET/POST no mesmo path — usar rota separada) + `@trace_http_request` + `@require_jwt` + `@require_session` + `@require_company`
-  - `_fetch_property_for_company(property_id)` → 404
-  - Ler `attachment_type`, `limit` (default 50, max 100), `offset` (default 0) dos query params
-  - Validar `attachment_type` se presente (400)
-  - Construir domain: `[('res_model', '=', 'real.estate.property'), ('res_id', '=', property_id), ('description', 'in', ['image', 'document'])]` + filtro por tipo se informado
-  - `ir.attachment.search_count(domain)` para `total`
-  - `ir.attachment.search(domain, order='create_date desc', limit=limit, offset=offset)` para `items`
-  - Retornar `success_response({'items': [..._serialize_attachment(a)...], 'pagination': {...}})`
-- [X] T015 [P] [US6] Adicionar testes unitários em `test_property_attachments_unit.py`:
-  - `test_list_download_url_uses_api_route()` — cada item em `items[]` nunca contém `/web/content/`
-
-**Checkpoint**: Upload (US1+US2) + Listagem (US6) compõem o MVP completo
+**Checkpoint**: List handler verified correct — no code change expected
 
 ---
 
-## Phase 5: User Story 3 — Download seguro (Priority: P1) 🎯 MVP
+## Phase 5: US3 — Download Endpoint Verification (Priority: P1) 🎯 MVP
 
 **User Story**: US3
-**Goal**: `GET /api/v1/properties/{id}/attachments/{attachment_id}/download` com headers de segurança
+**Goal**: Confirm download handler reads `att.raw`, sets required security headers, and never redirects to `/web/content/`
 
 **Independent Test**:
 ```bash
-# Download autenticado
-curl -X GET http://localhost:8069/api/v1/properties/7/attachments/42/download \
-  -H "Authorization: Bearer $JWT" -H "Cookie: session_id=$SID" \
-  -o /tmp/downloaded.jpg
-# → HTTP 200 + binário + headers: Content-Disposition, Content-Security-Policy, X-Content-Type-Options
-
-# Sem autenticação
-curl -X GET http://localhost:8069/api/v1/properties/7/attachments/42/download
-# → HTTP 401
+curl -sI "http://localhost:8069/api/v1/properties/1/attachments/42/download" \
+  -H "Authorization: Bearer $JWT" -H "Cookie: session_id=$SID" | grep -E "CSP|X-Content|Disposition"
+# → Content-Security-Policy: default-src 'none'
+# → X-Content-Type-Options: nosniff
+# → Content-Disposition: attachment; filename="..."
 ```
 
-### Implementation — US3
+- [ ] T012 [US3] Read download handler in `18.0/extra-addons/quicksol_estate/controllers/property_attachments_controller.py` and verify: `attachment.raw` used for bytes (not `datas`); `werkzeug.wrappers.Response` constructed with `Content-Security-Policy: default-src 'none'`, `X-Content-Type-Options: nosniff`, `Content-Disposition: attachment; filename="..."` headers; no redirect to `/web/content/` (FR2.3, FR2.4)
 
-- [X] T016 [US3] Implementar `GET /api/v1/properties/{id}/attachments/<int:attachment_id>/download` em `property_attachments_controller.py`:
-  - Triple decorator + `@trace_http_request`
-  - `_fetch_property_for_company(property_id)` → 404
-  - `_fetch_attachment(attachment_id, property_id)` → 404 se não pertencer à propriedade
-  - `content = attachment.raw` (bytes direto do ORM — R004)
-  - Retornar `werkzeug.wrappers.Response(content, status=200, headers={...})` com `Content-Type`, `Content-Disposition: attachment; filename="..."`, `Content-Security-Policy: default-src 'none'`, `X-Content-Type-Options: nosniff` — FR2.3
-  - NUNCA `redirect('/web/content/...')` — FR2.4
-- [X] T017 [P] [US3] Adicionar teste unitário em `test_property_attachments_unit.py`:
-  - `test_no_redirect_to_web_content()` — response não contém Location header apontando para /web/content/
-
-**Checkpoint**: Upload + Listagem + Download compõem MVP completo deployável
+**Checkpoint**: Download handler verified correct — no code change expected
 
 ---
 
-## Phase 6: User Story 4 — Exclusão (Priority: P2)
+## Phase 6: US4 — Delete Endpoint Verification (Priority: P2)
 
 **User Story**: US4
-**Goal**: `DELETE /api/v1/properties/{id}/attachments/{attachment_id}` com RBAC e hard delete
+**Goal**: Confirm delete handler enforces Owner/Manager RBAC, calls `unlink()` (hard delete), returns HTTP 204 with empty body
 
 **Independent Test**:
 ```bash
-# Owner deleta
-curl -X DELETE http://localhost:8069/api/v1/properties/7/attachments/42 \
-  -H "Authorization: Bearer $OWNER_JWT" -H "Cookie: session_id=$SID"
-# → HTTP 204 No Content
-
-# Agent tenta deletar
-curl -X DELETE ... -H "Authorization: Bearer $AGENT_JWT" ...
-# → HTTP 403
+# Agent must receive 403
+curl -X DELETE "http://localhost:8069/api/v1/properties/1/attachments/42" \
+  -H "Authorization: Bearer $AGENT_JWT" -H "Cookie: session_id=$SID" -w "%{http_code}"
+# → 403
 ```
 
-### Implementation — US4
+- [ ] T013 [US4] Read delete handler in `18.0/extra-addons/quicksol_estate/controllers/property_attachments_controller.py` and verify: RBAC check blocks Agent profile (403) before calling `_fetch_attachment()`; `attachment.unlink()` called (not `active=False`); returns `Response('', status=204)` with empty body (FR3.1, FR3.2, FR3.3)
 
-- [X] T018 [US4] Implementar `DELETE /api/v1/properties/{id}/attachments/<int:attachment_id>` em `property_attachments_controller.py`:
-  - Triple decorator + `@trace_http_request`
-  - `_fetch_property_for_company(property_id)` → 404
-  - RBAC check: perfil do usuário ∈ {Owner, Manager} → senão 403 (FR3.1)
-  - `_fetch_attachment(attachment_id, property_id)` → 404
-  - `attachment.unlink()` — hard delete (exceção documentada a ADR-015 — FR3.2)
-  - Retornar `Response('', status=204)` — FR3.3
-
-**Checkpoint**: CRUD completo (Upload + List + Download + Delete)
+**Checkpoint**: Delete handler verified correct — no code change expected
 
 ---
 
-## Phase 7: User Story 5 — Configuração de limite (Priority: P2)
+## Phase 7: US5 — Config Dynamic Behavior Verification (Priority: P2)
 
 **User Story**: US5
-**Goal**: Garantir que `web.max_file_upload_size` é lido dinamicamente e o controller usa `ir.config_parameter`
+**Goal**: Confirm `_get_max_upload_bytes()` reads `ir.config_parameter` dynamically per-request (no module-level caching that would require restart to pick up config changes)
 
-> **Nota**: Esta US não tem endpoint novo. É uma garantia de comportamento já implementado em T003/T004 (Phase 2). Esta fase cobre os testes E2E que validam o comportamento dinâmico.
+- [ ] T014 [US5] Read `_get_max_upload_bytes()` in `18.0/extra-addons/quicksol_estate/controllers/property_attachments_controller.py` and verify: calls `env['ir.config_parameter'].sudo().get_param(CONFIG_PARAM_MAX_SIZE, default=DEFAULT_MAX_FILE_BYTES)` inside the method body (not at import time or module level); returns `int` cast of result; default is `134_217_728` (128 MB)
 
-### Implementation — US5
-
-- [X] T019 [US5] Criar script `integration_tests/test_property_attachments_api.sh` com os cenários de configuração dinâmica (US5):
-  - `test_upload_rejected_when_over_global_limit()` — configura `web.max_file_upload_size=1048576` via psql → upload de seed_large.jpg → 413
-  - `test_upload_accepted_within_global_limit()` — configura `web.max_file_upload_size=134217728` → upload de seed_image.jpg → 201
-  - `test_upload_reads_ir_config_param()` — confirma que o parâmetro é alterável sem redeploy
-
-> **Nota M4**: T019 **cria** o arquivo. T020 **extende** o mesmo arquivo adicionando os cenários de US1–US6. T020 depende de T019.
-
-**Checkpoint**: Comportamento de configuração dinâmica de tamanho validado
+**Checkpoint**: Size limit is dynamically read; no restart needed after config change
 
 ---
 
-## Phase 8: E2E Integration Tests
+## Phase 8: API Integration Tests (gap-07)
 
-**Purpose**: Testes de integração E2E cobrindo todos os user stories e multi-tenancy
+**Purpose**: HTTP-level tests (Odoo `TransactionCase`) covering all 4 endpoints, multi-tenancy, and RBAC
 
-- [X] T020 *(depende de T019)* Estender `integration_tests/test_property_attachments_api.sh` com os cenários E2E de US1–US6:
-  - **US1**: `test_owner_uploads_image()` — fluxo completo upload → metadados retornados com download_url correto
-  - **US1**: `test_multitenancy_isolation_upload()` — upload em propriedade de company_b por usuário de company_a → 404
-  - **US1**: `test_max_images_per_property()` — 50+ imagens → 422
-  - **US2**: `test_manager_uploads_document()` — upload de PDF → 201
-  - **US2**: `test_max_documents_per_property()` — 20+ documentos → 422
-  - **US3**: `test_authenticated_download()` — JWT válido → binário + headers corretos
-  - **US3**: `test_unauthenticated_download()` — sem JWT → 401
-  - **US3**: `test_cross_company_download()` — arquivo company_b por usuário company_a → 404
-  - **US3**: `test_attachment_not_on_property()` — attachment_id de outra propriedade → 404
-  - **US4**: `test_owner_deletes_attachment()` — Owner deleta → 204 → GET lista não retorna mais
-  - **US4**: `test_delete_cross_company()` → 404
-  - **US6**: `test_list_attachments_returns_metadata()` — após upload, lista retorna item
-  - **US6**: `test_list_filter_by_type()` — `?attachment_type=image` filtra corretamente
-  - **US6**: `test_list_pagination()` — `?limit=2&offset=0` e `?limit=2&offset=2` paginam corretamente
-  - **US6**: `test_list_cross_company_returns_404()` — outra company → 404
+- [ ] T015 Create `18.0/extra-addons/quicksol_estate/tests/api/test_property_attachments_api.py` as `TransactionCase` subclass; `setUp` loads fixtures from `tests/fixtures/` and configures `web.max_file_upload_size=10485760` for size tests; test methods:
+  - [US1] `test_owner_uploads_image_returns_201_with_metadata()` — verify all serialized fields + download_url format
+  - [US1] `test_upload_size_exceeded_returns_413_with_received_size()` — exact body match
+  - [US1] `test_upload_unsupported_mime_returns_415_unsupported_mime_code()` — `error` == `unsupported_mime`
+  - [US1] `test_upload_mime_mismatch_returns_415_mime_mismatch_code()` — image bytes with attachment_type=document
+  - [US1] `test_upload_51_images_returns_422_attachment_limit_exceeded_full_body()` — all 4 extra fields present
+  - [US1] `test_upload_empty_file_returns_400_empty_file()` — FR1.5a
+  - [US1] `test_upload_cross_company_property_returns_404()` — anti-enumeration
+  - [US2] `test_manager_uploads_pdf_returns_201()` — document MIME whitelist
+  - [US2] `test_max_documents_exceeded_returns_422()` — 21st document
+  - [US3] `test_download_returns_binary_with_csp_header()` — `Content-Security-Policy: default-src 'none'`
+  - [US3] `test_download_without_jwt_returns_401()` — no auth
+  - [US3] `test_download_cross_company_returns_404()` — cross-company isolation
+  - [US3] `test_download_wrong_property_attachment_returns_404()` — attachment_id from other property
+  - [US4] `test_owner_deletes_returns_204_attachment_gone()` — 204 + verify removed from list response
+  - [US4] `test_agent_delete_returns_403()` — RBAC enforcement
+  - [US6] `test_list_returns_paginated_items_with_pagination_metadata()` — items[], pagination{total/limit/offset}
+  - [US6] `test_list_filter_attachment_type_image_only()` — only images returned, documents excluded
+  - [US6] `test_list_total_is_company_scoped_not_global()` — total excludes other-company count (FR7.4)
+  - [US5] `test_dynamic_size_limit_via_config_param()` — change `web.max_file_upload_size` → verify 413/201 without restart
 
----
-
-## Phase 9: Spec 016 Integration (Phase 4 da spec)
-
-**Purpose**: Migrar `download_url` do serializer legado para `/api/v1/...`
-
-> ⚠️ **Atenção**: Esta fase altera comportamento existente de `serialize_property()`. Coordenar com equipe mobile antes do merge — breaking change nos campos `property_images[].url` e `property_files[].url`.
-
-- [X] T021 ⛔ **BLOCKED — aguarda decisão de PM + alinhamento com equipe mobile (breaking change)** Atualizar `serialize_property_mapping_fields()` em `18.0/extra-addons/quicksol_estate/controllers/utils/serializers.py` (linhas 125–142):
-  - Mudar `f'/web/content/real.estate.property.photo/{photo.id}/image?download=true'` para `f'/api/v1/properties/{property_record.id}/attachments/{photo.id}/download'`
-  - Mudar `f'/web/content/real.estate.property.document/{document.id}/file?download=true'` para `f'/api/v1/properties/{property_record.id}/attachments/{document.id}/download'`
-  - **Importante**: Os IDs de `photo` e `document` aqui são IDs dos custom models (`real.estate.property.photo`, `real.estate.property.document`), NÃO IDs de `ir.attachment`. O endpoint de download deve aceitar ambos — ou este campo deve apontar apenas para `ir.attachment` IDs. Revisar com PM antes de implementar.
+**Checkpoint**: Full API test suite covering 19 scenarios; run with `docker compose exec odoo python -m pytest tests/api/test_property_attachments_api.py -v`
 
 ---
 
-## Phase 10: Swagger (ADR-005)
+## Phase 9: E2E Bash Scripts (gap-08)
 
-**Purpose**: Documentar os 4 novos endpoints no `thedevkitchen_api_endpoint` table via XML data file
+**Purpose**: End-to-end bash scripts following Feature 015 pattern (`integration_tests/test_us15_*.sh`)
 
-> ⚠️ Swagger é gerado **dinamicamente do banco** — nunca editar arquivos estáticos.
-> Usar a skill **swagger-updater** para esta fase.
+- [ ] T016 [P] Create `integration_tests/test_us17_s1_upload_journey.sh` — Owner uploads image and document; assert 201 responses; verify `download_url` begins with `/api/v1/` (not `/web/content/`); verify `mimetype` and `size` fields present (US1, US2)
+- [ ] T017 [P] Create `integration_tests/test_us17_s2_download_journey.sh` — upload → download via returned `download_url` → assert response headers: `Content-Security-Policy: default-src 'none'`, `X-Content-Type-Options: nosniff`, `Content-Disposition: attachment` (US3)
+- [ ] T018 [P] Create `integration_tests/test_us17_s3_delete_rbac.sh` — Owner deletes attachment (204); subsequent download returns 404; Agent delete attempt returns 403 (US4)
+- [ ] T019 [P] Create `integration_tests/test_us17_s4_list_pagination.sh` — upload 6 items; GET with `limit=2&offset=0` returns 2 items with `total=6`; GET with `limit=2&offset=4` returns 2 items; verify `pagination` object structure (US6)
+- [ ] T020 [P] Create `integration_tests/test_us17_s5_multitenancy_isolation.sh` — upload in company_a; assert company_b user receives 404 on upload/list/download/delete for same property_id (US1–US4, FR5)
+- [ ] T021 [P] Create `integration_tests/test_us17_s6_rbac_matrix.sh` — 3 roles (Owner, Manager, Agent) × 4 endpoints: assert Owner ✅✅✅✅, Manager ✅✅✅✅, Agent ❌(403)✅✅❌(403) per RBAC authorization matrix in spec.md
 
-- [X] T022 Adicionar registros para os 4 endpoints no arquivo XML de data do módulo:
-  - `POST /api/v1/properties/{id}/attachments`
-  - `GET /api/v1/properties/{id}/attachments`
-  - `GET /api/v1/properties/{id}/attachments/{attachment_id}/download`
-  - `DELETE /api/v1/properties/{id}/attachments/{attachment_id}`
-  - Arquivo: `18.0/extra-addons/quicksol_estate/data/` (verificar padrão existente no módulo)
-- [X] T023 Upgrade do módulo `quicksol_estate` para sincronizar DB com novos registros de Swagger
+**Checkpoint**: 6 E2E scripts executable from `integration_tests/` directory; follow same pattern as `test_us15_s1_agent_creates_service_lifecycle.sh`
 
 ---
 
-## Phase 11: Polish & Cross-Cutting Concerns
+## Phase 10: Swagger (gap-09, ADR-005)
 
-- [X] T024 [P] Audit logging: verificar que uploads rejeitados (MIME inválido, size exceeded, 403, 404 cross-company) produzem `_logger.warning()` com contexto suficiente — NFR4
-- [X] T025 [P] Lint: rodar `cd 18.0 && bash lint.sh` e corrigir quaisquer erros de ruff/black/isort no novo controller
-- [X] T026 [P] Registrar o módulo `quicksol_estate` na fila de update e validar que `odoo -u quicksol_estate --stop-after-init` termina sem erros
-- [X] T027 Criar Postman Collection `docs/postman/feature017_property_attachments_v1.0_postman_collection.json` seguindo ADR-016 (usar skill **postman-collection-manager**)
+**Purpose**: Register 4 endpoints in `thedevkitchen_api_endpoint` table via XML data file → module upgrade
+
+> ⚠️ Swagger is generated **dynamically from the database**. Never edit static files.
+> Use the **swagger-updater** skill for this phase.
+
+- [ ] T022 Add 4 records to the `thedevkitchen_api_endpoint` XML data file in `18.0/extra-addons/quicksol_estate/data/` (verify exact filename by checking existing files in that directory): `POST /api/v1/properties/{property_id}/attachments`, `GET /api/v1/properties/{property_id}/attachments`, `GET /api/v1/properties/{property_id}/attachments/{attachment_id}/download`, `DELETE /api/v1/properties/{property_id}/attachments/{attachment_id}` — use `contracts/upload.yaml`, `contracts/list.yaml`, `contracts/download.yaml`, `contracts/delete.yaml` as schema sources
+- [ ] T023 *(depends on T022)* Upgrade `quicksol_estate` module to sync Swagger records into DB: `docker compose exec odoo odoo -u quicksol_estate --stop-after-init` from `18.0/` directory; verify 4 new endpoints visible in Swagger UI at `/api/docs`
+
+**Checkpoint**: 4 endpoints documented in Swagger UI; no orphan records in DB
+
+---
+
+## Phase 11: Postman Collection (gap-10, ADR-016)
+
+**Purpose**: Create Feature 017 collection following ADR-016 standards
+
+> Use the **postman-collection-manager** skill for implementation.
+
+- [ ] T024 Create `docs/postman/feature017_property_attachments_v1.0_postman_collection.json` following ADR-016: collection variables `base_url`, `jwt_token`, `session_id`, `property_id`, `attachment_id`; 4 request folders (Upload, List, Download, Delete); `Content-Type: multipart/form-data` on Upload request; auto-save token script on OAuth endpoint; GET requests with query param examples
+
+**Checkpoint**: Collection importable in Postman; all 4 requests executable with configured variables
+
+---
+
+## Phase 12: Polish & Cross-Cutting Concerns
+
+- [ ] T025 ⛔ **BLOCKED** (breaking change — awaits PM decision + mobile team alignment) Update `serialize_property_mapping_fields()` in `18.0/extra-addons/quicksol_estate/controllers/utils/serializers.py`: replace `/web/content/real.estate.property.photo/{photo.id}/image` and `/web/content/real.estate.property.document/{document.id}/file` with `/api/v1/properties/{property_id}/attachments/{aid}/download` — requires PM confirmation that `property_images[].url` and `property_files[].url` breaking change is approved and mobile team is notified (gap-11)
+- [ ] T026 [P] Update Constitution in `.specify/memory/constitution.md` from v1.6.0 → v1.7.0: add 5 new patterns from Feature 017 — File Upload Sub-resource pattern, Magic Bytes Validation, Secure Download Endpoint (never `/web/content/`), Gateway-Aware URL Generation, Global File Size via `ir.config_parameter` (gap-12)
+- [ ] T027 [P] Audit logging review: read `property_attachments_controller.py` and verify all rejection paths (MIME invalid, size exceeded, 403, 404 cross-company) emit `_logger.warning()` with minimum required fields per FR6.5: `user_id`, `company_id`, `property_id`, `rejection_code`, `attachment_type`, `file_size_bytes`
+- [ ] T028 [P] Lint: run `cd 18.0 && bash lint.sh` from repository root and fix any ruff/black/isort errors introduced in `property_attachments_controller.py` by gap-alignment changes (T003–T009)
 
 ---
 
 ## Dependencies
 
 ```
-Phase 1 (Setup) → Phase 2 (Foundation) → Phase 3 (US1+US2) → Phase 4 (US6) → Phase 5 (US3)
-                                                             ↘ Phase 6 (US4) ↗
-Phase 2 (Foundation) → Phase 7 (US5) [testes apenas — implementação já em T004]
-Phase 5 (US3) + Phase 6 (US4) → Phase 8 (E2E)
-Phase 5 (US3) → Phase 9 (Spec 016 Integration)
-Phase 8 (E2E) → Phase 10 (Swagger) → Phase 11 (Polish)
+Phase 2 (T001–T002: gap-06 constants)
+  → Phase 3 (T003–T010: US1+US2 error alignment)
+    → Phase 4 (T011: US6 verify)
+    → Phase 5 (T012: US3 verify)
+    → Phase 6 (T013: US4 verify)
+    → Phase 7 (T014: US5 verify)
+      → Phase 8 (T015: API integration tests)
+        → Phase 9 (T016–T021: E2E bash scripts)
+          → Phase 10 (T022–T023: Swagger)
+            → Phase 11 (T024: Postman)
+              → Phase 12 (T025–T028: Polish)
+
+T022 → T023 (must generate XML before upgrading module)
+T025 independently BLOCKED regardless of phase order
 ```
 
 ## Parallel Execution Opportunities
 
-| Story Phase | Tasks em Paralelo |
-|-------------|-------------------|
-| Phase 2 | T004, T005, T006 podem ser escritos simultaneamente (funções independentes) |
-| Phase 3 | T009, T010, T011, T012 (fixtures) podem ser criados em paralelo com T008 (implementação) |
-| Phase 3 | T015 (teste unitário list URL) após T006 |
-| Phase 11 | T024, T025, T026 em paralelo |
+| Phase | Parallel Tasks |
+|-------|---------------|
+| Phase 2 | T002 can be written while T001 is being implemented (unit tests alongside code) |
+| Phase 3 | T005, T006, T007, T008 (independent conditions in `upload_attachment`) + T010 (unit tests) all parallelizable |
+| Phase 9 | T016–T021 (each bash script is an independent file) |
+| Phase 12 | T026, T027, T028 (Constitution, audit review, lint — independent files) |
 
 ## Implementation Strategy
 
-**MVP Scope** (Phases 1–5):
-1. Setup (T001, T002) — ~15 min
-2. Foundation helpers (T003–T007) — ~45 min
-3. POST upload endpoint (T008) + fixtures (T009–T012) + unit tests (T013) — ~2h
-4. GET list endpoint (T014) + unit test (T015) — ~30 min
-5. GET download endpoint (T016) + unit test (T017) — ~30 min
+**MVP scope (Phases 2–5)** — estimated ~2h:
+1. Fix gap-06 constants (T001–T002) — ~20 min
+2. Fix upload error codes (T003–T009) — ~45 min
+3. Update unit tests for new error codes (T010) — ~30 min
+4. Verify list/download handlers (T011–T012) — ~15 min
 
-**MVP estimado**: ~4h desenvolvimento → `POST`, `GET /attachments`, `GET /attachments/{id}/download` funcionais e testados
+**MVP outcome**: All upload error bodies match spec; unit tests green; list/download verified.
 
-**Phase 2 increment** (Phases 6–7): `DELETE` + validação de configuração dinâmica (~45 min)
+**Phase 2 increment (Phases 6–9)** — estimated ~3h:
+- Verify delete + config (T013–T014) — ~15 min
+- API integration test file T015 (19 test methods) — ~2h
+- E2E bash scripts T016–T021 — ~45 min
 
-**Phase 3 increment** (Phases 8–11): E2E + Spec 016 serializer migration + Swagger + Postman (~2h)
+**Phase 3 increment (Phases 10–11)** — estimated ~45 min:
+- Swagger (T022–T023) — ~20 min
+- Postman (T024) — ~25 min
+
+**Phase 4 increment (Phase 12)** — estimated ~30 min:
+- Audit + lint (T027–T028) — ~20 min
+- Constitution (T026) — ~10 min
+- T025 BLOCKED until PM decision
 
 ---
 
 ## Task Count Summary
 
-| Phase | Tarefas | User Stories |
-|-------|---------|--------------|
-| 1 — Setup | 2 | — |
-| 2 — Foundation | 5 | — |
-| 3 — Upload (US1+US2) | 7 | US1, US2 |
-| 4 — List (US6) | 2 | US6 |
-| 5 — Download (US3) | 2 | US3 |
-| 6 — Delete (US4) | 1 | US4 |
-| 7 — Config (US5) | 1 | US5 |
-| 8 — E2E | 1 | todos |
-| 9 — Spec 016 integration | 1 | — |
-| 10 — Swagger | 2 | — |
-| 11 — Polish | 4 | — |
-| **Total** | **28** | **6 user stories** |
+| Phase | Tasks | Stories | Notes |
+|-------|-------|---------|-------|
+| 1 — Setup | 0 | — | ✅ All done in previous sprint |
+| 2 — Foundational (gap-06) | 2 | — | Blocking for upload tests |
+| 3 — US1+US2 (Upload alignment) | 8 | US1, US2 | Gaps 01–05 |
+| 4 — US6 (List verify) | 1 | US6 | No code change expected |
+| 5 — US3 (Download verify) | 1 | US3 | No code change expected |
+| 6 — US4 (Delete verify) | 1 | US4 | No code change expected |
+| 7 — US5 (Config verify) | 1 | US5 | No code change expected |
+| 8 — API Integration Tests | 1 | All | gap-07 — 19 test methods in one file |
+| 9 — E2E Bash Scripts | 6 | All | gap-08 — 6 script files |
+| 10 — Swagger | 2 | — | gap-09, ADR-005 |
+| 11 — Postman | 1 | — | gap-10, ADR-016 |
+| 12 — Polish | 4 | — | gap-11 BLOCKED, gap-12, lint, audit |
+| **Total** | **28** | **6 user stories** | |
 
-**Parallel opportunities identified**: 8 tarefas marcadas `[P]`
-**MVP tasks (Phases 1–5)**: T001–T017 (17 tarefas)
+**Parallel opportunities**: 10 tasks marked `[P]`
+**MVP tasks (Phases 2–5)**: T001–T012 (12 tasks)
