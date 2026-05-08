@@ -550,7 +550,7 @@ class TestSerializerFields(unittest.TestCase):
 # ---------------------------------------------------------------------------
 
 class TestQuantityLimitConstants(unittest.TestCase):
-    """Quantity limits are dynamic: ir.config_parameter keys seeded in system_parameters.xml."""
+    """Quantity limits are read exclusively from ir.config_parameter (seeded in system_parameters.xml)."""
 
     def _make_env(self, value):
         mock_param = MagicMock()
@@ -559,27 +559,24 @@ class TestQuantityLimitConstants(unittest.TestCase):
         mock_env.__getitem__.return_value.sudo.return_value = mock_param
         return mock_env, mock_param
 
-    def test_default_max_images_fallback_is_50(self):
-        self.assertEqual(ctrl._DEFAULT_MAX_IMAGES_PER_PROPERTY, 50)
-
-    def test_default_max_documents_fallback_is_20(self):
-        self.assertEqual(ctrl._DEFAULT_MAX_DOCUMENTS_PER_PROPERTY, 20)
-
     def test_config_param_images_key(self):
         self.assertEqual(ctrl.CONFIG_PARAM_MAX_IMAGES, 'quicksol_estate.max_images_per_property')
 
     def test_config_param_documents_key(self):
         self.assertEqual(ctrl.CONFIG_PARAM_MAX_DOCUMENTS, 'quicksol_estate.max_documents_per_property')
 
+    def test_no_hardcoded_default_images(self):
+        self.assertFalse(hasattr(ctrl, '_DEFAULT_MAX_IMAGES_PER_PROPERTY'))
+
+    def test_no_hardcoded_default_documents(self):
+        self.assertFalse(hasattr(ctrl, '_DEFAULT_MAX_DOCUMENTS_PER_PROPERTY'))
+
     def test_get_max_images_reads_config_param(self):
         mock_env, mock_param = self._make_env('30')
         with patch.object(ctrl, 'request', create=True) as mock_req:
             mock_req.env = mock_env
             result = ctrl._get_max_images_per_property()
-        mock_param.get_param.assert_called_once_with(
-            ctrl.CONFIG_PARAM_MAX_IMAGES,
-            default=ctrl._DEFAULT_MAX_IMAGES_PER_PROPERTY,
-        )
+        mock_param.get_param.assert_called_once_with(ctrl.CONFIG_PARAM_MAX_IMAGES)
         self.assertEqual(result, 30)
 
     def test_get_max_documents_reads_config_param(self):
@@ -587,25 +584,8 @@ class TestQuantityLimitConstants(unittest.TestCase):
         with patch.object(ctrl, 'request', create=True) as mock_req:
             mock_req.env = mock_env
             result = ctrl._get_max_documents_per_property()
-        mock_param.get_param.assert_called_once_with(
-            ctrl.CONFIG_PARAM_MAX_DOCUMENTS,
-            default=ctrl._DEFAULT_MAX_DOCUMENTS_PER_PROPERTY,
-        )
+        mock_param.get_param.assert_called_once_with(ctrl.CONFIG_PARAM_MAX_DOCUMENTS)
         self.assertEqual(result, 15)
-
-    def test_get_max_images_falls_back_on_invalid_value(self):
-        mock_env, _ = self._make_env('not_a_number')
-        with patch.object(ctrl, 'request', create=True) as mock_req:
-            mock_req.env = mock_env
-            result = ctrl._get_max_images_per_property()
-        self.assertEqual(result, ctrl._DEFAULT_MAX_IMAGES_PER_PROPERTY)
-
-    def test_get_max_documents_falls_back_on_invalid_value(self):
-        mock_env, _ = self._make_env('bad')
-        with patch.object(ctrl, 'request', create=True) as mock_req:
-            mock_req.env = mock_env
-            result = ctrl._get_max_documents_per_property()
-        self.assertEqual(result, ctrl._DEFAULT_MAX_DOCUMENTS_PER_PROPERTY)
 
 
 # ---------------------------------------------------------------------------

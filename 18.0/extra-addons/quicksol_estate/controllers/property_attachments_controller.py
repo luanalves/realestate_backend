@@ -20,9 +20,6 @@ _logger = logging.getLogger(__name__)
 # Constants
 # ---------------------------------------------------------------------------
 
-_DEFAULT_MAX_IMAGES_PER_PROPERTY = 50
-_DEFAULT_MAX_DOCUMENTS_PER_PROPERTY = 20
-
 CONFIG_PARAM_MAX_IMAGES = 'quicksol_estate.max_images_per_property'
 CONFIG_PARAM_MAX_DOCUMENTS = 'quicksol_estate.max_documents_per_property'
 
@@ -67,19 +64,11 @@ def _get_max_upload_bytes():
 
 
 def _get_max_images_per_property():
-    IrConfig = request.env['ir.config_parameter'].sudo()
-    try:
-        return int(IrConfig.get_param(CONFIG_PARAM_MAX_IMAGES, default=_DEFAULT_MAX_IMAGES_PER_PROPERTY))
-    except (ValueError, TypeError):
-        return _DEFAULT_MAX_IMAGES_PER_PROPERTY
+    return int(request.env['ir.config_parameter'].sudo().get_param(CONFIG_PARAM_MAX_IMAGES))
 
 
 def _get_max_documents_per_property():
-    IrConfig = request.env['ir.config_parameter'].sudo()
-    try:
-        return int(IrConfig.get_param(CONFIG_PARAM_MAX_DOCUMENTS, default=_DEFAULT_MAX_DOCUMENTS_PER_PROPERTY))
-    except (ValueError, TypeError):
-        return _DEFAULT_MAX_DOCUMENTS_PER_PROPERTY
+    return int(request.env['ir.config_parameter'].sudo().get_param(CONFIG_PARAM_MAX_DOCUMENTS))
 
 
 def _att_error(status_code, error_code, detail, **extras):
