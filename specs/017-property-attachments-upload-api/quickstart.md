@@ -1,178 +1,234 @@
-# Quickstart: Property Attachments Upload API (017)
+# Quickstart: Property Attachments Upload API
 
-**Feature**: 017 — Property Attachments Upload API | **Branch**: `017-property-attachments-upload-api`
+**Feature**: 017 — Property Attachments Upload API
+**Module**: `quicksol_estate`
+**Working directory**: `18.0/extra-addons/quicksol_estate/`
 
-## Pré-requisitos
+---
 
-- Docker + Docker Compose instalados
-- Branch `017-property-attachments-upload-api` ativo
-- Odoo 18.0 rodando localmente (`cd 18.0 && docker compose up -d`)
+## Prerequisites
 
-## Setup: Dependência libmagic1
+### 1. Verify `libmagic1` is in the Dockerfile
 
-A feature requer `libmagic1` (biblioteca C usada pelo `python-magic`). Já deve estar declarada no Dockerfile, mas se rodar sem rebuild:
+Open `18.0/Dockerfile` and confirm these lines exist (lines 21 and 25):
+
+```dockerfile
+RUN apt-get update && apt-get install -y \
+    libmagic1 \
+    ...
+    python3-magic \
+    ...
+```
+
+These are already confirmed present. No action required.
+
+### 2. Obtain an auth token
+
+Use the OAuth2 endpoint to get a `Bearer` token and a `session_id` cookie:
 
 ```bash
-# Verificar se libmagic está disponível no container
-docker compose exec odoo python3 -c "import magic; print('OK')"
+# Login and capture token + session cookie
+RESPONSE=$(curl -s -c /tmp/cookies.txt -X POST http://localhost:8069/api/v1/auth/token \
+  -H "Content-Type: application/json" \
+  -d '{"login": "owner@realestate.test", "password": "admin"}')
 
-# Se falhar, rebuild da imagem:
-cd 18.0
-docker compose down
-docker compose build --no-cache odoo
+TOKEN=$(echo "$RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+echo "TOKEN=$TOKEN"
+```
+
+Or use `integration_tests/test_us1_s1_owner_login.sh` as a reference.
+
+---
+
+## Running Unit Tests (no Odoo container required)
+
+Unit tests load the controller module in isolation using `unittest.mock`. They run locally without Docker:
+
+```bash
+cd 18.0/extra-addons/quicksol_estate/tests/unit
+
+# Run all attachment unit tests
+python3 -m pytest test_property_attachments_unit.py -v
+
+# Or with standard unittest
+python3 -m unittest test_property_attachments_unit -v
+```
+
+Expected: **49 tests, all passing**.
+
+> If `werkzeug` is not installed locally, install it:
+> ```bash
+> pip install werkzeug python-magic
+> ```
+> (On macOS, also: `brew install libmagic`)
+
+---
+
+## Running API Integration Tests (requires live container)
+
+After implementing `tests/api/test_property_attachments_api.py` (gap-07):
+
+```bash
+cd /opt/homebrew/var/www/realestate/odoo-docker/18.0
+
+# Start the Odoo stack
 docker compose up -d
+
+# Run attachment API tests
+docker compose exec odoo python3 -m pytest \
+  /opt/odoo/addons/quicksol_estate/tests/api/test_property_attachments_api.py -v
 ```
 
-### Verificação da instalação
+---
+
+## Running E2E Bash Tests (requires live container)
+
+After implementing `integration_tests/test_us17_*.sh` (gap-08):
 
 ```bash
-docker compose exec odoo python3 -c "
-import magic
-result = magic.from_buffer(b'\xff\xd8\xff', mime=True)
-print('JPEG detectado:', result)  # esperado: image/jpeg
-"
+cd /opt/homebrew/var/www/realestate/odoo-docker/integration_tests
+
+# Full feature journey
+bash test_us17_s1_upload_journey.sh
+bash test_us17_s2_download_journey.sh
+bash test_us17_s3_delete_rbac.sh
+bash test_us17_s4_list_pagination.sh
+bash test_us17_s5_multitenancy_isolation.sh
+bash test_us17_s6_rbac_matrix.sh
 ```
 
-## Instalar Módulo
+---
 
-```bash
-# Instalar/atualizar quicksol_estate (inclui o novo controller)
-docker compose exec odoo odoo -d realestate -u quicksol_estate --stop-after-init
+## Configuring Size Limit for Tests
 
-# Verificar logs
-docker compose logs --tail=50 odoo | grep -E "error|ERROR|Module.*quicksol"
+The file size limit is read from `ir.config_parameter` key `web.max_file_upload_size` (value in bytes).
+
+### Option A: Odoo UI
+
+1. Go to `Settings → Technical → Parameters → System Parameters`
+2. Search for `web.max_file_upload_size`
+3. Set value in bytes (e.g., `10485760` for 10 MB)
+
+### Option B: Python (in setUp / tearDown of integration tests)
+
+```python
+# setUp: set limit to 10 MB for test
+self.env['ir.config_parameter'].sudo().set_param('web.max_file_upload_size', '10485760')
+
+# tearDown: restore default
+self.env['ir.config_parameter'].sudo().set_param('web.max_file_upload_size', '134217728')
 ```
 
-## Configuração do Limite de Upload
-
-O limite padrão é 128 MB. Para alterar:
+### Option C: psql (for E2E bash tests)
 
 ```bash
-# Via psql
-docker compose exec db psql -U odoo -d realestate -c "
-UPDATE ir_config_parameter
-SET value = '52428800'   -- 50 MB
-WHERE key = 'web.max_file_upload_size';
-"
+# Set limit to 10 MB
+docker compose exec db psql -U odoo -d realestate -c \
+  "INSERT INTO ir_config_parameter (key, value) VALUES ('web.max_file_upload_size', '10485760')
+   ON CONFLICT (key) DO UPDATE SET value = '10485760';"
 
-# Inserir se não existir (Odoo cria automaticamente, mas para garantir):
-docker compose exec db psql -U odoo -d realestate -c "
-INSERT INTO ir_config_parameter (key, value, create_uid, write_uid, create_date, write_date)
-SELECT 'web.max_file_upload_size', '134217728', 1, 1, now(), now()
-WHERE NOT EXISTS (
-  SELECT 1 FROM ir_config_parameter WHERE key = 'web.max_file_upload_size'
-);
-"
+# Restore after test
+docker compose exec db psql -U odoo -d realestate -c \
+  "UPDATE ir_config_parameter SET value = '134217728' WHERE key = 'web.max_file_upload_size';"
 ```
 
-## Rodar Testes Unitários
+---
+
+## Manual API Testing (curl)
+
+### Upload an image
 
 ```bash
-# Testes unitários via Odoo test runner
-docker compose exec odoo odoo -d realestate \
-  --test-enable \
-  --test-file=/opt/odoo/extra-addons/quicksol_estate/tests/unit/test_property_attachments_unit.py \
-  --stop-after-init \
-  2>&1 | grep -E "PASS|FAIL|ERROR|Ran"
-```
+PROPERTY_ID=1
+BASE_URL=http://localhost:8069
 
-## Rodar Testes de Integração E2E
-
-```bash
-# Configurar variáveis de ambiente (ou usar .env)
-export BASE_URL="http://localhost:8069"
-export JWT_TOKEN="<seu-token-jwt>"
-export SESSION_ID="<seu-session-id>"
-export COMPANY_ID="1"
-export PROPERTY_ID="<id-de-propriedade-existente>"
-
-# Rodar script E2E
-cd integration_tests
-bash test_property_attachments_api.sh
-```
-
-## Teste Manual Rápido (curl)
-
-```bash
-BASE="http://localhost:8069"
-TOKEN="<jwt>"
-SESSION="<session_id>"
-PROPERTY_ID=7
-
-# 1. Upload de imagem
-curl -X POST "$BASE/api/v1/properties/$PROPERTY_ID/attachments" \
+curl -X POST "$BASE_URL/api/v1/properties/$PROPERTY_ID/attachments" \
   -H "Authorization: Bearer $TOKEN" \
-  -H "Cookie: session_id=$SESSION" \
-  -F "file=@/tmp/test.jpg;type=image/jpeg" \
+  -b /tmp/cookies.txt \
+  -F "file=@/path/to/image.jpg" \
   -F "attachment_type=image"
-
-# 2. Listar attachments
-curl -X GET "$BASE/api/v1/properties/$PROPERTY_ID/attachments" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Cookie: session_id=$SESSION"
-
-# 3. Listar apenas imagens
-curl -X GET "$BASE/api/v1/properties/$PROPERTY_ID/attachments?attachment_type=image" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Cookie: session_id=$SESSION"
-
-# 4. Download (substitua 42 pelo ID retornado no upload)
-curl -X GET "$BASE/api/v1/properties/$PROPERTY_ID/attachments/42/download" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Cookie: session_id=$SESSION" \
-  -o /tmp/downloaded.jpg
-
-# 5. Delete
-curl -X DELETE "$BASE/api/v1/properties/$PROPERTY_ID/attachments/42" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Cookie: session_id=$SESSION"
 ```
 
-## Verificar Registros no Banco
+Expected response (201):
+```json
+{
+  "status": "success",
+  "data": {
+    "id": 42,
+    "name": "image.jpg",
+    "mimetype": "image/jpeg",
+    "size": 204800,
+    "attachment_type": "image",
+    "uploaded_at": "2026-05-08T14:30:00Z",
+    "links": {
+      "download": "/api/v1/properties/1/attachments/42/download",
+      "self": "/api/v1/properties/1/attachments/42"
+    }
+  }
+}
+```
+
+### List attachments
 
 ```bash
-docker compose exec db psql -U odoo -d realestate -c "
-SELECT id, name, mimetype, description, file_size, store_fname, company_id
-FROM ir_attachment
-WHERE res_model = 'real.estate.property'
-  AND description IN ('image', 'document')
-ORDER BY create_date DESC
-LIMIT 10;
-"
+curl -X GET "$BASE_URL/api/v1/properties/$PROPERTY_ID/attachments?attachment_type=image&limit=10" \
+  -H "Authorization: Bearer $TOKEN" \
+  -b /tmp/cookies.txt
 ```
 
-## Arquivos Relevantes
+### Download an attachment
 
-| Arquivo | Descrição |
-|---------|-----------|
-| [18.0/Dockerfile](../../../18.0/Dockerfile) | Deve conter `libmagic1` no apt-get |
-| [controllers/property_attachments_controller.py](../../../18.0/extra-addons/quicksol_estate/controllers/property_attachments_controller.py) | Controller principal — 4 endpoints |
-| [controllers/utils/serializers.py](../../../18.0/extra-addons/quicksol_estate/controllers/utils/serializers.py) | `serialize_property_mapping_fields` — atualização Phase 4 |
-| [tests/unit/test_property_attachments_unit.py](../../../18.0/extra-addons/quicksol_estate/tests/unit/test_property_attachments_unit.py) | Testes unitários |
-| [integration_tests/test_property_attachments_api.sh](../../../integration_tests/test_property_attachments_api.sh) | Testes E2E |
-
-## Troubleshooting
-
-### ImportError: failed to find libmagic
-
-```
-ImportError: failed to find libmagic.  Check your installation
-```
-
-**Solução**: Rebuild da imagem Docker com `libmagic1` instalado.
-
-### Upload retorna 415 com arquivo válido
-
-Verifique se o arquivo realmente tem magic bytes corretos:
 ```bash
-docker compose exec odoo python3 -c "
-import magic
-with open('/tmp/test.jpg', 'rb') as f:
-    content = f.read(2048)
-print(magic.from_buffer(content, mime=True))
-"
+ATTACHMENT_ID=42
+
+curl -X GET "$BASE_URL/api/v1/properties/$PROPERTY_ID/attachments/$ATTACHMENT_ID/download" \
+  -H "Authorization: Bearer $TOKEN" \
+  -b /tmp/cookies.txt \
+  --output downloaded_file.jpg
 ```
 
-### download_url aponta para /web/content/
+Verify headers contain:
+- `Content-Security-Policy: default-src 'none'`
+- `X-Content-Type-Options: nosniff`
+- `Content-Disposition: attachment; filename="image.jpg"`
 
-Verifique se o controller está sendo carregado corretamente (restart Odoo + update módulo).
+### Delete an attachment
+
+```bash
+curl -X DELETE "$BASE_URL/api/v1/properties/$PROPERTY_ID/attachments/$ATTACHMENT_ID" \
+  -H "Authorization: Bearer $TOKEN" \
+  -b /tmp/cookies.txt \
+  -w "%{http_code}"
+```
+
+Expected: `204` with empty body.
+
+---
+
+## Test Fixtures
+
+Fixtures are located at `18.0/extra-addons/quicksol_estate/tests/fixtures/`.
+
+| File | Size | Purpose |
+|------|------|---------|
+| `seed_image.jpg` | < 2 MB | Valid JPEG for upload tests |
+| `seed_document.pdf` | < 2 MB | Valid PDF for upload tests |
+| `seed_malicious.jpg` | small | PHP script with `.jpg` extension — must be rejected (415) |
+| `seed_large.jpg` | > 10 MB | Oversized file — use with size limit set to 10 MB |
+
+Verify fixtures exist before running tests:
+
+```bash
+ls -lh 18.0/extra-addons/quicksol_estate/tests/fixtures/
+```
+
+---
+
+## Linting
+
+```bash
+cd /opt/homebrew/var/www/realestate/odoo-docker/18.0
+bash lint.sh
+```
+
+The controller must pass `pylint ≥ 8.0`, `black`, and `isort` checks (ADR-022).

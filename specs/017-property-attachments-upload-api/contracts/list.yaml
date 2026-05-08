@@ -1,0 +1,192 @@
+openapi: "3.0.3"
+info:
+  title: Property Attachments — List
+  version: "1.0"
+
+paths:
+  /api/v1/properties/{property_id}/attachments:
+    get:
+      summary: List attachments for a property (paginated, filterable by type)
+      operationId: listPropertyAttachments
+      tags: [PropertyAttachments]
+      security:
+        - BearerAuth: []
+        - SessionCookie: []
+      parameters:
+        - name: property_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: attachment_type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [image, document]
+          description: Filter by attachment type. Omit to return all types.
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+            minimum: 1
+            maximum: 100
+          description: Maximum number of results (capped at 100)
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+          description: Zero-based pagination offset
+      responses:
+        "200":
+          description: Attachment list (may be empty)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListSuccessResponse"
+              example:
+                status: success
+                data:
+                  items:
+                    - id: 42
+                      name: floor-plan.jpg
+                      mimetype: image/jpeg
+                      size: 204800
+                      attachment_type: image
+                      uploaded_at: "2026-05-08T14:30:00Z"
+                      links:
+                        download: /api/v1/properties/5/attachments/42/download
+                  pagination:
+                    total: 1
+                    limit: 50
+                    offset: 0
+        "400":
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                invalid_type:
+                  value: {error: invalid_attachment_type, detail: 'Invalid attachment_type "video". Allowed: image, document.'}
+                invalid_pagination:
+                  value: {error: validation_error, detail: Invalid limit or offset value.}
+        "401":
+          description: Missing or invalid JWT
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Property not found in current company scope
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: not_found
+                detail: Property not found.
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: internal_error
+                detail: An unexpected error occurred.
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    SessionCookie:
+      type: apiKey
+      in: cookie
+      name: session_id
+
+  schemas:
+    AttachmentListItem:
+      type: object
+      required: [id, name, mimetype, size, attachment_type, uploaded_at, links]
+      properties:
+        id:
+          type: integer
+          example: 42
+        name:
+          type: string
+          example: floor-plan.jpg
+        mimetype:
+          type: string
+          example: image/jpeg
+        size:
+          type: integer
+          description: File size in bytes
+          example: 204800
+        attachment_type:
+          type: string
+          enum: [image, document]
+          example: image
+        uploaded_at:
+          type: string
+          format: date-time
+          example: "2026-05-08T14:30:00Z"
+        links:
+          type: object
+          required: [download]
+          properties:
+            download:
+              type: string
+              description: NEVER /web/content/ — always /api/v1/...
+              example: /api/v1/properties/5/attachments/42/download
+
+    Pagination:
+      type: object
+      required: [total, limit, offset]
+      properties:
+        total:
+          type: integer
+          description: Total count filtered to current company scope (CHK019 / FR7.4)
+          example: 1
+        limit:
+          type: integer
+          example: 50
+        offset:
+          type: integer
+          example: 0
+
+    ListSuccessResponse:
+      type: object
+      required: [status, data]
+      properties:
+        status:
+          type: string
+          enum: [success]
+        data:
+          type: object
+          required: [items, pagination]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/AttachmentListItem"
+            pagination:
+              $ref: "#/components/schemas/Pagination"
+
+    ErrorResponse:
+      type: object
+      required: [error, detail]
+      properties:
+        error:
+          type: string
+          example: not_found
+        detail:
+          type: string
+          example: Property not found.

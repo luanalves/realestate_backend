@@ -1,233 +1,178 @@
-# Research: Property Attachments Upload API (017)
+# Phase 0 Research: Property Attachments Upload API
 
-**Phase**: 0 | **Feature**: 017 | **Date**: 2026-05-06
-
-## R001 — Upload Pipeline Técnico
-
-**Decision**: `multipart/form-data` → Werkzeug `FileStorage` → `bytes` em memória → base64 → `ir.attachment.datas`
-
-**Rationale**:
-- `request.httprequest.files.get('file')` retorna Werkzeug `FileStorage` — padrão já confirmado em `proposal_controller.py` (linha 627)
-- `upload.read()` → bytes crus; `base64.b64encode(content)` → campo ORM `ir.attachment.datas` (computed field que persiste em disco via filestore)
-- O cliente envia binário via `multipart/form-data`, NUNCA base64 no body JSON
-
-**Reference implementation**: `proposal_controller.py:621-660` — upload para `ir.attachment` já validado em produção.
-
-**Alternatives considered**:
-- JSON body com base64: rejeitado — 33% overhead, browser/mobile APIs usam multipart nativamente
-- Stream direto para disco: rejeitado — Odoo ORM não suporta streaming; `attachment.raw` em memória é aceitável até 128 MB
+**Date**: 2026-05-08 | **Branch**: `017-property-attachments-upload-api`
+**Status**: Complete — all unknowns resolved
 
 ---
 
-## R002 — Validação de MIME: python-magic vs upload.mimetype
+## Summary
 
-**Decision**: `python-magic` com `magic.from_buffer(content[:2048], mime=True)` — sem fallback
-
-**Rationale**:
-- `upload.mimetype` (Werkzeug) lê o `Content-Type` enviado pelo cliente — facilmente falsificável (ex: `.exe` com `Content-Type: image/jpeg`)
-- `python-magic` inspeciona os primeiros bytes do arquivo (magic bytes), independente do header HTTP
-- Sem fallback a `mimetypes.guess_type()`: falha explícita é mais segura que validação silenciosa fraca
-- Apenas 2048 bytes precisam ser lidos para magic bytes — eficiente para arquivos grandes
-
-**API pattern**:
-```python
-import magic
-
-detected_mime = magic.from_buffer(content[:2048], mime=True)
-if detected_mime not in ALLOWED_IMAGE_MIMETYPES | ALLOWED_DOCUMENT_MIMETYPES:
-    return error_response('VALIDATION_ERROR', 'File type not allowed', 415)
-```
-
-**Prerequisites**:
-- pip: `python-magic` (já declarado como dependência no módulo)
-- apt (Dockerfile): `libmagic1` — biblioteca C obrigatória; sem ela, `import magic` falha silenciosamente ou levanta `ImportError`
-
-**Alternatives considered**:
-- `upload.mimetype` (Werkzeug): rejeitado — client-controlled, não é security control
-- `mimetypes.guess_type(filename)`: rejeitado — baseado em extensão, facilmente falsificável
-- `imghdr` (stdlib): rejeitado — deprecated no Python 3.11+, suporta apenas imagens
+No technical unknowns remain. All architectural decisions were resolved during the security checklist review (42/42 items closed across 8 categories). This document records the confirmed decisions and the implementation gaps discovered when comparing the existing controller against the finalized spec.
 
 ---
 
-## R003 — Armazenamento: ir.attachment vs Custom Models
+## Confirmed Decisions
 
-**Decision**: Usar `ir.attachment` diretamente com `res_model='real.estate.property'`; sistemas paralelos intencionais
+### D001 — `ir.attachment` as storage (no custom model)
 
-**Rationale**:
-- Modelos existentes `real.estate.property.photo` e `real.estate.property.document` têm funcionalidades UI ricas: thumbnails (`image_medium`, `image_small`), `is_main`, `sequence`, `document_type`, `is_confidential` — esses dados são usados pela interface Odoo e serialize_property no contexto de Spec 016
-- A nova API (Spec 017) serve dados brutos ao cliente mobile: upload → `ir.attachment` → download via `/api/v1/...`
-- Os dois sistemas coexistem: `photo_ids`/`document_ids` (custom models) continuam sendo retornados pelo `serialize_property` para a lista de propriedades; o novo endpoint `/api/v1/properties/{id}/attachments` retorna apenas `ir.attachment` records
-- **Sem migração de dados**: nenhum registro existente é alterado
+- **Decision**: Use Odoo native `ir.attachment` with `res_model='real.estate.property'` and `res_id=property_id`.
+- **Rationale**: Standard Odoo pattern. Already used for proposals (`res_model='real.estate.proposal'`). Natively displayed in chatter and attachment panel without custom views.
+- **Alternatives rejected**: Custom `real.estate.property.attachment` model — unnecessary complexity, no functional advantage.
 
-**ir.attachment fields usados**:
-```python
-{
-    'name': secure_filename(upload.filename),
-    'datas': base64.b64encode(content),
-    'res_model': 'real.estate.property',
-    'res_id': property_id,
-    'mimetype': detected_mime,   # de python-magic, não do header HTTP
-    'description': 'image' or 'document',  # discriminador de tipo
-    'company_id': request.env.company.id,
-}
-```
+### D002 — `ir.attachment.description` as type discriminator
 
-**Discriminador de tipo**: `ir.attachment.description` field (`"image"` ou `"document"`). Campo existente no modelo ORM — sem necessidade de migration.
+- **Decision**: `description='image'` or `description='document'` — internal discriminator only.
+- **Rationale**: No model extension needed. `description` is a free-text field with no Odoo-internal semantic — safe for custom use as a type discriminator.
+- **Security**: `description` is NOT exposed as free-text in API requests. `attachment_type` form field is validated against enum `{'image', 'document'}` before being written to `description`.
 
-**Cascade delete**: comportamento nativo do Odoo — quando o registro `real.estate.property` é deletado, os `ir.attachment` vinculados são automaticamente removidos (Odoo 18.0 comportamento padrão via `res_id`/`res_model` cleanup). Documentado em FR3.4 da spec.
+### D003 — `python-magic` for content validation (no fallback)
 
-**Alternatives considered**:
-- Escrever nos custom models (`PropertyPhoto`/`PropertyDocument`): rejeitado — esses modelos têm validadores e lógica de thumbnail que interferem com a API; acopla o novo sistema a modelos que podem evoluir independentemente
-- Novo modelo customizado: rejeitado — `ir.attachment` já provê tudo necessário; criar novo modelo viola YAGNI
+- **Decision**: `magic.from_buffer(content[:2048], mime=True)` — detect actual MIME type from file bytes.
+- **Rationale**: Prevents script-as-image attacks (PHP, Python, JS disguised as JPEG). `libmagic1` is guaranteed via Dockerfile (lines 21/25 of `18.0/Dockerfile`). Explicit failure (ImportError, MagicException) is safer than silent weak validation.
+- **Confirmed**: `libmagic1` present in `18.0/Dockerfile` lines 21 (`libmagic1`) and 25 (`python3-magic`).
+- **Alternative rejected**: `mimetypes.guess_type()` — based on filename extension, trivially spoofable.
 
----
+### D004 — Secure download endpoint (no redirect to `/web/content/`)
 
-## R004 — Download: attachment.raw vs ir.attachment.datas
+- **Decision**: Controller reads `att.raw` (bytes) and returns `werkzeug.wrappers.Response` directly with security headers.
+- **Rationale**: `/web/content/{id}` is not behind the API Gateway → no JWT validation → unauthenticated access. Any URL containing `/web/content/` in `download_url` would be a security vulnerability.
+- **Headers required**: `Content-Security-Policy: default-src 'none'`, `X-Content-Type-Options: nosniff`.
+- **Invariant enforced**: Unit tests T013/T015 assert `download_url` never contains `/web/content/`.
 
-**Decision**: `attachment.raw` (Odoo 14+ API) retornando `werkzeug.wrappers.Response`
+### D005 — `web.max_file_upload_size` for size limit; hardcoded quantity constants
 
-**Rationale**:
-- `attachment.raw` retorna `bytes` diretamente do disco sem encode/decode base64 — mais eficiente que `attachment.datas` (que retorna base64)
-- `werkzeug.wrappers.Response` com headers corretos: `Content-Type`, `Content-Disposition`, `Content-Security-Policy: default-src 'none'`
-- Download URL: `/api/v1/properties/{property_id}/attachments/{attachment_id}/download` — NUNCA `/web/content/{id}` (que bypassa o API Gateway)
-- Aceitável para arquivos até 128 MB em memória; streaming seria necessário apenas para limites > 500 MB
+- **Decision**: File size limit from `ir.config_parameter` key `web.max_file_upload_size` (Odoo native, value in bytes). Default 128 MB if absent. Quantity limits hardcoded: `MAX_IMAGES_PER_PROPERTY = 50`, `MAX_DOCUMENTS_PER_PROPERTY = 20`.
+- **Rationale**: Reuses Odoo's built-in file upload parameter (admin-configurable via UI without custom code). Hardcoded quantity constants avoid a custom settings model, consistent with spec decision to minimize infrastructure.
+- **Gap discovered**: Current controller uses `ir.config_parameter` for quantity limits too (keys `quicksol_estate.max_images_per_property`, `quicksol_estate.max_documents_per_property`). This deviates from spec. See gap-06.
 
-**Pattern**:
-```python
-from werkzeug.wrappers import Response
+### D006 — No Odoo UI changes
 
-content = attachment.raw   # bytes
-return Response(
-    content,
-    status=200,
-    headers={
-        'Content-Type': attachment.mimetype,
-        'Content-Disposition': f'attachment; filename="{attachment.name}"',
-        'Content-Security-Policy': "default-src 'none'",
-        'X-Content-Type-Options': 'nosniff',
-    }
-)
-```
+- **Decision**: No custom views, menus, or actions for this feature.
+- **Rationale**: `ir.attachment` records with `res_model + res_id` appear automatically in the Odoo chatter and attachment panel. No view code needed.
 
-**Alternatives considered**:
-- `ir.attachment.datas` (base64): rejeitado — requer decode, overhead de memória ~33%
-- `werkzeug.wsgi.wrap_file()` + streaming: rejeitado — complexidade desnecessária para o limite de 128 MB
-- `/web/content/{id}` redirect: PROIBIDO — bypassa Gateway, expõe Odoo diretamente
+### D007 — Upload flow: multipart/form-data → bytes → base64 → filestore
+
+- **Decision**: Client sends binary multipart (not base64). Controller reads bytes, validates, then encodes to base64 for `ir.attachment.datas`. Download reverses via `att.raw`.
+- **Rationale**: Standard HTTP file upload pattern. Base64 encoding is an ORM implementation detail — not the API contract.
 
 ---
 
-## R005 — Limite de Tamanho via ir.config_parameter
+## Technology Research
 
-**Decision**: Leitura dinâmica de `web.max_file_upload_size` via `ir.config_parameter`; default: 128 MB
+### `python-magic` (resolved)
 
-**Rationale**:
-- Permite configuração por ambiente sem deploy de código
-- Chave padrão Odoo, usada pelo próprio frontend Odoo para validação no browser
-- Default 134217728 bytes (128 MB) é consistente com Odoo standard
+- **Version**: installed as `python3-magic` in Dockerfile
+- **Usage**: `magic.from_buffer(content[:2048], mime=True)` — only first 2048 bytes needed for magic number detection
+- **Error handling**: No try/except around `_detect_mime()` — if `libmagic1` is missing, the container is misconfigured; an unhandled ImportError is the correct failure signal
 
-**Pattern**:
-```python
-IrConfig = request.env['ir.config_parameter'].sudo()
-max_bytes = int(IrConfig.get_param('web.max_file_upload_size', default=134217728))
-```
+### `werkzeug.utils.secure_filename` (resolved)
 
-**Alternatives considered**:
-- Hardcode no controller: rejeitado — impossibilita ajuste por ambiente
-- Constante no módulo: rejeitado — requer redeploy para mudança
+- **Already available**: Werkzeug is bundled with Odoo
+- **Behavior**: Removes path traversal sequences, strips non-ASCII, replaces spaces with underscores
+- **Empty result**: When `secure_filename()` returns `''` (e.g., all-non-ASCII filename), controller falls back to `'untitled'` (FR1.5 spec requirement)
 
----
+### `ir.attachment.raw` (resolved)
 
-## R006 — Limites de Quantidade por Tipo
+- **Odoo 18.0**: `.raw` property returns `bytes` directly from filestore without loading the full `datas` base64 field. Efficient for streaming large files.
+- **No intermediate copy**: filestore is the final destination; no temporary directories involved
 
-**Decision**: Constantes hardcoded no controller: `MAX_IMAGES_PER_PROPERTY = 50`, `MAX_DOCUMENTS_PER_PROPERTY = 20`
+### `request.company_domain` (resolved)
 
-**Rationale**:
-- Proposta original da spec; nenhum requisito de configurabilidade levantado
-- Verificação via contagem de `ir.attachment` records existentes antes de criar novo
-- Contagem: `env['ir.attachment'].search_count([('res_model', '=', 'real.estate.property'), ('res_id', '=', property_id), ('description', '=', attachment_type)])`
-
-**Alternatives considered**:
-- `ir.config_parameter`: overkill para limites operacionais; nenhum requisito de configurabilidade
+- **Source**: `require_company` decorator (ADR-011) sets `request.company_domain` after validating the user has at least one real-estate company. Domain is a list of conditions for filtering by `company_id`.
+- **Anti-enumeration**: property not found in company domain → 404 (not 403). This hides existence of cross-company records.
 
 ---
 
-## R007 — Filename Sanitization
+## Implementation Gaps (vs Finalized Spec)
 
-**Decision**: `werkzeug.utils.secure_filename(upload.filename)` + fallback para `untitled`
+### gap-01: 413 error body
 
-**Rationale**:
-- `secure_filename` remove path traversal characters, espaços, caracteres não-ASCII
-- Fallback necessário: `secure_filename` pode retornar string vazia para nomes com apenas caracteres não-ASCII
-- Preservar extensão original após sanitização
+| | Current | Spec (FR1.3) |
+|---|---|---|
+| Error code | `PAYLOAD_TOO_LARGE` | `file_too_large` |
+| `received_size` field | Missing | Required |
+| `detail` field | Missing | Required |
 
-**Pattern**:
-```python
-from werkzeug.utils import secure_filename
+**Fix**: Update `upload_attachment` handler. Pass `received_size=len(content)` in error extras.
 
-raw_name = upload.filename or ''
-safe_name = secure_filename(raw_name) or 'untitled'
-```
+### gap-02: 422 error body
+
+| | Current | Spec (FR1.4) |
+|---|---|---|
+| Error code | `UNPROCESSABLE_ENTITY` | `attachment_limit_exceeded` |
+| `detail` field | Missing | Required |
+| `attachment_type` field | Missing | Required |
+| `limit` field | Missing | Required |
+| `current` field | Missing | Required |
+
+**Fix**: Update 422 `error_response()` call with all required fields.
+
+### gap-03: 400 error bodies (FR1.1a)
+
+| Condition | Current code | Spec code |
+|-----------|-------------|-----------|
+| No `file` field | `VALIDATION_ERROR` | `missing_file` |
+| No `attachment_type` field | `VALIDATION_ERROR` | `missing_attachment_type` |
+| Invalid `attachment_type` value | `VALIDATION_ERROR` | `invalid_attachment_type` (+ `received` extra) |
+
+**Fix**: Use specific error codes in `upload_attachment`. Add `"received": attachment_type` extra for `invalid_attachment_type`.
+
+### gap-04: 415 error bodies (FR6.7)
+
+| Condition | Current code | Spec code |
+|-----------|-------------|-----------|
+| MIME not in global whitelist | `UNSUPPORTED_MEDIA_TYPE` | `unsupported_mime` |
+| MIME valid globally but wrong type | `VALIDATION_ERROR` | `mime_mismatch` (HTTP 415) |
+
+**Fix**: Both cases should return 415. Use `unsupported_mime` for global whitelist rejection, `mime_mismatch` for type mismatch.
+
+### gap-05: Empty file validation (FR1.5a)
+
+- **Missing**: No check for `len(content) == 0`
+- **Fix**: Add check after `content = upload.read()`. Return 400 `empty_file` if `len(content) == 0`.
+
+### gap-06: Quantity limits source
+
+- **Current**: `ir.config_parameter` (`quicksol_estate.max_images_per_property`, `quicksol_estate.max_documents_per_property`)
+- **Spec**: Hardcoded constants `MAX_IMAGES_PER_PROPERTY = 50`, `MAX_DOCUMENTS_PER_PROPERTY = 20`
+- **Risk of current approach**: `ValueError` → unhandled → 500 if params are not seeded
+- **Fix (pending owner decision)**: Replace `_get_max_images_per_property()` / `_get_max_documents_per_property()` with constant references. Remove the two helper functions.
+
+### gap-07: API integration tests
+
+- **Missing**: `18.0/extra-addons/quicksol_estate/tests/api/test_property_attachments_api.py`
+- **Coverage needed**: upload success (image + document), upload failures (all 400/413/415/422 codes), list with pagination + type filter, download (streaming headers), delete (RBAC), cross-company 404
+
+### gap-08: E2E bash scripts
+
+- **Missing**: `integration_tests/test_us17_*.sh`
+- **Pattern**: Follow Feature 013/015 E2E test structure (see `integration_tests/test_us15_*.sh`)
+- **Scenarios**: US1 upload journey, US3 download journey, US4 delete journey, US6 list journey
+
+### gap-09: Swagger
+
+- **Missing**: 4 records in `thedevkitchen_api_endpoint` table
+- **Method**: XML data file → module upgrade → DB → Swagger UI (swagger-updater skill, ADR-005)
+
+### gap-10: Postman collection
+
+- **Missing**: `docs/postman/feature017_property_attachments_v1.0_postman_collection.json`
+- **Pattern**: Follow ADR-016 and existing collections in `docs/postman/`
+
+### gap-11: `serialize_property()` integration
+
+- **Missing**: `download_url` field in `property_images` and `property_files` in serializer response
+- **Target file**: `18.0/extra-addons/quicksol_estate/controllers/utils/serializers.py`
+- **Invariant**: Generated URLs must use `/api/v1/properties/{id}/attachments/{aid}/download` — never `/web/content/{id}`
+
+### gap-12: Constitution v1.7.0
+
+- **Missing**: 5 new patterns from Feature 017 not yet documented
+- **Patterns**: File Upload Sub-resource, Magic Bytes Validation, Secure Download Endpoint, Gateway-Aware URL Generation, Global File Size via `ir.config_parameter`
+- **Version bump**: MINOR (1.6.0 → 1.7.0)
 
 ---
 
-## R008 — Multi-tenancy: Isolamento por Company
+## Summary: No Unknowns Remain
 
-**Decision**: Dupla verificação: `require_company` decorator + query explícita `company_id`
-
-**Rationale**:
-- `require_company` garante que `request.env.company` está configurado
-- Na busca de `ir.attachment`, sempre filtrar via `res_id` de propriedade que pertence à company do usuário
-- Pattern: buscar a propriedade primeiro → verificar `property.company_id == request.env.company` → só então operar nos attachments
-- Anti-enumeration: propriedade de outra company retorna 404 (não 403)
-
-**Pattern** (ver Feature 013 reference, `_fetch_proposal()`):
-```python
-def _fetch_property_for_company(property_id):
-    prop = request.env['real.estate.property'].browse(property_id)
-    if not prop.exists() or prop.company_id != request.env.company:
-        return None  # 404 — sem leakage de informação
-    return prop
-```
-
----
-
-## R009 — Estrutura de Arquivos do Módulo
-
-**Decision**: Novo controller `property_attachments_controller.py` em `controllers/` do módulo `quicksol_estate`
-
-**Rationale**:
-- Módulo existente; nenhum novo módulo necessário
-- Convenção ADR-004: `quicksol_estate` é o módulo de domínio correto para propriedades
-- Controller separado mantém SRP; não misturar com CRUD de propriedade em `property_api.py`
-- Registrar no `controllers/__init__.py`
-
-**Alternatives considered**:
-- Adicionar ao `property_api.py`: rejeitado — SRP; property_api.py já tem ~680 linhas
-- Novo módulo `thedevkitchen_property_attachments`: rejeitado — overhead de módulo para 4 endpoints; ADR-004 não requer separação de módulo para funcionalidades do mesmo domínio
-
----
-
-## R010 — Atualização do serialize_property (Phase 4)
-
-**Decision**: Atualizar `serialize_property_mapping_fields` para retornar `download_url` usando `/api/v1/...`; manter itens `photo_ids`/`document_ids` existentes com nova URL
-
-**Rationale**:
-- `serialize_property_mapping_fields` (serializers.py linha 110) atualmente gera URLs `/web/content/real.estate.property.photo/{id}/image?download=true`
-- Essas URLs acessam os custom models — não os novos `ir.attachment`
-- A atualização muda o formato da URL dos custom models para `/api/v1/properties/{property_id}/attachments/{id}/download` (indicando o tipo e ID correto)
-- Isso quebra backward compatibility — Phase 4 deve ser feita com coordenação com a equipe de mobile
-
-**Scope da mudança**: apenas o valor de `download_url` em `property_images` e `property_files` no serializer; estrutura de campos permanece igual.
-
----
-
-## Resolved Items
-
-| NEEDS CLARIFICATION | Resolução |
-|---------------------|-----------|
-| API python-magic para magic bytes | `magic.from_buffer(content[:2048], mime=True)` — R002 |
-| `attachment.raw` disponível em Odoo 18.0 | Confirmado — API introduzida no Odoo 14.0; estável em 18.0 — R004 |
-| Padrão de leitura de `ir.config_parameter` | `IrConfig.get_param('web.max_file_upload_size', default=134217728)` — R005 |
-| `werkzeug.utils.secure_filename` behavior | Remove path traversal, retorna empty string para nomes all-unicode — R007 |
-| Coexistência com custom models | Sistemas paralelos intencionais; sem migração — R003 |
-| Dockerfile change para libmagic1 | `RUN apt-get install -y --no-install-recommends libmagic1` — R002 |
+All 7 architectural decisions (D001–D007) are confirmed. All 12 gaps are catalogued with concrete fix descriptions. Phase 1 design can proceed immediately.
