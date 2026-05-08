@@ -546,33 +546,66 @@ class TestSerializerFields(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# T002 — gap-06: Quantity limits are hardcoded constants, not ir.config_parameter
+# T002 — Quantity limits are read from ir.config_parameter (seeded in system_parameters.xml)
 # ---------------------------------------------------------------------------
 
 class TestQuantityLimitConstants(unittest.TestCase):
-    """gap-06: MAX_IMAGES_PER_PROPERTY and MAX_DOCUMENTS_PER_PROPERTY are module constants."""
+    """Quantity limits are dynamic: ir.config_parameter keys seeded in system_parameters.xml."""
 
-    def test_max_images_constant_is_50(self):
-        self.assertEqual(ctrl.MAX_IMAGES_PER_PROPERTY, 50)
+    def _make_env(self, value):
+        mock_param = MagicMock()
+        mock_param.get_param.return_value = value
+        mock_env = MagicMock()
+        mock_env.__getitem__.return_value.sudo.return_value = mock_param
+        return mock_env, mock_param
 
-    def test_max_documents_constant_is_20(self):
-        self.assertEqual(ctrl.MAX_DOCUMENTS_PER_PROPERTY, 20)
+    def test_default_max_images_fallback_is_50(self):
+        self.assertEqual(ctrl._DEFAULT_MAX_IMAGES_PER_PROPERTY, 50)
 
-    def test_config_param_images_key_does_not_exist(self):
-        """CONFIG_PARAM_MAX_IMAGES must not exist — removed in gap-06."""
-        self.assertFalse(hasattr(ctrl, 'CONFIG_PARAM_MAX_IMAGES'))
+    def test_default_max_documents_fallback_is_20(self):
+        self.assertEqual(ctrl._DEFAULT_MAX_DOCUMENTS_PER_PROPERTY, 20)
 
-    def test_config_param_documents_key_does_not_exist(self):
-        """CONFIG_PARAM_MAX_DOCUMENTS must not exist — removed in gap-06."""
-        self.assertFalse(hasattr(ctrl, 'CONFIG_PARAM_MAX_DOCUMENTS'))
+    def test_config_param_images_key(self):
+        self.assertEqual(ctrl.CONFIG_PARAM_MAX_IMAGES, 'quicksol_estate.max_images_per_property')
 
-    def test_get_max_images_helper_does_not_exist(self):
-        """_get_max_images_per_property() must not exist — removed in gap-06."""
-        self.assertFalse(hasattr(ctrl, '_get_max_images_per_property'))
+    def test_config_param_documents_key(self):
+        self.assertEqual(ctrl.CONFIG_PARAM_MAX_DOCUMENTS, 'quicksol_estate.max_documents_per_property')
 
-    def test_get_max_documents_helper_does_not_exist(self):
-        """_get_max_documents_per_property() must not exist — removed in gap-06."""
-        self.assertFalse(hasattr(ctrl, '_get_max_documents_per_property'))
+    def test_get_max_images_reads_config_param(self):
+        mock_env, mock_param = self._make_env('30')
+        with patch.object(ctrl, 'request', create=True) as mock_req:
+            mock_req.env = mock_env
+            result = ctrl._get_max_images_per_property()
+        mock_param.get_param.assert_called_once_with(
+            ctrl.CONFIG_PARAM_MAX_IMAGES,
+            default=ctrl._DEFAULT_MAX_IMAGES_PER_PROPERTY,
+        )
+        self.assertEqual(result, 30)
+
+    def test_get_max_documents_reads_config_param(self):
+        mock_env, mock_param = self._make_env('15')
+        with patch.object(ctrl, 'request', create=True) as mock_req:
+            mock_req.env = mock_env
+            result = ctrl._get_max_documents_per_property()
+        mock_param.get_param.assert_called_once_with(
+            ctrl.CONFIG_PARAM_MAX_DOCUMENTS,
+            default=ctrl._DEFAULT_MAX_DOCUMENTS_PER_PROPERTY,
+        )
+        self.assertEqual(result, 15)
+
+    def test_get_max_images_falls_back_on_invalid_value(self):
+        mock_env, _ = self._make_env('not_a_number')
+        with patch.object(ctrl, 'request', create=True) as mock_req:
+            mock_req.env = mock_env
+            result = ctrl._get_max_images_per_property()
+        self.assertEqual(result, ctrl._DEFAULT_MAX_IMAGES_PER_PROPERTY)
+
+    def test_get_max_documents_falls_back_on_invalid_value(self):
+        mock_env, _ = self._make_env('bad')
+        with patch.object(ctrl, 'request', create=True) as mock_req:
+            mock_req.env = mock_env
+            result = ctrl._get_max_documents_per_property()
+        self.assertEqual(result, ctrl._DEFAULT_MAX_DOCUMENTS_PER_PROPERTY)
 
 
 # ---------------------------------------------------------------------------

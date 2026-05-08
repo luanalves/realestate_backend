@@ -20,8 +20,11 @@ _logger = logging.getLogger(__name__)
 # Constants
 # ---------------------------------------------------------------------------
 
-MAX_IMAGES_PER_PROPERTY = 50
-MAX_DOCUMENTS_PER_PROPERTY = 20
+_DEFAULT_MAX_IMAGES_PER_PROPERTY = 50
+_DEFAULT_MAX_DOCUMENTS_PER_PROPERTY = 20
+
+CONFIG_PARAM_MAX_IMAGES = 'quicksol_estate.max_images_per_property'
+CONFIG_PARAM_MAX_DOCUMENTS = 'quicksol_estate.max_documents_per_property'
 
 TYPE_IMAGE = 'image'
 TYPE_DOCUMENT = 'document'
@@ -61,6 +64,22 @@ def _get_max_upload_bytes():
         return int(IrConfig.get_param(CONFIG_PARAM_MAX_SIZE, default=DEFAULT_MAX_FILE_BYTES))
     except (ValueError, TypeError):
         return DEFAULT_MAX_FILE_BYTES
+
+
+def _get_max_images_per_property():
+    IrConfig = request.env['ir.config_parameter'].sudo()
+    try:
+        return int(IrConfig.get_param(CONFIG_PARAM_MAX_IMAGES, default=_DEFAULT_MAX_IMAGES_PER_PROPERTY))
+    except (ValueError, TypeError):
+        return _DEFAULT_MAX_IMAGES_PER_PROPERTY
+
+
+def _get_max_documents_per_property():
+    IrConfig = request.env['ir.config_parameter'].sudo()
+    try:
+        return int(IrConfig.get_param(CONFIG_PARAM_MAX_DOCUMENTS, default=_DEFAULT_MAX_DOCUMENTS_PER_PROPERTY))
+    except (ValueError, TypeError):
+        return _DEFAULT_MAX_DOCUMENTS_PER_PROPERTY
 
 
 def _att_error(status_code, error_code, detail, **extras):
@@ -199,7 +218,10 @@ class PropertyAttachmentsController(http.Controller):
                 )
 
             # Quantity limit (FR1.4) — 422
-            max_count = MAX_IMAGES_PER_PROPERTY if attachment_type == TYPE_IMAGE else MAX_DOCUMENTS_PER_PROPERTY
+            if attachment_type == TYPE_IMAGE:
+                max_count = _get_max_images_per_property()
+            else:
+                max_count = _get_max_documents_per_property()
             current_count = request.env['ir.attachment'].sudo().search_count([
                 ('res_model', '=', 'real.estate.property'),
                 ('res_id', '=', property_id),
