@@ -236,7 +236,7 @@ class PropertyAttachmentsController(http.Controller):
 
             if detected_mime not in allowed_for_type:
                 _logger.warning(
-                    'upload_attachment: MIME "%s" not valid for attachment_type "%s" on property %s (user=%s, company=%s)',
+                    'upload_attachment: MIME "%s" not valid for type "%s" on property %s (user=%s, company=%s)',
                     detected_mime, attachment_type, property_id,
                     request.env.user.id, request.env.company.id,
                 )
