@@ -58,7 +58,7 @@ Esta spec fecha essa lacuna. Os campos `property_images` e `property_files` pass
 
 **Acceptance Criteria**:
 - [ ] `POST /api/v1/properties/{id}/attachments` com `attachment_type=image` e arquivo JPEG/PNG/WebP aceita e persiste o arquivo
-- [ ] Arquivo acima do limite configurado retorna `413 Payload Too Large` com `max_size_mb` no erro
+- [ ] Arquivo acima do limite configurado retorna `413 Payload Too Large` com `max_size_bytes` e `received_size` no erro
 - [ ] MIME type não permitido retorna `415 Unsupported Media Type` com o tipo rejeitado
 - [ ] Magic bytes do arquivo divergindo do MIME declarado retorna `415 Unsupported Media Type`
 - [ ] Resposta inclui `id`, `name`, `mimetype`, `size`, `attachment_type`, `download_url` e `links` HATEOAS
@@ -194,7 +194,7 @@ Esta spec fecha essa lacuna. Os campos `property_images` e `property_files` pass
 
 **Acceptance Criteria**:
 - [ ] Controller lê `web.max_file_upload_size` via `env['ir.config_parameter'].sudo().get_param(...)` a cada upload
-- [ ] Upload acima do limite retorna `413` com `max_size_bytes` no body
+- [ ] Upload acima do limite retorna `413` com `max_size_bytes` e `received_size` no body
 - [ ] Sem o parâmetro configurado, o default de 128 MB é aplicado
 - [ ] A documentação da spec indica o caminho exato no Odoo UI para alterar o limite
 
@@ -216,8 +216,8 @@ Esta spec fecha essa lacuna. Os campos `property_images` e `property_files` pass
 **FR1: Upload de Arquivos**
 - FR1.1: `POST /api/v1/properties/{id}/attachments` aceita `multipart/form-data` com campos `file` (required) e `attachment_type=image|document` (required)
 - FR1.2: O sistema valida MIME type por magic bytes do conteúdo, não apenas pelo header Content-Type ou extensão do arquivo
-- FR1.3: Tamanho máximo é lido do parâmetro global `web.max_file_upload_size` via `env['ir.config_parameter'].sudo().get_param('web.max_file_upload_size', default=128*1024*1024)`. Nenhum modelo customizado de settings é necessário
-- FR1.4: Quantidade máxima de arquivos por propriedade é controlada por constantes no controller: `MAX_IMAGES_PER_PROPERTY = 50`, `MAX_DOCUMENTS_PER_PROPERTY = 20` (hardcoded — não há requisito de configurabilidade para quantidade)
+- FR1.3: Tamanho máximo é lido do parâmetro global `web.max_file_upload_size` via `env['ir.config_parameter'].sudo().get_param('web.max_file_upload_size', default=128*1024*1024)`. Nenhum modelo customizado de settings é necessário. Quando excedido, retorna `413 Payload Too Large` com body: `{"error": "file_too_large", "max_size_bytes": <limite>, "received_size": <tamanho_recebido>}`
+- FR1.4: Quantidade máxima de arquivos por propriedade é controlada por constantes no controller: `MAX_IMAGES_PER_PROPERTY = 50`, `MAX_DOCUMENTS_PER_PROPERTY = 20` (hardcoded — não há requisito de configurabilidade para quantidade). Quando excedido, retorna `422 Unprocessable Entity` com body: `{"error": "attachment_limit_exceeded", "attachment_type": "<image|document>", "limit": <constante>, "current": <quantidade_atual>}`
 - FR1.5: Filename é sanitizado com `werkzeug.utils.secure_filename()` antes do armazenamento. Se o resultado da sanitização for uma string vazia (filename ausente ou composto apenas de caracteres inválidos), o controller retorna `400 Bad Request` com `{"error": "missing_filename", "detail": "A valid filename is required."}`.
 - FR1.5a: Upload com conteúdo de arquivo zero-byte (campo `file` presente mas vazio) retorna `400 Bad Request` com `{"error": "empty_file", "detail": "File content cannot be empty."}`. A validação ocorre antes da magic bytes detection.
 - FR1.6: O sistema armazena o arquivo como `ir.attachment` com `res_model='real.estate.property'` e `res_id=property.id`
@@ -228,6 +228,7 @@ Esta spec fecha essa lacuna. Os campos `property_images` e `property_files` pass
 - FR2.2: O controller valida que `attachment.res_id == property.id` e `property.company_id == request.env.company`
 - FR2.3: A resposta é construída via `attachment.raw` (bytes completos via ORM) e retornada como `werkzeug.wrappers.Response` com `Content-Type` correto, `Content-Disposition: attachment; filename="..."`, `Content-Security-Policy: default-src 'none'` e `X-Content-Type-Options: nosniff`
 - FR2.4: O controller NUNCA emite redirect para `/web/content/{id}` — esse endpoint bypassa o API Gateway e portanto bypassa autenticação
+- FR2.5: O tamanho máximo dos arquivos servidos pelo endpoint de download é limitado implicitamente pelo parâmetro configurável `web.max_file_upload_size` — apenas arquivos que passaram pela validação de upload existem no storage. Não há limite adicional para download além deste.
 
 **FR3: Exclusão de Arquivos**
 - FR3.1: `DELETE /api/v1/properties/{id}/attachments/{attachment_id}` exige perfil Manager ou Owner
@@ -252,7 +253,7 @@ Esta spec fecha essa lacuna. Os campos `property_images` e `property_files` pass
 - FR7.1: `GET /api/v1/properties/{id}/attachments` retorna lista paginada dos metadados de `ir.attachment` vinculados à propriedade
 - FR7.2: Query params suportados: `attachment_type=image|document` (filtro opcional), `limit` (default 50, max 100), `offset` (default 0)
 - FR7.3: Cada item retorna: `id`, `name`, `mimetype`, `size`, `attachment_type`, `download_url` (rota `/api/v1/...`), `uploaded_at`, `links` (apenas `links.download` — sem `links.self`)
-- FR7.4: Multi-tenancy: apenas anexos da empresa do usuário autenticado são retornados
+- FR7.4: Multi-tenancy: apenas anexos da empresa do usuário autenticado são retornados. O campo `total` na resposta reflete **exclusivamente** a contagem dos anexos visíveis ao usuário (resultado da mesma query filtrada por empresa) — nunca uma contagem global.
 - FR7.5: Perfis Agent, Manager e Owner têm acesso de leitura à listagem
 
 **FR5: Multi-tenancy**
@@ -394,8 +395,8 @@ attachment_type (required) — enum: "image" | "document"
 | 400 | Nenhum arquivo enviado |
 | 403 | Perfil sem permissão de upload (Agent) |
 | 404 | Propriedade não encontrada ou de outra empresa (anti-enumeração) |
-| 413 | Arquivo excede o limite configurado (inclui `max_size_mb` no body) |
-| 422 | Limite de quantidade de arquivos da propriedade atingido |
+| 413 | Arquivo excede o limite configurado — body: `{"error": "file_too_large", "max_size_bytes": <limite>, "received_size": <recebido>}` |
+| 422 | Limite de quantidade atingido — body: `{"error": "attachment_limit_exceeded", "attachment_type": "<type>", "limit": <n>, "current": <n>}` |
 
 ---
 
