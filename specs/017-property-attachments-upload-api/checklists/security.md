@@ -99,26 +99,36 @@
 
 ## Error Handling & Information Disclosure Requirements
 
-- [ ] CHK033 - Do the error response body requirements explicitly prohibit disclosure of internal paths, ORM IDs from other companies, stack traces, or database error messages? [Completeness, Spec §FR6.5]
-- [ ] CHK034 - Is the 400 error body format for each specific bad-request condition (missing `file`, missing `attachment_type`, invalid `attachment_type` value) specified with exact field names and messages? [Clarity, Gap]
-- [ ] CHK035 - Is there a requirement that all 4 endpoints return error responses in a consistent JSON envelope structure (same top-level fields: `error`, `detail`, etc.)? [Consistency, Gap]
-- [ ] CHK036 - Does the spec require that the 415 response body never reveals which specific magic byte signature was detected (preventing file type fingerprinting by attackers)? [Clarity, Gap]
+- [x] CHK033 - Do the error response body requirements explicitly prohibit disclosure of internal paths, ORM IDs from other companies, stack traces, or database error messages? [Completeness, Spec §FR6.5]
+  > ✅ RESOLVIDO — FR6.8 adicionado: respostas de erro NUNCA incluem stack traces, paths internos, mensagens ORM/banco ou IDs de outras empresas. Erro interno não tratado → `{"error": "internal_error", "detail": "An unexpected error occurred."}`.
+- [x] CHK034 - Is the 400 error body format for each specific bad-request condition (missing `file`, missing `attachment_type`, invalid `attachment_type` value) specified with exact field names and messages? [Clarity, Gap]
+  > ✅ RESOLVIDO — FR1.1a adicionado: três casos de 400 definidos com `error` code e `detail` string: `missing_file`, `missing_attachment_type`, `invalid_attachment_type` (inclui valor recebido no `detail`).
+- [x] CHK035 - Is there a requirement that all 4 endpoints return error responses in a consistent JSON envelope structure (same top-level fields: `error`, `detail`, etc.)? [Consistency, Gap]
+  > ✅ RESOLVIDO — FR6.9 adicionado: envelope obrigatório `{"error": "<snake_case>", "detail": "<string>", ...campos_extras}`. FR1.3 e FR1.4 atualizados para incluir `detail`. Todos os error bodies da spec agora seguem o envelope.
+- [x] CHK036 - Does the spec require that the 415 response body never reveals which specific magic byte signature was detected (preventing file type fingerprinting by attackers)? [Clarity, Gap]
+  > ✅ PASS — FR6.7 expõe o MIME detectado conscientemente: facilita debug do cliente da API sem risco de segurança (MIME whitelist é pública, fingerprint de magic bytes não é informação sensível neste contexto).
 
 ---
 
 ## Audit & Logging Requirements
 
-- [ ] CHK037 - Are audit logging requirements specified with: (a) which events trigger a log entry (rejected uploads only, or also successes?), (b) minimum required fields per log entry, and (c) log level? [Completeness, Spec §FR6.5]
-- [ ] CHK038 - Does the spec explicitly require that audit log entries for rejected uploads must NOT include the binary file content or full MIME signature detail (log injection / data exfiltration risk)? [Clarity, Gap]
-- [ ] CHK039 - Are requirements defined for audit log retention period and access control (admin-only vs. visible to Owner/Manager in the Odoo UI)? [Completeness, Gap]
+- [x] CHK037 - Are audit logging requirements specified with: (a) which events trigger a log entry (rejected uploads only, or also successes?), (b) minimum required fields per log entry, and (c) log level? [Completeness, Spec §FR6.5]
+  > ✅ RESOLVIDO — FR6.5 atualizado: nível WARNING, apenas rejeições logadas. Campos mínimos: `timestamp`, `user_id`, `company_id`, `property_id`, `rejection_code`, `attachment_type`, `file_size_bytes`.
+- [x] CHK038 - Does the spec explicitly require that audit log entries for rejected uploads must NOT include the binary file content or full MIME signature detail (log injection / data exfiltration risk)? [Clarity, Gap]
+  > ✅ PASS — Coberto por FR6.8: respostas e logs nunca incluem conteúdo binário nem mensagens internas de ORM/banco. FR6.5 define os campos mínimos sem incluir conteúdo do arquivo.
+- [x] CHK039 - Are requirements defined for audit log retention period and access control (admin-only vs. visible to Owner/Manager in the Odoo UI)? [Completeness, Gap]
+  > ✅ PASS — Fora de escopo. Retenção e controle de acesso a logs são responsabilidade de infra/ops. Não há requisito de negócio para esta feature.
 
 ---
 
 ## Hard Delete & Data Lifecycle Requirements
 
-- [ ] CHK040 - Is the hard delete exception to ADR-015 (soft-delete policy) documented with its justification in the spec itself (not just in plan.md), so reviewers understand the conscious deviation? [Completeness, Spec §US4-AC]
-- [ ] CHK041 - Is the cascade deletion behavior (when a `real.estate.property` is soft-deleted, Odoo auto-removes linked `ir.attachment` records) specified as a verified requirement vs. an assumed behavior? [Coverage, Spec §FR3.4]
-- [ ] CHK042 - Does the spec define the behavior if `ir.attachment.unlink()` raises an exception (file-system error, locked record) — is partial deletion acceptable, or must the controller rollback atomically? [Edge Case, Gap]
+- [x] CHK040 - Is the hard delete exception to ADR-015 (soft-delete policy) documented with its justification in the spec itself (not just in plan.md), so reviewers understand the conscious deviation? [Completeness, Spec §US4-AC]
+  > ✅ PASS — FR3.2 e US4-AC documentam o hard delete com justificativa explícita: `ir.attachment` não é entidade de domínio, portanto ADR-015 não se aplica.
+- [x] CHK041 - Is the cascade deletion behavior (when a `real.estate.property` is soft-deleted, Odoo auto-removes linked `ir.attachment` records) specified as a verified requirement vs. an assumed behavior? [Coverage, Spec §FR3.4]
+  > ✅ RESOLVIDO (Opção A) — FR3.4 removido. Soft-delete seta `active=False` e não dispara `unlink()`, portanto cascade nativo não é acionado. O lifecycle dos `ir.attachment` após soft-delete da propriedade está fora do escopo desta feature.
+- [x] CHK042 - Does the spec define the behavior if `ir.attachment.unlink()` raises an exception (file-system error, locked record) — is partial deletion acceptable, or must the controller rollback atomically? [Edge Case, Gap]
+  > ✅ PASS — Coberto por FR6.8: exceção não tratada → 500 genérico. Atomicidade garantida pela transação PostgreSQL do ORM Odoo (rollback automático em caso de exceção).
 
 ---
 

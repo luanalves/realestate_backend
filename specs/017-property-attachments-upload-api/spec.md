@@ -215,9 +215,10 @@ Esta spec fecha essa lacuna. Os campos `property_images` e `property_files` pass
 
 **FR1: Upload de Arquivos**
 - FR1.1: `POST /api/v1/properties/{id}/attachments` aceita `multipart/form-data` com campos `file` (required) e `attachment_type=image|document` (required)
+- FR1.1a: Campos obrigatórios ausentes ou inválidos retornam `400 Bad Request` com os seguintes bodies: campo `file` ausente → `{"error": "missing_file", "detail": "A file is required."}`. Campo `attachment_type` ausente → `{"error": "missing_attachment_type", "detail": "attachment_type is required (image or document)."}`. Valor de `attachment_type` inválido → `{"error": "invalid_attachment_type", "detail": "Invalid attachment_type '<received>'. Allowed values: image, document."}`.
 - FR1.2: O sistema valida MIME type por magic bytes do conteúdo, não apenas pelo header Content-Type ou extensão do arquivo
-- FR1.3: Tamanho máximo é lido do parâmetro global `web.max_file_upload_size` via `env['ir.config_parameter'].sudo().get_param('web.max_file_upload_size', default=128*1024*1024)`. Nenhum modelo customizado de settings é necessário. Quando excedido, retorna `413 Payload Too Large` com body: `{"error": "file_too_large", "max_size_bytes": <limite>, "received_size": <tamanho_recebido>}`
-- FR1.4: Quantidade máxima de arquivos por propriedade é controlada por constantes no controller: `MAX_IMAGES_PER_PROPERTY = 50`, `MAX_DOCUMENTS_PER_PROPERTY = 20` (hardcoded — não há requisito de configurabilidade para quantidade). Quando excedido, retorna `422 Unprocessable Entity` com body: `{"error": "attachment_limit_exceeded", "attachment_type": "<image|document>", "limit": <constante>, "current": <quantidade_atual>}`
+- FR1.3: Tamanho máximo é lido do parâmetro global `web.max_file_upload_size` via `env['ir.config_parameter'].sudo().get_param('web.max_file_upload_size', default=128*1024*1024)`. Nenhum modelo customizado de settings é necessário. Quando excedido, retorna `413 Payload Too Large` com body: `{"error": "file_too_large", "detail": "File size exceeds the configured limit.", "max_size_bytes": <limite>, "received_size": <tamanho_recebido>}`
+- FR1.4: Quantidade máxima de arquivos por propriedade é controlada por constantes no controller: `MAX_IMAGES_PER_PROPERTY = 50`, `MAX_DOCUMENTS_PER_PROPERTY = 20` (hardcoded — não há requisito de configurabilidade para quantidade). Quando excedido, retorna `422 Unprocessable Entity` com body: `{"error": "attachment_limit_exceeded", "detail": "Maximum number of <type> attachments has been reached for this property.", "attachment_type": "<image|document>", "limit": <constante>, "current": <quantidade_atual>}`
 - FR1.5: Filename é sanitizado com `werkzeug.utils.secure_filename()` antes do armazenamento. Se o resultado da sanitização for uma string vazia (filename ausente ou composto apenas de caracteres inválidos), o controller retorna `400 Bad Request` com `{"error": "missing_filename", "detail": "A valid filename is required."}`.
 - FR1.5a: Upload com conteúdo de arquivo zero-byte (campo `file` presente mas vazio) retorna `400 Bad Request` com `{"error": "empty_file", "detail": "File content cannot be empty."}`. A validação ocorre antes da magic bytes detection.
 - FR1.6: O sistema armazena o arquivo como `ir.attachment` com `res_model='real.estate.property'` e `res_id=property.id`
@@ -234,7 +235,6 @@ Esta spec fecha essa lacuna. Os campos `property_images` e `property_files` pass
 - FR3.1: `DELETE /api/v1/properties/{id}/attachments/{attachment_id}` exige perfil Manager ou Owner
 - FR3.2: Exclusão é permanente (hard delete de `ir.attachment`)
 - FR3.3: Retorna `204 No Content` em caso de sucesso
-- FR3.4: Quando a propriedade é deletada (soft-delete ADR-015), o Odoo remove automaticamente os `ir.attachment` vinculados via cascade nativo — nenhum código adicional necessário nesta feature
 
 **FR4: Configuração de Limite de Tamanho (nativo Odoo)**
 - FR4.1: O limite de tamanho de arquivo é configurado via Parâmetros do Sistema do Odoo — **não há modelo customizado**
@@ -266,9 +266,11 @@ Esta spec fecha essa lacuna. Os campos `property_images` e `property_files` pass
 - FR6.2: Validação de magic bytes com `python-magic` — falha explícita se `libmagic1` não estiver instalado no sistema (T001 garante disponibilidade via Dockerfile)
 - FR6.3: Nenhum conteúdo binário retornado em respostas JSON — apenas metadados
 - FR6.4: Filename sanitizado antes de qualquer operação de storage
-- FR6.5: Logs de audit para uploads rejeitados (tipo inválido, tamanho excedido, acesso negado)
+- FR6.5: Logs de audit para uploads rejeitados (tipo inválido, tamanho excedido, acesso negado) em nível `WARNING`. Apenas rejeições são logadas (uploads bem-sucedidos não geram entrada de audit). Campos mínimos obrigatórios por entrada: `timestamp`, `user_id`, `company_id`, `property_id`, `rejection_code` (código do campo `error` do body), `attachment_type`, `file_size_bytes`.
 - FR6.6: `download_url` nos metadados SEMPRE aponta para rota `/api/v1/...`, garantindo passagem pelo API Gateway
-- FR6.7: O body do erro `415 Unsupported Media Type` segue o formato: `{"error": "unsupported_mime", "detail": "MIME type <detected> is not allowed for attachment_type=<type>"}`. O campo `detail` inclui o MIME type detectado por magic bytes para facilitar debug pelo cliente da API. Para mismatch entre magic bytes e MIME declarado: `{"error": "mime_mismatch", "detail": "Declared MIME type <declared> does not match detected content type <detected>"}`.
+- FR6.7: O body do erro `415 Unsupported Media Type` segue o formato: `{"error": "unsupported_mime", "detail": "MIME type <detected> is not allowed for attachment_type=<type>"}`. O campo `detail` inclui o MIME type detectado por magic bytes para facilitar debug pelo cliente da API. Para mismatch entre magic bytes e MIME declarado: `{"error": "mime_mismatch", "detail": "Declared MIME type <declared> does not match detected content type <detected>"}`. 
+- FR6.8: Respostas de erro NUNCA incluem stack traces, paths internos do servidor, mensagens de exceção do ORM/banco de dados, ou IDs de registros pertencentes a outras empresas. Em caso de erro interno não tratado, o controller retorna `500 Internal Server Error` com body genérico: `{"error": "internal_error", "detail": "An unexpected error occurred."}`.
+- FR6.9: Todas as respostas de erro da API seguem o envelope obrigatório `{"error": "<code>", "detail": "<mensagem_legível>", ...campos_extras}`. O campo `error` é um código string em `snake_case`. O campo `detail` é uma string descritiva em inglês voltada para o desenvolvedor cliente. Campos extras são permitidos para informações contextuais (ex: `max_size_bytes`, `limit`, `current`).
 
 ---
 
