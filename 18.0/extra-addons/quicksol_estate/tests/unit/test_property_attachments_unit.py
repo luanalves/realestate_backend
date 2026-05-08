@@ -545,5 +545,144 @@ class TestSerializerFields(unittest.TestCase):
         self.assertEqual(result['size'], 204800)
 
 
+# ---------------------------------------------------------------------------
+# T002 — gap-06: Quantity limits are hardcoded constants, not ir.config_parameter
+# ---------------------------------------------------------------------------
+
+class TestQuantityLimitConstants(unittest.TestCase):
+    """gap-06: MAX_IMAGES_PER_PROPERTY and MAX_DOCUMENTS_PER_PROPERTY are module constants."""
+
+    def test_max_images_constant_is_50(self):
+        self.assertEqual(ctrl.MAX_IMAGES_PER_PROPERTY, 50)
+
+    def test_max_documents_constant_is_20(self):
+        self.assertEqual(ctrl.MAX_DOCUMENTS_PER_PROPERTY, 20)
+
+    def test_config_param_images_key_does_not_exist(self):
+        """CONFIG_PARAM_MAX_IMAGES must not exist — removed in gap-06."""
+        self.assertFalse(hasattr(ctrl, 'CONFIG_PARAM_MAX_IMAGES'))
+
+    def test_config_param_documents_key_does_not_exist(self):
+        """CONFIG_PARAM_MAX_DOCUMENTS must not exist — removed in gap-06."""
+        self.assertFalse(hasattr(ctrl, 'CONFIG_PARAM_MAX_DOCUMENTS'))
+
+    def test_get_max_images_helper_does_not_exist(self):
+        """_get_max_images_per_property() must not exist — removed in gap-06."""
+        self.assertFalse(hasattr(ctrl, '_get_max_images_per_property'))
+
+    def test_get_max_documents_helper_does_not_exist(self):
+        """_get_max_documents_per_property() must not exist — removed in gap-06."""
+        self.assertFalse(hasattr(ctrl, '_get_max_documents_per_property'))
+
+
+# ---------------------------------------------------------------------------
+# T010 — Error code alignment tests (gap-01 through gap-05)
+# ---------------------------------------------------------------------------
+
+class TestAttErrorHelper(unittest.TestCase):
+    """_att_error builds FR6.9-compliant envelope: {error, detail, ...extras}."""
+
+    def _capture_att_error(self, status_code, error_code, detail, **extras):
+        captured = {}
+
+        def fake_make_json_response(body, status):
+            captured['body'] = body
+            captured['status'] = status
+            return MagicMock()
+
+        mock_req = MagicMock()
+        mock_req.make_json_response.side_effect = fake_make_json_response
+        with patch.object(ctrl, 'request', mock_req):
+            ctrl._att_error(status_code, error_code, detail, **extras)
+        return captured
+
+    def test_envelope_has_error_and_detail_keys(self):
+        c = self._capture_att_error(400, 'missing_file', 'A file is required.')
+        self.assertEqual(c['status'], 400)
+        self.assertEqual(c['body']['error'], 'missing_file')
+        self.assertEqual(c['body']['detail'], 'A file is required.')
+        self.assertNotIn('message', c['body'])
+
+    def test_extras_appear_at_top_level(self):
+        c = self._capture_att_error(
+            413, 'file_too_large', 'File too large.',
+            max_size_bytes=1024, received_size=2048,
+        )
+        self.assertEqual(c['body']['max_size_bytes'], 1024)
+        self.assertEqual(c['body']['received_size'], 2048)
+
+    def test_413_body_includes_received_size(self):
+        """gap-01: 413 body must contain received_size field."""
+        c = self._capture_att_error(
+            413, 'file_too_large', 'File size exceeds the configured limit.',
+            max_size_bytes=134217728, received_size=200000000,
+        )
+        self.assertEqual(c['status'], 413)
+        self.assertEqual(c['body']['error'], 'file_too_large')
+        self.assertIn('received_size', c['body'])
+        self.assertEqual(c['body']['received_size'], 200000000)
+
+    def test_422_body_has_all_fields(self):
+        """gap-02: 422 body must contain attachment_type, limit, current."""
+        c = self._capture_att_error(
+            422, 'attachment_limit_exceeded',
+            'Maximum number of image attachments has been reached for this property.',
+            attachment_type='image', limit=50, current=50,
+        )
+        self.assertEqual(c['status'], 422)
+        self.assertEqual(c['body']['error'], 'attachment_limit_exceeded')
+        self.assertIn('attachment_type', c['body'])
+        self.assertIn('limit', c['body'])
+        self.assertIn('current', c['body'])
+        self.assertIn('detail', c['body'])
+
+    def test_400_missing_file_code(self):
+        """gap-03a: missing file uses error code 'missing_file'."""
+        c = self._capture_att_error(400, 'missing_file', 'A file is required.')
+        self.assertEqual(c['body']['error'], 'missing_file')
+        self.assertNotIn('VALIDATION_ERROR', str(c['body']))
+
+    def test_400_missing_type_code(self):
+        """gap-03b: missing attachment_type uses error code 'missing_attachment_type'."""
+        c = self._capture_att_error(
+            400, 'missing_attachment_type', 'attachment_type is required (image or document).',
+        )
+        self.assertEqual(c['body']['error'], 'missing_attachment_type')
+
+    def test_400_invalid_type_includes_received(self):
+        """gap-03c: invalid_attachment_type error must include 'received' extra field."""
+        c = self._capture_att_error(
+            400, 'invalid_attachment_type',
+            "Invalid attachment_type 'video'. Allowed values: image, document.",
+            received='video',
+        )
+        self.assertEqual(c['body']['error'], 'invalid_attachment_type')
+        self.assertEqual(c['body']['received'], 'video')
+
+    def test_415_unsupported_mime_code(self):
+        """gap-04a: MIME not in any whitelist → HTTP 415 with error 'unsupported_mime'."""
+        c = self._capture_att_error(
+            415, 'unsupported_mime',
+            'MIME type text/html is not allowed for attachment_type=image.',
+        )
+        self.assertEqual(c['status'], 415)
+        self.assertEqual(c['body']['error'], 'unsupported_mime')
+
+    def test_415_mime_mismatch_code(self):
+        """gap-04b: MIME valid globally but wrong type → HTTP 415 with error 'mime_mismatch'."""
+        c = self._capture_att_error(
+            415, 'mime_mismatch',
+            'MIME type application/pdf is not valid for attachment_type=image.',
+        )
+        self.assertEqual(c['status'], 415)
+        self.assertEqual(c['body']['error'], 'mime_mismatch')
+
+    def test_400_empty_file_rejected(self):
+        """gap-05 / FR1.5a: empty file returns 400 with error 'empty_file'."""
+        c = self._capture_att_error(400, 'empty_file', 'File content cannot be empty.')
+        self.assertEqual(c['status'], 400)
+        self.assertEqual(c['body']['error'], 'empty_file')
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

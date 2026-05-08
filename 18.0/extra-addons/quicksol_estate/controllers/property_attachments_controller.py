@@ -10,7 +10,7 @@ from odoo import http
 from odoo.http import request
 
 from .utils.auth import require_jwt
-from .utils.response import error_response, success_response
+from .utils.response import success_response
 from odoo.addons.thedevkitchen_apigateway.middleware import require_session, require_company
 from odoo.addons.thedevkitchen_observability.services.tracer import trace_http_request
 
@@ -20,8 +20,8 @@ _logger = logging.getLogger(__name__)
 # Constants
 # ---------------------------------------------------------------------------
 
-CONFIG_PARAM_MAX_IMAGES = 'quicksol_estate.max_images_per_property'
-CONFIG_PARAM_MAX_DOCUMENTS = 'quicksol_estate.max_documents_per_property'
+MAX_IMAGES_PER_PROPERTY = 50
+MAX_DOCUMENTS_PER_PROPERTY = 20
 
 TYPE_IMAGE = 'image'
 TYPE_DOCUMENT = 'document'
@@ -63,18 +63,11 @@ def _get_max_upload_bytes():
         return DEFAULT_MAX_FILE_BYTES
 
 
-def _get_max_images_per_property():
-    val = request.env['ir.config_parameter'].sudo().get_param(CONFIG_PARAM_MAX_IMAGES)
-    if not val:
-        raise ValueError(f'Missing system parameter: {CONFIG_PARAM_MAX_IMAGES}')
-    return int(val)
-
-
-def _get_max_documents_per_property():
-    val = request.env['ir.config_parameter'].sudo().get_param(CONFIG_PARAM_MAX_DOCUMENTS)
-    if not val:
-        raise ValueError(f'Missing system parameter: {CONFIG_PARAM_MAX_DOCUMENTS}')
-    return int(val)
+def _att_error(status_code, error_code, detail, **extras):
+    """Build FR6.9-compliant error envelope: {error, detail, ...extras}."""
+    body = {'error': error_code, 'detail': detail}
+    body.update(extras)
+    return request.make_json_response(body, status=status_code)
 
 
 def _detect_mime(content):
@@ -153,7 +146,7 @@ class PropertyAttachmentsController(http.Controller):
                     'upload_attachment: Agent %s attempted upload on property %s — denied (403)',
                     user.id, property_id,
                 )
-                return error_response('FORBIDDEN', 'Agents cannot upload attachments.', 403)
+                return _att_error(403, 'forbidden', 'Agents cannot upload attachments.')
 
             # Property lookup (company-scoped, anti-enumeration)
             prop = _fetch_property_for_company(property_id)
@@ -162,42 +155,51 @@ class PropertyAttachmentsController(http.Controller):
                     'upload_attachment: property %s not found for company %s',
                     property_id, request.env.company.id,
                 )
-                return error_response('NOT_FOUND', 'Property not found.', 404)
+                return _att_error(404, 'not_found', 'Property not found.')
 
             # Form field validation
             upload = request.httprequest.files.get('file')
             attachment_type = request.httprequest.form.get('attachment_type', '').strip()
 
             if not upload:
-                return error_response('VALIDATION_ERROR', 'Field "file" is required.', 400)
+                return _att_error(400, 'missing_file', 'A file is required.')
             if not attachment_type:
-                return error_response('VALIDATION_ERROR', 'Field "attachment_type" is required.', 400)
+                return _att_error(400, 'missing_attachment_type', 'attachment_type is required (image or document).')
             if attachment_type not in (TYPE_IMAGE, TYPE_DOCUMENT):
-                return error_response(
-                    'VALIDATION_ERROR',
-                    f'Invalid attachment_type "{attachment_type}". Allowed: image, document.',
-                    400,
+                _logger.warning(
+                    'upload_attachment: invalid attachment_type "%s" on property %s',
+                    attachment_type, property_id,
+                )
+                return _att_error(
+                    400, 'invalid_attachment_type',
+                    f"Invalid attachment_type '{attachment_type}'. Allowed values: image, document.",
+                    received=attachment_type,
                 )
 
             # Read bytes once
             content = upload.read()
 
+            # Zero-byte validation (FR1.5a) — 400
+            if len(content) == 0:
+                return _att_error(400, 'empty_file', 'File content cannot be empty.')
+
             # Size check (FR1.3) — 413
             max_bytes = _get_max_upload_bytes()
             if len(content) > max_bytes:
                 _logger.warning(
-                    'upload_attachment: file too large (%d bytes > %d) on property %s',
+                    'upload_attachment: file too large (%d bytes > %d) on property %s (user=%s, company=%s)',
                     len(content), max_bytes, property_id,
+                    request.env.user.id, request.env.company.id,
                 )
-                return error_response(
-                    'PAYLOAD_TOO_LARGE',
-                    f'File exceeds the maximum allowed size of {max_bytes} bytes.',
-                    413,
-                    details={'max_size_bytes': max_bytes},
+                return _att_error(
+                    413, 'file_too_large',
+                    'File size exceeds the configured limit.',
+                    max_size_bytes=max_bytes,
+                    received_size=len(content),
                 )
 
             # Quantity limit (FR1.4) — 422
-            max_count = _get_max_images_per_property() if attachment_type == TYPE_IMAGE else _get_max_documents_per_property()
+            max_count = MAX_IMAGES_PER_PROPERTY if attachment_type == TYPE_IMAGE else MAX_DOCUMENTS_PER_PROPERTY
             current_count = request.env['ir.attachment'].sudo().search_count([
                 ('res_model', '=', 'real.estate.property'),
                 ('res_id', '=', property_id),
@@ -205,13 +207,16 @@ class PropertyAttachmentsController(http.Controller):
             ])
             if current_count >= max_count:
                 _logger.warning(
-                    'upload_attachment: quantity limit %d reached for type "%s" on property %s',
+                    'upload_attachment: quantity limit %d reached for type "%s" on property %s (user=%s, company=%s)',
                     max_count, attachment_type, property_id,
+                    request.env.user.id, request.env.company.id,
                 )
-                return error_response(
-                    'UNPROCESSABLE_ENTITY',
-                    f'Maximum of {max_count} {attachment_type}s per property reached.',
-                    422,
+                return _att_error(
+                    422, 'attachment_limit_exceeded',
+                    f'Maximum number of {attachment_type} attachments has been reached for this property.',
+                    attachment_type=attachment_type,
+                    limit=max_count,
+                    current=current_count,
                 )
 
             # MIME validation via magic bytes (R002) — 415
@@ -220,24 +225,24 @@ class PropertyAttachmentsController(http.Controller):
 
             if detected_mime not in ALLOWED_MIMETYPES:
                 _logger.warning(
-                    'upload_attachment: MIME "%s" not in whitelist for property %s',
+                    'upload_attachment: MIME "%s" not in global whitelist on property %s (user=%s, company=%s)',
                     detected_mime, property_id,
+                    request.env.user.id, request.env.company.id,
                 )
-                return error_response(
-                    'UNSUPPORTED_MEDIA_TYPE',
-                    f'File type {detected_mime} is not allowed.',
-                    415,
+                return _att_error(
+                    415, 'unsupported_mime',
+                    f'MIME type {detected_mime} is not allowed for attachment_type={attachment_type}.',
                 )
 
             if detected_mime not in allowed_for_type:
                 _logger.warning(
-                    'upload_attachment: MIME "%s" not valid for attachment_type "%s" on property %s',
+                    'upload_attachment: MIME "%s" not valid for attachment_type "%s" on property %s (user=%s, company=%s)',
                     detected_mime, attachment_type, property_id,
+                    request.env.user.id, request.env.company.id,
                 )
-                return error_response(
-                    'VALIDATION_ERROR',
-                    f'File MIME type {detected_mime} is not valid for attachment_type "{attachment_type}".',
-                    400,
+                return _att_error(
+                    415, 'mime_mismatch',
+                    f'MIME type {detected_mime} is not valid for attachment_type={attachment_type}.',
                 )
 
             # Sanitize filename (R007)
@@ -261,7 +266,7 @@ class PropertyAttachmentsController(http.Controller):
 
         except Exception:
             _logger.exception('upload_attachment: unexpected error for property %s', property_id)
-            return error_response('INTERNAL_ERROR', 'Internal server error.', 500)
+            return _att_error(500, 'internal_error', 'An unexpected error occurred.')
 
     # ------------------------------------------------------------------ #
     # GET /api/v1/properties/<id>/attachments  (US6)                     #
@@ -279,7 +284,7 @@ class PropertyAttachmentsController(http.Controller):
         try:
             prop = _fetch_property_for_company(property_id)
             if not prop:
-                return error_response('NOT_FOUND', 'Property not found.', 404)
+                return _att_error(404, 'not_found', 'Property not found.')
 
             # Query params
             attachment_type = kwargs.get('attachment_type', '').strip() or None
@@ -287,13 +292,13 @@ class PropertyAttachmentsController(http.Controller):
                 limit = min(int(kwargs.get('limit', 50)), 100)
                 offset = int(kwargs.get('offset', 0))
             except (ValueError, TypeError):
-                return error_response('VALIDATION_ERROR', 'Invalid limit or offset value.', 400)
+                return _att_error(400, 'invalid_pagination', 'Invalid limit or offset value.')
 
             if attachment_type and attachment_type not in (TYPE_IMAGE, TYPE_DOCUMENT):
-                return error_response(
-                    'VALIDATION_ERROR',
-                    f'Invalid attachment_type "{attachment_type}". Allowed: image, document.',
-                    400,
+                return _att_error(
+                    400, 'invalid_attachment_type',
+                    f"Invalid attachment_type '{attachment_type}'. Allowed values: image, document.",
+                    received=attachment_type,
                 )
 
             # Build domain
@@ -323,7 +328,7 @@ class PropertyAttachmentsController(http.Controller):
 
         except Exception:
             _logger.exception('list_attachments: unexpected error for property %s', property_id)
-            return error_response('INTERNAL_ERROR', 'Internal server error.', 500)
+            return _att_error(500, 'internal_error', 'An unexpected error occurred.')
 
     # ------------------------------------------------------------------ #
     # GET /api/v1/properties/<id>/attachments/<aid>/download  (US3)      #
@@ -341,7 +346,7 @@ class PropertyAttachmentsController(http.Controller):
         try:
             prop = _fetch_property_for_company(property_id)
             if not prop:
-                return error_response('NOT_FOUND', 'Property not found.', 404)
+                return _att_error(404, 'not_found', 'Property not found.')
 
             att = _fetch_attachment(attachment_id, property_id)
             if not att:
@@ -349,9 +354,9 @@ class PropertyAttachmentsController(http.Controller):
                     'download_attachment: attachment %s not found or not on property %s',
                     attachment_id, property_id,
                 )
-                return error_response('NOT_FOUND', 'Attachment not found.', 404)
+                return _att_error(404, 'not_found', 'Attachment not found.')
 
-            content = att.raw  # bytes directly from filestore (R004)
+            content = att.raw  # bytes directly from filestore (FR2.3)
 
             # NEVER redirect to /web/content/ (FR2.4)
             return Response(
@@ -370,7 +375,7 @@ class PropertyAttachmentsController(http.Controller):
                 'download_attachment: unexpected error for property %s attachment %s',
                 property_id, attachment_id,
             )
-            return error_response('INTERNAL_ERROR', 'Internal server error.', 500)
+            return _att_error(500, 'internal_error', 'An unexpected error occurred.')
 
     # ------------------------------------------------------------------ #
     # DELETE /api/v1/properties/<id>/attachments/<aid>  (US4)            #
@@ -388,7 +393,7 @@ class PropertyAttachmentsController(http.Controller):
         try:
             prop = _fetch_property_for_company(property_id)
             if not prop:
-                return error_response('NOT_FOUND', 'Property not found.', 404)
+                return _att_error(404, 'not_found', 'Property not found.')
 
             # RBAC: only Owner/Manager can delete (FR3.1)
             user = request.env.user
@@ -397,7 +402,7 @@ class PropertyAttachmentsController(http.Controller):
                     'delete_attachment: Agent %s attempted DELETE on property %s attachment %s — denied (403)',
                     user.id, property_id, attachment_id,
                 )
-                return error_response('FORBIDDEN', 'Agents cannot delete attachments.', 403)
+                return _att_error(403, 'forbidden', 'Agents cannot delete attachments.')
 
             att = _fetch_attachment(attachment_id, property_id)
             if not att:
@@ -405,7 +410,7 @@ class PropertyAttachmentsController(http.Controller):
                     'delete_attachment: attachment %s not found or not on property %s',
                     attachment_id, property_id,
                 )
-                return error_response('NOT_FOUND', 'Attachment not found.', 404)
+                return _att_error(404, 'not_found', 'Attachment not found.')
 
             # Hard delete — documented exception to ADR-015 (FR3.2); ir.attachment is not a domain entity
             att.unlink()
@@ -417,4 +422,4 @@ class PropertyAttachmentsController(http.Controller):
                 'delete_attachment: unexpected error for property %s attachment %s',
                 property_id, attachment_id,
             )
-            return error_response('INTERNAL_ERROR', 'Internal server error.', 500)
+            return _att_error(500, 'internal_error', 'An unexpected error occurred.')
