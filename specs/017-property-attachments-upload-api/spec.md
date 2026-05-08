@@ -218,7 +218,8 @@ Esta spec fecha essa lacuna. Os campos `property_images` e `property_files` pass
 - FR1.2: O sistema valida MIME type por magic bytes do conteúdo, não apenas pelo header Content-Type ou extensão do arquivo
 - FR1.3: Tamanho máximo é lido do parâmetro global `web.max_file_upload_size` via `env['ir.config_parameter'].sudo().get_param('web.max_file_upload_size', default=128*1024*1024)`. Nenhum modelo customizado de settings é necessário
 - FR1.4: Quantidade máxima de arquivos por propriedade é controlada por constantes no controller: `MAX_IMAGES_PER_PROPERTY = 50`, `MAX_DOCUMENTS_PER_PROPERTY = 20` (hardcoded — não há requisito de configurabilidade para quantidade)
-- FR1.5: Filename é sanitizado com `werkzeug.utils.secure_filename()` antes do armazenamento
+- FR1.5: Filename é sanitizado com `werkzeug.utils.secure_filename()` antes do armazenamento. Se o resultado da sanitização for uma string vazia (filename ausente ou composto apenas de caracteres inválidos), o controller retorna `400 Bad Request` com `{"error": "missing_filename", "detail": "A valid filename is required."}`.
+- FR1.5a: Upload com conteúdo de arquivo zero-byte (campo `file` presente mas vazio) retorna `400 Bad Request` com `{"error": "empty_file", "detail": "File content cannot be empty."}`. A validação ocorre antes da magic bytes detection.
 - FR1.6: O sistema armazena o arquivo como `ir.attachment` com `res_model='real.estate.property'` e `res_id=property.id`
 - FR1.7: A resposta inclui metadados completos: `id`, `name`, `mimetype`, `size`, `attachment_type`, `download_url` (rota `/api/v1/...`), `uploaded_at`, `links`
 
@@ -266,6 +267,7 @@ Esta spec fecha essa lacuna. Os campos `property_images` e `property_files` pass
 - FR6.4: Filename sanitizado antes de qualquer operação de storage
 - FR6.5: Logs de audit para uploads rejeitados (tipo inválido, tamanho excedido, acesso negado)
 - FR6.6: `download_url` nos metadados SEMPRE aponta para rota `/api/v1/...`, garantindo passagem pelo API Gateway
+- FR6.7: O body do erro `415 Unsupported Media Type` segue o formato: `{"error": "unsupported_mime", "detail": "MIME type <detected> is not allowed for attachment_type=<type>"}`. O campo `detail` inclui o MIME type detectado por magic bytes para facilitar debug pelo cliente da API. Para mismatch entre magic bytes e MIME declarado: `{"error": "mime_mismatch", "detail": "Declared MIME type <declared> does not match detected content type <detected>"}`.
 
 ---
 
@@ -326,6 +328,22 @@ ALLOWED_DOCUMENT_MIMETYPES = {
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 }
 ```
+
+---
+
+### RBAC Authorization Matrix
+
+| Endpoint | Owner | Manager | Agent |
+|---|---|---|---|
+| `POST /api/v1/properties/{id}/attachments` (upload) | ✅ | ✅ | ❌ 403 |
+| `GET /api/v1/properties/{id}/attachments` (list) | ✅ | ✅ | ✅ |
+| `GET /api/v1/properties/{id}/attachments/{attachment_id}/download` | ✅ | ✅ | ✅ |
+| `DELETE /api/v1/properties/{id}/attachments/{attachment_id}` | ✅ | ✅ | ❌ 403 |
+
+**Regras de precedência**:
+- A verificação de empresa ocorre **antes** da verificação de perfil: propriedade não encontrada na empresa ativa → `404` (anti-enumeração), independentemente do perfil do usuário.
+- A verificação de perfil ocorre **somente** após confirmar que a propriedade pertence à empresa ativa do usuário.
+- Uma propriedade pertence a exatamente uma empresa — um usuário que pertença a múltiplas empresas só pode acessar propriedades da **empresa ativa** no momento da requisição.
 
 ---
 
