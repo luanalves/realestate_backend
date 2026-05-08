@@ -43,7 +43,8 @@ class TestPropertyAttachmentsAuth(HttpCase):
         self.assertEqual(resp.status_code, 401)
 
     def test_delete_requires_auth(self):
-        resp = self.url_open('/api/v1/properties/1/attachments/1')
+        url = self.base_url() + '/api/v1/properties/1/attachments/1'
+        resp = self.opener.delete(url)
         self.assertEqual(resp.status_code, 401)
 
 
@@ -63,10 +64,9 @@ class TestPropertyAttachmentsController(TransactionCase):
     def setUpClass(cls):
         super().setUpClass()
 
-        # Company
+        # Company (no CNPJ to avoid validator and uniqueness constraints)
         cls.company = cls.env['res.company'].create({
             'name': 'F017 Test Company',
-            'cnpj': '77.888.999/0001-11',
         })
 
         # Manager user
@@ -129,6 +129,60 @@ class TestPropertyAttachmentsController(TransactionCase):
             'location_type_id': cls.location_type.id,
         })
 
+        # OAuth application + valid JWT so @require_jwt passes in mocked tests
+        import jwt as pyjwt
+        import time
+        from odoo.tools import config
+        cls._jwt_secret = (
+            config.get('oauth_jwt_secret') or config.get('admin_passwd') or 'test-secret'
+        )
+        cls._oauth_app = cls.env['thedevkitchen.oauth.application'].sudo().create({
+            'name': 'F017 Test App',
+        })
+        cls._valid_token = pyjwt.encode(
+            {
+                'client_id': cls._oauth_app.client_id,
+                'sub': cls._oauth_app.client_id,
+                'exp': int(time.time()) + 3600,
+            },
+            cls._jwt_secret,
+            algorithm='HS256',
+        )
+
+    def setUp(self):
+        super().setUp()
+        # Build a stub request for all middleware that imports odoo.http.request
+        # directly. The per-test request mock (req) is patched via
+        # patch(_CTRL_MODULE + '.request', req) inside each test body.
+        _stub = MagicMock()
+        _stub.httprequest = MagicMock()
+        _stub.httprequest.method = 'POST'
+        _stub.httprequest.path = '/test'
+        _stub.httprequest.url = 'http://localhost/test'
+        _stub.httprequest.scheme = 'http'
+        _stub.httprequest.full_path = '/test?'
+        _stub.httprequest.headers = {
+            'Authorization': f'Bearer {self.__class__._valid_token}',
+        }
+        _stub.httprequest.cookies = {}
+        _stub.httprequest.remote_addr = '127.0.0.1'
+        _stub.session = MagicMock()
+        _stub.session.sid = None
+
+        self._patches = [
+            patch('odoo.addons.thedevkitchen_observability.services.tracer.request', _stub),
+            patch('odoo.addons.quicksol_estate.controllers.utils.auth.request', _stub),
+            patch('odoo.addons.thedevkitchen_apigateway.middleware.request', _stub),
+            patch('odoo.addons.quicksol_estate.controllers.utils.response.request', _stub),
+        ]
+        for p in self._patches:
+            p.start()
+
+    def tearDown(self):
+        for p in reversed(self._patches):
+            p.stop()
+        super().tearDown()
+
     def _make_request(self, user, form=None, files=None):
         """Build a minimal mock of odoo.http.request for controller tests."""
         req = MagicMock()
@@ -159,6 +213,41 @@ class TestPropertyAttachmentsController(TransactionCase):
         )
         return PropertyAttachmentsController()
 
+    def _call(self, method_name, req, **kwargs):
+        """
+        Call a controller method bypassing all auth/middleware decorators.
+
+        Traverses the __wrapped__ chain (set by @functools.wraps) to skip
+        @trace_http_request, @require_company, @require_session, and then
+        extracts the raw function from @require_jwt's closure (which lacks
+        @functools.wraps).  This lets TransactionCase tests verify controller
+        business logic in isolation — auth is covered by TestPropertyAttachmentsAuth.
+        """
+        from odoo.addons.quicksol_estate.controllers.property_attachments_controller import (
+            PropertyAttachmentsController,
+        )
+        ctrl = PropertyAttachmentsController()
+        method = getattr(PropertyAttachmentsController, method_name)
+
+        # Walk __wrapped__ chain: route_wrapper → trace_wrapper → ... until we
+        # reach require_jwt's wrapper (which has no __wrapped__ because auth.py
+        # omits @functools.wraps).
+        fn = method
+        while hasattr(fn, '__wrapped__'):
+            fn = fn.__wrapped__
+
+        # fn is now the @require_jwt wrapper.  Its first closure cell holds the
+        # original inner function (the one wrapped by @require_company, etc.).
+        # We continue unwrapping via __wrapped__ from that point.
+        if hasattr(fn, '__closure__') and fn.__closure__:
+            inner = fn.__closure__[0].cell_contents
+            while hasattr(inner, '__wrapped__'):
+                inner = inner.__wrapped__
+            fn = inner
+
+        with patch(_CTRL_MODULE + '.request', req):
+            return fn(ctrl, **kwargs)
+
     # ------------------------------------------------------------------ #
     # T015-B01 through T015-B08 — Upload input validation                 #
     # ------------------------------------------------------------------ #
@@ -166,8 +255,7 @@ class TestPropertyAttachmentsController(TransactionCase):
     def test_upload_missing_file_returns_400_missing_file(self):
         """T015-B01 FR1.1a: missing 'file' field → 400 missing_file."""
         req = self._make_request(self.manager, form={'attachment_type': 'image'}, files={})
-        with patch(_CTRL_MODULE + '.request', req):
-            resp = self._ctrl().upload_attachment(property_id=self.property.id)
+        resp = self._call('upload_attachment', req, property_id=self.property.id)
         self.assertEqual(resp.status, 400)
         self.assertEqual(resp.body['error'], 'missing_file')
         self.assertIn('detail', resp.body)
@@ -180,8 +268,7 @@ class TestPropertyAttachmentsController(TransactionCase):
             form={'attachment_type': ''},
             files={'file': self._make_upload()},
         )
-        with patch(_CTRL_MODULE + '.request', req):
-            resp = self._ctrl().upload_attachment(property_id=self.property.id)
+        resp = self._call('upload_attachment', req, property_id=self.property.id)
         self.assertEqual(resp.status, 400)
         self.assertEqual(resp.body['error'], 'missing_attachment_type')
 
@@ -192,8 +279,7 @@ class TestPropertyAttachmentsController(TransactionCase):
             form={'attachment_type': 'video'},
             files={'file': self._make_upload()},
         )
-        with patch(_CTRL_MODULE + '.request', req):
-            resp = self._ctrl().upload_attachment(property_id=self.property.id)
+        resp = self._call('upload_attachment', req, property_id=self.property.id)
         self.assertEqual(resp.status, 400)
         self.assertEqual(resp.body['error'], 'invalid_attachment_type')
         self.assertEqual(resp.body.get('received'), 'video')
@@ -205,8 +291,7 @@ class TestPropertyAttachmentsController(TransactionCase):
             form={'attachment_type': 'image'},
             files={'file': self._make_upload(content=b'')},
         )
-        with patch(_CTRL_MODULE + '.request', req):
-            resp = self._ctrl().upload_attachment(property_id=self.property.id)
+        resp = self._call('upload_attachment', req, property_id=self.property.id)
         self.assertEqual(resp.status, 400)
         self.assertEqual(resp.body['error'], 'empty_file')
 
@@ -219,8 +304,7 @@ class TestPropertyAttachmentsController(TransactionCase):
                 form={'attachment_type': 'image'},
                 files={'file': self._make_upload(content=b'X' * 10)},
             )
-            with patch(_CTRL_MODULE + '.request', req):
-                resp = self._ctrl().upload_attachment(property_id=self.property.id)
+            resp = self._call('upload_attachment', req, property_id=self.property.id)
             self.assertEqual(resp.status, 413)
             self.assertEqual(resp.body['error'], 'file_too_large')
             self.assertIn('max_size_bytes', resp.body)
@@ -236,8 +320,7 @@ class TestPropertyAttachmentsController(TransactionCase):
             form={'attachment_type': 'image'},
             files={'file': self._make_upload()},
         )
-        with patch(_CTRL_MODULE + '.request', req):
-            resp = self._ctrl().upload_attachment(property_id=9999999)
+        resp = self._call('upload_attachment', req, property_id=9999999)
         self.assertEqual(resp.status, 404)
         self.assertEqual(resp.body['error'], 'not_found')
 
@@ -248,8 +331,7 @@ class TestPropertyAttachmentsController(TransactionCase):
             form={'attachment_type': 'image'},
             files={'file': self._make_upload()},
         )
-        with patch(_CTRL_MODULE + '.request', req):
-            resp = self._ctrl().upload_attachment(property_id=self.property.id)
+        resp = self._call('upload_attachment', req, property_id=self.property.id)
         self.assertEqual(resp.status, 403)
         self.assertEqual(resp.body['error'], 'forbidden')
 
@@ -260,8 +342,7 @@ class TestPropertyAttachmentsController(TransactionCase):
     def test_error_envelope_has_error_and_detail_not_message(self):
         """T015-B08 FR6.9: all error responses have 'error' + 'detail', NOT 'message'."""
         req = self._make_request(self.manager, form={}, files={})
-        with patch(_CTRL_MODULE + '.request', req):
-            resp = self._ctrl().upload_attachment(property_id=self.property.id)
+        resp = self._call('upload_attachment', req, property_id=self.property.id)
         self.assertIn('error', resp.body)
         self.assertIn('detail', resp.body)
         self.assertNotIn('message', resp.body)
@@ -279,9 +360,8 @@ class TestPropertyAttachmentsController(TransactionCase):
             captured['data'] = data
             return SimpleNamespace(body=data, status=status_code)
 
-        with patch(_CTRL_MODULE + '.request', req), \
-             patch(_CTRL_MODULE + '.success_response', fake_success_response):
-            self._ctrl().list_attachments(property_id=self.property.id)
+        with patch(_CTRL_MODULE + '.success_response', fake_success_response):
+            self._call('list_attachments', req, property_id=self.property.id)
 
         self.assertIn('data', captured)
         pagination = captured['data']['data']['pagination']
@@ -311,9 +391,9 @@ class TestPropertyAttachmentsController(TransactionCase):
             captured['data'] = data
             return SimpleNamespace(body=data, status=status_code)
 
-        with patch(_CTRL_MODULE + '.request', req), \
-             patch(_CTRL_MODULE + '.success_response', fake_success_response):
-            self._ctrl().list_attachments(
+        with patch(_CTRL_MODULE + '.success_response', fake_success_response):
+            self._call(
+                'list_attachments', req,
                 property_id=self.property.id,
                 limit='1',
                 offset='0',
@@ -346,10 +426,7 @@ class TestPropertyAttachmentsController(TransactionCase):
         from werkzeug.wrappers import Response as WerkzeugResponse
         att = self._create_test_attachment()
         req = self._make_request(self.manager)
-        with patch(_CTRL_MODULE + '.request', req):
-            resp = self._ctrl().download_attachment(
-                property_id=self.property.id, attachment_id=att.id,
-            )
+        resp = self._call('download_attachment', req, property_id=self.property.id, attachment_id=att.id)
         self.assertIsInstance(resp, WerkzeugResponse)
         self.assertEqual(resp.status_code, 200)
         headers = dict(resp.headers)
@@ -366,20 +443,14 @@ class TestPropertyAttachmentsController(TransactionCase):
             content=b'%PDF-1.4 test content',
         )
         req = self._make_request(self.manager)
-        with patch(_CTRL_MODULE + '.request', req):
-            resp = self._ctrl().download_attachment(
-                property_id=self.property.id, attachment_id=att.id,
-            )
+        resp = self._call('download_attachment', req, property_id=self.property.id, attachment_id=att.id)
         self.assertNotIn(resp.status_code, [301, 302, 307, 308])
         self.assertEqual(resp.status_code, 200)
 
     def test_download_nonexistent_attachment_returns_404(self):
         """T015-B13: attachment not found on property → 404 not_found."""
         req = self._make_request(self.manager)
-        with patch(_CTRL_MODULE + '.request', req):
-            resp = self._ctrl().download_attachment(
-                property_id=self.property.id, attachment_id=9999999,
-            )
+        resp = self._call('download_attachment', req, property_id=self.property.id, attachment_id=9999999)
         self.assertEqual(resp.status, 404)
         self.assertEqual(resp.body['error'], 'not_found')
 
@@ -393,10 +464,7 @@ class TestPropertyAttachmentsController(TransactionCase):
         att = self._create_test_attachment(name='f017_delete_me.jpg')
         att_id = att.id
         req = self._make_request(self.manager)
-        with patch(_CTRL_MODULE + '.request', req):
-            resp = self._ctrl().delete_attachment(
-                property_id=self.property.id, attachment_id=att_id,
-            )
+        resp = self._call('delete_attachment', req, property_id=self.property.id, attachment_id=att_id)
         self.assertIsInstance(resp, WerkzeugResponse)
         self.assertEqual(resp.status_code, 204)
         self.assertFalse(
@@ -408,10 +476,7 @@ class TestPropertyAttachmentsController(TransactionCase):
         """T015-B15 FR3.1: agent role cannot delete → 403 forbidden."""
         att = self._create_test_attachment(name='f017_agent_cannot_del.jpg')
         req = self._make_request(self.agent_user)
-        with patch(_CTRL_MODULE + '.request', req):
-            resp = self._ctrl().delete_attachment(
-                property_id=self.property.id, attachment_id=att.id,
-            )
+        resp = self._call('delete_attachment', req, property_id=self.property.id, attachment_id=att.id)
         self.assertEqual(resp.status, 403)
         self.assertEqual(resp.body['error'], 'forbidden')
 
