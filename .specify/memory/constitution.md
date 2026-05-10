@@ -9,6 +9,36 @@ Para garantir unicidade, integridade e reutilização de validação de document
 
 Essas funções devem ser usadas em todos os endpoints e modelos que aceitam documentos fiscais, garantindo padronização e governança de dados.
 <!--
+Sync Impact Report - Constitution v1.7.0
+========================================
+
+Version Change: 1.6.0 → 1.7.0
+Change Type: MINOR (new architectural patterns from Feature 017 — Property Attachments Upload API)
+Date: 2026-05-08
+
+Sections Added:
+- Feature 017 entry in Reference Implementations
+- `_att_error()` FR6.9 error envelope helper pattern documented
+- Magic bytes MIME validation pattern (python-magic + libmagic)
+- Hardcoded quantity limits pattern (not ir.config_parameter)
+- `ir.attachment` as binary storage entity for property files
+- Hard-delete exception to ADR-015 soft-delete rule
+- Download URL invariant: /api/v1/ route only, never /web/content/
+
+New Patterns Documented:
+1. **FR6.9 Error Envelope**: Always `{"error": "<snake_case>", "detail": "<string>", ...extras}` — never `message` key. Extra fields per code (e.g., `received`, `max_size_bytes`, `received_size`, `limit`, `current`).
+2. **`_att_error()` Pattern**: Module-local helper that bypasses shared `error_response()` (which uses `message` key). Use when a feature needs FR6.9-compliant errors incompatible with shared util.
+3. **Magic Bytes MIME**: Use `python-magic` to detect MIME from file content (not extension). Separate whitelists per `attachment_type`. Global whitelist = union. Emit 415 `unsupported_mime` or `mime_mismatch` accordingly.
+4. **Hardcoded Quantity Constants**: When limits are product decisions (not runtime-configurable), use module-level constants instead of `ir.config_parameter` to avoid unhandled ValueError on missing params.
+5. **Hard-Delete Exception**: `ir.attachment.unlink()` is permissible for binary blobs to reclaim disk. Always document the ADR-015 exception explicitly in the spec/contract.
+
+Previous Amendments:
+- 2026-05-03 (v1.6.0)
+- 2026-04-27 (v1.5.0)
+- 2026-02-16 (v1.3.0 Feature 009 reference implementation)
+- 2026-02-08 (v1.2.0 Feature 007 reference implementation)
+-->
+<!--
 Sync Impact Report - Constitution v1.6.0
 ========================================
 
@@ -544,7 +574,24 @@ For tag entities where some tags must be immutable and drive business rules:
 - **ADRs Referenced**: 001, 003, 004, 005, 007, 008, 009, 011, 015, 016, 017, 018, 019, 022
 - **Status**: Specification approved (2026-05-03); plan/implementation pending
 
-Use Feature 007 for standard CRUD patterns with HATEOAS. Use Feature 009 for security-sensitive flows requiring token-based authentication, anti-enumeration, and session management. Use Feature 013 for FSM-driven domain entities with concurrent access control, FIFO queues, and async notifications. Use Feature 015 for kanban-style pipeline domains with stage gates, conditional uniqueness, system tags, and aggregation endpoints.
+**Feature 017 - Property Attachments Upload API** (Binary Upload + Magic Bytes + FR6.9 Error Envelope Template):
+- **Storage**: `ir.attachment` as sole storage entity — `res_model='real.estate.property'`, `res_id=property_id`, `description='image'|'document'` as type discriminator; `company_id` field for multi-tenancy
+- **MIME Validation**: `python-magic` (libmagic) magic bytes detection; separate whitelists per type: images (JPEG, PNG, WEBP, HEIC/HEIF), documents (PDF, DOCX, XLSX); global whitelist = union of both
+- **Quantity Limits**: Hardcoded constants `MAX_IMAGES_PER_PROPERTY = 50`, `MAX_DOCUMENTS_PER_PROPERTY = 20` (NOT `ir.config_parameter` — avoids unhandled ValueError on missing params)
+- **File Size Limit**: `ir.config_parameter` key `web.max_file_upload_size`, default 128MB (134,217,728 bytes) — shared system param, not module-specific
+- **FR6.9 Error Envelope**: `{"error": "<snake_case>", "detail": "<string>", ...extras}` — ALWAYS `detail` NOT `message`; extra fields per error code (e.g., `received`, `max_size_bytes`, `received_size`, `attachment_type`, `limit`, `current`)
+- **`_att_error()` Helper**: Module-level helper builds FR6.9 envelope via `request.make_json_response()` directly; bypasses shared `error_response()` util (which uses `message` key)
+- **Download**: Binary serve via Werkzeug `Response` with `Content-Security-Policy: default-src 'none'` + `X-Content-Type-Options: nosniff` + `Content-Disposition: attachment`; URL NEVER contains `/web/content/`; always `/api/v1/properties/{id}/attachments/{aid}/download`
+- **Filename Sanitization**: `werkzeug.utils.secure_filename()` with fallback to `'untitled'` when result is empty
+- **Delete**: Hard-delete (`ir.attachment.unlink()`) — exception to ADR-015 soft-delete rule (binary blobs must be physically removed)
+- **RBAC**: Owner/Manager: upload + list + download + delete; Agent: list + download only (upload=403, delete=403)
+- **Company Domain**: `[('company_id', 'in', re_companies.ids)]` from `thedevkitchen_apigateway/middleware.py`
+- **API**: 4 REST endpoints under `/api/v1/properties/{id}/attachments` (all authenticated with triple decorators `@require_jwt + @require_session + @require_company`)
+- **Testing**: 65 unit tests (mock-only, no Docker), 19 API integration tests (TransactionCase + HttpCase), 6 E2E bash scripts
+- **Location**: `18.0/extra-addons/quicksol_estate/controllers/property_attachments_controller.py`
+- **Postman**: folder "23. Property Attachments (Feature 017)" in `docs/postman/quicksol_api_v1.28_postman_collection.json`
+
+Use Feature 007 for standard CRUD patterns with HATEOAS. Use Feature 009 for security-sensitive flows requiring token-based authentication, anti-enumeration, and session management. Use Feature 013 for FSM-driven domain entities with concurrent access control, FIFO queues, and async notifications. Use Feature 015 for kanban-style pipeline domains with stage gates, conditional uniqueness, system tags, and aggregation endpoints. Use Feature 017 for binary file upload/download patterns with magic bytes validation, per-type quantity limits, and FR6.9-compliant error envelopes.
 
 ### Required Tests per Feature
 - **Unit**: Services, helpers, serializers, decorators

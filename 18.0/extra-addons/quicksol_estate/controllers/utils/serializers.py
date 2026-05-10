@@ -15,7 +15,10 @@ def serialize_property(property_record):
         'name': property_record.name or '',
         'description': property_record.description or '',
         'price': float(property_record.price) if property_record.price else 0.0,
-        'price_formatted': f"R$ {property_record.price:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.') if property_record.price else 'R$ 0,00',
+        'price_formatted': (
+            f"R$ {property_record.price:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
+            if property_record.price else 'R$ 0,00'
+        ),
         'status': property_record.property_status or 'available',
         'property_type': {
             'id': property_record.property_type_id.id,
@@ -122,12 +125,33 @@ def serialize_property_mapping_fields(property_record):
             result[api_field] = value or None
 
     result['tags'] = [tag.name for tag in property_record.tag_ids if tag.name]
+
+    # Batch-fetch ir.attachment IDs for legacy photo/document records (T021)
+    # Both Binary fields use attachment=True, so Odoo stores them in ir.attachment.
+    # We look up those attachment IDs to build /api/v1/ download URLs.
+    Attachment = property_record.env['ir.attachment'].sudo()
+
+    photo_atts = Attachment.search([
+        ('res_model', '=', 'real.estate.property.photo'),
+        ('res_id', 'in', property_record.photo_ids.ids),
+        ('res_field', '=', 'image'),
+    ])
+    photo_att_map = {att.res_id: att.id for att in photo_atts}
+
+    doc_atts = Attachment.search([
+        ('res_model', '=', 'real.estate.property.document'),
+        ('res_id', 'in', property_record.document_ids.ids),
+        ('res_field', '=', 'file'),
+    ])
+    doc_att_map = {att.res_id: att.id for att in doc_atts}
+
     result['property_images'] = [
         _serialize_binary_metadata(
             photo,
             photo.name,
             photo.image,
-            f'/web/content/real.estate.property.photo/{photo.id}/image?download=true',
+            f'/api/v1/properties/{property_record.id}/attachments/{photo_att_map[photo.id]}/download'
+            if photo.id in photo_att_map else None,
         )
         for photo in property_record.photo_ids
     ]
@@ -136,7 +160,8 @@ def serialize_property_mapping_fields(property_record):
             document,
             document.file_name or document.name,
             document.file,
-            f'/web/content/real.estate.property.document/{document.id}/file?download=true',
+            f'/api/v1/properties/{property_record.id}/attachments/{doc_att_map[document.id]}/download'
+            if document.id in doc_att_map else None,
         )
         for document in property_record.document_ids
     ]

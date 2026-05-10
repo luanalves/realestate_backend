@@ -1,0 +1,116 @@
+openapi: "3.0.3"
+info:
+  title: Property Attachments — Download
+  version: "1.0"
+
+paths:
+  /api/v1/properties/{property_id}/attachments/{attachment_id}/download:
+    get:
+      summary: Download an attachment file (JWT-authenticated streaming)
+      operationId: downloadPropertyAttachment
+      tags: [PropertyAttachments]
+      security:
+        - BearerAuth: []
+        - SessionCookie: []
+      parameters:
+        - name: property_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID of the real estate property
+        - name: attachment_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID of the attachment to download
+      responses:
+        "200":
+          description: File binary content streamed directly
+          headers:
+            Content-Type:
+              description: MIME type detected from magic bytes (not client-declared)
+              schema:
+                type: string
+                example: image/jpeg
+            Content-Disposition:
+              description: Attachment download header with sanitized filename
+              schema:
+                type: string
+                example: 'attachment; filename="floor-plan.jpg"'
+            Content-Security-Policy:
+              description: Security header — always "default-src 'none'"
+              schema:
+                type: string
+                example: "default-src 'none'"
+            X-Content-Type-Options:
+              description: Prevents MIME sniffing
+              schema:
+                type: string
+                example: nosniff
+          content:
+            "*/*":
+              schema:
+                type: string
+                format: binary
+              description: >
+                Raw binary file content.
+                IMPORTANT: This endpoint NEVER redirects to /web/content/.
+                Streaming is performed directly from the Odoo filestore via att.raw.
+        "401":
+          description: Missing or invalid JWT
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Property or attachment not found in current company scope
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                property_not_found:
+                  value: {error: not_found, detail: Property not found.}
+                attachment_not_found:
+                  value: {error: not_found, detail: Attachment not found.}
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: internal_error
+                detail: An unexpected error occurred.
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    SessionCookie:
+      type: apiKey
+      in: cookie
+      name: session_id
+
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [error, detail]
+      properties:
+        error:
+          type: string
+          example: not_found
+        detail:
+          type: string
+          example: Attachment not found.
+
+# Security Notes:
+# - This endpoint streams file bytes directly from the Odoo filestore.
+# - NEVER redirects to /web/content/{id} — that path bypasses the API Gateway.
+# - All responses include CSP and X-Content-Type-Options headers.
+# - Size ceiling: files that passed upload (size ≤ web.max_file_upload_size) are
+#   implicitly bounded — no additional download size check required (FR2.5).

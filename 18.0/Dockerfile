@@ -1,5 +1,4 @@
 FROM ubuntu:noble
-MAINTAINER Odoo S.A. <info@odoo.com>
 
 SHELL ["/bin/bash", "-xo", "pipefail", "-c"]
 
@@ -19,6 +18,7 @@ RUN apt-get update && \
         dirmngr \
         fonts-noto-cjk \
         gnupg \
+        libmagic1 \
         libssl-dev \
         node-less \
         npm \

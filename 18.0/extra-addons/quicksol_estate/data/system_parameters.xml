@@ -6,5 +6,17 @@
             <field name="key">quicksol_estate.prospector_commission_percentage</field>
             <field name="value">0.30</field>
         </record>
+
+        <!-- System Parameter: Maximum images per property (Feature 017) -->
+        <record id="max_images_per_property" model="ir.config_parameter">
+            <field name="key">quicksol_estate.max_images_per_property</field>
+            <field name="value">50</field>
+        </record>
+
+        <!-- System Parameter: Maximum documents per property (Feature 017) -->
+        <record id="max_documents_per_property" model="ir.config_parameter">
+            <field name="key">quicksol_estate.max_documents_per_property</field>
+            <field name="value">20</field>
+        </record>
     </data>
 </odoo>

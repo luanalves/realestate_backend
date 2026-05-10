@@ -1,0 +1,497 @@
+openapi: "3.0.3"
+info:
+  title: Property Attachments API
+  description: |
+    Upload, listagem, download e exclusão de imagens e documentos de propriedades.
+    
+    **Segurança**: Todos os endpoints requerem JWT via API Gateway + sessão Odoo ativa + company header.
+    **Invariante**: `download_url` SEMPRE usa `/api/v1/...` — NUNCA `/web/content/`.
+    **Validação**: MIME detectado via `python-magic` (magic bytes), não via `Content-Type` header.
+  version: "1.0.0"
+  contact:
+    name: TheDevKitchen
+
+servers:
+  - url: https://{host}/api/v1
+    variables:
+      host:
+        default: localhost:8069
+
+tags:
+  - name: property-attachments
+    description: Gestão de imagens e documentos de propriedades
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT injetado pelo API Gateway
+
+  parameters:
+    PropertyId:
+      name: property_id
+      in: path
+      required: true
+      description: ID da propriedade
+      schema:
+        type: integer
+        example: 7
+
+    AttachmentId:
+      name: attachment_id
+      in: path
+      required: true
+      description: ID do ir.attachment
+      schema:
+        type: integer
+        example: 42
+
+    AttachmentType:
+      name: attachment_type
+      in: query
+      required: false
+      description: Filtro por tipo de anexo
+      schema:
+        type: string
+        enum: [image, document]
+      example: image
+
+    Limit:
+      name: limit
+      in: query
+      required: false
+      description: Número máximo de itens por página
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 50
+      example: 50
+
+    Offset:
+      name: offset
+      in: query
+      required: false
+      description: Número de itens a pular (paginação)
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+      example: 0
+
+  schemas:
+    AttachmentItem:
+      type: object
+      required: [id, name, mimetype, size, attachment_type, uploaded_at]
+      properties:
+        id:
+          type: integer
+          description: ID do ir.attachment
+          example: 42
+        name:
+          type: string
+          description: Nome sanitizado do arquivo
+          example: "planta-baixa.pdf"
+        mimetype:
+          type: string
+          description: MIME type detectado via magic bytes
+          example: "application/pdf"
+        size:
+          type: integer
+          description: Tamanho do arquivo em bytes
+          example: 204800
+        attachment_type:
+          type: string
+          enum: [image, document]
+          description: Tipo do anexo (discriminador)
+          example: "document"
+        uploaded_at:
+          type: string
+          format: date-time
+          description: Timestamp do upload (UTC ISO 8601)
+          example: "2026-05-06T14:23:11Z"
+        links:
+          type: object
+          properties:
+            self:
+              type: string
+              description: URL do recurso (apenas no upload response)
+              example: "/api/v1/properties/7/attachments/42"
+            download:
+              type: string
+              description: URL autenticada para download via Gateway
+              example: "/api/v1/properties/7/attachments/42/download"
+
+    AttachmentList:
+      type: object
+      required: [items, pagination]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AttachmentItem'
+        pagination:
+          type: object
+          required: [total, limit, offset]
+          properties:
+            total:
+              type: integer
+              description: Total de registros encontrados (sem paginação)
+              example: 8
+            limit:
+              type: integer
+              example: 50
+            offset:
+              type: integer
+              example: 0
+
+    SuccessResponse:
+      type: object
+      required: [status, data]
+      properties:
+        status:
+          type: string
+          enum: [success]
+        data:
+          type: object
+
+    ErrorResponse:
+      type: object
+      required: [error, detail]
+      properties:
+        error:
+          type: string
+          description: Machine-readable error code.
+          example: "not_found"
+        detail:
+          type: string
+          description: Human-readable description of the error.
+          example: "Property not found."
+
+  responses:
+    401Unauthorized:
+      description: Token JWT ausente ou inválido
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: unauthorized
+            detail: "Authentication required."
+
+    403Forbidden:
+      description: Ação não permitida para o perfil do usuário
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: forbidden
+            detail: "Insufficient permissions to perform this action."
+
+    404NotFound:
+      description: Propriedade ou anexo não encontrado (ou pertence a outra company)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: not_found
+            detail: "Property not found."
+
+    413PayloadTooLarge:
+      description: Arquivo excede o limite configurado
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/ErrorResponse'
+              - type: object
+                properties:
+                  max_size_bytes:
+                    type: integer
+                  received_size:
+                    type: integer
+          example:
+            error: file_too_large
+            detail: "File size exceeds the configured limit."
+            max_size_bytes: 134217728
+            received_size: 200000000
+
+    415UnsupportedMedia:
+      description: MIME type não permitido
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            unsupported_mime:
+              value: {error: unsupported_mime, detail: 'MIME type image/gif is not allowed.'}
+            mime_mismatch:
+              value: {error: mime_mismatch, detail: 'MIME type application/pdf is not valid for attachment_type=image.'}
+
+    422UnprocessableEntity:
+      description: Limite de quantidade excedido
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/ErrorResponse'
+              - type: object
+                properties:
+                  attachment_type:
+                    type: string
+                  limit:
+                    type: integer
+                  current:
+                    type: integer
+          example:
+            error: attachment_limit_exceeded
+            detail: "Maximum number of image attachments has been reached for this property."
+            attachment_type: image
+            limit: 50
+            current: 50
+
+security:
+  - BearerAuth: []
+
+paths:
+  /properties/{property_id}/attachments:
+    post:
+      tags: [property-attachments]
+      operationId: uploadPropertyAttachment
+      summary: Upload de imagem ou documento
+      description: |
+        Faz upload de um arquivo como `multipart/form-data`.
+        
+        - MIME validado via `python-magic` (magic bytes) — não via `Content-Type` header
+        - Limites: 50 imagens ou 20 documentos por propriedade
+        - Tamanho máximo configurado em `ir.config_parameter` (`web.max_file_upload_size`, default 128 MB)
+        - Resposta 201 inclui `links.self` e `links.download` (HATEOAS)
+      parameters:
+        - $ref: '#/components/parameters/PropertyId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, attachment_type]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Arquivo a ser enviado (binário — NÃO base64)
+                attachment_type:
+                  type: string
+                  enum: [image, document]
+                  description: Tipo do anexo
+                  example: image
+            encoding:
+              file:
+                contentType: image/jpeg, image/png, image/webp, application/pdf, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document, application/vnd.ms-excel, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      responses:
+        '201':
+          description: Upload realizado com sucesso
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AttachmentItem'
+              example:
+                status: success
+                data:
+                  id: 42
+                  name: "fachada.jpg"
+                  mimetype: "image/jpeg"
+                  size: 512000
+                  attachment_type: "image"
+                  uploaded_at: "2026-05-06T14:23:11Z"
+                  links:
+                    self: "/api/v1/properties/7/attachments/42"
+                    download: "/api/v1/properties/7/attachments/42/download"
+        '400':
+          description: Campo obrigatório ausente (file ou attachment_type)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/401Unauthorized'
+        '404':
+          $ref: '#/components/responses/404NotFound'
+        '413':
+          $ref: '#/components/responses/413PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/415UnsupportedMedia'
+        '422':
+          $ref: '#/components/responses/422UnprocessableEntity'
+        '500':
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      tags: [property-attachments]
+      operationId: listPropertyAttachments
+      summary: Listar imagens e documentos da propriedade
+      description: |
+        Retorna lista paginada de anexos da propriedade.
+        Filtrável por `attachment_type`.
+        Ordenado por `create_date desc`.
+      parameters:
+        - $ref: '#/components/parameters/PropertyId'
+        - $ref: '#/components/parameters/AttachmentType'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: Lista de anexos
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AttachmentList'
+              example:
+                status: success
+                data:
+                  items:
+                    - id: 42
+                      name: "fachada.jpg"
+                      mimetype: "image/jpeg"
+                      size: 512000
+                      attachment_type: "image"
+                      uploaded_at: "2026-05-06T14:23:11Z"
+                      links:
+                        download: "/api/v1/properties/7/attachments/42/download"
+                  pagination:
+                    total: 3
+                    limit: 50
+                    offset: 0
+        '401':
+          $ref: '#/components/responses/401Unauthorized'
+        '404':
+          $ref: '#/components/responses/404NotFound'
+        '500':
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /properties/{property_id}/attachments/{attachment_id}/download:
+    get:
+      tags: [property-attachments]
+      operationId: downloadPropertyAttachment
+      summary: Download de imagem ou documento
+      description: |
+        Retorna o binário do arquivo com headers corretos.
+        
+        - `Content-Disposition: attachment; filename="..."`
+        - `Content-Security-Policy: default-src 'none'`
+        - `X-Content-Type-Options: nosniff`
+        - Implementado via `attachment.raw` (bytes do ORM, sem encode)
+        - NUNCA redireciona para `/web/content/`
+      parameters:
+        - $ref: '#/components/parameters/PropertyId'
+        - $ref: '#/components/parameters/AttachmentId'
+      responses:
+        '200':
+          description: Binário do arquivo
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+              example: 'attachment; filename="planta-baixa.pdf"'
+            Content-Security-Policy:
+              schema:
+                type: string
+              example: "default-src 'none'"
+            X-Content-Type-Options:
+              schema:
+                type: string
+              example: nosniff
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/webp:
+              schema:
+                type: string
+                format: binary
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+            application/msword:
+              schema:
+                type: string
+                format: binary
+            application/vnd.openxmlformats-officedocument.wordprocessingml.document:
+              schema:
+                type: string
+                format: binary
+            application/vnd.ms-excel:
+              schema:
+                type: string
+                format: binary
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/401Unauthorized'
+        '404':
+          $ref: '#/components/responses/404NotFound'
+        '500':
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /properties/{property_id}/attachments/{attachment_id}:
+    delete:
+      tags: [property-attachments]
+      operationId: deletePropertyAttachment
+      summary: Excluir imagem ou documento
+      description: |
+        Remove permanentemente o anexo.
+        
+        **Hard delete** — `ir.attachment` não é entidade de domínio; sem soft-delete necessário.
+        Cascade delete automático quando a propriedade é excluída (comportamento nativo Odoo).
+      parameters:
+        - $ref: '#/components/parameters/PropertyId'
+        - $ref: '#/components/parameters/AttachmentId'
+      responses:
+        '204':
+          description: Anexo excluído com sucesso (sem body)
+        '401':
+          $ref: '#/components/responses/401Unauthorized'
+        '403':
+          $ref: '#/components/responses/403Forbidden'
+        '404':
+          $ref: '#/components/responses/404NotFound'
+        '500':
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'

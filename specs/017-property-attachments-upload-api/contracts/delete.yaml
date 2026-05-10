@@ -1,0 +1,94 @@
+openapi: "3.0.3"
+info:
+  title: Property Attachments — Delete
+  version: "1.0"
+
+paths:
+  /api/v1/properties/{property_id}/attachments/{attachment_id}:
+    delete:
+      summary: Hard-delete an attachment (Owner / Manager only)
+      operationId: deletePropertyAttachment
+      tags: [PropertyAttachments]
+      security:
+        - BearerAuth: []
+        - SessionCookie: []
+      parameters:
+        - name: property_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID of the real estate property
+        - name: attachment_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID of the attachment to delete
+      responses:
+        "204":
+          description: Attachment deleted. No response body.
+        "401":
+          description: Missing or invalid JWT
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Insufficient role — only Owner and Manager can delete
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: forbidden
+                detail: Insufficient permissions to delete attachments.
+        "404":
+          description: Property or attachment not found in current company scope
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                property_not_found:
+                  value: {error: not_found, detail: Property not found.}
+                attachment_not_found:
+                  value: {error: not_found, detail: Attachment not found.}
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: internal_error
+                detail: An unexpected error occurred.
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    SessionCookie:
+      type: apiKey
+      in: cookie
+      name: session_id
+
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [error, detail]
+      properties:
+        error:
+          type: string
+          example: forbidden
+        detail:
+          type: string
+          example: Agents cannot delete attachments.
+
+# Notes:
+# - This is a HARD delete (att.unlink()). ir.attachment is infrastructure, not a
+#   domain entity — documented exception to ADR-015 (soft-delete policy).
+# - RBAC: property lookup (404) happens before role check (403) — anti-enumeration.
+# - Response: 204 No Content with empty body on success.

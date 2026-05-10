@@ -1,0 +1,234 @@
+openapi: "3.0.3"
+info:
+  title: Property Attachments — Upload
+  version: "1.0"
+
+paths:
+  /api/v1/properties/{property_id}/attachments:
+    post:
+      summary: Upload an attachment (image or document) to a property
+      operationId: uploadPropertyAttachment
+      tags: [PropertyAttachments]
+      security:
+        - BearerAuth: []
+        - SessionCookie: []
+      parameters:
+        - name: property_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID of the real estate property
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, attachment_type]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Binary file content (JPEG/PNG/WebP or PDF/DOCX/XLSX)
+                attachment_type:
+                  type: string
+                  enum: [image, document]
+                  description: Type discriminator — validated server-side against MIME whitelist
+      responses:
+        "201":
+          description: Attachment created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadSuccessResponse"
+              example:
+                status: success
+                data:
+                  id: 42
+                  name: floor-plan.jpg
+                  mimetype: image/jpeg
+                  size: 204800
+                  attachment_type: image
+                  uploaded_at: "2026-05-08T14:30:00Z"
+                  links:
+                    download: /api/v1/properties/5/attachments/42/download
+                    self: /api/v1/properties/5/attachments/42
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                missing_file:
+                  value: {error: missing_file, detail: 'Field "file" is required.'}
+                missing_attachment_type:
+                  value: {error: missing_attachment_type, detail: 'Field "attachment_type" is required.'}
+                invalid_attachment_type:
+                  value: {error: invalid_attachment_type, detail: 'Invalid attachment_type "video". Allowed: image, document.', received: video}
+                empty_file:
+                  value: {error: empty_file, detail: File content is empty.}
+        "401":
+          description: Missing or invalid JWT
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Insufficient role — only Owner and Manager can upload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: forbidden
+                detail: Insufficient permissions to upload attachments.
+        "404":
+          description: Property not found in current company scope (anti-enumeration)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: not_found
+                detail: Property not found.
+        "413":
+          description: File exceeds configured size limit
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ErrorResponse"
+                  - type: object
+                    required: [max_size_bytes, received_size]
+                    properties:
+                      max_size_bytes:
+                        type: integer
+                        example: 134217728
+                      received_size:
+                        type: integer
+                        example: 200000000
+              example:
+                error: file_too_large
+                detail: File size exceeds the configured limit.
+                max_size_bytes: 134217728
+                received_size: 200000000
+        "415":
+          description: Unsupported MIME type or MIME mismatch with attachment_type
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                unsupported_mime:
+                  value: {error: unsupported_mime, detail: 'File type text/html is not allowed.'}
+                mime_mismatch:
+                  value: {error: mime_mismatch, detail: 'File MIME type application/pdf is not valid for attachment_type "image".'}
+        "422":
+          description: Attachment count limit reached for this type
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ErrorResponse"
+                  - type: object
+                    required: [attachment_type, limit, current]
+                    properties:
+                      attachment_type:
+                        type: string
+                        enum: [image, document]
+                      limit:
+                        type: integer
+                        example: 50
+                      current:
+                        type: integer
+                        example: 50
+              example:
+                error: attachment_limit_exceeded
+                detail: Maximum number of image attachments per property reached.
+                attachment_type: image
+                limit: 50
+                current: 50
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: internal_error
+                detail: An unexpected error occurred.
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    SessionCookie:
+      type: apiKey
+      in: cookie
+      name: session_id
+
+  schemas:
+    AttachmentObject:
+      type: object
+      required: [id, name, mimetype, size, attachment_type, uploaded_at, links]
+      properties:
+        id:
+          type: integer
+          example: 42
+        name:
+          type: string
+          example: floor-plan.jpg
+        mimetype:
+          type: string
+          example: image/jpeg
+        size:
+          type: integer
+          description: File size in bytes
+          example: 204800
+        attachment_type:
+          type: string
+          enum: [image, document]
+          example: image
+        uploaded_at:
+          type: string
+          format: date-time
+          example: "2026-05-08T14:30:00Z"
+        links:
+          type: object
+          required: [download]
+          properties:
+            download:
+              type: string
+              description: NEVER /web/content/ — always /api/v1/...
+              example: /api/v1/properties/5/attachments/42/download
+            self:
+              type: string
+              description: Present only in upload 201 response
+              example: /api/v1/properties/5/attachments/42
+
+    UploadSuccessResponse:
+      type: object
+      required: [status, data]
+      properties:
+        status:
+          type: string
+          enum: [success]
+        data:
+          $ref: "#/components/schemas/AttachmentObject"
+
+    ErrorResponse:
+      type: object
+      required: [error, detail]
+      properties:
+        error:
+          type: string
+          description: Snake_case error code
+          example: missing_file
+        detail:
+          type: string
+          description: Human-readable description
+          example: Field "file" is required.
