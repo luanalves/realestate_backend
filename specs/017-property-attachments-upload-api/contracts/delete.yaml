@@ -35,14 +35,14 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "403":
-          description: Insufficient role (Agent cannot delete)
+          description: Insufficient role — only Owner and Manager can delete
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
               example:
                 error: forbidden
-                detail: Agents cannot delete attachments.
+                detail: Insufficient permissions to delete attachments.
         "404":
           description: Property or attachment not found in current company scope
           content:

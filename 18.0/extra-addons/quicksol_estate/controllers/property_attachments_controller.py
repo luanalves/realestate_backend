@@ -64,11 +64,21 @@ def _get_max_upload_bytes():
 
 
 def _get_max_images_per_property():
-    return int(request.env['ir.config_parameter'].sudo().get_param(CONFIG_PARAM_MAX_IMAGES))
+    try:
+        val = request.env['ir.config_parameter'].sudo().get_param(CONFIG_PARAM_MAX_IMAGES, default=50)
+        return max(1, int(val))
+    except (ValueError, TypeError):
+        _logger.warning('Invalid value for %s, using default 50', CONFIG_PARAM_MAX_IMAGES)
+        return 50
 
 
 def _get_max_documents_per_property():
-    return int(request.env['ir.config_parameter'].sudo().get_param(CONFIG_PARAM_MAX_DOCUMENTS))
+    try:
+        val = request.env['ir.config_parameter'].sudo().get_param(CONFIG_PARAM_MAX_DOCUMENTS, default=20)
+        return max(1, int(val))
+    except (ValueError, TypeError):
+        _logger.warning('Invalid value for %s, using default 20', CONFIG_PARAM_MAX_DOCUMENTS)
+        return 20
 
 
 def _att_error(status_code, error_code, detail, **extras):
@@ -106,7 +116,10 @@ def _fetch_attachment(attachment_id, property_id):
     if not att.exists():
         return None
     # Feature 017 attachments: stored directly on real.estate.property
+    # Only expose attachments managed by this API (description in image/document)
     if att.res_model == 'real.estate.property' and att.res_id == property_id:
+        if att.description not in (TYPE_IMAGE, TYPE_DOCUMENT):
+            return None
         return att
     # Legacy attachments: stored on real.estate.property.photo / real.estate.property.document
     # Verify the parent record belongs to this property (T021)
@@ -117,12 +130,12 @@ def _fetch_attachment(attachment_id, property_id):
     return None
 
 
-def _is_agent_only(user):
+def _can_upload_or_delete(user):
+    """Allowlist: only Owner, Manager (incl. Director via inheritance), and system admin."""
     return (
-        user.has_group('quicksol_estate.group_real_estate_agent')
-        and not user.has_group('quicksol_estate.group_real_estate_manager')
-        and not user.has_group('quicksol_estate.group_real_estate_owner')
-        and not user.has_group('base.group_system')
+        user.has_group('quicksol_estate.group_real_estate_owner')
+        or user.has_group('quicksol_estate.group_real_estate_manager')
+        or user.has_group('base.group_system')
     )
 
 
@@ -148,13 +161,13 @@ class PropertyAttachmentsController(http.Controller):
         try:
             user = request.env.user
 
-            # RBAC: Agents cannot upload (FR3.1)
-            if _is_agent_only(user):
+            # RBAC: only Owner/Manager/admin can upload (FR3.1)
+            if not _can_upload_or_delete(user):
                 _logger.warning(
-                    'upload_attachment: Agent %s attempted upload on property %s — denied (403)',
+                    'upload_attachment: user %s (no owner/manager role) attempted upload on property %s — denied (403)',
                     user.id, property_id,
                 )
-                return _att_error(403, 'forbidden', 'Agents cannot upload attachments.')
+                return _att_error(403, 'forbidden', 'Insufficient permissions to upload attachments.')
 
             # Property lookup (company-scoped, anti-enumeration)
             prop = _fetch_property_for_company(property_id)
@@ -300,8 +313,8 @@ class PropertyAttachmentsController(http.Controller):
             # Query params
             attachment_type = kwargs.get('attachment_type', '').strip() or None
             try:
-                limit = min(int(kwargs.get('limit', 50)), 100)
-                offset = int(kwargs.get('offset', 0))
+                limit = max(1, min(int(kwargs.get('limit', 50)), 100))
+                offset = max(0, int(kwargs.get('offset', 0)))
             except (ValueError, TypeError):
                 return _att_error(400, 'invalid_pagination', 'Invalid limit or offset value.')
 
@@ -370,12 +383,13 @@ class PropertyAttachmentsController(http.Controller):
             content = att.raw  # bytes directly from filestore (FR2.3)
 
             # NEVER redirect to /web/content/ (FR2.4)
+            safe_filename = att.name.replace('"', '').replace('\\', '').replace('\n', '').replace('\r', '')
             return Response(
                 content,
                 status=200,
                 headers={
                     'Content-Type': att.mimetype or 'application/octet-stream',
-                    'Content-Disposition': f'attachment; filename="{att.name}"',
+                    'Content-Disposition': f'attachment; filename="{safe_filename}"',
                     'Content-Security-Policy': "default-src 'none'",
                     'X-Content-Type-Options': 'nosniff',
                 },
@@ -406,14 +420,14 @@ class PropertyAttachmentsController(http.Controller):
             if not prop:
                 return _att_error(404, 'not_found', 'Property not found.')
 
-            # RBAC: only Owner/Manager can delete (FR3.1)
+            # RBAC: only Owner/Manager/admin can delete (FR3.1)
             user = request.env.user
-            if _is_agent_only(user):
+            if not _can_upload_or_delete(user):
                 _logger.warning(
-                    'delete_attachment: Agent %s attempted DELETE on property %s attachment %s — denied (403)',
+                    'delete_attachment: user %s (no owner/manager role) attempted DELETE on property %s attachment %s — denied (403)',
                     user.id, property_id, attachment_id,
                 )
-                return _att_error(403, 'forbidden', 'Agents cannot delete attachments.')
+                return _att_error(403, 'forbidden', 'Insufficient permissions to delete attachments.')
 
             att = _fetch_attachment(attachment_id, property_id)
             if not att:

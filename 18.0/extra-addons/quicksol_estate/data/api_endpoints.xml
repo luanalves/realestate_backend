@@ -6209,8 +6209,8 @@ Returns: Owner object with id, name, email, cpf, phone, mobile, company_count, c
 - `file` (file, required): The file to upload (multipart/form-data)
 
 **Accepted MIME Types:**
-- **Images**: image/jpeg, image/png, image/webp, image/gif, image/tiff, image/bmp
-- **Documents**: application/pdf, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document, application/vnd.ms-excel, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-powerpoint, application/vnd.openxmlformats-officedocument.presentationml.presentation
+- **Images**: image/jpeg, image/png, image/webp
+- **Documents**: application/pdf, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document, application/vnd.ms-excel, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
 
 **Limits:**
 - Maximum images per property: 50
@@ -6219,13 +6219,13 @@ Returns: Owner object with id, name, email, cpf, phone, mobile, company_count, c
 
 **Access Control:**
 - **Owner / Manager**: Full access
-- **Agent**: Upload only — cannot delete attachments
+- **Agent**: Read-only — cannot upload or delete attachments (403)
 - **Portal / Public**: No access (401)
 
 **Error Responses:**
 - 400: No file provided
 - 401: Invalid or missing JWT token
-- 403: Agents cannot upload to properties they are not assigned to
+- 403: Only Owner and Manager can upload attachments
 - 404: Property not found (or not accessible — anti-enumeration)
 - 413: File exceeds maximum allowed size
 - 415: Unsupported MIME type (detected from magic bytes)
@@ -6235,12 +6235,17 @@ Returns: Owner object with id, name, email, cpf, phone, mobile, company_count, c
   "type": "object",
   "title": "PropertyAttachmentUpload",
   "description": "multipart/form-data — send as form field named 'file'.",
-  "required": ["file"],
+  "required": ["file", "attachment_type"],
   "properties": {
     "file": {
       "type": "string",
       "format": "binary",
       "description": "The file to upload. MIME type is validated from magic bytes."
+    },
+    "attachment_type": {
+      "type": "string",
+      "enum": ["image", "document"],
+      "description": "Type discriminator — validated server-side against MIME whitelist."
     }
   }
 }
@@ -6354,73 +6359,80 @@ Returns: Owner object with id, name, email, cpf, phone, mobile, company_count, c
       "example": "success"
     },
     "data": {
-      "type": "array",
-      "description": "Attachment metadata list.",
-      "items": {
-        "type": "object",
-        "title": "AttachmentDetail",
-        "additionalProperties": false,
-        "properties": {
-          "id": {
-            "type": "integer",
-            "description": "Attachment record ID.",
-            "example": 42
-          },
-          "name": {
-            "type": "string",
-            "description": "Sanitized file name.",
-            "example": "fachada.jpg"
-          },
-          "mimetype": {
-            "type": "string",
-            "description": "Detected MIME type.",
-            "example": "image/jpeg"
-          },
-          "size": {
-            "type": "integer",
-            "description": "File size in bytes.",
-            "example": 204800
-          },
-          "attachment_type": {
-            "type": "string",
-            "description": "Classification: image or document.",
-            "enum": ["image", "document"],
-            "example": "image"
-          },
-          "download_url": {
-            "type": "string",
-            "description": "Relative URL to download the attachment.",
-            "example": "/api/v1/properties/17/attachments/42/download"
-          },
-          "_links": {
+      "type": "object",
+      "description": "Paginated result envelope.",
+      "required": ["items", "pagination"],
+      "properties": {
+        "items": {
+          "type": "array",
+          "description": "Attachment metadata list.",
+          "items": {
             "type": "object",
+            "title": "AttachmentDetail",
+            "additionalProperties": false,
             "properties": {
-              "self": { "type": "string", "example": "/api/v1/properties/17/attachments/42" },
-              "download": { "type": "string", "example": "/api/v1/properties/17/attachments/42/download" }
+              "id": {
+                "type": "integer",
+                "description": "Attachment record ID.",
+                "example": 42
+              },
+              "name": {
+                "type": "string",
+                "description": "Sanitized file name.",
+                "example": "fachada.jpg"
+              },
+              "mimetype": {
+                "type": "string",
+                "description": "Detected MIME type.",
+                "example": "image/jpeg"
+              },
+              "size": {
+                "type": "integer",
+                "description": "File size in bytes.",
+                "example": 204800
+              },
+              "attachment_type": {
+                "type": "string",
+                "description": "Classification: image or document.",
+                "enum": ["image", "document"],
+                "example": "image"
+              },
+              "uploaded_at": {
+                "type": "string",
+                "format": "date-time",
+                "example": "2026-05-08T14:30:00Z"
+              },
+              "links": {
+                "type": "object",
+                "properties": {
+                  "download": { "type": "string", "example": "/api/v1/properties/17/attachments/42/download" }
+                }
+              }
+            }
+          }
+        },
+        "pagination": {
+          "type": "object",
+          "required": ["total", "limit", "offset"],
+          "properties": {
+            "total": {
+              "type": "integer",
+              "description": "Total attachments matching the filter.",
+              "example": 3
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Page size.",
+              "example": 50
+            },
+            "offset": {
+              "type": "integer",
+              "description": "Pagination offset.",
+              "example": 0
             }
           }
         }
       }
-    },
-    "count": {
-      "type": "integer",
-      "description": "Number of items in this page.",
-      "example": 1
-    },
-    "total": {
-      "type": "integer",
-      "description": "Total attachments for this property.",
-      "example": 3
-    },
-    "limit": {
-      "type": "integer",
-      "description": "Page size.",
-      "example": 50
-    },
-    "offset": {
-      "type": "integer",
-      "description": "Pagination offset.",
-      "example": 0
     }
   }
 }
@@ -6487,7 +6499,7 @@ Returns: Owner object with id, name, email, cpf, phone, mobile, company_count, c
 
 **Error Responses:**
 - 401: Invalid or missing JWT token
-- 403: Agents cannot delete attachments
+- 403: Only Owner and Manager can delete attachments
 - 404: Property or attachment not found (anti-enumeration — attachment must belong to the specified property)</field>
             <field name="active" eval="True"/>
         </record>

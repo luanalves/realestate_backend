@@ -159,21 +159,16 @@ components:
 
     ErrorResponse:
       type: object
-      required: [status, error]
+      required: [error, detail]
       properties:
-        status:
-          type: string
-          enum: [error]
         error:
-          type: object
-          required: [code, message]
-          properties:
-            code:
-              type: string
-              example: "VALIDATION_ERROR"
-            message:
-              type: string
-              example: "File type not allowed"
+          type: string
+          description: Machine-readable error code.
+          example: "not_found"
+        detail:
+          type: string
+          description: Human-readable description of the error.
+          example: "Property not found."
 
   responses:
     401Unauthorized:
@@ -183,10 +178,8 @@ components:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
           example:
-            status: error
-            error:
-              code: UNAUTHORIZED
-              message: "Authentication required"
+            error: unauthorized
+            detail: "Authentication required."
 
     403Forbidden:
       description: Ação não permitida para o perfil do usuário
@@ -195,10 +188,8 @@ components:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
           example:
-            status: error
-            error:
-              code: FORBIDDEN
-              message: "Insufficient permissions"
+            error: forbidden
+            detail: "Insufficient permissions to perform this action."
 
     404NotFound:
       description: Propriedade ou anexo não encontrado (ou pertence a outra company)
@@ -207,22 +198,27 @@ components:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
           example:
-            status: error
-            error:
-              code: NOT_FOUND
-              message: "Property not found"
+            error: not_found
+            detail: "Property not found."
 
     413PayloadTooLarge:
       description: Arquivo excede o limite configurado
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            allOf:
+              - $ref: '#/components/schemas/ErrorResponse'
+              - type: object
+                properties:
+                  max_size_bytes:
+                    type: integer
+                  received_size:
+                    type: integer
           example:
-            status: error
-            error:
-              code: PAYLOAD_TOO_LARGE
-              message: "File exceeds the 128 MB limit"
+            error: file_too_large
+            detail: "File size exceeds the configured limit."
+            max_size_bytes: 134217728
+            received_size: 200000000
 
     415UnsupportedMedia:
       description: MIME type não permitido
@@ -230,23 +226,33 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
-          example:
-            status: error
-            error:
-              code: UNSUPPORTED_MEDIA_TYPE
-              message: "File type image/gif is not allowed"
+          examples:
+            unsupported_mime:
+              value: {error: unsupported_mime, detail: 'MIME type image/gif is not allowed.'}
+            mime_mismatch:
+              value: {error: mime_mismatch, detail: 'MIME type application/pdf is not valid for attachment_type=image.'}
 
     422UnprocessableEntity:
       description: Limite de quantidade excedido
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            allOf:
+              - $ref: '#/components/schemas/ErrorResponse'
+              - type: object
+                properties:
+                  attachment_type:
+                    type: string
+                  limit:
+                    type: integer
+                  current:
+                    type: integer
           example:
-            status: error
-            error:
-              code: UNPROCESSABLE_ENTITY
-              message: "Maximum of 50 images per property reached"
+            error: attachment_limit_exceeded
+            detail: "Maximum number of image attachments has been reached for this property."
+            attachment_type: image
+            limit: 50
+            current: 50
 
 security:
   - BearerAuth: []
@@ -479,6 +485,8 @@ paths:
           description: Anexo excluído com sucesso (sem body)
         '401':
           $ref: '#/components/responses/401Unauthorized'
+        '403':
+          $ref: '#/components/responses/403Forbidden'
         '404':
           $ref: '#/components/responses/404NotFound'
         '500':

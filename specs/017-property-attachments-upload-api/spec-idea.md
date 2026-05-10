@@ -34,7 +34,7 @@ React Native App (CSR)
 
 - O frontend React Native **não gerencia tokens** — o API Gateway injeta o JWT em cada requisição antes de chegar ao Odoo
 - O `download_url` retornado pela API **DEVE ser uma rota `/api/v1/...`** para garantir que o Gateway injete o JWT; nunca `/web/content/{id}` que bypassa o Gateway e portanto bypassa autenticação
-- O endpoint de download próprio (`GET /api/v1/properties/{id}/attachments/{attachment_id}`) é obrigatório precisamente porque é a única rota que passa pelo Gateway com o JWT injetado
+- O endpoint de download próprio (`GET /api/v1/properties/{id}/attachments/{attachment_id}/download`) é obrigatório precisamente porque é a única rota que passa pelo Gateway com o JWT injetado
 
 ---
 
@@ -61,7 +61,7 @@ Esta spec fecha essa lacuna. Os campos `property_images` e `property_files` pass
 - [ ] MIME type não permitido retorna `400 Validation Error` com o tipo rejeitado
 - [ ] Magic bytes do arquivo divergindo do MIME declarado retorna `400 Validation Error`
 - [ ] Resposta inclui `id`, `name`, `mimetype`, `size`, `attachment_type`, `download_url` e `links` HATEOAS
-- [ ] O campo `download_url` SEMPRE aponta para `/api/v1/properties/{id}/attachments/{attachment_id}` (nunca `/web/content/{id}`)
+- [ ] O campo `download_url` SEMPRE aponta para `/api/v1/properties/{id}/attachments/{attachment_id}/download` (nunca `/web/content/{id}`)
 - [ ] Anexo criado é isolado à empresa da propriedade (multi-tenancy)
 - [ ] Upload em propriedade de outra empresa retorna `404` (anti-enumeração)
 
@@ -111,7 +111,7 @@ Esta spec fecha essa lacuna. Os campos `property_images` e `property_files` pass
 **So that** o API Gateway injete o JWT corretamente e o acesso seja autenticado
 
 **Acceptance Criteria**:
-- [ ] `GET /api/v1/properties/{id}/attachments/{attachment_id}` retorna stream do arquivo com `Content-Type` e `Content-Disposition` corretos
+- [ ] `GET /api/v1/properties/{id}/attachments/{attachment_id}/download` retorna stream do arquivo com `Content-Type` e `Content-Disposition` corretos
 - [ ] Requisição sem JWT (que chegaria apenas se houvesse bypass do Gateway) retorna `401`
 - [ ] Acesso a arquivo de outra empresa retorna `404` (anti-enumeração)
 - [ ] Acesso a `attachment_id` que não pertence à propriedade `{id}` retorna `404`
@@ -322,7 +322,7 @@ description     (optional) — string, max 500 chars
   "size": 1048576,
   "attachment_type": "image",
   "description": null,
-  "download_url": "/api/v1/properties/7/attachments/42",
+  "download_url": "/api/v1/properties/7/attachments/42/download",
   "created_at": "2026-05-05T14:00:00Z",
   "links": [
     {"rel": "self",     "href": "/api/v1/properties/7/attachments/42", "method": "GET"},
@@ -349,12 +349,12 @@ description     (optional) — string, max 500 chars
 
 ---
 
-#### `GET /api/v1/properties/{id}/attachments/{attachment_id}` — Download
+#### `GET /api/v1/properties/{id}/attachments/{attachment_id}/download` — Download
 
 | Atributo | Valor |
-|----------|-------|
+|----------|---------|
 | **Method** | GET |
-| **Path** | `/api/v1/properties/{id}/attachments/{attachment_id}` |
+| **Path** | `/api/v1/properties/{id}/attachments/{attachment_id}/download` |
 | **Authentication** | `@require_jwt` + `@require_session` + `@require_company` — JWT injetado pelo API Gateway |
 | **Authorization** | Todos os perfis com acesso à propriedade |
 
@@ -565,7 +565,7 @@ Odoo Filestore (disco do container)
 - [ ] Upload de imagem (JPEG, PNG, WebP, GIF) funciona via `POST /api/v1/properties/{id}/attachments`
 - [ ] Upload de documento (PDF, DOCX, XLSX) funciona via `POST /api/v1/properties/{id}/attachments`
 - [ ] Magic bytes validation rejeita scripts mascarados como imagens
-- [ ] Download via `GET /api/v1/properties/{id}/attachments/{attachment_id}` retorna stream com headers de segurança
+- [ ] Download via `GET /api/v1/properties/{id}/attachments/{attachment_id}/download` retorna stream com headers de segurança
 - [ ] `download_url` nos metadados SEMPRE aponta para rota `/api/v1/...` — nunca `/web/content/{id}`
 - [ ] DELETE funciona para Owner/Manager, retorna 403 para Agent
 - [ ] Multi-tenancy: acesso cross-company retorna 404 em todos os endpoints

@@ -75,7 +75,7 @@ paths:
                 invalid_type:
                   value: {error: invalid_attachment_type, detail: 'Invalid attachment_type "video". Allowed: image, document.'}
                 invalid_pagination:
-                  value: {error: validation_error, detail: Invalid limit or offset value.}
+                  value: {error: invalid_pagination, detail: Invalid limit or offset value.}
         "401":
           description: Missing or invalid JWT
           content:
