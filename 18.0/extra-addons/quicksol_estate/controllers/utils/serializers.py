@@ -381,8 +381,11 @@ def validate_property_access(property_record, user, operation='read'):
     if user.has_group('base.group_system'):
         return True, None
 
-    # Manager: access to properties of their companies
-    if user.has_group('quicksol_estate.group_real_estate_manager'):
+    # Owner/Manager: access to properties of their companies
+    if (
+        user.has_group('quicksol_estate.group_real_estate_owner')
+        or user.has_group('quicksol_estate.group_real_estate_manager')
+    ):
         user_companies = set(user.company_ids.ids)
         property_company = property_record.company_id.id if property_record.company_id else None
 

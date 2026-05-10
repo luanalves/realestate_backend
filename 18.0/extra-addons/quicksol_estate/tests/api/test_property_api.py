@@ -37,6 +37,17 @@ class TestPropertyAPI(HttpCase):
             ])],
             'company_ids': [(6, 0, [cls.company.id])]
         })
+
+        cls.owner_user = cls.env['res.users'].with_context(no_reset_password=True).create({
+            'name': 'Owner User',
+            'login': 'owner@test.com',
+            'email': 'owner@test.com',
+            'groups_id': [(6, 0, [
+                cls.env.ref('base.group_user').id,
+                cls.env.ref('quicksol_estate.group_real_estate_owner').id
+            ])],
+            'company_ids': [(6, 0, [cls.company.id])]
+        })
         
         cls.user_normal = cls.env['res.users'].with_context(no_reset_password=True).create({
             'name': 'Normal User',
@@ -241,6 +252,30 @@ class TestPropertyAPI(HttpCase):
         from odoo.addons.quicksol_estate.controllers.property_api import _validate_property_access
         
         has_access, error = _validate_property_access(self.property_company2, self.manager_user, 'read')
+        self.assertFalse(has_access)
+        self.assertEqual(error, 'Property does not belong to your companies')
+
+    def test_04b_validate_access_owner_own_company(self):
+        """Owner can access properties of their companies"""
+        from odoo.addons.quicksol_estate.controllers.property_api import _validate_property_access
+
+        has_access, error = _validate_property_access(self.property_agent, self.owner_user, 'read')
+        self.assertTrue(has_access)
+        self.assertIsNone(error)
+
+        has_access, error = _validate_property_access(self.property_other, self.owner_user, 'write')
+        self.assertTrue(has_access)
+        self.assertIsNone(error)
+
+        has_access, error = _validate_property_access(self.property_agent, self.owner_user, 'delete')
+        self.assertTrue(has_access)
+        self.assertIsNone(error)
+
+    def test_04c_validate_access_owner_other_company(self):
+        """Owner CANNOT access properties of other companies"""
+        from odoo.addons.quicksol_estate.controllers.property_api import _validate_property_access
+
+        has_access, error = _validate_property_access(self.property_company2, self.owner_user, 'read')
         self.assertFalse(has_access)
         self.assertEqual(error, 'Property does not belong to your companies')
     
