@@ -27,6 +27,8 @@ Auto-generated from all feature plans. Last updated: 2026-01-15
 - PostgreSQL (`ir_attachment` — metadados + `store_fname`); Odoo Filestore em disco (`/filestore/{db}/{2-char}/{hash}`) (017-property-attachments-upload-api)
 - Python 3.11 + Odoo 18.0 ORM, `python-magic` (system: `libmagic1`), `werkzeug.utils.secure_filename` (017-property-attachments-upload-api)
 - PostgreSQL via `ir.attachment` ORM; Odoo filestore on disk (`attachment.raw` for reads, `base64.b64encode(content)` for writes) (017-property-attachments-upload-api)
+- Python 3.11 / Odoo 18.0 + Odoo ORM (`mail.tracking.value` for stage history, `mail.thread` mixin), `thedevkitchen_apigateway` (triple auth), `quicksol_estate` (domain models) (019-goals-and-results)
+- PostgreSQL 14+ — new table `thedevkitchen_estate_goal`; no new files, no Redis required in v1 (019-goals-and-results)
 
 - Python 3.11 (Odoo 18.0) + Odoo 18.0, PyJWT, Redis 7-alpine, PostgreSQL 16 (001-bearer-token-validation)
 
@@ -47,9 +49,9 @@ cd src [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECHNOLO
 Python 3.11 (Odoo 18.0): Follow standard conventions
 
 ## Recent Changes
+- 019-goals-and-results: Added Python 3.11 / Odoo 18.0 + Odoo ORM (`mail.tracking.value` for stage history, `mail.thread` mixin), `thedevkitchen_apigateway` (triple auth), `quicksol_estate` (domain models)
 - 017-property-attachments-upload-api: Added Python 3.11 + Odoo 18.0 ORM, `python-magic` (system: `libmagic1`), `werkzeug.utils.secure_filename`
 - 017-property-attachments-upload-api: Added Python 3.11 (Odoo 18.0) + Odoo 18.0 ORM, Werkzeug (multipart parsing via `request.httprequest.files`), `python-magic` (magic bytes — pip), `libmagic1` (apt — C library required by python-magic), `werkzeug.utils.secure_filename`
-- 015-service-pipeline-atendimentos: Added Python 3.11 (Odoo 18.0) + Odoo 18.0 (`mail.thread`, `mail.activity.mixin`, `res.partner`, `res.users`, `res.company`), `quicksol_estate` (existing — provides `real.estate.lead`, `real.estate.property`, `real.estate.proposal`, `real.estate.agent`), `thedevkitchen_apigateway` (OAuth2/JWT/session), `thedevkitchen_user_onboarding` (RBAC profile groups)
 
 
 <!-- MANUAL ADDITIONS START -->

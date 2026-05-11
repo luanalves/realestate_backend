@@ -1,0 +1,186 @@
+openapi: "3.0.3"
+info:
+  title: Goals API – List Goals
+  version: "1.0.0"
+  description: |
+    Lists active monthly performance goals for the caller's company.
+    Supports optional filtering by user, year, month, metric_type, and operation_type.
+    Requires triple auth: JWT + session + company scope.
+
+paths:
+  /api/v1/goals:
+    get:
+      summary: List monthly goals
+      operationId: listGoals
+      tags:
+        - Goals
+      security:
+        - BearerAuth: []
+        - SessionCookie: []
+      parameters:
+        - name: user_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Filter goals for a specific user
+          example: 5
+        - name: year
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 2020
+          description: Filter by year
+          example: 2025
+        - name: month
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 12
+          description: Filter by month (1-12)
+          example: 3
+        - name: metric_type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [captacao, novos_clientes, visitas, propostas, fechamento]
+          description: Filter by metric type
+          example: captacao
+        - name: operation_type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [all, sale, rent]
+          description: Filter by operation type
+          example: sale
+      responses:
+        "200":
+          description: List of goals
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GoalListResponse'
+              example:
+                goals:
+                  - id: 42
+                    user_id: 5
+                    user_name: "Ana Costa"
+                    company_id: 1
+                    year: 2025
+                    month: 3
+                    metric_type: captacao
+                    operation_type: sale
+                    target: 10.0
+                    target_vgv: 500000.00
+                    notes: "Meta de março"
+                    active: true
+                    create_date: "2025-03-01T09:00:00Z"
+                    write_date: "2025-03-01T09:00:00Z"
+                total: 1
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    SessionCookie:
+      type: apiKey
+      in: cookie
+      name: session_id
+
+  schemas:
+    GoalItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 42
+        user_id:
+          type: integer
+          example: 5
+        user_name:
+          type: string
+          example: "Ana Costa"
+        company_id:
+          type: integer
+          example: 1
+        year:
+          type: integer
+          example: 2025
+        month:
+          type: integer
+          example: 3
+        metric_type:
+          type: string
+          enum: [captacao, novos_clientes, visitas, propostas, fechamento]
+          example: captacao
+        operation_type:
+          type: string
+          enum: [all, sale, rent]
+          example: sale
+        target:
+          type: number
+          example: 10.0
+        target_vgv:
+          type: number
+          nullable: true
+          example: 500000.00
+        notes:
+          type: string
+          nullable: true
+          example: "Meta de março"
+        active:
+          type: boolean
+          example: true
+        create_date:
+          type: string
+          format: date-time
+          example: "2025-03-01T09:00:00Z"
+        write_date:
+          type: string
+          format: date-time
+          example: "2025-03-01T09:00:00Z"
+
+    GoalListResponse:
+      type: object
+      properties:
+        goals:
+          type: array
+          items:
+            $ref: '#/components/schemas/GoalItem'
+        total:
+          type: integer
+          description: Total number of goals returned (no pagination in v1)
+          example: 15
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+
+  responses:
+    Unauthorized:
+      description: Unauthorized – missing or invalid JWT / session
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: Forbidden – caller lacks permission
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'

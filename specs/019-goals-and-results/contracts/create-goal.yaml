@@ -1,0 +1,222 @@
+openapi: "3.0.3"
+info:
+  title: Goals API – Create Goal
+  version: "1.0.0"
+  description: |
+    Creates a new monthly performance goal for a specific user.
+    Requires triple auth: JWT + session + company scope.
+
+paths:
+  /api/v1/goals:
+    post:
+      summary: Create a monthly goal
+      operationId: createGoal
+      tags:
+        - Goals
+      security:
+        - BearerAuth: []
+        - SessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateGoalRequest'
+            example:
+              user_id: 5
+              year: 2025
+              month: 3
+              metric_type: captacao
+              operation_type: sale
+              target: 10
+              target_vgv: 500000.00
+              notes: "Meta de março para Ana"
+      responses:
+        "201":
+          description: Goal created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GoalResponse'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "409":
+          description: Conflict – a goal for this user/period/metric/operation_type already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Conflict"
+                message: "A goal for this user/company/period/metric/operation already exists."
+        "422":
+          $ref: '#/components/responses/UnprocessableEntity'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    SessionCookie:
+      type: apiKey
+      in: cookie
+      name: session_id
+
+  schemas:
+    CreateGoalRequest:
+      type: object
+      required:
+        - user_id
+        - year
+        - month
+        - metric_type
+        - operation_type
+        - target
+      properties:
+        user_id:
+          type: integer
+          description: ID of the res.users record the goal is assigned to
+          example: 5
+        year:
+          type: integer
+          minimum: 2020
+          description: Calendar year
+          example: 2025
+        month:
+          type: integer
+          minimum: 1
+          maximum: 12
+          description: Calendar month (1 = January)
+          example: 3
+        metric_type:
+          type: string
+          enum: [captacao, novos_clientes, visitas, propostas, fechamento]
+          description: KPI type
+          example: captacao
+        operation_type:
+          type: string
+          enum: [all, sale, rent]
+          description: Operation scope. Use "all" when goal covers both sale and rent.
+          example: sale
+        target:
+          type: number
+          format: float
+          exclusiveMinimum: 0
+          description: Goal quantity target (must be > 0)
+          example: 10.0
+        target_vgv:
+          type: number
+          format: float
+          minimum: 0
+          nullable: true
+          description: |
+            Optional VGV (Valor Geral de Vendas) target in BRL.
+            Applicable only for metric_type: captacao, propostas, fechamento.
+          example: 500000.00
+        notes:
+          type: string
+          nullable: true
+          maxLength: 1000
+          description: Optional free-text annotation
+          example: "Meta de março para Ana"
+
+    GoalResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 42
+        user_id:
+          type: integer
+          example: 5
+        user_name:
+          type: string
+          example: "Ana Costa"
+        company_id:
+          type: integer
+          example: 1
+        year:
+          type: integer
+          example: 2025
+        month:
+          type: integer
+          example: 3
+        metric_type:
+          type: string
+          example: captacao
+        operation_type:
+          type: string
+          example: sale
+        target:
+          type: number
+          example: 10.0
+        target_vgv:
+          type: number
+          nullable: true
+          example: 500000.00
+        notes:
+          type: string
+          nullable: true
+          example: "Meta de março para Ana"
+        active:
+          type: boolean
+          example: true
+        create_date:
+          type: string
+          format: date-time
+          example: "2025-03-01T09:00:00Z"
+        write_date:
+          type: string
+          format: date-time
+          example: "2025-03-01T09:00:00Z"
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+
+  responses:
+    BadRequest:
+      description: Bad Request – missing or invalid parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Bad Request"
+            message: "month must be between 1 and 12"
+    Unauthorized:
+      description: Unauthorized – missing or invalid JWT / session
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Unauthorized"
+            message: "Authentication required"
+    Forbidden:
+      description: Forbidden – caller lacks permission to create goals
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Forbidden"
+            message: "Only Owner, Director, or Manager may create goals"
+    UnprocessableEntity:
+      description: Unprocessable Entity – business rule violation
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Unprocessable Entity"
+            message: "target_vgv is only valid for metric_type: captacao, propostas, fechamento"
