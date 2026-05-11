@@ -64,12 +64,29 @@ class TestPropertyMappingValues(unittest.TestCase):
             'included_in_commission_date': '2026-05-04',
             'year_of_renovation': '2020',
             'tags': ['Premium'],
+            'commercial_condition': 'Condição comercial padrão',
         })
 
         self.assertEqual(errors, [])
         self.assertTrue(vals['send_activities_to_owner'])
         self.assertEqual(vals['included_in_commission_date'], date(2026, 5, 4))
         self.assertEqual(vals['reform_year'], 2020)
+        self.assertEqual(vals['commercial_condition'], 'Condição comercial padrão')
+
+    def test_build_values_rejects_non_string_commercial_condition(self):
+        _vals, errors = build_property_mapping_values({
+            'commercial_condition': ['Condição comercial padrão'],
+        })
+
+        self.assertEqual(
+            errors,
+            [
+                {
+                    'field': 'commercial_condition',
+                    'message': 'Must be a string',
+                },
+            ],
+        )
 
     def test_build_values_rejects_invalid_mapping_fields(self):
         _vals, errors = build_property_mapping_values({

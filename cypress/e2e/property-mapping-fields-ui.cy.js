@@ -149,7 +149,7 @@ describe('Feature 016 - Property Mapping Fields UI', () => {
         property_status: 'available',
         condition: 'excellent',
         status: 'available',
-        property_situation: 'available',
+        property_situation: 'Desocupado',
         intention: 'sale',
         exclusivity: true,
         authorization_start_date: '2026-01-15',
@@ -196,7 +196,7 @@ describe('Feature 016 - Property Mapping Fields UI', () => {
         commission_type: 'percentage',
         captured_intention: 'sale',
         included_in_commission_date: '2026-05-04',
-        commercial_condition: 'standard',
+        commercial_condition: 'Condição comercial padrão',
         matricula_number: `REG-${ts}`,
         iptu_code: `IPTU-${ts}`,
         electricity_network_code: `ELEC-${ts}`,
@@ -270,7 +270,7 @@ describe('Feature 016 - Property Mapping Fields UI', () => {
     assertFieldContains('iptu_value', '1200.00')
     assertFieldContains('rental_guarantee_insurance', 'required')
     assertFieldContains('fire_insurance', 'included')
-    assertFieldContains('property_situation', 'available')
+    assertFieldContains('property_situation', 'Desocupado')
     assertFieldContains('intention', 'sale')
     assertFieldContains('authorization_start_date', '01/15/2026')
     assertFieldContains('authorization_end_date', '12/15/2026')
@@ -352,7 +352,7 @@ describe('Feature 016 - Property Mapping Fields UI', () => {
     assertFieldContains('commission_type', 'percentage')
     assertFieldContains('captured_intention', 'sale')
     assertFieldContains('included_in_commission_date', '05/04/2026')
-    assertFieldContains('commercial_condition', 'standard')
+    assertFieldContains('commercial_condition', 'Condição comercial padrão')
 
     clickTab('Documents')
     assertMappedFieldsExist([

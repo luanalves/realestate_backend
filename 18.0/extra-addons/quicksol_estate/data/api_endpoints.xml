@@ -769,8 +769,8 @@ Image and file fields return metadata only (`id`, `name`, `mimetype`, `size`, `d
           "commercial_condition": {
             "type": "string",
             "nullable": true,
-            "description": "Commercial condition.",
-            "example": "standard"
+            "description": "Commercial condition free-text value.",
+            "example": "Condição comercial padrão"
           },
           "iptu_code": {
             "type": "string",
@@ -1366,8 +1366,8 @@ Validation notes:
     "commercial_condition": {
       "type": "string",
       "nullable": true,
-      "description": "Commercial condition.",
-      "example": "standard"
+      "description": "Commercial condition free-text value.",
+      "example": "Condição comercial padrão"
     },
     "iptu_code": {
       "type": "string",
@@ -2040,8 +2040,8 @@ Validation notes:
     "commercial_condition": {
       "type": "string",
       "nullable": true,
-      "description": "Commercial condition.",
-      "example": "standard"
+      "description": "Commercial condition free-text value.",
+      "example": "Condição comercial padrão"
     },
     "iptu_code": {
       "type": "string",
@@ -2607,8 +2607,8 @@ Defaults are stable: strings/dates return `null`, booleans return `false`, and c
     "commercial_condition": {
       "type": "string",
       "nullable": true,
-      "description": "Commercial condition.",
-      "example": "standard"
+      "description": "Commercial condition free-text value.",
+      "example": "Condição comercial padrão"
     },
     "iptu_code": {
       "type": "string",
@@ -3134,8 +3134,8 @@ Omitted arrays do not clear existing collections. Sent arrays replace the corres
     "commercial_condition": {
       "type": "string",
       "nullable": true,
-      "description": "Commercial condition.",
-      "example": "standard"
+      "description": "Commercial condition free-text value.",
+      "example": "Condição comercial padrão"
     },
     "iptu_code": {
       "type": "string",
@@ -3786,8 +3786,8 @@ Omitted arrays do not clear existing collections. Sent arrays replace the corres
     "commercial_condition": {
       "type": "string",
       "nullable": true,
-      "description": "Commercial condition.",
-      "example": "standard"
+      "description": "Commercial condition free-text value.",
+      "example": "Condição comercial padrão"
     },
     "iptu_code": {
       "type": "string",

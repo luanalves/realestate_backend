@@ -4,6 +4,7 @@ module.exports = {
     viewportWidth: 1280,
     viewportHeight: 720,
     defaultCommandTimeout: 10000,
+    supportFile: false,
     setupNodeEvents(on, config) {
       // implement node event listeners here
     },

@@ -165,7 +165,7 @@ Only fields from the spreadsheet row status `❌ Faltando` are in scope.
 | Commissions | `commissionType` | `commission_type` | string | yes |
 | Commissions | `capturedIntention` | `captured_intention` | string | yes |
 | Commissions | `includedInCommissionDate` | `included_in_commission_date` | date | yes |
-| Commissions | `commercialCondition` | `commercial_condition` | string | yes |
+| Commissions | `commercialCondition` | `commercial_condition` | string (free text) | yes |
 | Documentation | `iptuCode` | `iptu_code` | string | yes |
 | Documentation | `registrationNumber` | `registration_number` | string | yes |
 | Documentation | `electricityNetworkCode` | `electricity_network_code` | string | yes |

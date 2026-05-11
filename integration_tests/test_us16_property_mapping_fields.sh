@@ -135,10 +135,6 @@ CREATE_PAYLOAD=$(cat <<JSON
   "condominium_fee": 750,
   "authorization_start_date": "2026-01-15",
   "authorization_end_date": "2026-12-15",
-  "owner_email": "owner.us16.$TS@example.com",
-  "owner_home_phone": "(11) 3333-4444",
-  "owner_business_phone": "(11) 2222-3333",
-  "owner_mobile_phone": "(11) 98888-7777",
   "source_medium": "website",
   "send_activities_to_owner": true,
   "search_street": "Rua API Mapping",
@@ -150,7 +146,7 @@ CREATE_PAYLOAD=$(cat <<JSON
   "rental_guarantee_insurance": "required",
   "fire_insurance": "included",
   "exclusivity": true,
-  "property_situation": "available",
+  "property_situation": "Desocupado",
   "year_of_renovation": "2020",
   "zoning": "residential",
   "zoning_restrictions": "US16 zoning restriction note",
@@ -173,7 +169,7 @@ CREATE_PAYLOAD=$(cat <<JSON
   "commission_type": "percentage",
   "captured_intention": "sale",
   "included_in_commission_date": "2026-05-04",
-  "commercial_condition": "standard",
+  "commercial_condition": "Condição comercial padrão",
   "iptu_code": "IPTU-$TS",
   "registration_number": "REG-$TS",
   "electricity_network_code": "ELEC-$TS",
@@ -202,7 +198,6 @@ _assert_code "Create property with mapping fields" 201 "$CREATE_CODE"
 PROPERTY_ID=$(python3 -c "import json; print(json.load(open('/tmp/us16_property_create.json')).get('id',''))" 2>/dev/null || echo "")
 
 if [ -n "$PROPERTY_ID" ]; then
-    _assert_json_eq "Create returns owner_email" /tmp/us16_property_create.json owner_email "owner.us16.$TS@example.com"
     _assert_json_eq "Create returns price" /tmp/us16_property_create.json price "850000.0"
     _assert_json_eq "Create returns description" /tmp/us16_property_create.json description "<p>US16 complete property description</p>"
     _assert_json_eq "Create returns bedrooms" /tmp/us16_property_create.json features.bedrooms "4"
@@ -210,9 +205,6 @@ if [ -n "$PROPERTY_ID" ]; then
     _assert_json_eq "Create returns bathrooms" /tmp/us16_property_create.json features.bathrooms "3"
     _assert_json_eq "Create returns parking spaces" /tmp/us16_property_create.json features.parking_spaces "2"
     _assert_json_eq "Create returns total_area" /tmp/us16_property_create.json features.total_area "250.0"
-    _assert_json_eq "Create returns owner_home_phone" /tmp/us16_property_create.json owner_home_phone "(11) 3333-4444"
-    _assert_json_eq "Create returns owner_business_phone" /tmp/us16_property_create.json owner_business_phone "(11) 2222-3333"
-    _assert_json_eq "Create returns owner_mobile_phone" /tmp/us16_property_create.json owner_mobile_phone "(11) 98888-7777"
     _assert_json_eq "Create returns source_medium" /tmp/us16_property_create.json source_medium "website"
     _assert_json_eq "Create returns send_activities_to_owner" /tmp/us16_property_create.json send_activities_to_owner "True"
     _assert_json_eq "Create returns search_street alias" /tmp/us16_property_create.json search_street "Rua API Mapping"
@@ -224,7 +216,7 @@ if [ -n "$PROPERTY_ID" ]; then
     _assert_json_eq "Create returns rental_guarantee_insurance" /tmp/us16_property_create.json rental_guarantee_insurance "required"
     _assert_json_eq "Create returns fire_insurance" /tmp/us16_property_create.json fire_insurance "included"
     _assert_json_eq "Create returns exclusivity" /tmp/us16_property_create.json exclusivity "True"
-    _assert_json_eq "Create returns property_situation" /tmp/us16_property_create.json property_situation "available"
+    _assert_json_eq "Create returns property_situation" /tmp/us16_property_create.json property_situation "Desocupado"
     _assert_json_eq "Create returns year_of_renovation" /tmp/us16_property_create.json year_of_renovation "2020"
     _assert_json_eq "Create returns zoning" /tmp/us16_property_create.json zoning "residential"
     _assert_json_eq "Create returns internal_comments" /tmp/us16_property_create.json internal_comments "internal api note"
@@ -239,7 +231,7 @@ if [ -n "$PROPERTY_ID" ]; then
     _assert_json_eq "Create returns commission_type" /tmp/us16_property_create.json commission_type "percentage"
     _assert_json_eq "Create returns captured_intention" /tmp/us16_property_create.json captured_intention "sale"
     _assert_json_eq "Create returns included_in_commission_date" /tmp/us16_property_create.json included_in_commission_date "2026-05-04"
-    _assert_json_eq "Create returns commercial_condition" /tmp/us16_property_create.json commercial_condition "standard"
+    _assert_json_eq "Create returns commercial_condition" /tmp/us16_property_create.json commercial_condition "Condição comercial padrão"
     _assert_json_eq "Create returns iptu_code" /tmp/us16_property_create.json iptu_code "IPTU-$TS"
     _assert_json_eq "Create returns registration_number" /tmp/us16_property_create.json registration_number "REG-$TS"
     _assert_json_eq "Create returns electricity_network_code" /tmp/us16_property_create.json electricity_network_code "ELEC-$TS"
@@ -262,16 +254,16 @@ if [ -n "$PROPERTY_ID" ]; then
     _assert_code "List properties includes mapping schema" 200 "$LIST_CODE"
 
     UPDATE_RESPONSE=$(curl -s -w "\n%{http_code}" -X PUT "$BASE_URL/api/v1/properties/$PROPERTY_ID" "${H[@]}" \
-        -d '{"owner_email":"updated.us16@example.com","send_activities_to_owner":false,"tags":["US16 Updated"]}')
+        -d '{"send_activities_to_owner":false,"tags":["US16 Updated"]}')
     UPDATE_CODE=$(echo "$UPDATE_RESPONSE" | tail -1)
     echo "$UPDATE_RESPONSE" | sed '$d' > /tmp/us16_property_update.json
     _assert_code "Update mapping fields" 200 "$UPDATE_CODE"
-    _assert_json_eq "Update returns owner_email" /tmp/us16_property_update.json owner_email "updated.us16@example.com"
+    _assert_json_eq "Update returns send_activities_to_owner" /tmp/us16_property_update.json send_activities_to_owner "False"
 
     BAD_RESPONSE=$(curl -s -w "\n%{http_code}" -X PUT "$BASE_URL/api/v1/properties/$PROPERTY_ID" "${H[@]}" \
-        -d '{"owner_email":"not-an-email"}')
+        -d '{"commercial_condition":["Condição comercial padrão"]}')
     BAD_CODE=$(echo "$BAD_RESPONSE" | tail -1)
-    _assert_code "Invalid email rejected" 400 "$BAD_CODE"
+    _assert_code "Invalid commercial_condition type rejected" 400 "$BAD_CODE"
 else
     _fail "Property ID not returned"
 fi

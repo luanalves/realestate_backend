@@ -126,7 +126,7 @@ Campos representativos do payload:
   "youtube_video": "https://youtube.com/watch?v=demo",
   "commission_type": "percentage",
   "included_in_commission_date": "2026-05-05",
-  "commercial_condition": "standard",
+  "commercial_condition": "Condição comercial padrão",
   "iptu_code": "IPTU-123",
   "registration_number": "MAT-12345",
   "electricity_network_code": "ENE-123",
