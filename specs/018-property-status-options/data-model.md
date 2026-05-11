@@ -10,6 +10,7 @@
 | `for_rent` | Boolean | no | `False` | `for_rent` | Indicates the property is offered for rent. |
 | `property_status` | Selection | yes | `available` | `property_status`, `status` | Canonical operational status. `status` is a legacy alias in API response. |
 | `property_situation` | Selection | no | `Não Informado` | `property_situation` | User-facing situation label for app/UI selectors. |
+| `owner_id` | Many2one | no | empty | `owner` response object; `owner_id` write field | Links the property to `real.estate.property.owner`. |
 
 ## `property_status` Selection
 
@@ -40,6 +41,13 @@ Defined in `18.0/extra-addons/quicksol_estate/models/property.py`.
 | `Novo` | `Novo` |
 
 ## Serialization Rules
+
+### `owner`
+
+- Serialized from the `owner_id` relationship.
+- Returned as an object named `owner`.
+- Written by sending `owner_id` as an integer in `POST` or `PUT`.
+- Legacy scalar owner contact fields are not part of the property response and are rejected in property create/update payloads.
 
 ### `for_sale` / `for_rent`
 
@@ -92,4 +100,3 @@ It returns options for these property selection fields:
 Changing `property_situation` from `fields.Char` to `fields.Selection` is compatible with existing rows only when stored values match one of the allowed options or are empty.
 
 If production data contains arbitrary values, a pre-migration cleanup should map legacy strings into the allowed values before upgrading the module.
-

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+        <function model="real.estate.property" name="_seed_fix_owner_relationships"/>
+    </data>
+</odoo>

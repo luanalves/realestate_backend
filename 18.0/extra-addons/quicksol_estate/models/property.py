@@ -515,6 +515,25 @@ class Property(models.Model):
 
         return properties
 
+    @api.model
+    def _seed_fix_owner_relationships(self):
+        owner = self.env.ref('quicksol_estate.seed_property_owner', raise_if_not_found=False)
+        if not owner:
+            return True
+
+        properties = self.browse([
+            prop.id
+            for prop in (
+                self.env.ref('quicksol_estate.seed_property_1', raise_if_not_found=False),
+                self.env.ref('quicksol_estate.seed_property_2', raise_if_not_found=False),
+                self.env.ref('quicksol_estate.seed_property_3', raise_if_not_found=False),
+            )
+            if prop
+        ]).exists()
+        if properties:
+            properties.write({'owner_id': owner.id})
+        return True
+
 
 class PropertyType(models.Model):
     _name = 'real.estate.property.type'

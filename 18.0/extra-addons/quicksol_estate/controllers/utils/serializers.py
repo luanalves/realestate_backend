@@ -34,6 +34,7 @@ def serialize_property(property_record):
             'name': property_record.agent_id.name,
             'email': property_record.agent_id.email or ''
         } if property_record.agent_id else None,
+        'owner': serialize_property_owner(property_record),
         'company': {
             'id': property_record.company_id.id if property_record.company_id else None,
             'name': property_record.company_id.name if property_record.company_id else None
@@ -70,11 +71,34 @@ def serialize_property(property_record):
     }
 
 
+def serialize_property_owner(property_record):
+    owner = getattr(property_record, 'owner_id', False)
+    if not owner:
+        return None
+
+    partner = getattr(owner, 'partner_id', False)
+    state = getattr(owner, 'state_id', False)
+
+    return {
+        'id': owner.id,
+        'name': owner.name or '',
+        'email': owner.email or '',
+        'phone': owner.phone or '',
+        'mobile': owner.mobile or '',
+        'whatsapp': owner.whatsapp or '',
+        'partner_id': partner.id if partner else None,
+        'address': owner.address or '',
+        'city': owner.city or '',
+        'state': {
+            'id': state.id,
+            'name': state.name,
+            'code': state.code,
+        } if state else None,
+        'zip_code': owner.zip_code or '',
+    }
+
+
 PROPERTY_MAPPING_SCALAR_FIELDS = {
-    'owner_email': ('owner_email', 'email'),
-    'owner_home_phone': ('owner_home_phone', 'string'),
-    'owner_business_phone': ('owner_business_phone', 'string'),
-    'owner_mobile_phone': ('owner_mobile_phone', 'string'),
     'source_medium': ('origin_media', 'string'),
     'send_activities_to_owner': ('send_activities_to_owner', 'boolean'),
     'search_street': ('street', 'string'),
@@ -112,6 +136,12 @@ PROPERTY_MAPPING_SCALAR_FIELDS = {
 }
 
 PROPERTY_MAPPING_COLLECTION_FIELDS = {'tags', 'property_images', 'property_files'}
+LEGACY_PROPERTY_OWNER_FIELDS = {
+    'owner_email',
+    'owner_home_phone',
+    'owner_business_phone',
+    'owner_mobile_phone',
+}
 EMAIL_REGEX = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
 PROPERTY_SITUATION_FALLBACKS = {
     'available': 'Desocupado',
@@ -214,6 +244,13 @@ def _binary_size(binary_value):
 def build_property_mapping_values(data):
     vals = {}
     errors = []
+
+    for field in sorted(LEGACY_PROPERTY_OWNER_FIELDS):
+        if field in data:
+            errors.append({
+                'field': field,
+                'message': 'Use owner_id to link a property owner',
+            })
 
     for api_field, (odoo_field, field_type) in PROPERTY_MAPPING_SCALAR_FIELDS.items():
         if api_field not in data:

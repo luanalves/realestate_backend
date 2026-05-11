@@ -19,11 +19,11 @@ O objetivo principal e deixar claro:
 |---|---|---|
 | `GET` | `/api/v1/properties/options` | Descobrir valores validos para `property_status` e `property_situation`. |
 | `GET` | `/api/v1/property-types` | Obter ids validos para `property_type_id` antes de criar imovel. |
-| `POST` | `/api/v1/properties` | Criar imovel com flags de venda/aluguel e campos de status/situacao. |
-| `GET` | `/api/v1/properties/{id}` | Consultar detalhe e confirmar campos serializados. |
-| `PUT` | `/api/v1/properties/{id}` | Atualizar parcialmente status, situacao e disponibilidade. |
-| `GET` | `/api/v1/properties` | Listar e filtrar propriedades por status/disponibilidade. |
-| `GET` | `/api/v1/companies/{id}/properties` | Listar propriedades de uma imobiliaria com filtros de status/disponibilidade. |
+| `POST` | `/api/v1/properties` | Criar imovel com `owner_id`, flags de venda/aluguel e campos de status/situacao. |
+| `GET` | `/api/v1/properties/{id}` | Consultar detalhe e confirmar `owner`, status, situacao e disponibilidade serializados. |
+| `PUT` | `/api/v1/properties/{id}` | Atualizar parcialmente `owner_id`, status, situacao e disponibilidade. |
+| `GET` | `/api/v1/properties` | Listar e filtrar propriedades por status/disponibilidade, com `owner` por item. |
+| `GET` | `/api/v1/companies/{id}/properties` | Listar propriedades de uma imobiliaria com filtros e `owner` por item. |
 
 ---
 
@@ -36,8 +36,12 @@ O objetivo principal e deixar claro:
 | `property_status` | string selection | `fields.Selection` | string de opcao valida | string canonica |
 | `status` | string alias | alias de `property_status` | nao usar para escrita nova | alias legado no retorno |
 | `property_situation` | string selection | `fields.Selection` | string de opcao valida | string explicita ou fallback |
+| `owner_id` | integer | `fields.Many2one` | id de `real.estate.property.owner` | nao retorna como escalar |
+| `owner` | object | relacao `owner_id` | read-only | objeto do proprietario relacionado |
 
 `property_status` e `property_situation` **nao sao relacionamentos**. Nao envie objeto, `id`, array ou comando Odoo. Envie a string selecionada.
+
+`owner` e relacional. Para criar ou atualizar o proprietario do imovel, envie `owner_id`; nao envie `owner` aninhado nem os campos legados `owner_email`, `owner_home_phone`, `owner_business_phone` ou `owner_mobile_phone`.
 
 Exemplo valido:
 
@@ -45,6 +49,7 @@ Exemplo valido:
 {
   "for_sale": true,
   "for_rent": false,
+  "owner_id": 4,
   "property_status": "available",
   "property_situation": "Desocupado"
 }
@@ -61,7 +66,7 @@ flowchart TD
     O1["GET /api/v1/properties/options\nDescobrir property_status e property_situation"] --> O2
     O2["GET /api/v1/property-types\nDescobrir property_type_id"] --> Decision{Criar ou editar?}
 
-    Decision -->|Novo imovel| C1["POST /api/v1/properties\nEnviar for_sale, for_rent,\nproperty_status e property_situation"]
+    Decision -->|Novo imovel| C1["POST /api/v1/properties\nEnviar owner_id, for_sale, for_rent,\nproperty_status e property_situation"]
     Decision -->|Imovel existente| E1["GET /api/v1/properties/{id}\nCarregar estado atual"]
 
     C1 --> V1["GET /api/v1/properties/{id}\nConfirmar payload retornado"]
@@ -123,7 +128,8 @@ flowchart TD
     P1R -->|401/403| ERR1([Renovar autenticacao\nou validar permissao])
 
     P2 --> P3["GET /api/v1/property-types\nPopular property_type_id"]
-    P3 --> Ready([Formulario pronto para POST ou PUT])
+    P3 --> P4["Carregar lista de proprietarios\npor endpoint/cadastro de owners\nSelecionar owner_id"]
+    P4 --> Ready([Formulario pronto para POST ou PUT])
 ```
 
 ---
@@ -138,13 +144,13 @@ flowchart TD
 
     C0["GET /api/v1/properties/options\nEscolher property_status e property_situation"] --> C1
 
-    C1["POST /api/v1/properties\n\n{\n  \"name\": \"Apartamento Seed\",\n  \"property_type_id\": 2,\n  \"area\": 82,\n  \"zip_code\": \"12200-000\",\n  \"state_id\": 1,\n  \"city\": \"Sao Jose dos Campos\",\n  \"street\": \"Rua Exemplo\",\n  \"street_number\": \"100\",\n  \"location_type_id\": 1,\n  \"for_sale\": true,\n  \"for_rent\": false,\n  \"property_status\": \"available\",\n  \"property_situation\": \"Desocupado\"\n}"] --> C1R{Resposta}
+    C1["POST /api/v1/properties\n\n{\n  \"name\": \"Apartamento Seed\",\n  \"property_type_id\": 2,\n  \"owner_id\": 4,\n  \"area\": 82,\n  \"zip_code\": \"12200-000\",\n  \"state_id\": 1,\n  \"city\": \"Sao Jose dos Campos\",\n  \"street\": \"Rua Exemplo\",\n  \"street_number\": \"100\",\n  \"location_type_id\": 1,\n  \"for_sale\": true,\n  \"for_rent\": false,\n  \"property_status\": \"available\",\n  \"property_situation\": \"Desocupado\"\n}"] --> C1R{Resposta}
 
     C1R -->|201 Created| C2["GET /api/v1/properties/{id}\nConfirmar retorno"]
     C1R -->|400 Validation Error| ERR1([Corrigir campos obrigatorios\nou selection invalido])
     C1R -->|401/403| ERR2([Validar token, sessao e RBAC])
 
-    C2 --> C3["Resposta esperada contem:\nfor_sale=true\nfor_rent=false\nproperty_status=available\nstatus=available\nproperty_situation=Desocupado"]
+    C2 --> C3["Resposta esperada contem:\nowner={...}\nfor_sale=true\nfor_rent=false\nproperty_status=available\nstatus=available\nproperty_situation=Desocupado"]
     C3 --> Done([Imovel criado e pronto para listagem])
 ```
 
@@ -156,7 +162,7 @@ flowchart TD
 flowchart TD
     Start([Usuario cria imovel para aluguel]) --> R1
 
-    R1["POST /api/v1/properties\n\n{\n  \"for_sale\": false,\n  \"for_rent\": true,\n  \"rent_price\": 4500,\n  \"property_status\": \"available\",\n  \"property_situation\": \"Desocupado\",\n  \"...\": \"demais campos obrigatorios\"\n}"] --> R1R{Resposta}
+    R1["POST /api/v1/properties\n\n{\n  \"owner_id\": 4,\n  \"for_sale\": false,\n  \"for_rent\": true,\n  \"rent_price\": 4500,\n  \"property_status\": \"available\",\n  \"property_situation\": \"Desocupado\",\n  \"...\": \"demais campos obrigatorios\"\n}"] --> R1R{Resposta}
 
     R1R -->|201 Created| R2["GET /api/v1/properties/{id}"]
     R1R -->|400| ERR1([Verificar required fields\ne valores selection])
@@ -168,9 +174,9 @@ flowchart TD
 
 ---
 
-## J4 — Atualizar status e situacao de imovel existente
+## J4 — Atualizar status, situacao ou proprietario de imovel existente
 
-`PUT /api/v1/properties/{id}` e parcial. Envie apenas os campos alterados. Campos omitidos nao devem ser limpos.
+`PUT /api/v1/properties/{id}` e parcial. Envie apenas os campos alterados. Campos omitidos nao devem ser limpos. Para trocar o proprietario relacionado, envie `owner_id`.
 
 ```mermaid
 flowchart TD
@@ -178,20 +184,54 @@ flowchart TD
 
     U0["GET /api/v1/properties/{id}\nLer estado atual"] --> U1
 
-    U1["PUT /api/v1/properties/{id}\n\n{\n  \"property_status\": \"reserved\",\n  \"property_situation\": \"Reservado\"\n}"] --> U1R{Resposta}
+    U1["PUT /api/v1/properties/{id}\n\n{\n  \"owner_id\": 4,\n  \"property_status\": \"reserved\",\n  \"property_situation\": \"Reservado\"\n}"] --> U1R{Resposta}
 
     U1R -->|200 OK| U2["GET /api/v1/properties/{id}\nConfirmar alteracao"]
-    U1R -->|400 Validation Error| ERR1([Valor nao existe em properties/options])
+    U1R -->|400 Validation Error| ERR1([Valor selection invalido\nou owner_id inexistente])
     U1R -->|403 Forbidden| ERR2([Usuario sem permissao de escrita])
     U1R -->|404 Not Found| ERR3([Property inexistente\nou fora do escopo da empresa])
 
-    U2 --> U3["Retorno esperado:\nproperty_status=reserved\nstatus=reserved\nproperty_situation=Reservado"]
+    U2 --> U3["Retorno esperado:\nowner={...}\nproperty_status=reserved\nstatus=reserved\nproperty_situation=Reservado"]
     U3 --> Done([Status atualizado])
 ```
 
 ---
 
-## J5 — Fallback de `property_situation` quando o banco esta vazio
+## J5 — Vincular e ler proprietario por relacionamento
+
+`owner` e sempre derivado de `owner_id`. O cliente escreve o relacionamento usando o id do proprietario e le os dados normalizados no objeto `owner`.
+
+```mermaid
+flowchart TD
+    Start([Cliente precisa associar proprietario ao imovel]) --> O0
+
+    O0{Proprietario ja existe?}
+    O0 -->|Sim| O1["Usar id existente de real.estate.property.owner\nEx: owner_id=4"]
+    O0 -->|Nao| O2["Criar/cadastrar proprietario\nno fluxo de owners\nGuardar id retornado"]
+
+    O1 --> O3
+    O2 --> O3
+
+    O3["POST ou PUT /api/v1/properties\n\n{\n  \"owner_id\": 4,\n  \"...\": \"demais campos da propriedade\"\n}"] --> O3R{Resposta}
+
+    O3R -->|201/200| O4["GET /api/v1/properties/{id}\nConfirmar owner serializado"]
+    O3R -->|400 owner_id invalido| ERR1([Verificar se o proprietario existe\nem real.estate.property.owner])
+
+    O4 --> O5["Resposta esperada:\n{\n  \"owner\": {\n    \"id\": 4,\n    \"name\": \"Proprietario Seed\",\n    \"email\": \"propowner@seed.com.br\",\n    \"phone\": \"...\",\n    \"mobile\": \"...\",\n    \"partner_id\": 26,\n    \"state\": { \"code\": \"SP\" }\n  }\n}"]
+
+    O5 --> Done([Relacionamento confirmado])
+```
+
+Campos que nao devem ser enviados nem esperados no retorno da propriedade:
+
+- `owner_email`
+- `owner_home_phone`
+- `owner_business_phone`
+- `owner_mobile_phone`
+
+---
+
+## J6 — Fallback de `property_situation` quando o banco esta vazio
 
 Registros antigos podem nao ter `property_situation` preenchido. Para evitar retorno `null`, o serializer deriva uma situacao legivel a partir de `property_status`.
 
@@ -224,7 +264,7 @@ flowchart TD
 
 ---
 
-## J6 — Listar e filtrar propriedades por disponibilidade
+## J7 — Listar e filtrar propriedades por disponibilidade
 
 Os filtros de query string sempre trafegam como texto na URL, mesmo quando representam booleanos. O backend interpreta `for_sale=true` e `for_rent=false`.
 
@@ -244,12 +284,12 @@ flowchart TD
     L4 --> R1
     L5 --> R1
 
-    R1 --> Done([Renderizar lista\nsem depender de detalhe para estes campos])
+    R1 --> Done([Renderizar lista\ncom owner, status, situacao\ne disponibilidade])
 ```
 
 ---
 
-## J7 — Listar propriedades de uma imobiliaria
+## J8 — Listar propriedades de uma imobiliaria
 
 Quando a tela esta no contexto de uma imobiliaria especifica, use o endpoint de company. Ele respeita RBAC e isolamento multi-tenant.
 
@@ -269,13 +309,13 @@ flowchart TD
     C5 --> C7
     C6 --> C7
 
-    C7 -->|200 OK| Done([Listagem isolada por imobiliaria])
+    C7 -->|200 OK| Done([Listagem isolada por imobiliaria\ncom owner por item])
     C7 -->|403/404| ERR1([Usuario sem acesso\na esta imobiliaria])
 ```
 
 ---
 
-## J8 — Validar contrato via Swagger/OpenAPI
+## J9 — Validar contrato via Swagger/OpenAPI
 
 Depois de alterar `api_endpoints.xml`, o Swagger so reflete os campos apos atualizar o modulo e consultar o OpenAPI gerado.
 
@@ -299,6 +339,9 @@ Campos esperados no OpenAPI:
 - `property_situation` em `/properties/options`
 - `for_sale` e `for_rent` em respostas de propriedade
 - `property_status` e `property_situation` em respostas de propriedade
+- `owner` em respostas de propriedade
+- `owner_id` em requests de `POST /api/v1/properties` e `PUT /api/v1/properties/{id}`
+- ausencia de `owner_email`, `owner_home_phone`, `owner_business_phone` e `owner_mobile_phone` nos schemas de propriedade
 
 ---
 
@@ -310,6 +353,7 @@ Campos esperados no OpenAPI:
 | `property_situation` enviado como objeto | Campo e selection, nao relacionamento | Enviar string valida retornada por `/properties/options`. |
 | `property_status` enviado como label | Backend espera o value, nao label | Enviar `available`, `reserved`, etc. |
 | `for_sale` enviado como `"true"` no JSON | Campo e booleano | Enviar `true` sem aspas. |
+| `owner` enviado no `POST`/`PUT` | `owner` e objeto read-only da resposta | Enviar `owner_id`. |
+| Campos `owner_email`/telefones enviados | Campos legados removidos do contrato | Criar/atualizar o proprietario no dominio de owners e vincular por `owner_id`. |
 | `PUT` remove campo nao enviado | Nao deve ocorrer no contrato atual | Enviar somente campo alterado e validar detalhe apos update. |
 | Retorno tem `status` e `property_status` | Compatibilidade legada | Usar `property_status` em clientes novos. |
-

@@ -15,12 +15,12 @@ Complete Postman collection for Quicksol Real Estate Management System API.
 **Coverage:** All 55+ endpoints - Complete API coverage
 **ADR Compliance:** ADR-016 (complete)
 **Security:** Token format validation + cross-type abuse block + last-token-wins
-**Includes:** Authentication, Users, Properties, Agents, Assignments (full CRUD), Commissions, Performance, Leads, Activities, Filters, Master Data, Profile Management, User Onboarding, property selectable options
+**Includes:** Authentication, Users, Properties, Agents, Assignments (full CRUD), Commissions, Performance, Leads, Activities, Filters, Master Data, Profile Management, User Onboarding, property selectable options, property owner relationship payloads
 
 ### 2. Complete API Collection (v1.29)
 **File:** `quicksol_api_v1.29_postman_collection.json`
 **Coverage:** Property attachments response examples
-**Note:** Use v1.30 for latest property options and `property_situation` enum updates
+**Note:** Use v1.30 for latest property options, `property_situation` enum updates, and property `owner` relationship payloads
 
 ### 3. Complete API Collection (v1.19)
 **File:** `quicksol_api_v1.19_postman_collection.json`  
@@ -64,6 +64,9 @@ Complete Postman collection for Quicksol Real Estate Management System API.
 ✅ `property_situation` is now documented as a selectable property field.
 ✅ `GET /api/v1/properties/options` returns `property_situation` options: `Não Informado`, `Desocupado`, `Ocupado`, `Reservado`, `Em construção`, `Lançamento`, `Novo`.
 ✅ Property create/update examples use valid `property_situation` values.
+✅ Property create/update examples use `owner_id` to link the related owner.
+✅ Property detail/list examples document `owner` as the response object from the `owner_id` relationship.
+✅ Legacy property owner scalar fields were removed from property request/response examples.
 ✅ Swagger/OpenAPI was validated after upgrading `quicksol_estate`.
 
 ## Changelog v1.20 (2026-02-22)

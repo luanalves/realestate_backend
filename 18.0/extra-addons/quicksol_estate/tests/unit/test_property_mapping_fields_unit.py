@@ -60,7 +60,6 @@ class TestPropertyOptions(unittest.TestCase):
 class TestPropertyMappingValues(unittest.TestCase):
     def test_build_values_accepts_valid_mapping_fields(self):
         vals, errors = build_property_mapping_values({
-            'owner_email': 'Owner@Example.COM',
             'send_activities_to_owner': True,
             'included_in_commission_date': '2026-05-04',
             'year_of_renovation': '2020',
@@ -68,14 +67,12 @@ class TestPropertyMappingValues(unittest.TestCase):
         })
 
         self.assertEqual(errors, [])
-        self.assertEqual(vals['owner_email'], 'owner@example.com')
         self.assertTrue(vals['send_activities_to_owner'])
         self.assertEqual(vals['included_in_commission_date'], date(2026, 5, 4))
         self.assertEqual(vals['reform_year'], 2020)
 
     def test_build_values_rejects_invalid_mapping_fields(self):
         _vals, errors = build_property_mapping_values({
-            'owner_email': 'invalid',
             'send_activities_to_owner': 'true',
             'included_in_commission_date': '04/05/2026',
             'tags': 'Premium',
@@ -83,7 +80,27 @@ class TestPropertyMappingValues(unittest.TestCase):
 
         self.assertEqual(
             {error['field'] for error in errors},
-            {'owner_email', 'send_activities_to_owner', 'included_in_commission_date', 'tags'},
+            {'send_activities_to_owner', 'included_in_commission_date', 'tags'},
+        )
+
+    def test_build_values_rejects_legacy_owner_contact_fields(self):
+        _vals, errors = build_property_mapping_values({
+            'owner_email': 'owner@example.com',
+            'owner_mobile_phone': '+55 11 98888-7777',
+        })
+
+        self.assertEqual(
+            errors,
+            [
+                {
+                    'field': 'owner_email',
+                    'message': 'Use owner_id to link a property owner',
+                },
+                {
+                    'field': 'owner_mobile_phone',
+                    'message': 'Use owner_id to link a property owner',
+                },
+            ],
         )
 
 
@@ -117,12 +134,36 @@ class TestSerializePropertyMappingFields(unittest.TestCase):
 
         self.assertEqual(result['property_situation'], 'Lançamento')
 
+    def test_serialize_property_includes_owner_from_relationship(self):
+        property_record = _property_record(
+            owner_id=SimpleNamespace(
+                id=9,
+                name='Maria Proprietaria',
+                email='maria@example.com',
+                phone='1130001000',
+                mobile='11999990000',
+                whatsapp='11988887777',
+                partner_id=SimpleNamespace(id=44),
+                address='Rua do Proprietario',
+                city='Sao Paulo',
+                state_id=SimpleNamespace(id=35, name='Sao Paulo', code='SP'),
+                zip_code='01000-000',
+            ),
+        )
+
+        result = serialize_property(property_record)
+
+        self.assertEqual(result['owner']['id'], 9)
+        self.assertEqual(result['owner']['name'], 'Maria Proprietaria')
+        self.assertEqual(result['owner']['email'], 'maria@example.com')
+        self.assertEqual(result['owner']['partner_id'], 44)
+        self.assertEqual(result['owner']['state']['code'], 'SP')
+
     def test_serialize_mapping_fields_uses_stable_defaults(self):
         property_record = _property_record()
 
         result = serialize_property_mapping_fields(property_record)
 
-        self.assertIsNone(result['owner_email'])
         self.assertFalse(result['send_activities_to_owner'])
         self.assertEqual(result['tags'], [])
         self.assertEqual(result['property_images'], [])
@@ -130,7 +171,6 @@ class TestSerializePropertyMappingFields(unittest.TestCase):
 
     def test_serialize_mapping_fields_returns_values_and_metadata(self):
         property_record = _property_record(
-            owner_email='owner@example.com',
             send_activities_to_owner=True,
             included_in_commission_date=date(2026, 5, 4),
             tag_ids=[SimpleNamespace(name='Premium')],
@@ -155,7 +195,6 @@ class TestSerializePropertyMappingFields(unittest.TestCase):
 
         result = serialize_property_mapping_fields(property_record)
 
-        self.assertEqual(result['owner_email'], 'owner@example.com')
         self.assertTrue(result['send_activities_to_owner'])
         self.assertEqual(result['included_in_commission_date'], '2026-05-04')
         self.assertEqual(result['tags'], ['Premium'])
@@ -206,6 +245,7 @@ def _property_record(**overrides):
         'for_rent': False,
         'property_type_id': SimpleNamespace(id=1, name='House'),
         'agent_id': False,
+        'owner_id': False,
         'company_id': SimpleNamespace(id=1, name='Company'),
         'street_number': '100',
         'complement': False,
@@ -223,10 +263,6 @@ def _property_record(**overrides):
         'create_date': date(2026, 5, 4),
         'write_date': date(2026, 5, 5),
         'env': _FakeEnv(),
-        'owner_email': False,
-        'owner_home_phone': False,
-        'owner_business_phone': False,
-        'owner_mobile_phone': False,
         'origin_media': False,
         'send_activities_to_owner': False,
         'street': False,

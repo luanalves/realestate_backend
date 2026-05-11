@@ -23,6 +23,7 @@ Após a implementação:
 - `for_sale` e `for_rent` são retornados como booleanos.
 - `property_status` é retornado explicitamente, mantendo `status` como alias legado.
 - `property_situation` é `fields.Selection` e aparece em `GET /api/v1/properties/options`.
+- `owner` é retornado a partir do relacionamento `owner_id`; campos soltos legados de contato do proprietário não fazem mais parte do payload de propriedades.
 - O retorno da propriedade deriva uma situação legível quando o valor armazenado está vazio.
 - Swagger/OpenAPI e Postman v1.30 foram atualizados e validados.
 
@@ -129,6 +130,22 @@ Query filters use URL strings:
 - `GET /api/v1/properties?for_sale=true`
 - `GET /api/v1/properties?for_rent=false`
 
+### Owner Relationship
+
+| API field | Odoo field | Type | Accepted write value | Response value |
+|---|---|---|---|---|
+| `owner_id` | `owner_id` | many2one | integer ID | not returned as scalar |
+| `owner` | `owner_id` | object | read-only | related owner object |
+
+`owner` is read-only in property responses. To create or update the property owner relationship, clients send `owner_id`.
+
+Legacy scalar owner contact fields are rejected on `POST`/`PUT`:
+
+- `owner_email`
+- `owner_home_phone`
+- `owner_business_phone`
+- `owner_mobile_phone`
+
 ### Property Status
 
 | API field | Odoo field | Type | Notes |
@@ -189,6 +206,15 @@ Relevant response fields:
   "status": "available",
   "property_status": "available",
   "property_situation": "Desocupado",
+  "owner": {
+    "id": 4,
+    "name": "Proprietário Seed",
+    "email": "propowner@seed.com.br",
+    "phone": "(11) 3000-4000",
+    "mobile": "(11) 98888-7777",
+    "whatsapp": "(11) 98888-7777",
+    "partner_id": 26
+  },
   "for_sale": true,
   "for_rent": false
 }
