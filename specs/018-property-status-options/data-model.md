@@ -10,6 +10,7 @@
 | `for_rent` | Boolean | no | `False` | `for_rent` | Indicates the property is offered for rent. |
 | `property_status` | Selection | yes | `available` | `property_status`, `status` | Canonical operational status. `status` is a legacy alias in API response. |
 | `property_situation` | Selection | no | `Não Informado` | `property_situation` | User-facing situation label for app/UI selectors. |
+| `commercial_condition` | Char | no | empty | `commercial_condition` | Free-text commercial condition. This replaced the ambiguous `standard` naming in property API interfaces. |
 | `owner_id` | Many2one | no | empty | `owner` response object; `owner_id` write field | Links the property to `real.estate.property.owner`. |
 
 ## `property_status` Selection
@@ -79,6 +80,34 @@ Fallback table:
 | `under_construction` | `Em construção` |
 | `maintenance` | `Não Informado` |
 | missing/unknown | `Não Informado` |
+
+### `commercial_condition`
+
+- Serialized as `commercial_condition`.
+- Written by sending `commercial_condition` in `POST /api/v1/properties` or `PUT /api/v1/properties/{id}`.
+- It is not a relationship field and is not selected from `/api/v1/properties/options`.
+- It accepts a JSON string with the commercial condition text.
+- It accepts `null` or an empty string to clear the stored value.
+- It rejects arrays, objects, numbers, and booleans with `400 Bad Request`.
+
+Accepted examples:
+
+| Payload value | Result |
+|---|---|
+| `"Condição comercial padrão"` | Accepted and stored as sent. |
+| `"Aceita financiamento"` | Accepted and stored as sent. |
+| `"Venda à vista ou financiamento bancário"` | Accepted and stored as sent. |
+| `""` | Accepted and clears the value. |
+| `null` | Accepted and clears the value. |
+
+Rejected examples:
+
+| Payload value | Reason |
+|---|---|
+| `["Condição comercial padrão"]` | Must be a string. |
+| `{"value": "Condição comercial padrão"}` | Must be a string. |
+| `123` | Must be a string. |
+| `true` | Must be a string. |
 
 ## Options Endpoint
 
