@@ -137,6 +137,7 @@ PROPERTY_MAPPING_SCALAR_FIELDS = {
 
 PROPERTY_MAPPING_COLLECTION_FIELDS = {'tags', 'property_images', 'property_files'}
 LEGACY_PROPERTY_OWNER_FIELDS = {
+    'owner',
     'owner_email',
     'owner_home_phone',
     'owner_business_phone',

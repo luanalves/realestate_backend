@@ -102,6 +102,7 @@ class TestPropertyMappingValues(unittest.TestCase):
 
     def test_build_values_rejects_legacy_owner_contact_fields(self):
         _vals, errors = build_property_mapping_values({
+            'owner': {'id': 4},
             'owner_email': 'owner@example.com',
             'owner_mobile_phone': '+55 11 98888-7777',
         })
@@ -109,6 +110,10 @@ class TestPropertyMappingValues(unittest.TestCase):
         self.assertEqual(
             errors,
             [
+                {
+                    'field': 'owner',
+                    'message': 'Use owner_id to link a property owner',
+                },
                 {
                     'field': 'owner_email',
                     'message': 'Use owner_id to link a property owner',

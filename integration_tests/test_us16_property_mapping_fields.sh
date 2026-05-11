@@ -264,6 +264,27 @@ if [ -n "$PROPERTY_ID" ]; then
         -d '{"commercial_condition":["Condição comercial padrão"]}')
     BAD_CODE=$(echo "$BAD_RESPONSE" | tail -1)
     _assert_code "Invalid commercial_condition type rejected" 400 "$BAD_CODE"
+
+    BAD_OWNER_PAYLOAD=$(cat <<JSON
+{
+  "name": "US16 Invalid Owner Payload $TS",
+  "property_type_id": $PROPERTY_TYPE_ID,
+  "area": 90,
+  "zip_code": "01310-100",
+  "state_id": $STATE_ID,
+  "city": "Sao Paulo",
+  "street": "Rua API Mapping",
+  "street_number": "100",
+  "location_type_id": $LOCATION_TYPE_ID,
+  "company_ids": [$COMPANY_ID],
+  "owner": {"id": 4},
+  "property_situation": "Desocupado"
+}
+JSON
+)
+    BAD_OWNER_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/api/v1/properties" "${H[@]}" -d "$BAD_OWNER_PAYLOAD")
+    BAD_OWNER_CODE=$(echo "$BAD_OWNER_RESPONSE" | tail -1)
+    _assert_code "Nested owner rejected on create" 400 "$BAD_OWNER_CODE"
 else
     _fail "Property ID not returned"
 fi

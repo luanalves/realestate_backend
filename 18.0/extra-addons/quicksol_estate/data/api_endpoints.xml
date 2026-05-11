@@ -934,7 +934,7 @@ Image and file fields return metadata only (`id`, `name`, `mimetype`, `size`, `d
 - `num_parking`: Number of parking spaces (integer)
 - `total_area`: Total area in m² (float)
 - `agent_id`: Responsible agent ID (integer)
-- `owner_id`: Property owner ID (integer)
+- `owner_id`: Property owner ID (`real.estate.property.owner`, integer)
 - `company_ids`: List of company IDs (array of integers)
 - `complement`: Address complement (string)
 - `neighborhood`: Neighborhood (string)
@@ -948,7 +948,8 @@ Image and file fields return metadata only (`id`, `name`, `mimetype`, `size`, `d
 - `accepts_fgts`: Accepts FGTS (boolean)
 
 Validation notes:
-- Owner information is linked through `owner_id`; responses return the related `owner` object.
+- Owner information is linked only through `owner_id` (`real.estate.property.owner`); responses return the related `owner` object.
+- Do not send `owner`, `owner_email`, `owner_home_phone`, `owner_business_phone`, or `owner_mobile_phone` in property create/update payloads.
 - `included_in_commission_date` must be ISO date (`YYYY-MM-DD`) when present.
 - Boolean fields must be JSON booleans, not strings.
 - `tags`, `property_images`, and `property_files` must be arrays.
@@ -1084,7 +1085,7 @@ Validation notes:
     },
     "owner_id": {
       "type": "integer",
-      "description": "Owner ID.",
+      "description": "Property owner relationship ID (real.estate.property.owner).",
       "example": 12
     },
     "company_ids": {
@@ -2862,7 +2863,7 @@ Omitted arrays do not clear existing collections. Sent arrays replace the corres
     },
     "owner_id": {
       "type": "integer",
-      "description": "Owner ID.",
+      "description": "Property owner relationship ID (real.estate.property.owner).",
       "example": 12
     },
     "complement": {

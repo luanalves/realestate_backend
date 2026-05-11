@@ -41,7 +41,9 @@ O objetivo principal e deixar claro:
 
 `property_status` e `property_situation` **nao sao relacionamentos**. Nao envie objeto, `id`, array ou comando Odoo. Envie a string selecionada.
 
-`owner` e relacional. Para criar ou atualizar o proprietario do imovel, envie `owner_id`; nao envie `owner` aninhado nem os campos legados `owner_email`, `owner_home_phone`, `owner_business_phone` ou `owner_mobile_phone`.
+`owner` e relacional e somente leitura. Para criar ou atualizar o proprietario do imovel, envie **somente** `owner_id` no payload de propriedades. Nao envie `owner` aninhado nem os campos legados `owner_email`, `owner_home_phone`, `owner_business_phone` ou `owner_mobile_phone`.
+
+> `owner_id` deve ser o id de `real.estate.property.owner`, que e o relacionamento usado pelo imovel. Ele nao deve ser confundido com dados de contato avulsos nem com um objeto `owner` no JSON.
 
 Exemplo valido:
 
@@ -128,7 +130,7 @@ flowchart TD
     P1R -->|401/403| ERR1([Renovar autenticacao\nou validar permissao])
 
     P2 --> P3["GET /api/v1/property-types\nPopular property_type_id"]
-    P3 --> P4["Carregar lista de proprietarios\npor endpoint/cadastro de owners\nSelecionar owner_id"]
+    P3 --> P4["Carregar proprietarios elegiveis\n(real.estate.property.owner)\nSelecionar owner_id"]
     P4 --> Ready([Formulario pronto para POST ou PUT])
 ```
 
@@ -199,7 +201,7 @@ flowchart TD
 
 ## J5 — Vincular e ler proprietario por relacionamento
 
-`owner` e sempre derivado de `owner_id`. O cliente escreve o relacionamento usando o id do proprietario e le os dados normalizados no objeto `owner`.
+`owner` e sempre derivado de `owner_id`. O cliente escreve o relacionamento usando o id do proprietario (`real.estate.property.owner`) e le os dados normalizados no objeto `owner`.
 
 ```mermaid
 flowchart TD
@@ -207,7 +209,7 @@ flowchart TD
 
     O0{Proprietario ja existe?}
     O0 -->|Sim| O1["Usar id existente de real.estate.property.owner\nEx: owner_id=4"]
-    O0 -->|Nao| O2["Criar/cadastrar proprietario\nno fluxo de owners\nGuardar id retornado"]
+    O0 -->|Nao| O2["Criar/cadastrar proprietario\nno dominio que cria real.estate.property.owner\nGuardar id retornado"]
 
     O1 --> O3
     O2 --> O3
@@ -224,6 +226,7 @@ flowchart TD
 
 Campos que nao devem ser enviados nem esperados no retorno da propriedade:
 
+- `owner` no corpo de `POST`/`PUT`
 - `owner_email`
 - `owner_home_phone`
 - `owner_business_phone`
@@ -341,7 +344,7 @@ Campos esperados no OpenAPI:
 - `property_status` e `property_situation` em respostas de propriedade
 - `owner` em respostas de propriedade
 - `owner_id` em requests de `POST /api/v1/properties` e `PUT /api/v1/properties/{id}`
-- ausencia de `owner_email`, `owner_home_phone`, `owner_business_phone` e `owner_mobile_phone` nos schemas de propriedade
+- ausencia de `owner`, `owner_email`, `owner_home_phone`, `owner_business_phone` e `owner_mobile_phone` nos schemas de request de propriedade
 
 ---
 
