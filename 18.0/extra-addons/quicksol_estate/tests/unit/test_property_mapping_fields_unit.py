@@ -23,6 +23,7 @@ property_options = importlib.util.module_from_spec(OPTIONS_SPEC)
 OPTIONS_SPEC.loader.exec_module(property_options)
 
 build_property_mapping_values = serializers.build_property_mapping_values
+serialize_property = serializers.serialize_property
 serialize_property_mapping_fields = serializers.serialize_property_mapping_fields
 
 
@@ -75,6 +76,14 @@ class TestPropertyMappingValues(unittest.TestCase):
 
 
 class TestSerializePropertyMappingFields(unittest.TestCase):
+    def test_serialize_property_includes_sale_and_rent_flags(self):
+        property_record = _property_record(for_sale=True, for_rent=False)
+
+        result = serialize_property(property_record)
+
+        self.assertTrue(result['for_sale'])
+        self.assertFalse(result['for_rent'])
+
     def test_serialize_mapping_fields_uses_stable_defaults(self):
         property_record = _property_record()
 
@@ -155,6 +164,32 @@ class TestReplacePropertyAttachments(unittest.TestCase):
 
 def _property_record(**overrides):
     fields = {
+        'id': 17,
+        'name': 'Casa Moderna',
+        'description': '<p>Descricao</p>',
+        'price': 850000.0,
+        'property_status': 'available',
+        'for_sale': True,
+        'for_rent': False,
+        'property_type_id': SimpleNamespace(id=1, name='House'),
+        'agent_id': False,
+        'company_id': SimpleNamespace(id=1, name='Company'),
+        'street_number': '100',
+        'complement': False,
+        'neighborhood': 'Centro',
+        'city': 'Sao Jose dos Campos',
+        'state_id': SimpleNamespace(id=1, name='Sao Paulo', code='SP'),
+        'zip_code': '12200-000',
+        'location_type_id': SimpleNamespace(id=1, name='Urban', code='urban'),
+        'num_rooms': 3,
+        'num_suites': 1,
+        'num_bathrooms': 2,
+        'num_parking': 2,
+        'area': 180.0,
+        'total_area': 220.0,
+        'create_date': date(2026, 5, 4),
+        'write_date': date(2026, 5, 5),
+        'env': _FakeEnv(),
         'owner_email': False,
         'owner_home_phone': False,
         'owner_business_phone': False,
@@ -193,11 +228,14 @@ def _property_record(**overrides):
         'approved_environmental_agency': False,
         'approved_project': False,
         'documentation_observations': False,
-        'tag_ids': [],
-        'photo_ids': [],
-        'document_ids': [],
+        'tag_ids': _FakeRecordList(),
+        'photo_ids': _FakeRecordList(),
+        'document_ids': _FakeRecordList(),
     }
     fields.update(overrides)
+    for relation_field in ('tag_ids', 'photo_ids', 'document_ids'):
+        if not isinstance(fields[relation_field], _FakeRecordList):
+            fields[relation_field] = _FakeRecordList(fields[relation_field])
     return SimpleNamespace(**fields)
 
 
@@ -231,12 +269,27 @@ class _FakeModel:
         return SimpleNamespace(**vals)
 
 
+class _FakeAttachmentModel:
+    def sudo(self):
+        return self
+
+    def search(self, _domain):
+        return []
+
+
 class _FakeEnv(dict):
     def __init__(self):
         super().__init__({
+            'ir.attachment': _FakeAttachmentModel(),
             'real.estate.property.photo': _FakeModel(),
             'real.estate.property.document': _FakeModel(),
         })
+
+
+class _FakeRecordList(list):
+    @property
+    def ids(self):
+        return [record.id for record in self]
 
 
 class _FakeField:

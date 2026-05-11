@@ -20,6 +20,8 @@ def serialize_property(property_record):
             if property_record.price else 'R$ 0,00'
         ),
         'status': property_record.property_status or 'available',
+        'for_sale': bool(property_record.for_sale),
+        'for_rent': bool(property_record.for_rent),
         'property_type': {
             'id': property_record.property_type_id.id,
             'name': property_record.property_type_id.name

@@ -328,6 +328,16 @@ Image and file fields return metadata only (`id`, `name`, `mimetype`, `size`, `d
             "description": "Property status.",
             "example": "available"
           },
+          "for_sale": {
+            "type": "boolean",
+            "description": "Available for sale.",
+            "example": true
+          },
+          "for_rent": {
+            "type": "boolean",
+            "description": "Available for rent.",
+            "example": false
+          },
           "property_type": {
             "type": "object",
             "nullable": true,
@@ -1607,6 +1617,16 @@ Validation notes:
       "description": "Property status.",
       "example": "available"
     },
+    "for_sale": {
+      "type": "boolean",
+      "description": "Available for sale.",
+      "example": true
+    },
+    "for_rent": {
+      "type": "boolean",
+      "description": "Available for rent.",
+      "example": false
+    },
     "property_type": {
       "type": "object",
       "nullable": true,
@@ -2156,6 +2176,16 @@ Defaults are stable: strings/dates return `null`, booleans return `false`, and c
       "type": "string",
       "description": "Property status.",
       "example": "available"
+    },
+    "for_sale": {
+      "type": "boolean",
+      "description": "Available for sale.",
+      "example": true
+    },
+    "for_rent": {
+      "type": "boolean",
+      "description": "Available for rent.",
+      "example": false
     },
     "property_type": {
       "type": "object",
@@ -3343,6 +3373,16 @@ Omitted arrays do not clear existing collections. Sent arrays replace the corres
       "type": "string",
       "description": "Property status.",
       "example": "available"
+    },
+    "for_sale": {
+      "type": "boolean",
+      "description": "Available for sale.",
+      "example": true
+    },
+    "for_rent": {
+      "type": "boolean",
+      "description": "Available for rent.",
+      "example": false
     },
     "property_type": {
       "type": "object",
