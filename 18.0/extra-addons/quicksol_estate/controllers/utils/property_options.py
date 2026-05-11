@@ -7,6 +7,7 @@ PROPERTY_SELECTION_FIELDS = {
     'zoning': 'zoning_type',
     'property_purpose': 'property_purpose',
     'property_status': 'property_status',
+    'property_situation': 'property_situation',
     'condition': 'condition',
     'activity_notification': 'activity_notification',
     'sign_type': 'sign_type',

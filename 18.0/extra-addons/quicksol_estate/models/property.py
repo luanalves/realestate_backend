@@ -112,7 +112,15 @@ class Property(models.Model):
         ('maintenance', 'Under Maintenance'),
     ], string='Property Status', required=True, default='available', tracking=True)
     exclusivity = fields.Boolean(string='Exclusivity')
-    property_situation = fields.Char(string='Property Situation')
+    property_situation = fields.Selection([
+        ('Não Informado', 'Não Informado'),
+        ('Desocupado', 'Desocupado'),
+        ('Ocupado', 'Ocupado'),
+        ('Reservado', 'Reservado'),
+        ('Em construção', 'Em construção'),
+        ('Lançamento', 'Lançamento'),
+        ('Novo', 'Novo'),
+    ], string='Property Situation', default='Não Informado')
 
     location_type_id = fields.Many2one('real.estate.location.type', string='Location Type', required=True, tracking=True)
 

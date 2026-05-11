@@ -10,6 +10,8 @@ def serialize_property(property_record):
     if not property_record:
         return None
 
+    property_status = property_record.property_status or 'available'
+
     return {
         'id': property_record.id,
         'name': property_record.name or '',
@@ -19,7 +21,8 @@ def serialize_property(property_record):
             f"R$ {property_record.price:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
             if property_record.price else 'R$ 0,00'
         ),
-        'status': property_record.property_status or 'available',
+        'status': property_status,
+        'property_status': property_status,
         'for_sale': bool(property_record.for_sale),
         'for_rent': bool(property_record.for_rent),
         'property_type': {
@@ -110,6 +113,15 @@ PROPERTY_MAPPING_SCALAR_FIELDS = {
 
 PROPERTY_MAPPING_COLLECTION_FIELDS = {'tags', 'property_images', 'property_files'}
 EMAIL_REGEX = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+PROPERTY_SITUATION_FALLBACKS = {
+    'available': 'Desocupado',
+    'occupied': 'Ocupado',
+    'rented': 'Ocupado',
+    'reserved': 'Reservado',
+    'sold': 'Ocupado',
+    'under_construction': 'Em construção',
+    'maintenance': 'Não Informado',
+}
 
 
 def serialize_property_mapping_fields(property_record):
@@ -125,6 +137,13 @@ def serialize_property_mapping_fields(property_record):
             result[api_field] = str(value) if value not in (False, None, 0) else None
         else:
             result[api_field] = value or None
+
+    if not result['property_situation']:
+        property_status = getattr(property_record, 'property_status', False)
+        result['property_situation'] = PROPERTY_SITUATION_FALLBACKS.get(
+            property_status,
+            'Não Informado',
+        )
 
     result['tags'] = [tag.name for tag in property_record.tag_ids if tag.name]
 

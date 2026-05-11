@@ -27,6 +27,7 @@ Use this endpoint when an API client needs to render dropdowns or understand whi
 - `zoning`: API alias for `zoning_type`
 - `property_purpose`
 - `property_status`
+- `property_situation`
 - `condition`
 - `activity_notification`
 - `sign_type`
@@ -128,6 +129,33 @@ Use this endpoint when an API client needs to render dropdowns or understand whi
           }
         }
       }
+    },
+    "property_situation": {
+      "type": "array",
+      "description": "Options accepted by property_situation.",
+      "items": {
+        "type": "object",
+        "title": "PropertyOptionItem",
+        "properties": {
+          "value": {
+            "type": "string",
+            "example": "Desocupado"
+          },
+          "label": {
+            "type": "string",
+            "example": "Desocupado"
+          }
+        }
+      },
+      "example": [
+        {"value": "Não Informado", "label": "Não Informado"},
+        {"value": "Desocupado", "label": "Desocupado"},
+        {"value": "Ocupado", "label": "Ocupado"},
+        {"value": "Reservado", "label": "Reservado"},
+        {"value": "Em construção", "label": "Em construção"},
+        {"value": "Lançamento", "label": "Lançamento"},
+        {"value": "Novo", "label": "Novo"}
+      ]
     },
     "condition": {
       "type": "array",
@@ -325,7 +353,12 @@ Image and file fields return metadata only (`id`, `name`, `mimetype`, `size`, `d
           },
           "status": {
             "type": "string",
-            "description": "Property status.",
+            "description": "Legacy alias for property_status.",
+            "example": "available"
+          },
+          "property_status": {
+            "type": "string",
+            "description": "Property status enum.",
             "example": "available"
           },
           "for_sale": {
@@ -606,8 +639,9 @@ Image and file fields return metadata only (`id`, `name`, `mimetype`, `size`, `d
           "property_situation": {
             "type": "string",
             "nullable": true,
-            "description": "Property situation.",
-            "example": "occupied"
+            "description": "Property situation. Accepted values are documented in GET /api/v1/properties/options.",
+            "enum": ["Não Informado", "Desocupado", "Ocupado", "Reservado", "Em construção", "Lançamento", "Novo"],
+            "example": "Desocupado"
           },
           "year_of_renovation": {
             "type": "string",
@@ -1614,7 +1648,12 @@ Validation notes:
     },
     "status": {
       "type": "string",
-      "description": "Property status.",
+      "description": "Legacy alias for property_status.",
+      "example": "available"
+    },
+    "property_status": {
+      "type": "string",
+      "description": "Property status enum.",
       "example": "available"
     },
     "for_sale": {
@@ -1895,8 +1934,9 @@ Validation notes:
     "property_situation": {
       "type": "string",
       "nullable": true,
-      "description": "Property situation.",
-      "example": "occupied"
+      "description": "Property situation. Accepted values are documented in GET /api/v1/properties/options.",
+      "enum": ["Não Informado", "Desocupado", "Ocupado", "Reservado", "Em construção", "Lançamento", "Novo"],
+      "example": "Desocupado"
     },
     "year_of_renovation": {
       "type": "string",
@@ -2174,7 +2214,12 @@ Defaults are stable: strings/dates return `null`, booleans return `false`, and c
     },
     "status": {
       "type": "string",
-      "description": "Property status.",
+      "description": "Legacy alias for property_status.",
+      "example": "available"
+    },
+    "property_status": {
+      "type": "string",
+      "description": "Property status enum.",
       "example": "available"
     },
     "for_sale": {
@@ -2455,8 +2500,9 @@ Defaults are stable: strings/dates return `null`, booleans return `false`, and c
     "property_situation": {
       "type": "string",
       "nullable": true,
-      "description": "Property situation.",
-      "example": "occupied"
+      "description": "Property situation. Accepted values are documented in GET /api/v1/properties/options.",
+      "enum": ["Não Informado", "Desocupado", "Ocupado", "Reservado", "Em construção", "Lançamento", "Novo"],
+      "example": "Desocupado"
     },
     "year_of_renovation": {
       "type": "string",
@@ -3371,7 +3417,12 @@ Omitted arrays do not clear existing collections. Sent arrays replace the corres
     },
     "status": {
       "type": "string",
-      "description": "Property status.",
+      "description": "Legacy alias for property_status.",
+      "example": "available"
+    },
+    "property_status": {
+      "type": "string",
+      "description": "Property status enum.",
       "example": "available"
     },
     "for_sale": {
@@ -3652,8 +3703,9 @@ Omitted arrays do not clear existing collections. Sent arrays replace the corres
     "property_situation": {
       "type": "string",
       "nullable": true,
-      "description": "Property situation.",
-      "example": "occupied"
+      "description": "Property situation. Accepted values are documented in GET /api/v1/properties/options.",
+      "enum": ["Não Informado", "Desocupado", "Ocupado", "Reservado", "Em construção", "Lançamento", "Novo"],
+      "example": "Desocupado"
     },
     "year_of_renovation": {
       "type": "string",

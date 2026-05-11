@@ -41,6 +41,18 @@ class TestPropertyOptions(unittest.TestCase):
                 {'value': 'maintenance', 'label': 'Under Maintenance'},
             ],
         )
+        self.assertEqual(
+            options['property_situation'],
+            [
+                {'value': 'Não Informado', 'label': 'Não Informado'},
+                {'value': 'Desocupado', 'label': 'Desocupado'},
+                {'value': 'Ocupado', 'label': 'Ocupado'},
+                {'value': 'Reservado', 'label': 'Reservado'},
+                {'value': 'Em construção', 'label': 'Em construção'},
+                {'value': 'Lançamento', 'label': 'Lançamento'},
+                {'value': 'Novo', 'label': 'Novo'},
+            ],
+        )
         self.assertEqual(status_values, ['available', 'maintenance'])
         self.assertEqual(options['related_options']['tags'], '/api/v1/tags')
 
@@ -83,6 +95,27 @@ class TestSerializePropertyMappingFields(unittest.TestCase):
 
         self.assertTrue(result['for_sale'])
         self.assertFalse(result['for_rent'])
+        self.assertEqual(result['property_status'], 'available')
+
+    def test_serialize_property_situation_defaults_from_status(self):
+        property_record = _property_record(
+            property_status='available',
+            property_situation=False,
+        )
+
+        result = serialize_property(property_record)
+
+        self.assertEqual(result['property_situation'], 'Desocupado')
+
+    def test_serialize_property_situation_preserves_explicit_value(self):
+        property_record = _property_record(
+            property_status='available',
+            property_situation='Lançamento',
+        )
+
+        result = serialize_property(property_record)
+
+        self.assertEqual(result['property_situation'], 'Lançamento')
 
     def test_serialize_mapping_fields_uses_stable_defaults(self):
         property_record = _property_record()
@@ -305,6 +338,15 @@ class _FakeSelectionModel:
         'property_status': _FakeField([
             ('available', 'Available'),
             ('maintenance', 'Under Maintenance'),
+        ]),
+        'property_situation': _FakeField([
+            ('Não Informado', 'Não Informado'),
+            ('Desocupado', 'Desocupado'),
+            ('Ocupado', 'Ocupado'),
+            ('Reservado', 'Reservado'),
+            ('Em construção', 'Em construção'),
+            ('Lançamento', 'Lançamento'),
+            ('Novo', 'Novo'),
         ]),
         'condition': _FakeField([('good', 'Good')]),
         'activity_notification': _FakeField([('important', 'Important Only')]),

@@ -246,6 +246,7 @@ class PropertyApiController(http.Controller):
                 'price': float,
                 'rent_price': float,
                 'property_status': str,
+                'property_situation': str,
                 'property_purpose': str,
                 'num_rooms': int,
                 'num_suites': int,
@@ -537,7 +538,7 @@ class PropertyApiController(http.Controller):
             # Build update values (only allowed fields)
             allowed_fields = {
                 'name', 'description', 'price', 'rent_price', 'property_status',
-                'property_purpose', 'num_rooms', 'num_suites', 'num_bathrooms',
+                'property_situation', 'property_purpose', 'num_rooms', 'num_suites', 'num_bathrooms',
                 'num_parking', 'area', 'total_area', 'agent_id', 'owner_id',
                 'complement', 'neighborhood', 'latitude', 'longitude', 'condition',
                 'construction_year', 'for_sale', 'for_rent', 'accepts_financing',
