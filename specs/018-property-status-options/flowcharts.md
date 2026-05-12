@@ -20,9 +20,9 @@ O objetivo principal e deixar claro:
 | `GET` | `/api/v1/properties/options` | Descobrir valores validos para `property_status` e `property_situation`. |
 | `GET` | `/api/v1/property-types` | Obter ids validos para `property_type_id` antes de criar imovel. |
 | `POST` | `/api/v1/properties` | Criar imovel com `owner_id`, flags de venda/aluguel, campos de status/situacao, FGTS e condicao comercial. |
-| `GET` | `/api/v1/properties/{id}` | Consultar detalhe e confirmar `owner`, status, situacao e disponibilidade serializados. |
+| `GET` | `/api/v1/properties/{id}` | Consultar detalhe e confirmar `owner`, status, situacao, disponibilidade e `fgts` serializados. |
 | `PUT` | `/api/v1/properties/{id}` | Atualizar parcialmente `owner_id`, status, situacao, disponibilidade, FGTS e condicao comercial. |
-| `GET` | `/api/v1/properties` | Listar e filtrar propriedades por status/disponibilidade, com `owner` por item. |
+| `GET` | `/api/v1/properties` | Listar e filtrar propriedades por status/disponibilidade, com `owner` e `fgts` por item. |
 | `GET` | `/api/v1/companies/{id}/properties` | Listar propriedades de uma imobiliaria com filtros e `owner` por item. |
 
 ---
@@ -51,6 +51,24 @@ O objetivo principal e deixar claro:
 `commercial_condition` tambem **nao e relacionamento** e nao possui lista de opcoes. Ele aceita texto livre em JSON string, por exemplo `"Condição comercial padrão"`, `"Aceita financiamento"` ou `"Venda à vista ou financiamento bancário"`. Para limpar o valor, envie `null` ou `""`. Nao envie array, objeto, numero ou booleano.
 
 `fgts.accepts_fgts` informa se o imovel aceita FGTS na negociacao. `fgts.used_fgts` informa se existe uso anterior conhecido de FGTS para este imovel. Quando `fgts.last_usage_date` e informado, o backend calcula `fgts.eligible_from` como data do ultimo uso + 3 anos + 1 dia. A API retorna os dados de FGTS somente uma vez, dentro do no `fgts`, sem campos soltos duplicados.
+
+Campos de entrada em `POST`/`PUT`:
+
+- `fgts.accepts_fgts`
+- `fgts.used_fgts`
+- `fgts.last_usage_date`
+- `fgts.usage_notes`
+
+Campos de saida em `GET /api/v1/properties`, `GET /api/v1/properties/{id}` e respostas de `POST`/`PUT`:
+
+- `fgts.accepts_fgts`
+- `fgts.used_fgts`
+- `fgts.last_usage_date`
+- `fgts.eligible_from`
+- `fgts.eligible_now`
+- `fgts.usage_notes`
+
+`fgts.eligible_from` e `fgts.eligible_now` sao calculados e somente leitura. Nao envie esses campos no request.
 
 `owner` e relacional e somente leitura. Para criar ou atualizar o proprietario do imovel, envie **somente** `owner_id` no payload de propriedades. Nao envie `owner` aninhado nem os campos legados `owner_email`, `owner_home_phone`, `owner_business_phone` ou `owner_mobile_phone`.
 
@@ -363,12 +381,12 @@ flowchart TD
     L1 -->|Disponiveis para venda| L4["GET /api/v1/properties?for_sale=true&property_status=available"]
     L1 -->|Reservados| L5["GET /api/v1/properties?property_status=reserved"]
 
-    L2 --> R1["200 OK\nitems com for_sale, for_rent,\nproperty_status, property_situation\ne resumo fgts"]
+    L2 --> R1["200 OK\nitems com for_sale, for_rent,\nproperty_status, property_situation,\nowner e fgts"]
     L3 --> R1
     L4 --> R1
     L5 --> R1
 
-    R1 --> Done([Renderizar lista\ncom owner, status, situacao\ne disponibilidade])
+    R1 --> Done([Renderizar lista\ncom owner, status, situacao,\ndisponibilidade e elegibilidade FGTS])
 ```
 
 ---
@@ -424,8 +442,9 @@ Campos esperados no OpenAPI:
 - `for_sale` e `for_rent` em respostas de propriedade
 - `property_status` e `property_situation` em respostas de propriedade
 - `commercial_condition` em requests e responses de propriedade
-- `fgts.accepts_fgts`, `fgts.used_fgts`, `fgts.last_usage_date`, `fgts.eligible_from`, `fgts.eligible_now` e `fgts.usage_notes` em responses de propriedade
-- `fgts.accepts_fgts`, `fgts.used_fgts`, `fgts.last_usage_date` e `fgts.usage_notes` em requests de propriedade
+- `fgts.accepts_fgts`, `fgts.used_fgts`, `fgts.last_usage_date`, `fgts.eligible_from`, `fgts.eligible_now` e `fgts.usage_notes` em responses de propriedade, incluindo `GET /api/v1/properties` e `GET /api/v1/properties/{id}`
+- `fgts.accepts_fgts`, `fgts.used_fgts`, `fgts.last_usage_date` e `fgts.usage_notes` em requests de `POST /api/v1/properties` e `PUT /api/v1/properties/{id}`
+- ausencia de campos FGTS duplicados no topo do schema de propriedade, como `used_fgts`, `fgts_last_usage_date`, `fgts_eligible_from`, `fgts_eligible_now` e `fgts_usage_notes`
 - `owner` em respostas de propriedade
 - `owner_id` em requests de `POST /api/v1/properties` e `PUT /api/v1/properties/{id}`
 - ausencia de `owner`, `owner_email`, `owner_home_phone`, `owner_business_phone` e `owner_mobile_phone` nos schemas de request de propriedade

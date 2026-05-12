@@ -296,6 +296,7 @@ Use this endpoint when an API client needs to render dropdowns or understand whi
 - `for_rent`: Filter by for_rent flag ('true' or 'false')
 
 Image and file fields return metadata only (`id`, `name`, `mimetype`, `size`, `download_url`). Binary content is never returned inline.
+FGTS fields are returned as a single `fgts` object. The list response includes the same nested FGTS shape used by property detail responses.
 
 **Security:**
 - Requires JWT + Session authentication
@@ -370,6 +371,24 @@ Image and file fields return metadata only (`id`, `name`, `mimetype`, `size`, `d
             "type": "boolean",
             "description": "Available for rent.",
             "example": false
+          },
+          "accepts_financing": {
+            "type": "boolean",
+            "description": "Accepts financing.",
+            "example": true
+          },
+          "fgts": {
+            "type": "object",
+            "readOnly": true,
+            "description": "FGTS data and computed eligibility for this property.",
+            "properties": {
+              "accepts_fgts": {"type": "boolean", "example": true},
+              "used_fgts": {"type": "boolean", "example": true},
+              "last_usage_date": {"type": "string", "format": "date", "nullable": true, "example": "2024-03-10"},
+              "eligible_from": {"type": "string", "format": "date", "nullable": true, "example": "2027-03-11"},
+              "eligible_now": {"type": "boolean", "example": false},
+              "usage_notes": {"type": "string", "nullable": true, "example": "Uso identificado na matricula anterior"}
+            }
           },
           "property_type": {
             "type": "object",

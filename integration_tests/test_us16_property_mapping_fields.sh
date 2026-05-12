@@ -274,6 +274,14 @@ if [ -n "$PROPERTY_ID" ]; then
     LIST_CODE=$(echo "$LIST_RESPONSE" | tail -1)
     _assert_code "List properties includes mapping schema" 200 "$LIST_CODE"
 
+    OPENAPI_RESPONSE=$(curl -s -w "\n%{http_code}" "$BASE_URL/api/v1/openapi.json" -H "Authorization: Bearer $JWT")
+    OPENAPI_CODE=$(echo "$OPENAPI_RESPONSE" | tail -1)
+    echo "$OPENAPI_RESPONSE" | sed '$d' > /tmp/us16_openapi.json
+    _assert_code "OpenAPI schema available" 200 "$OPENAPI_CODE"
+    _assert_json_true "OpenAPI documents list fgts node" /tmp/us16_openapi.json "'fgts' in data['paths']['/api/v1/properties']['get']['responses']['200']['content']['application/json']['schema']['properties']['data']['items']['properties']"
+    _assert_json_true "OpenAPI documents list fgts computed fields" /tmp/us16_openapi.json "'eligible_from' in data['paths']['/api/v1/properties']['get']['responses']['200']['content']['application/json']['schema']['properties']['data']['items']['properties']['fgts']['properties'] and 'eligible_now' in data['paths']['/api/v1/properties']['get']['responses']['200']['content']['application/json']['schema']['properties']['data']['items']['properties']['fgts']['properties']"
+    _assert_json_true "OpenAPI documents create fgts input node" /tmp/us16_openapi.json "'fgts' in data['paths']['/api/v1/properties']['post']['requestBody']['content']['application/json']['schema']['properties']"
+
     UPDATE_RESPONSE=$(curl -s -w "\n%{http_code}" -X PUT "$BASE_URL/api/v1/properties/$PROPERTY_ID" "${H[@]}" \
         -d '{"send_activities_to_owner":false,"tags":["US16 Updated"],"fgts":{"accepts_fgts":false,"used_fgts":false,"last_usage_date":null,"usage_notes":"FGTS liberado para nova análise"}}')
     UPDATE_CODE=$(echo "$UPDATE_RESPONSE" | tail -1)
