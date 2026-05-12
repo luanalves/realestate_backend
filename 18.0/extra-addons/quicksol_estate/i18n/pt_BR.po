@@ -318,6 +318,31 @@ msgid "Accepts FGTS"
 msgstr "Aceita FGTS"
 
 #. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__used_fgts
+msgid "FGTS Used Previously"
+msgstr "FGTS Usado Anteriormente"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__fgts_last_usage_date
+msgid "Last FGTS Usage Date"
+msgstr "Data do Último Uso de FGTS"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__fgts_eligible_from
+msgid "FGTS Eligible From"
+msgstr "FGTS Elegível A Partir De"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__fgts_eligible_now
+msgid "FGTS Eligible Now"
+msgstr "FGTS Elegível Agora"
+
+#. module: quicksol_estate
+#: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__fgts_usage_notes
+msgid "FGTS Usage Notes"
+msgstr "Observações de Uso do FGTS"
+
+#. module: quicksol_estate
 #: model:ir.model.fields,field_description:quicksol_estate.field_real_estate_property__accepts_financing
 msgid "Accepts Financing"
 msgstr "Aceita Financiamento"

@@ -4,60 +4,73 @@
 
 Complete Postman collection for Quicksol Real Estate Management System API.
 
-**Version:** 1.30.0
-**Last Updated:** 2026-05-11
+**Version:** 1.31.0
+**Last Updated:** 2026-05-12
 **Spec Coverage:** Complete API (55+ endpoints)
 
 ## Available Collections
 
-### 1. Complete API Collection (v1.30) ⭐ RECOMMENDED
-**File:** `quicksol_api_v1.30_postman_collection.json`
+### 1. Complete API Collection (v1.31) ⭐ RECOMMENDED
+**File:** `quicksol_api_v1.31_postman_collection.json`
 **Coverage:** All 55+ endpoints - Complete API coverage
 **ADR Compliance:** ADR-016 (complete)
 **Security:** Token format validation + cross-type abuse block + last-token-wins
-**Includes:** Authentication, Users, Properties, Agents, Assignments (full CRUD), Commissions, Performance, Leads, Activities, Filters, Master Data, Profile Management, User Onboarding, property selectable options, property owner relationship payloads
+**Includes:** Authentication, Users, Properties, Agents, Assignments (full CRUD), Commissions, Performance, Leads, Activities, Filters, Master Data, Profile Management, User Onboarding, property selectable options, property owner relationship payloads, property FGTS eligibility fields
 
-### 2. Complete API Collection (v1.29)
+### 2. Complete API Collection (v1.30)
+**File:** `quicksol_api_v1.30_postman_collection.json`
+**Coverage:** Property options, property owner relationship payloads
+**Note:** Use v1.31 for latest property FGTS eligibility examples
+
+### 3. Complete API Collection (v1.29)
 **File:** `quicksol_api_v1.29_postman_collection.json`
 **Coverage:** Property attachments response examples
-**Note:** Use v1.30 for latest property options, `property_situation` enum updates, and property `owner` relationship payloads
+**Note:** Use v1.31 for latest property options, `property_situation` enum updates, property `owner` relationship payloads, and FGTS fields
 
-### 3. Complete API Collection (v1.19)
+### 4. Complete API Collection (v1.19)
 **File:** `quicksol_api_v1.19_postman_collection.json`  
 **Coverage:** Unified profile flow (Feature 010) - no legacy invite flows  
 **Note:** Use v1.20 for latest security fixes on password endpoints
 
-### 4. Complete API Collection (v1.18)
+### 5. Complete API Collection (v1.18)
 **File:** `quicksol_api_v1.18_postman_collection.json`  
 **Coverage:** Unified Profile Flow introduced  
 **Note:** Use v1.20 for latest version
 
-### 5. Complete API Collection (v1.16)
+### 6. Complete API Collection (v1.16)
 **File:** `quicksol_api_v1.16_postman_collection.json`  
 **Coverage:** Previous version (9 profile types + legacy invite flows)  
 **Note:** Use v1.20 for unified profile workflow
 
-### 6. Complete API Collection (v1.7)
+### 7. Complete API Collection (v1.7)
 **File:** `quicksol_api_v1.7_postman_collection.json`  
 **Coverage:** All 55+ endpoints - Complete API coverage  
 **ADR Compliance:** ADR-016 (complete)  
 **Includes:** Authentication, Users, Properties, Agents, Assignments (full CRUD), Commissions, Performance, Leads, Activities, Filters, Master Data
 
-### 7. Lead-Focused Collection (v1.2)
+### 8. Lead-Focused Collection (v1.2)
 **File:** `quicksol_api_v1.2_postman_collection.json`  
 **Coverage:** Lead Management focused (Feature 006)  
 **ADR Compliance:** ADR-016 (complete)
 
-### 8. Legacy API Collection (v1.1)
+### 9. Legacy API Collection (v1.1)
 **File:** `quicksol_api_v1.1_postman_collection.json`  
 **Coverage:** Properties, Agents, Assignments, Commissions, RBAC profiles
 
-### 9. Lead Management Collection (Standalone)
+### 10. Lead Management Collection (Standalone)
 **File:** `lead-management-collection.json`  
 **Coverage:** Lead CRUD, conversions, statistics, multi-tenancy tests  
 **Feature:** 006-lead-management
 
-## Changelog v1.30 (Latest - 2026-05-11)
+## Changelog v1.31 (Latest - 2026-05-12)
+
+**Property FGTS eligibility**
+
+✅ Property create/update examples include a single `fgts` object with `accepts_fgts`, `used_fgts`, `last_usage_date`, and `usage_notes`.
+✅ Property response examples document the single `fgts` object with computed eligibility fields.
+✅ `fgts.last_usage_date` is documented as ISO date (`YYYY-MM-DD`); `fgts.used_fgts` is a JSON boolean.
+
+## Changelog v1.30 (2026-05-11)
 
 **Property selectable options**
 

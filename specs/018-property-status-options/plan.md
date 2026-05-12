@@ -8,7 +8,7 @@
 
 ## Goal
 
-Expose property availability and status fields consistently across API responses, selectable options, Swagger/OpenAPI, and Postman.
+Expose property availability, status, owner relationship, commercial condition, and FGTS eligibility fields consistently across API responses, Odoo UI, selectable options, Swagger/OpenAPI, and Postman.
 
 ## Technical Context
 
@@ -92,6 +92,44 @@ curl -s http://localhost:8069/api/v1/openapi.json
   - interpreting `property_situation` fallback;
   - listing/filtering properties by availability and status;
   - validating Swagger/OpenAPI after module upgrade.
+
+### Phase 8 - FGTS Eligibility Summary
+
+Decision source: CAIXA/FGTS Moradia Propria rules. For acquisition/construction, the relevant property-side constraint is whether the **property** was object of FGTS use in a previous acquisition/construction transaction less than 3 years ago, counted from the real estate registry date. The API should model a single current summary for the property, not a multi-item history, unless a future audit feature requires full transaction history.
+
+ADR alignment:
+
+| ADR | Application |
+|---|---|
+| ADR-001 | Add fields to the existing `quicksol_estate` flat module structure and Odoo 18 view; no `attrs`, no `<tree>`. |
+| ADR-002 | Use Cypress for Odoo UI E2E and curl-based API E2E for REST behavior. |
+| ADR-003 | Cover model/serializer normalization with unit tests and end-to-end API/UI flows. |
+| ADR-005 | Update `quicksol_estate/data/api_endpoints.xml`; Swagger is generated from DB records after module upgrade. |
+| ADR-016 | Keep Postman collection maintenance in the main versioned collection when endpoint examples change. |
+| ADR-018 | Validate typed API fields and reject wrong JSON types with structured `400` errors. |
+| ADR-022 | Run Python compile, XML/JSON checks, Cypress verification when possible, and `git diff --check`. |
+
+Fields:
+
+| API field | Odoo field | Type | Purpose |
+|---|---|---|---|
+| `fgts.accepts_fgts` | `accepts_fgts` | boolean | Property accepts FGTS as a negotiation/payment option. |
+| `fgts.used_fgts` | `used_fgts` | boolean | Known previous FGTS use exists for this property. |
+| `fgts.last_usage_date` | `fgts_last_usage_date` | date | Registry/reference date of the last known FGTS use on this property. |
+| `fgts.eligible_from` | `fgts_eligible_from` | computed date | First date when FGTS may be used again, 3 years after `fgts.last_usage_date`. |
+| `fgts.eligible_now` | `fgts_eligible_now` | computed boolean | Whether the property is currently outside the 3-year restriction window. |
+| `fgts.usage_notes` | `fgts_usage_notes` | text | Optional notes from registration/certificate review. |
+
+Implementation steps:
+
+- Add model fields and compute methods in `real.estate.property`.
+- Add fields to the Odoo property form under Financial Options.
+- Return the FGTS fields only inside a single `fgts` object in property serializers.
+- Accept `fgts.accepts_fgts`, `fgts.used_fgts`, `fgts.last_usage_date`, and `fgts.usage_notes` in `POST`/`PUT`.
+- Validate `fgts.used_fgts` as boolean and `fgts.last_usage_date` as ISO date string through the existing mapping validator.
+- Update OpenAPI request/response schemas and examples.
+- Update data model and flow documentation.
+- Extend unit, curl API E2E, and Cypress UI E2E tests.
 
 ## Verification Plan
 

@@ -87,8 +87,11 @@ _pass "Auth"
 PROPERTY_TYPE_ID=$(curl -s "$BASE_URL/api/v1/property-types" "${H[@]}" | python3 -c "import json,sys; data=json.load(sys.stdin); print(data[0]['id'] if data else '')")
 LOCATION_TYPE_ID=$(curl -s "$BASE_URL/api/v1/location-types" "${H[@]}" | python3 -c "import json,sys; data=json.load(sys.stdin); print(data[0]['id'] if data else '')")
 STATE_ID=$(curl -s "$BASE_URL/api/v1/states?country_id=31" "${H[@]}" | python3 -c "import json,sys; data=json.load(sys.stdin); print(data[0]['id'] if data else '')")
+OWNER_RECORD=$(docker compose -f "$SCRIPT_DIR/../18.0/docker-compose.yml" exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -At -F "|" -c "select id, name from real_estate_property_owner order by id limit 1;"' 2>/dev/null || true)
+PROPERTY_OWNER_ID="${OWNER_RECORD%%|*}"
+PROPERTY_OWNER_NAME="${OWNER_RECORD#*|}"
 
-[ -n "$PROPERTY_TYPE_ID" ] && [ -n "$LOCATION_TYPE_ID" ] && [ -n "$STATE_ID" ] || {
+[ -n "$PROPERTY_TYPE_ID" ] && [ -n "$LOCATION_TYPE_ID" ] && [ -n "$STATE_ID" ] && [ -n "$PROPERTY_OWNER_ID" ] || {
     _fail "Required master data not found"
     exit 1
 }
@@ -110,6 +113,7 @@ CREATE_PAYLOAD=$(cat <<JSON
   "complement": "Suite 12",
   "neighborhood": "Bela Vista",
   "location_type_id": $LOCATION_TYPE_ID,
+  "owner_id": $PROPERTY_OWNER_ID,
   "company_ids": [$COMPANY_ID],
   "description": "<p>US16 complete property description</p>",
   "description_short": "US16 short description",
@@ -126,7 +130,12 @@ CREATE_PAYLOAD=$(cat <<JSON
   "for_sale": true,
   "for_rent": true,
   "accepts_financing": true,
-  "accepts_fgts": true,
+  "fgts": {
+    "accepts_fgts": true,
+    "used_fgts": true,
+    "last_usage_date": "2024-03-10",
+    "usage_notes": "Uso identificado na matricula anterior"
+  },
   "floor_number": 8,
   "unit_number": "81B",
   "num_floors": 18,
@@ -216,6 +225,8 @@ if [ -n "$PROPERTY_ID" ]; then
     _assert_json_eq "Create returns rental_guarantee_insurance" /tmp/us16_property_create.json rental_guarantee_insurance "required"
     _assert_json_eq "Create returns fire_insurance" /tmp/us16_property_create.json fire_insurance "included"
     _assert_json_eq "Create returns exclusivity" /tmp/us16_property_create.json exclusivity "True"
+    _assert_json_eq "Create returns owner id" /tmp/us16_property_create.json owner.id "$PROPERTY_OWNER_ID"
+    _assert_json_eq "Create returns owner name" /tmp/us16_property_create.json owner.name "$PROPERTY_OWNER_NAME"
     _assert_json_eq "Create returns property_situation" /tmp/us16_property_create.json property_situation "Desocupado"
     _assert_json_eq "Create returns year_of_renovation" /tmp/us16_property_create.json year_of_renovation "2020"
     _assert_json_eq "Create returns zoning" /tmp/us16_property_create.json zoning "residential"
@@ -225,6 +236,13 @@ if [ -n "$PROPERTY_ID" ]; then
     _assert_json_eq "Create returns advertise" /tmp/us16_property_create.json advertise "True"
     _assert_json_eq "Create returns featured_property" /tmp/us16_property_create.json featured_property "True"
     _assert_json_eq "Create returns virtual_tour" /tmp/us16_property_create.json virtual_tour "https://example.com/tour"
+    _assert_json_eq "Create returns fgts.accepts_fgts" /tmp/us16_property_create.json fgts.accepts_fgts "True"
+    _assert_json_eq "Create returns fgts.used_fgts" /tmp/us16_property_create.json fgts.used_fgts "True"
+    _assert_json_eq "Create returns fgts.last_usage_date" /tmp/us16_property_create.json fgts.last_usage_date "2024-03-10"
+    _assert_json_eq "Create returns fgts.eligible_from" /tmp/us16_property_create.json fgts.eligible_from "2027-03-11"
+    _assert_json_eq "Create returns fgts.eligible_now" /tmp/us16_property_create.json fgts.eligible_now "False"
+    _assert_json_eq "Create returns fgts.usage_notes" /tmp/us16_property_create.json fgts.usage_notes "Uso identificado na matricula anterior"
+    _assert_json_true "Create omits duplicate top-level fgts fields" /tmp/us16_property_create.json "'used_fgts' not in data and 'fgts_last_usage_date' not in data and 'fgts_eligible_from' not in data and 'fgts_usage_notes' not in data"
     _assert_json_eq "Create returns sign_on_site" /tmp/us16_property_create.json sign_on_site "True"
     _assert_json_eq "Create returns super_featured" /tmp/us16_property_create.json super_featured "False"
     _assert_json_eq "Create returns youtube_video" /tmp/us16_property_create.json youtube_video "https://youtube.com/watch?v=abc123"
@@ -247,6 +265,9 @@ if [ -n "$PROPERTY_ID" ]; then
     echo "$DETAIL_RESPONSE" | sed '$d' > /tmp/us16_property_detail.json
     _assert_code "Get property detail" 200 "$DETAIL_CODE"
     _assert_json_eq "Detail returns commission date" /tmp/us16_property_detail.json included_in_commission_date "2026-05-04"
+    _assert_json_eq "Detail returns owner id" /tmp/us16_property_detail.json owner.id "$PROPERTY_OWNER_ID"
+    _assert_json_eq "Detail returns fgts eligible date" /tmp/us16_property_detail.json fgts.eligible_from "2027-03-11"
+    _assert_json_true "Detail omits duplicate top-level fgts fields" /tmp/us16_property_detail.json "'used_fgts' not in data and 'fgts_last_usage_date' not in data and 'fgts_eligible_from' not in data and 'fgts_usage_notes' not in data"
     _assert_json_true "Detail returns files metadata" /tmp/us16_property_detail.json "len(data.get('property_files', [])) == 1"
 
     LIST_RESPONSE=$(curl -s -w "\n%{http_code}" "$BASE_URL/api/v1/properties?company_ids=$COMPANY_ID&limit=5" "${H[@]}")
@@ -254,16 +275,30 @@ if [ -n "$PROPERTY_ID" ]; then
     _assert_code "List properties includes mapping schema" 200 "$LIST_CODE"
 
     UPDATE_RESPONSE=$(curl -s -w "\n%{http_code}" -X PUT "$BASE_URL/api/v1/properties/$PROPERTY_ID" "${H[@]}" \
-        -d '{"send_activities_to_owner":false,"tags":["US16 Updated"]}')
+        -d '{"send_activities_to_owner":false,"tags":["US16 Updated"],"fgts":{"accepts_fgts":false,"used_fgts":false,"last_usage_date":null,"usage_notes":"FGTS liberado para nova análise"}}')
     UPDATE_CODE=$(echo "$UPDATE_RESPONSE" | tail -1)
     echo "$UPDATE_RESPONSE" | sed '$d' > /tmp/us16_property_update.json
     _assert_code "Update mapping fields" 200 "$UPDATE_CODE"
     _assert_json_eq "Update returns send_activities_to_owner" /tmp/us16_property_update.json send_activities_to_owner "False"
+    _assert_json_eq "Update returns fgts.accepts_fgts" /tmp/us16_property_update.json fgts.accepts_fgts "False"
+    _assert_json_eq "Update returns fgts.used_fgts" /tmp/us16_property_update.json fgts.used_fgts "False"
+    _assert_json_eq "Update returns fgts.eligible_now" /tmp/us16_property_update.json fgts.eligible_now "True"
+    _assert_json_eq "Update returns fgts.usage_notes" /tmp/us16_property_update.json fgts.usage_notes "FGTS liberado para nova análise"
 
     BAD_RESPONSE=$(curl -s -w "\n%{http_code}" -X PUT "$BASE_URL/api/v1/properties/$PROPERTY_ID" "${H[@]}" \
         -d '{"commercial_condition":["Condição comercial padrão"]}')
     BAD_CODE=$(echo "$BAD_RESPONSE" | tail -1)
     _assert_code "Invalid commercial_condition type rejected" 400 "$BAD_CODE"
+
+    BAD_FGTS_RESPONSE=$(curl -s -w "\n%{http_code}" -X PUT "$BASE_URL/api/v1/properties/$PROPERTY_ID" "${H[@]}" \
+        -d '{"fgts":{"used_fgts":"true","last_usage_date":"10/03/2024","eligible_from":"2027-03-11"}}')
+    BAD_FGTS_CODE=$(echo "$BAD_FGTS_RESPONSE" | tail -1)
+    _assert_code "Invalid FGTS fields rejected" 400 "$BAD_FGTS_CODE"
+
+    BAD_FGTS_TOP_LEVEL_RESPONSE=$(curl -s -w "\n%{http_code}" -X PUT "$BASE_URL/api/v1/properties/$PROPERTY_ID" "${H[@]}" \
+        -d '{"used_fgts":true}')
+    BAD_FGTS_TOP_LEVEL_CODE=$(echo "$BAD_FGTS_TOP_LEVEL_RESPONSE" | tail -1)
+    _assert_code "Top-level FGTS fields rejected" 400 "$BAD_FGTS_TOP_LEVEL_CODE"
 
     BAD_OWNER_PAYLOAD=$(cat <<JSON
 {

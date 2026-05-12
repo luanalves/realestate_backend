@@ -6,7 +6,7 @@ O objetivo principal e deixar claro:
 
 - quais endpoints consultar antes de montar formularios;
 - quais campos enviar em `POST` e `PUT`;
-- como interpretar `property_status`, `status`, `property_situation`, `commercial_condition`, `for_sale` e `for_rent`;
+- como interpretar `property_status`, `status`, `property_situation`, `commercial_condition`, FGTS, `for_sale` e `for_rent`;
 - como consumir as opcoes documentadas pelo Swagger e por `GET /api/v1/properties/options`.
 
 > **Escopo:** Esta spec documenta somente o dominio de propriedades. Ela nao altera anexos, leads, atendimentos, propostas, locacoes ou vendas.
@@ -19,9 +19,9 @@ O objetivo principal e deixar claro:
 |---|---|---|
 | `GET` | `/api/v1/properties/options` | Descobrir valores validos para `property_status` e `property_situation`. |
 | `GET` | `/api/v1/property-types` | Obter ids validos para `property_type_id` antes de criar imovel. |
-| `POST` | `/api/v1/properties` | Criar imovel com `owner_id`, flags de venda/aluguel, campos de status/situacao e condicao comercial. |
+| `POST` | `/api/v1/properties` | Criar imovel com `owner_id`, flags de venda/aluguel, campos de status/situacao, FGTS e condicao comercial. |
 | `GET` | `/api/v1/properties/{id}` | Consultar detalhe e confirmar `owner`, status, situacao e disponibilidade serializados. |
-| `PUT` | `/api/v1/properties/{id}` | Atualizar parcialmente `owner_id`, status, situacao, disponibilidade e condicao comercial. |
+| `PUT` | `/api/v1/properties/{id}` | Atualizar parcialmente `owner_id`, status, situacao, disponibilidade, FGTS e condicao comercial. |
 | `GET` | `/api/v1/properties` | Listar e filtrar propriedades por status/disponibilidade, com `owner` por item. |
 | `GET` | `/api/v1/companies/{id}/properties` | Listar propriedades de uma imobiliaria com filtros e `owner` por item. |
 
@@ -37,12 +37,20 @@ O objetivo principal e deixar claro:
 | `status` | string alias | alias de `property_status` | nao usar para escrita nova | alias legado no retorno |
 | `property_situation` | string selection | `fields.Selection` | string de opcao valida | string explicita ou fallback |
 | `commercial_condition` | string livre | `fields.Char` | texto, `null` ou string vazia | string ou vazio |
+| `fgts.accepts_fgts` | boolean | `fields.Boolean` | `true` ou `false` no JSON | boolean |
+| `fgts.used_fgts` | boolean | `fields.Boolean` | `true` ou `false` no JSON | boolean |
+| `fgts.last_usage_date` | string date | `fields.Date` | ISO date `YYYY-MM-DD`, `null` ou `""` | string date |
+| `fgts.eligible_from` | string date | computed `fields.Date` | read-only | string date |
+| `fgts.eligible_now` | boolean | computed `fields.Boolean` | read-only | boolean |
+| `fgts.usage_notes` | string | `fields.Text` | texto, `null` ou `""` | string |
 | `owner_id` | integer | `fields.Many2one` | id de `real.estate.property.owner` | nao retorna como escalar |
 | `owner` | object | relacao `owner_id` | read-only | objeto do proprietario relacionado |
 
 `property_status` e `property_situation` **nao sao relacionamentos**. Nao envie objeto, `id`, array ou comando Odoo. Envie a string selecionada.
 
 `commercial_condition` tambem **nao e relacionamento** e nao possui lista de opcoes. Ele aceita texto livre em JSON string, por exemplo `"Condição comercial padrão"`, `"Aceita financiamento"` ou `"Venda à vista ou financiamento bancário"`. Para limpar o valor, envie `null` ou `""`. Nao envie array, objeto, numero ou booleano.
+
+`fgts.accepts_fgts` informa se o imovel aceita FGTS na negociacao. `fgts.used_fgts` informa se existe uso anterior conhecido de FGTS para este imovel. Quando `fgts.last_usage_date` e informado, o backend calcula `fgts.eligible_from` como data do ultimo uso + 3 anos + 1 dia. A API retorna os dados de FGTS somente uma vez, dentro do no `fgts`, sem campos soltos duplicados.
 
 `owner` e relacional e somente leitura. Para criar ou atualizar o proprietario do imovel, envie **somente** `owner_id` no payload de propriedades. Nao envie `owner` aninhado nem os campos legados `owner_email`, `owner_home_phone`, `owner_business_phone` ou `owner_mobile_phone`.
 
@@ -57,7 +65,13 @@ Exemplo valido:
   "owner_id": 4,
   "property_status": "available",
   "property_situation": "Desocupado",
-  "commercial_condition": "Condição comercial padrão"
+  "commercial_condition": "Condição comercial padrão",
+  "fgts": {
+    "accepts_fgts": true,
+    "used_fgts": true,
+    "last_usage_date": "2024-03-10",
+    "usage_notes": "Uso identificado na matricula anterior"
+  }
 }
 ```
 
@@ -72,7 +86,7 @@ flowchart TD
     O1["GET /api/v1/properties/options\nDescobrir property_status e property_situation"] --> O2
     O2["GET /api/v1/property-types\nDescobrir property_type_id"] --> Decision{Criar ou editar?}
 
-    Decision -->|Novo imovel| C1["POST /api/v1/properties\nEnviar owner_id, for_sale, for_rent,\nproperty_status, property_situation\ne commercial_condition quando aplicavel"]
+    Decision -->|Novo imovel| C1["POST /api/v1/properties\nEnviar owner_id, disponibilidade,\nstatus, situacao, FGTS\ne commercial_condition quando aplicavel"]
     Decision -->|Imovel existente| E1["GET /api/v1/properties/{id}\nCarregar estado atual"]
 
     C1 --> V1["GET /api/v1/properties/{id}\nConfirmar payload retornado"]
@@ -150,13 +164,13 @@ flowchart TD
 
     C0["GET /api/v1/properties/options\nEscolher property_status e property_situation"] --> C1
 
-    C1["POST /api/v1/properties\n\n{\n  \"name\": \"Apartamento Seed\",\n  \"property_type_id\": 2,\n  \"owner_id\": 4,\n  \"area\": 82,\n  \"zip_code\": \"12200-000\",\n  \"state_id\": 1,\n  \"city\": \"Sao Jose dos Campos\",\n  \"street\": \"Rua Exemplo\",\n  \"street_number\": \"100\",\n  \"location_type_id\": 1,\n  \"for_sale\": true,\n  \"for_rent\": false,\n  \"property_status\": \"available\",\n  \"property_situation\": \"Desocupado\",\n  \"commercial_condition\": \"Condição comercial padrão\"\n}"] --> C1R{Resposta}
+    C1["POST /api/v1/properties\n\n{\n  \"name\": \"Apartamento Seed\",\n  \"property_type_id\": 2,\n  \"owner_id\": 4,\n  \"area\": 82,\n  \"zip_code\": \"12200-000\",\n  \"state_id\": 1,\n  \"city\": \"Sao Jose dos Campos\",\n  \"street\": \"Rua Exemplo\",\n  \"street_number\": \"100\",\n  \"location_type_id\": 1,\n  \"for_sale\": true,\n  \"for_rent\": false,\n  \"property_status\": \"available\",\n  \"property_situation\": \"Desocupado\",\n  \"commercial_condition\": \"Condição comercial padrão\",\n  \"fgts\": {\n    \"accepts_fgts\": true,\n    \"used_fgts\": true,\n    \"last_usage_date\": \"2024-03-10\",\n    \"usage_notes\": \"Uso identificado na matricula anterior\"\n  }\n}"] --> C1R{Resposta}
 
     C1R -->|201 Created| C2["GET /api/v1/properties/{id}\nConfirmar retorno"]
     C1R -->|400 Validation Error| ERR1([Corrigir campos obrigatorios\nou selection invalido])
     C1R -->|401/403| ERR2([Validar token, sessao e RBAC])
 
-    C2 --> C3["Resposta esperada contem:\nowner={...}\nfor_sale=true\nfor_rent=false\nproperty_status=available\nstatus=available\nproperty_situation=Desocupado\ncommercial_condition=Condição comercial padrão"]
+    C2 --> C3["Resposta esperada contem:\nowner={...}\nfor_sale=true\nfor_rent=false\nproperty_status=available\nstatus=available\nproperty_situation=Desocupado\ncommercial_condition=Condição comercial padrão\nfgts.eligible_from=2027-03-11"]
     C3 --> Done([Imovel criado e pronto para listagem])
 ```
 
@@ -190,14 +204,14 @@ flowchart TD
 
     U0["GET /api/v1/properties/{id}\nLer estado atual"] --> U1
 
-    U1["PUT /api/v1/properties/{id}\n\n{\n  \"owner_id\": 4,\n  \"property_status\": \"reserved\",\n  \"property_situation\": \"Reservado\",\n  \"commercial_condition\": \"Reserva condicionada à aprovação de crédito\"\n}"] --> U1R{Resposta}
+    U1["PUT /api/v1/properties/{id}\n\n{\n  \"owner_id\": 4,\n  \"property_status\": \"reserved\",\n  \"property_situation\": \"Reservado\",\n  \"commercial_condition\": \"Reserva condicionada à aprovação de crédito\",\n  \"fgts\": {\n    \"used_fgts\": true,\n    \"last_usage_date\": \"2024-03-10\"\n  }\n}"] --> U1R{Resposta}
 
     U1R -->|200 OK| U2["GET /api/v1/properties/{id}\nConfirmar alteracao"]
-    U1R -->|400 Validation Error| ERR1([Valor selection invalido,\ncommercial_condition nao string\nou owner_id inexistente])
+    U1R -->|400 Validation Error| ERR1([Valor selection invalido,\ncommercial_condition nao string,\nFGTS com tipo invalido\nou owner_id inexistente])
     U1R -->|403 Forbidden| ERR2([Usuario sem permissao de escrita])
     U1R -->|404 Not Found| ERR3([Property inexistente\nou fora do escopo da empresa])
 
-    U2 --> U3["Retorno esperado:\nowner={...}\nproperty_status=reserved\nstatus=reserved\nproperty_situation=Reservado\ncommercial_condition=Reserva condicionada à aprovação de crédito"]
+    U2 --> U3["Retorno esperado:\nowner={...}\nproperty_status=reserved\nstatus=reserved\nproperty_situation=Reservado\ncommercial_condition=Reserva condicionada à aprovação de crédito\nfgts.eligible_from=2027-03-11"]
     U3 --> Done([Status atualizado])
 ```
 
@@ -278,7 +292,30 @@ flowchart TD
 
 ---
 
-## J7 — Fallback de `property_situation` quando o banco esta vazio
+## J7 — Registrar uso anterior de FGTS
+
+A regra de FGTS e avaliada pelo imovel: se o imovel foi objeto de uso de FGTS em aquisicao/construcao anterior ha menos de 3 anos, ele nao deve ser tratado como elegivel para novo uso ate cumprir o intervalo. A API mantem um resumo unico, nao uma lista historica.
+
+```mermaid
+flowchart TD
+    Start([Cliente revisa matricula/certidao do imovel]) --> F0{Houve uso anterior conhecido de FGTS?}
+
+    F0 -->|Nao| F1["POST/PUT /api/v1/properties\n{\n  \"fgts\": {\n    \"accepts_fgts\": true,\n    \"used_fgts\": false\n  }\n}"]
+    F0 -->|Sim| F2["POST/PUT /api/v1/properties\n{\n  \"fgts\": {\n    \"accepts_fgts\": true,\n    \"used_fgts\": true,\n    \"last_usage_date\": \"2024-03-10\",\n    \"usage_notes\": \"Uso identificado na matricula anterior\"\n  }\n}"]
+    F0 -->|Dado invalido| E1([400 Bad Request\nfgts.used_fgts deve ser boolean\nfgts.last_usage_date deve ser YYYY-MM-DD])
+
+    F1 --> R1["Resposta:\nfgts.used_fgts=false\nfgts.eligible_now=true"]
+    F2 --> R2["Resposta:\nfgts.last_usage_date=2024-03-10\nfgts.eligible_from=2027-03-11\nfgts.eligible_now=false"]
+
+    R1 --> Done([Resumo FGTS pronto para app])
+    R2 --> Done
+```
+
+> `fgts.eligible_from` e calculado como data do ultimo uso + 3 anos + 1 dia. Ele e somente leitura na API.
+
+---
+
+## J8 — Fallback de `property_situation` quando o banco esta vazio
 
 Registros antigos podem nao ter `property_situation` preenchido. Para evitar retorno `null`, o serializer deriva uma situacao legivel a partir de `property_status`.
 
@@ -311,7 +348,7 @@ flowchart TD
 
 ---
 
-## J8 — Listar e filtrar propriedades por disponibilidade
+## J9 — Listar e filtrar propriedades por disponibilidade
 
 Os filtros de query string sempre trafegam como texto na URL, mesmo quando representam booleanos. O backend interpreta `for_sale=true` e `for_rent=false`.
 
@@ -326,7 +363,7 @@ flowchart TD
     L1 -->|Disponiveis para venda| L4["GET /api/v1/properties?for_sale=true&property_status=available"]
     L1 -->|Reservados| L5["GET /api/v1/properties?property_status=reserved"]
 
-    L2 --> R1["200 OK\nitems com for_sale, for_rent,\nproperty_status e property_situation"]
+    L2 --> R1["200 OK\nitems com for_sale, for_rent,\nproperty_status, property_situation\ne resumo fgts"]
     L3 --> R1
     L4 --> R1
     L5 --> R1
@@ -336,7 +373,7 @@ flowchart TD
 
 ---
 
-## J9 — Listar propriedades de uma imobiliaria
+## J10 — Listar propriedades de uma imobiliaria
 
 Quando a tela esta no contexto de uma imobiliaria especifica, use o endpoint de company. Ele respeita RBAC e isolamento multi-tenant.
 
@@ -362,7 +399,7 @@ flowchart TD
 
 ---
 
-## J10 — Validar contrato via Swagger/OpenAPI
+## J11 — Validar contrato via Swagger/OpenAPI
 
 Depois de alterar `api_endpoints.xml`, o Swagger so reflete os campos apos atualizar o modulo e consultar o OpenAPI gerado.
 
@@ -387,6 +424,8 @@ Campos esperados no OpenAPI:
 - `for_sale` e `for_rent` em respostas de propriedade
 - `property_status` e `property_situation` em respostas de propriedade
 - `commercial_condition` em requests e responses de propriedade
+- `fgts.accepts_fgts`, `fgts.used_fgts`, `fgts.last_usage_date`, `fgts.eligible_from`, `fgts.eligible_now` e `fgts.usage_notes` em responses de propriedade
+- `fgts.accepts_fgts`, `fgts.used_fgts`, `fgts.last_usage_date` e `fgts.usage_notes` em requests de propriedade
 - `owner` em respostas de propriedade
 - `owner_id` em requests de `POST /api/v1/properties` e `PUT /api/v1/properties/{id}`
 - ausencia de `owner`, `owner_email`, `owner_home_phone`, `owner_business_phone` e `owner_mobile_phone` nos schemas de request de propriedade
@@ -402,6 +441,9 @@ Campos esperados no OpenAPI:
 | `property_status` enviado como label | Backend espera o value, nao label | Enviar `available`, `reserved`, etc. |
 | `commercial_condition` enviado como array/objeto/numero/booleano | Campo e texto livre, nao selection nem relacionamento | Enviar string, `null` ou `""`. |
 | `commercial_condition` procurado em `/properties/options` | Campo nao possui lista de opcoes | Tratar como campo texto no formulario. |
+| `fgts.used_fgts` enviado como `"true"` | Campo e booleano | Enviar `true` sem aspas. |
+| `fgts.last_usage_date` enviado em formato brasileiro | Campo e ISO date | Enviar `YYYY-MM-DD`, por exemplo `2024-03-10`. |
+| Cliente tenta enviar `fgts.eligible_from` | Campo e calculado/read-only | Enviar somente `fgts.used_fgts` e `fgts.last_usage_date`. |
 | `for_sale` enviado como `"true"` no JSON | Campo e booleano | Enviar `true` sem aspas. |
 | `owner` enviado no `POST`/`PUT` | `owner` e objeto read-only da resposta | Enviar `owner_id`. |
 | Campos `owner_email`/telefones enviados | Campos legados removidos do contrato | Criar/atualizar o proprietario no dominio de owners e vincular por `owner_id`. |

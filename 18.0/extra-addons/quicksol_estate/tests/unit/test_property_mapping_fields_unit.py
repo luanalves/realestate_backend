@@ -65,6 +65,12 @@ class TestPropertyMappingValues(unittest.TestCase):
             'year_of_renovation': '2020',
             'tags': ['Premium'],
             'commercial_condition': 'Condição comercial padrão',
+            'fgts': {
+                'accepts_fgts': True,
+                'used_fgts': True,
+                'last_usage_date': '2024-03-10',
+                'usage_notes': 'Uso identificado na matricula anterior',
+            },
         })
 
         self.assertEqual(errors, [])
@@ -72,6 +78,10 @@ class TestPropertyMappingValues(unittest.TestCase):
         self.assertEqual(vals['included_in_commission_date'], date(2026, 5, 4))
         self.assertEqual(vals['reform_year'], 2020)
         self.assertEqual(vals['commercial_condition'], 'Condição comercial padrão')
+        self.assertTrue(vals['accepts_fgts'])
+        self.assertTrue(vals['used_fgts'])
+        self.assertEqual(vals['fgts_last_usage_date'], date(2024, 3, 10))
+        self.assertEqual(vals['fgts_usage_notes'], 'Uso identificado na matricula anterior')
 
     def test_build_values_rejects_non_string_commercial_condition(self):
         _vals, errors = build_property_mapping_values({
@@ -84,6 +94,68 @@ class TestPropertyMappingValues(unittest.TestCase):
                 {
                     'field': 'commercial_condition',
                     'message': 'Must be a string',
+                },
+            ],
+        )
+
+    def test_build_values_rejects_invalid_fgts_types(self):
+        _vals, errors = build_property_mapping_values({
+            'fgts': {
+                'accepts_fgts': 'true',
+                'used_fgts': 'true',
+                'last_usage_date': '10/03/2024',
+                'usage_notes': {'note': 'invalid'},
+                'eligible_from': '2027-03-11',
+            },
+        })
+
+        self.assertEqual(
+            errors,
+            [
+                {
+                    'field': 'fgts.eligible_from',
+                    'message': 'Read-only field',
+                },
+                {
+                    'field': 'fgts.accepts_fgts',
+                    'message': 'Must be a boolean',
+                },
+                {
+                    'field': 'fgts.used_fgts',
+                    'message': 'Must be a boolean',
+                },
+                {
+                    'field': 'fgts.last_usage_date',
+                    'message': 'Must be an ISO date string',
+                },
+                {
+                    'field': 'fgts.usage_notes',
+                    'message': 'Must be a string',
+                },
+            ],
+        )
+
+    def test_build_values_rejects_top_level_fgts_fields(self):
+        _vals, errors = build_property_mapping_values({
+            'accepts_fgts': True,
+            'used_fgts': True,
+            'fgts_last_usage_date': '2024-03-10',
+        })
+
+        self.assertEqual(
+            errors,
+            [
+                {
+                    'field': 'accepts_fgts',
+                    'message': 'Use fgts object to send FGTS data',
+                },
+                {
+                    'field': 'fgts_last_usage_date',
+                    'message': 'Use fgts object to send FGTS data',
+                },
+                {
+                    'field': 'used_fgts',
+                    'message': 'Use fgts object to send FGTS data',
                 },
             ],
         )
@@ -187,9 +259,58 @@ class TestSerializePropertyMappingFields(unittest.TestCase):
         result = serialize_property_mapping_fields(property_record)
 
         self.assertFalse(result['send_activities_to_owner'])
+        self.assertNotIn('accepts_fgts', result)
+        self.assertNotIn('used_fgts', result)
+        self.assertNotIn('fgts_last_usage_date', result)
+        self.assertNotIn('fgts_eligible_from', result)
+        self.assertNotIn('fgts_eligible_now', result)
+        self.assertNotIn('fgts_usage_notes', result)
+        self.assertEqual(
+            result['fgts'],
+            {
+                'accepts_fgts': False,
+                'used_fgts': False,
+                'last_usage_date': None,
+                'eligible_from': None,
+                'eligible_now': True,
+                'usage_notes': None,
+            },
+        )
         self.assertEqual(result['tags'], [])
         self.assertEqual(result['property_images'], [])
         self.assertEqual(result['property_files'], [])
+
+    def test_serialize_mapping_fields_returns_fgts_object_without_duplicate_scalars(self):
+        property_record = _property_record(
+            accepts_fgts=True,
+            accepts_financing=True,
+            used_fgts=True,
+            fgts_last_usage_date=date(2024, 3, 10),
+            fgts_eligible_from=date(2027, 3, 11),
+            fgts_eligible_now=False,
+            fgts_usage_notes='Uso identificado na matricula anterior',
+        )
+
+        result = serialize_property_mapping_fields(property_record)
+
+        self.assertTrue(result['accepts_financing'])
+        self.assertNotIn('accepts_fgts', result)
+        self.assertNotIn('used_fgts', result)
+        self.assertNotIn('fgts_last_usage_date', result)
+        self.assertNotIn('fgts_eligible_from', result)
+        self.assertNotIn('fgts_eligible_now', result)
+        self.assertNotIn('fgts_usage_notes', result)
+        self.assertEqual(
+            result['fgts'],
+            {
+                'accepts_fgts': True,
+                'used_fgts': True,
+                'last_usage_date': '2024-03-10',
+                'eligible_from': '2027-03-11',
+                'eligible_now': False,
+                'usage_notes': 'Uso identificado na matricula anterior',
+            },
+        )
 
     def test_serialize_mapping_fields_returns_values_and_metadata(self):
         property_record = _property_record(
@@ -296,6 +417,13 @@ def _property_record(**overrides):
         'rental_guarantee_insurance': False,
         'fire_insurance': False,
         'exclusivity': False,
+        'accepts_fgts': False,
+        'accepts_financing': False,
+        'used_fgts': False,
+        'fgts_last_usage_date': False,
+        'fgts_eligible_from': False,
+        'fgts_eligible_now': True,
+        'fgts_usage_notes': False,
         'property_situation': False,
         'reform_year': False,
         'zoning_type': False,

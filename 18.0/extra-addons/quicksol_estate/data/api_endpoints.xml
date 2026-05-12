@@ -945,12 +945,17 @@ Image and file fields return metadata only (`id`, `name`, `mimetype`, `size`, `d
 - `for_sale`: Available for sale (boolean)
 - `for_rent`: Available for rent (boolean)
 - `accepts_financing`: Accepts financing (boolean)
-- `accepts_fgts`: Accepts FGTS (boolean)
+- `fgts`: FGTS data object
+  - `accepts_fgts`: Accepts FGTS (boolean)
+  - `used_fgts`: Previous FGTS use known for this property (boolean)
+  - `last_usage_date`: Last known FGTS use registry/reference date (ISO date: YYYY-MM-DD)
+  - `usage_notes`: Optional FGTS usage notes (string)
 
 Validation notes:
 - Owner information is linked only through `owner_id` (`real.estate.property.owner`); responses return the related `owner` object.
 - Do not send `owner`, `owner_email`, `owner_home_phone`, `owner_business_phone`, or `owner_mobile_phone` in property create/update payloads.
 - `included_in_commission_date` must be ISO date (`YYYY-MM-DD`) when present.
+- `fgts.last_usage_date` must be ISO date (`YYYY-MM-DD`) when present.
 - Boolean fields must be JSON booleans, not strings.
 - `tags`, `property_images`, and `property_files` must be arrays.
 - Images/files are persisted from supported payload objects and returned as metadata only.
@@ -1143,10 +1148,16 @@ Validation notes:
       "description": "Accepts financing.",
       "example": true
     },
-    "accepts_fgts": {
-      "type": "boolean",
-      "description": "Accepts FGTS.",
-      "example": true
+    "fgts": {
+      "type": "object",
+      "nullable": true,
+      "description": "FGTS data for this property.",
+      "properties": {
+        "accepts_fgts": {"type": "boolean", "example": true},
+        "used_fgts": {"type": "boolean", "example": true},
+        "last_usage_date": {"type": "string", "format": "date", "nullable": true, "example": "2024-03-10"},
+        "usage_notes": {"type": "string", "nullable": true, "example": "Uso identificado na matricula anterior"}
+      }
     },
     "source_medium": {
       "type": "string",
@@ -1642,6 +1653,24 @@ Validation notes:
       "type": "boolean",
       "description": "Available for rent.",
       "example": false
+    },
+    "accepts_financing": {
+      "type": "boolean",
+      "description": "Accepts financing.",
+      "example": true
+    },
+    "fgts": {
+      "type": "object",
+      "readOnly": true,
+      "description": "FGTS data and computed eligibility for this property.",
+      "properties": {
+        "accepts_fgts": {"type": "boolean", "example": true},
+        "used_fgts": {"type": "boolean", "example": true},
+        "last_usage_date": {"type": "string", "format": "date", "nullable": true, "example": "2024-03-10"},
+        "eligible_from": {"type": "string", "format": "date", "nullable": true, "example": "2027-03-11"},
+        "eligible_now": {"type": "boolean", "example": false},
+        "usage_notes": {"type": "string", "nullable": true, "example": "Uso identificado na matricula anterior"}
+      }
     },
     "property_type": {
       "type": "object",
@@ -2209,6 +2238,24 @@ Defaults are stable: strings/dates return `null`, booleans return `false`, and c
       "type": "boolean",
       "description": "Available for rent.",
       "example": false
+    },
+    "accepts_financing": {
+      "type": "boolean",
+      "description": "Accepts financing.",
+      "example": true
+    },
+    "fgts": {
+      "type": "object",
+      "readOnly": true,
+      "description": "FGTS data and computed eligibility for this property.",
+      "properties": {
+        "accepts_fgts": {"type": "boolean", "example": true},
+        "used_fgts": {"type": "boolean", "example": true},
+        "last_usage_date": {"type": "string", "format": "date", "nullable": true, "example": "2024-03-10"},
+        "eligible_from": {"type": "string", "format": "date", "nullable": true, "example": "2027-03-11"},
+        "eligible_now": {"type": "boolean", "example": false},
+        "usage_notes": {"type": "string", "nullable": true, "example": "Uso identificado na matricula anterior"}
+      }
     },
     "property_type": {
       "type": "object",
@@ -2911,10 +2958,16 @@ Omitted arrays do not clear existing collections. Sent arrays replace the corres
       "description": "Accepts financing.",
       "example": true
     },
-    "accepts_fgts": {
-      "type": "boolean",
-      "description": "Accepts FGTS.",
-      "example": true
+    "fgts": {
+      "type": "object",
+      "nullable": true,
+      "description": "FGTS data for this property.",
+      "properties": {
+        "accepts_fgts": {"type": "boolean", "example": true},
+        "used_fgts": {"type": "boolean", "example": true},
+        "last_usage_date": {"type": "string", "format": "date", "nullable": true, "example": "2024-03-10"},
+        "usage_notes": {"type": "string", "nullable": true, "example": "Uso identificado na matricula anterior"}
+      }
     },
     "source_medium": {
       "type": "string",
@@ -3388,6 +3441,24 @@ Omitted arrays do not clear existing collections. Sent arrays replace the corres
       "type": "boolean",
       "description": "Available for rent.",
       "example": false
+    },
+    "accepts_financing": {
+      "type": "boolean",
+      "description": "Accepts financing.",
+      "example": true
+    },
+    "fgts": {
+      "type": "object",
+      "readOnly": true,
+      "description": "FGTS data and computed eligibility for this property.",
+      "properties": {
+        "accepts_fgts": {"type": "boolean", "example": true},
+        "used_fgts": {"type": "boolean", "example": true},
+        "last_usage_date": {"type": "string", "format": "date", "nullable": true, "example": "2024-03-10"},
+        "eligible_from": {"type": "string", "format": "date", "nullable": true, "example": "2027-03-11"},
+        "eligible_now": {"type": "boolean", "example": false},
+        "usage_notes": {"type": "string", "nullable": true, "example": "Uso identificado na matricula anterior"}
+      }
     },
     "property_type": {
       "type": "object",

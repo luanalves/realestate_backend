@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from dateutil.relativedelta import relativedelta
+
 from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError
 
@@ -131,6 +133,27 @@ class Property(models.Model):
 
     # Financial Options
     accepts_fgts = fields.Boolean(string='Accepts FGTS')
+    used_fgts = fields.Boolean(
+        string='FGTS Used Previously',
+        help='Indicates whether this property is known to have used FGTS in a previous acquisition or construction transaction.',
+    )
+    fgts_last_usage_date = fields.Date(
+        string='Last FGTS Usage Date',
+        help='Registry/reference date of the last known FGTS use for this property.',
+    )
+    fgts_eligible_from = fields.Date(
+        string='FGTS Eligible From',
+        compute='_compute_fgts_eligibility',
+        store=True,
+        help='First date when the property can use FGTS again after the 3-year restriction window.',
+    )
+    fgts_eligible_now = fields.Boolean(
+        string='FGTS Eligible Now',
+        compute='_compute_fgts_eligibility',
+        store=True,
+        help='Indicates whether the property is currently outside the FGTS 3-year restriction window.',
+    )
+    fgts_usage_notes = fields.Text(string='FGTS Usage Notes')
     accepts_financing = fields.Boolean(string='Accepts Financing', default=True)
 
     # ========== FEATURES/CHARACTERISTICS ==========
@@ -365,6 +388,24 @@ class Property(models.Model):
                 prop.authorization_active = prop.authorization_start_date <= today
             else:
                 prop.authorization_active = False
+
+    @api.depends('used_fgts', 'fgts_last_usage_date')
+    def _compute_fgts_eligibility(self):
+        today = fields.Date.today()
+        for prop in self:
+            if not prop.used_fgts:
+                prop.fgts_eligible_from = False
+                prop.fgts_eligible_now = True
+                continue
+
+            if not prop.fgts_last_usage_date:
+                prop.fgts_eligible_from = False
+                prop.fgts_eligible_now = False
+                continue
+
+            eligible_from = prop.fgts_last_usage_date + relativedelta(years=3, days=1)
+            prop.fgts_eligible_from = eligible_from
+            prop.fgts_eligible_now = today >= eligible_from
 
     @api.depends('construction_year')
     def _compute_property_age(self):

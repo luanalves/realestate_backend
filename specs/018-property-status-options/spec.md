@@ -115,6 +115,9 @@ Após a implementação:
 - **FR-010**: The system MUST validate generated `/api/v1/openapi.json` after module upgrade.
 - **FR-011**: The system MUST update the latest Postman collection or create a new version.
 - **FR-012**: The system MUST add tests covering serializer response fields and options output.
+- **FR-013**: The system MUST expose FGTS eligibility summary fields for property create/update/detail/list flows.
+- **FR-014**: The system MUST compute `fgts.eligible_from` from `fgts.last_usage_date` and return `fgts.eligible_now`.
+- **FR-015**: The system MUST validate `fgts.used_fgts` as JSON boolean and `fgts.last_usage_date` as ISO date.
 
 ## Field Contracts
 
@@ -124,6 +127,17 @@ Após a implementação:
 |---|---|---|---|---|
 | `for_sale` | `for_sale` | boolean | JSON boolean | boolean |
 | `for_rent` | `for_rent` | boolean | JSON boolean | boolean |
+
+### FGTS Eligibility
+
+| API field | Odoo field | Type | Accepted write value | Response value |
+|---|---|---|---|---|
+| `fgts.accepts_fgts` | `accepts_fgts` | boolean | JSON boolean | boolean |
+| `fgts.used_fgts` | `used_fgts` | boolean | JSON boolean | boolean |
+| `fgts.last_usage_date` | `fgts_last_usage_date` | date | ISO date string, `null`, or `""` | ISO date string or `null` |
+| `fgts.eligible_from` | `fgts_eligible_from` | computed date | read-only | ISO date string or `null` |
+| `fgts.eligible_now` | `fgts_eligible_now` | computed boolean | read-only | boolean |
+| `fgts.usage_notes` | `fgts_usage_notes` | text | string, `null`, or `""` | string or `null` |
 
 Query filters use URL strings:
 
@@ -304,9 +318,10 @@ property_situation=Desocupado
 
 ## Success Criteria
 
-- **SC-001**: Property detail responses include `for_sale`, `for_rent`, `property_status`, and `property_situation`.
+- **SC-001**: Property detail responses include `for_sale`, `for_rent`, `property_status`, `property_situation`, and FGTS summary fields.
 - **SC-002**: Existing clients using `status` continue to work.
 - **SC-003**: API clients can discover `property_status` and `property_situation` options through `/api/v1/properties/options`.
 - **SC-004**: Swagger/OpenAPI generated from the local Odoo database documents the new fields and enums.
 - **SC-005**: Latest Postman collection contains valid examples for `property_situation`.
-- **SC-006**: Unit tests cover options output and serializer fallback behavior.
+- **SC-006**: Unit tests cover options output, serializer fallback behavior, and FGTS validation/serialization.
+- **SC-007**: API and UI E2E tests cover FGTS fields in property create/detail and Odoo form rendering.

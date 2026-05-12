@@ -156,6 +156,9 @@ describe('Feature 016 - Property Mapping Fields UI', () => {
         authorization_end_date: '2026-12-15',
         accepts_fgts: true,
         accepts_financing: true,
+        used_fgts: true,
+        fgts_last_usage_date: '2024-03-10',
+        fgts_usage_notes: 'Uso identificado na matricula anterior',
         area: 120,
         total_area: 250,
         private_area: 180,
@@ -277,6 +280,11 @@ describe('Feature 016 - Property Mapping Fields UI', () => {
     assertCheckbox('exclusivity')
     assertCheckbox('accepts_fgts')
     assertCheckbox('accepts_financing')
+    assertCheckbox('used_fgts')
+    assertFieldContains('fgts_last_usage_date', '03/10/2024')
+    assertFieldContains('fgts_eligible_from', '03/11/2027')
+    assertCheckbox('fgts_eligible_now', false)
+    assertFieldContains('fgts_usage_notes', 'Uso identificado na matricula anterior')
 
     clickTab('Features')
     assertFieldContains('total_area', '250.00')

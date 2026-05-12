@@ -199,6 +199,13 @@
         <field name="street_number">500</field>
         <field name="area">200.0</field>
         <field name="status">available</field>
+        <field name="property_situation">Desocupado</field>
+        <field name="commercial_condition">Condição comercial padrão</field>
+        <field name="accepts_fgts">True</field>
+        <field name="accepts_financing">True</field>
+        <field name="used_fgts">True</field>
+        <field name="fgts_last_usage_date">2024-03-10</field>
+        <field name="fgts_usage_notes">Uso identificado na matricula anterior</field>
         <field name="description">Casa seed para testes de jornada (Imobiliária Seed).</field>
     </record>
 

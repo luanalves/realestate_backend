@@ -11,6 +11,12 @@
 | `property_status` | Selection | yes | `available` | `property_status`, `status` | Canonical operational status. `status` is a legacy alias in API response. |
 | `property_situation` | Selection | no | `Não Informado` | `property_situation` | User-facing situation label for app/UI selectors. |
 | `commercial_condition` | Char | no | empty | `commercial_condition` | Free-text commercial condition. This replaced the ambiguous `standard` naming in property API interfaces. |
+| `fgts.accepts_fgts` | Boolean | no | `False` | `accepts_fgts` | Indicates the property accepts FGTS in the negotiation. |
+| `fgts.used_fgts` | Boolean | no | `False` | `used_fgts` | Indicates known previous FGTS use for this property. |
+| `fgts.last_usage_date` | Date | no | empty | `fgts_last_usage_date` | Registry/reference date of the last known FGTS use. |
+| `fgts.eligible_from` | Computed Date | no | computed | `fgts_eligible_from` | First date when FGTS may be used again. |
+| `fgts.eligible_now` | Computed Boolean | no | computed | `fgts_eligible_now` | Whether the property is currently outside the 3-year restriction window. |
+| `fgts.usage_notes` | Text | no | empty | `fgts_usage_notes` | Optional review notes from registration/certificate analysis. |
 | `owner_id` | Many2one | no | empty | `owner` response object; `owner_id` write field | Links the property to `real.estate.property.owner`. |
 
 ## `property_status` Selection
@@ -108,6 +114,34 @@ Rejected examples:
 | `{"value": "Condição comercial padrão"}` | Must be a string. |
 | `123` | Must be a string. |
 | `true` | Must be a string. |
+
+### FGTS Fields
+
+The existing Odoo field `accepts_fgts` is exposed through `fgts.accepts_fgts` and means the property accepts FGTS as a payment/negotiation option.
+
+The new FGTS usage fields summarize whether the same property is known to have used FGTS in a previous acquisition/construction transaction. Official CAIXA/FGTS rules use a 3-year property-side interval counted from the registry/reference date, so the API stores a single current summary instead of a multi-item history.
+
+- `fgts.used_fgts` is written as a JSON boolean.
+- `fgts.last_usage_date` is written as an ISO date string (`YYYY-MM-DD`) or cleared with `null`/`""`.
+- `fgts.usage_notes` is written as a string or cleared with `null`/`""`.
+- `fgts.eligible_from` is read-only and computed as `fgts.last_usage_date + 3 years + 1 day`.
+- `fgts.eligible_now` is read-only.
+- The response returns these fields only once inside the `fgts` object, matching the grouped shape used by `owner`.
+
+Example response fragment:
+
+```json
+{
+  "fgts": {
+    "accepts_fgts": true,
+    "used_fgts": true,
+    "last_usage_date": "2024-03-10",
+    "eligible_from": "2027-03-11",
+    "eligible_now": false,
+    "usage_notes": "Uso identificado na matricula anterior"
+  }
+}
+```
 
 ## Options Endpoint
 
