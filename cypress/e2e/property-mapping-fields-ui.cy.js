@@ -149,13 +149,16 @@ describe('Feature 016 - Property Mapping Fields UI', () => {
         property_status: 'available',
         condition: 'excellent',
         status: 'available',
-        property_situation: 'available',
+        property_situation: 'Desocupado',
         intention: 'sale',
         exclusivity: true,
         authorization_start_date: '2026-01-15',
         authorization_end_date: '2026-12-15',
         accepts_fgts: true,
         accepts_financing: true,
+        used_fgts: true,
+        fgts_last_usage_date: '2024-03-10',
+        fgts_usage_notes: 'Uso identificado na matricula anterior',
         area: 120,
         total_area: 250,
         private_area: 180,
@@ -196,7 +199,7 @@ describe('Feature 016 - Property Mapping Fields UI', () => {
         commission_type: 'percentage',
         captured_intention: 'sale',
         included_in_commission_date: '2026-05-04',
-        commercial_condition: 'standard',
+        commercial_condition: 'Condição comercial padrão',
         matricula_number: `REG-${ts}`,
         iptu_code: `IPTU-${ts}`,
         electricity_network_code: `ELEC-${ts}`,
@@ -270,13 +273,18 @@ describe('Feature 016 - Property Mapping Fields UI', () => {
     assertFieldContains('iptu_value', '1200.00')
     assertFieldContains('rental_guarantee_insurance', 'required')
     assertFieldContains('fire_insurance', 'included')
-    assertFieldContains('property_situation', 'available')
+    assertFieldContains('property_situation', 'Desocupado')
     assertFieldContains('intention', 'sale')
     assertFieldContains('authorization_start_date', '01/15/2026')
     assertFieldContains('authorization_end_date', '12/15/2026')
     assertCheckbox('exclusivity')
     assertCheckbox('accepts_fgts')
     assertCheckbox('accepts_financing')
+    assertCheckbox('used_fgts')
+    assertFieldContains('fgts_last_usage_date', '03/10/2024')
+    assertFieldContains('fgts_eligible_from', '03/11/2027')
+    assertCheckbox('fgts_eligible_now', false)
+    assertFieldContains('fgts_usage_notes', 'Uso identificado na matricula anterior')
 
     clickTab('Features')
     assertFieldContains('total_area', '250.00')
@@ -352,7 +360,7 @@ describe('Feature 016 - Property Mapping Fields UI', () => {
     assertFieldContains('commission_type', 'percentage')
     assertFieldContains('captured_intention', 'sale')
     assertFieldContains('included_in_commission_date', '05/04/2026')
-    assertFieldContains('commercial_condition', 'standard')
+    assertFieldContains('commercial_condition', 'Condição comercial padrão')
 
     clickTab('Documents')
     assertMappedFieldsExist([

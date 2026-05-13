@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from dateutil.relativedelta import relativedelta
+
 from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError
 
@@ -112,7 +114,15 @@ class Property(models.Model):
         ('maintenance', 'Under Maintenance'),
     ], string='Property Status', required=True, default='available', tracking=True)
     exclusivity = fields.Boolean(string='Exclusivity')
-    property_situation = fields.Char(string='Property Situation')
+    property_situation = fields.Selection([
+        ('Não Informado', 'Não Informado'),
+        ('Desocupado', 'Desocupado'),
+        ('Ocupado', 'Ocupado'),
+        ('Reservado', 'Reservado'),
+        ('Em construção', 'Em construção'),
+        ('Lançamento', 'Lançamento'),
+        ('Novo', 'Novo'),
+    ], string='Property Situation', default='Não Informado')
 
     location_type_id = fields.Many2one('real.estate.location.type', string='Location Type', required=True, tracking=True)
 
@@ -123,6 +133,27 @@ class Property(models.Model):
 
     # Financial Options
     accepts_fgts = fields.Boolean(string='Accepts FGTS')
+    used_fgts = fields.Boolean(
+        string='FGTS Used Previously',
+        help='Indicates whether this property is known to have used FGTS in a previous acquisition or construction transaction.',
+    )
+    fgts_last_usage_date = fields.Date(
+        string='Last FGTS Usage Date',
+        help='Registry/reference date of the last known FGTS use for this property.',
+    )
+    fgts_eligible_from = fields.Date(
+        string='FGTS Eligible From',
+        compute='_compute_fgts_eligibility',
+        store=True,
+        help='First date when the property can use FGTS again after the 3-year restriction window.',
+    )
+    fgts_eligible_now = fields.Boolean(
+        string='FGTS Eligible Now',
+        compute='_compute_fgts_eligibility',
+        store=True,
+        help='Indicates whether the property is currently outside the FGTS 3-year restriction window.',
+    )
+    fgts_usage_notes = fields.Text(string='FGTS Usage Notes')
     accepts_financing = fields.Boolean(string='Accepts Financing', default=True)
 
     # ========== FEATURES/CHARACTERISTICS ==========
@@ -358,6 +389,24 @@ class Property(models.Model):
             else:
                 prop.authorization_active = False
 
+    @api.depends('used_fgts', 'fgts_last_usage_date')
+    def _compute_fgts_eligibility(self):
+        today = fields.Date.today()
+        for prop in self:
+            if not prop.used_fgts:
+                prop.fgts_eligible_from = False
+                prop.fgts_eligible_now = True
+                continue
+
+            if not prop.fgts_last_usage_date:
+                prop.fgts_eligible_from = False
+                prop.fgts_eligible_now = False
+                continue
+
+            eligible_from = prop.fgts_last_usage_date + relativedelta(years=3, days=1)
+            prop.fgts_eligible_from = eligible_from
+            prop.fgts_eligible_now = today >= eligible_from
+
     @api.depends('construction_year')
     def _compute_property_age(self):
         current_year = fields.Date.today().year
@@ -506,6 +555,25 @@ class Property(models.Model):
             event_bus.emit('property.created', {'property_id': prop.id, 'property': prop})
 
         return properties
+
+    @api.model
+    def _seed_fix_owner_relationships(self):
+        owner = self.env.ref('quicksol_estate.seed_property_owner', raise_if_not_found=False)
+        if not owner:
+            return True
+
+        properties = self.browse([
+            prop.id
+            for prop in (
+                self.env.ref('quicksol_estate.seed_property_1', raise_if_not_found=False),
+                self.env.ref('quicksol_estate.seed_property_2', raise_if_not_found=False),
+                self.env.ref('quicksol_estate.seed_property_3', raise_if_not_found=False),
+            )
+            if prop
+        ]).exists()
+        if properties:
+            properties.write({'owner_id': owner.id})
+        return True
 
 
 class PropertyType(models.Model):

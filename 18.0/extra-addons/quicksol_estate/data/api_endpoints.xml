@@ -27,6 +27,7 @@ Use this endpoint when an API client needs to render dropdowns or understand whi
 - `zoning`: API alias for `zoning_type`
 - `property_purpose`
 - `property_status`
+- `property_situation`
 - `condition`
 - `activity_notification`
 - `sign_type`
@@ -128,6 +129,33 @@ Use this endpoint when an API client needs to render dropdowns or understand whi
           }
         }
       }
+    },
+    "property_situation": {
+      "type": "array",
+      "description": "Options accepted by property_situation.",
+      "items": {
+        "type": "object",
+        "title": "PropertyOptionItem",
+        "properties": {
+          "value": {
+            "type": "string",
+            "example": "Desocupado"
+          },
+          "label": {
+            "type": "string",
+            "example": "Desocupado"
+          }
+        }
+      },
+      "example": [
+        {"value": "Não Informado", "label": "Não Informado"},
+        {"value": "Desocupado", "label": "Desocupado"},
+        {"value": "Ocupado", "label": "Ocupado"},
+        {"value": "Reservado", "label": "Reservado"},
+        {"value": "Em construção", "label": "Em construção"},
+        {"value": "Lançamento", "label": "Lançamento"},
+        {"value": "Novo", "label": "Novo"}
+      ]
     },
     "condition": {
       "type": "array",
@@ -268,6 +296,7 @@ Use this endpoint when an API client needs to render dropdowns or understand whi
 - `for_rent`: Filter by for_rent flag ('true' or 'false')
 
 Image and file fields return metadata only (`id`, `name`, `mimetype`, `size`, `download_url`). Binary content is never returned inline.
+FGTS fields are returned as a single `fgts` object. The list response includes the same nested FGTS shape used by property detail responses.
 
 **Security:**
 - Requires JWT + Session authentication
@@ -325,8 +354,41 @@ Image and file fields return metadata only (`id`, `name`, `mimetype`, `size`, `d
           },
           "status": {
             "type": "string",
-            "description": "Property status.",
+            "description": "Legacy alias for property_status.",
             "example": "available"
+          },
+          "property_status": {
+            "type": "string",
+            "description": "Property status enum.",
+            "example": "available"
+          },
+          "for_sale": {
+            "type": "boolean",
+            "description": "Available for sale.",
+            "example": true
+          },
+          "for_rent": {
+            "type": "boolean",
+            "description": "Available for rent.",
+            "example": false
+          },
+          "accepts_financing": {
+            "type": "boolean",
+            "description": "Accepts financing.",
+            "example": true
+          },
+          "fgts": {
+            "type": "object",
+            "readOnly": true,
+            "description": "FGTS data and computed eligibility for this property.",
+            "properties": {
+              "accepts_fgts": {"type": "boolean", "example": true},
+              "used_fgts": {"type": "boolean", "example": true},
+              "last_usage_date": {"type": "string", "format": "date", "nullable": true, "example": "2024-03-10"},
+              "eligible_from": {"type": "string", "format": "date", "nullable": true, "example": "2027-03-11"},
+              "eligible_now": {"type": "boolean", "example": false},
+              "usage_notes": {"type": "string", "nullable": true, "example": "Uso identificado na matricula anterior"}
+            }
           },
           "property_type": {
             "type": "object",
@@ -363,6 +425,32 @@ Image and file fields return metadata only (`id`, `name`, `mimetype`, `size`, `d
                 "format": "email",
                 "example": "carmen@example.com"
               }
+            }
+          },
+          "owner": {
+            "type": "object",
+            "nullable": true,
+            "description": "Property owner serialized from owner_id relationship.",
+            "properties": {
+              "id": {"type": "integer", "example": 9},
+              "name": {"type": "string", "example": "Maria Proprietaria"},
+              "email": {"type": "string", "format": "email", "example": "maria@example.com"},
+              "phone": {"type": "string", "example": "1130001000"},
+              "mobile": {"type": "string", "example": "11999990000"},
+              "whatsapp": {"type": "string", "example": "11988887777"},
+              "partner_id": {"type": "integer", "nullable": true, "example": 44},
+              "address": {"type": "string", "example": "Rua do Proprietario"},
+              "city": {"type": "string", "example": "Sao Paulo"},
+              "state": {
+                "type": "object",
+                "nullable": true,
+                "properties": {
+                  "id": {"type": "integer", "example": 35},
+                  "name": {"type": "string", "example": "Sao Paulo"},
+                  "code": {"type": "string", "example": "SP"}
+                }
+              },
+              "zip_code": {"type": "string", "example": "01000-000"}
             }
           },
           "company": {
@@ -504,31 +592,6 @@ Image and file fields return metadata only (`id`, `name`, `mimetype`, `size`, `d
             "nullable": true,
             "example": "2026-05-04T13:10:00.123456"
           },
-          "owner_email": {
-            "type": "string",
-            "format": "email",
-            "nullable": true,
-            "description": "Owner email. Normalized to lowercase when persisted.",
-            "example": "owner@example.com"
-          },
-          "owner_home_phone": {
-            "type": "string",
-            "nullable": true,
-            "description": "Owner home phone.",
-            "example": "+55 11 3000-1000"
-          },
-          "owner_business_phone": {
-            "type": "string",
-            "nullable": true,
-            "description": "Owner business phone.",
-            "example": "+55 11 3000-2000"
-          },
-          "owner_mobile_phone": {
-            "type": "string",
-            "nullable": true,
-            "description": "Owner mobile phone.",
-            "example": "+55 11 98888-7777"
-          },
           "source_medium": {
             "type": "string",
             "nullable": true,
@@ -596,8 +659,9 @@ Image and file fields return metadata only (`id`, `name`, `mimetype`, `size`, `d
           "property_situation": {
             "type": "string",
             "nullable": true,
-            "description": "Property situation.",
-            "example": "occupied"
+            "description": "Property situation. Accepted values are documented in GET /api/v1/properties/options.",
+            "enum": ["Não Informado", "Desocupado", "Ocupado", "Reservado", "Em construção", "Lançamento", "Novo"],
+            "example": "Desocupado"
           },
           "year_of_renovation": {
             "type": "string",
@@ -724,8 +788,8 @@ Image and file fields return metadata only (`id`, `name`, `mimetype`, `size`, `d
           "commercial_condition": {
             "type": "string",
             "nullable": true,
-            "description": "Commercial condition.",
-            "example": "standard"
+            "description": "Commercial condition free-text value.",
+            "example": "Condição comercial padrão"
           },
           "iptu_code": {
             "type": "string",
@@ -889,7 +953,7 @@ Image and file fields return metadata only (`id`, `name`, `mimetype`, `size`, `d
 - `num_parking`: Number of parking spaces (integer)
 - `total_area`: Total area in m² (float)
 - `agent_id`: Responsible agent ID (integer)
-- `owner_id`: Property owner ID (integer)
+- `owner_id`: Property owner ID (`real.estate.property.owner`, integer)
 - `company_ids`: List of company IDs (array of integers)
 - `complement`: Address complement (string)
 - `neighborhood`: Neighborhood (string)
@@ -900,11 +964,17 @@ Image and file fields return metadata only (`id`, `name`, `mimetype`, `size`, `d
 - `for_sale`: Available for sale (boolean)
 - `for_rent`: Available for rent (boolean)
 - `accepts_financing`: Accepts financing (boolean)
-- `accepts_fgts`: Accepts FGTS (boolean)
+- `fgts`: FGTS data object
+  - `accepts_fgts`: Accepts FGTS (boolean)
+  - `used_fgts`: Previous FGTS use known for this property (boolean)
+  - `last_usage_date`: Last known FGTS use registry/reference date (ISO date: YYYY-MM-DD)
+  - `usage_notes`: Optional FGTS usage notes (string)
 
 Validation notes:
-- `owner_email` must be a valid email when present.
+- Owner information is linked only through `owner_id` (`real.estate.property.owner`); responses return the related `owner` object.
+- Do not send `owner`, `owner_email`, `owner_home_phone`, `owner_business_phone`, or `owner_mobile_phone` in property create/update payloads.
 - `included_in_commission_date` must be ISO date (`YYYY-MM-DD`) when present.
+- `fgts.last_usage_date` must be ISO date (`YYYY-MM-DD`) when present.
 - Boolean fields must be JSON booleans, not strings.
 - `tags`, `property_images`, and `property_files` must be arrays.
 - Images/files are persisted from supported payload objects and returned as metadata only.
@@ -1039,7 +1109,7 @@ Validation notes:
     },
     "owner_id": {
       "type": "integer",
-      "description": "Owner ID.",
+      "description": "Property owner relationship ID (real.estate.property.owner).",
       "example": 12
     },
     "company_ids": {
@@ -1097,35 +1167,16 @@ Validation notes:
       "description": "Accepts financing.",
       "example": true
     },
-    "accepts_fgts": {
-      "type": "boolean",
-      "description": "Accepts FGTS.",
-      "example": true
-    },
-    "owner_email": {
-      "type": "string",
-      "format": "email",
+    "fgts": {
+      "type": "object",
       "nullable": true,
-      "description": "Owner email. Normalized to lowercase when persisted.",
-      "example": "owner@example.com"
-    },
-    "owner_home_phone": {
-      "type": "string",
-      "nullable": true,
-      "description": "Owner home phone.",
-      "example": "+55 11 3000-1000"
-    },
-    "owner_business_phone": {
-      "type": "string",
-      "nullable": true,
-      "description": "Owner business phone.",
-      "example": "+55 11 3000-2000"
-    },
-    "owner_mobile_phone": {
-      "type": "string",
-      "nullable": true,
-      "description": "Owner mobile phone.",
-      "example": "+55 11 98888-7777"
+      "description": "FGTS data for this property.",
+      "properties": {
+        "accepts_fgts": {"type": "boolean", "example": true},
+        "used_fgts": {"type": "boolean", "example": true},
+        "last_usage_date": {"type": "string", "format": "date", "nullable": true, "example": "2024-03-10"},
+        "usage_notes": {"type": "string", "nullable": true, "example": "Uso identificado na matricula anterior"}
+      }
     },
     "source_medium": {
       "type": "string",
@@ -1346,8 +1397,8 @@ Validation notes:
     "commercial_condition": {
       "type": "string",
       "nullable": true,
-      "description": "Commercial condition.",
-      "example": "standard"
+      "description": "Commercial condition free-text value.",
+      "example": "Condição comercial padrão"
     },
     "iptu_code": {
       "type": "string",
@@ -1604,8 +1655,41 @@ Validation notes:
     },
     "status": {
       "type": "string",
-      "description": "Property status.",
+      "description": "Legacy alias for property_status.",
       "example": "available"
+    },
+    "property_status": {
+      "type": "string",
+      "description": "Property status enum.",
+      "example": "available"
+    },
+    "for_sale": {
+      "type": "boolean",
+      "description": "Available for sale.",
+      "example": true
+    },
+    "for_rent": {
+      "type": "boolean",
+      "description": "Available for rent.",
+      "example": false
+    },
+    "accepts_financing": {
+      "type": "boolean",
+      "description": "Accepts financing.",
+      "example": true
+    },
+    "fgts": {
+      "type": "object",
+      "readOnly": true,
+      "description": "FGTS data and computed eligibility for this property.",
+      "properties": {
+        "accepts_fgts": {"type": "boolean", "example": true},
+        "used_fgts": {"type": "boolean", "example": true},
+        "last_usage_date": {"type": "string", "format": "date", "nullable": true, "example": "2024-03-10"},
+        "eligible_from": {"type": "string", "format": "date", "nullable": true, "example": "2027-03-11"},
+        "eligible_now": {"type": "boolean", "example": false},
+        "usage_notes": {"type": "string", "nullable": true, "example": "Uso identificado na matricula anterior"}
+      }
     },
     "property_type": {
       "type": "object",
@@ -1642,6 +1726,32 @@ Validation notes:
           "format": "email",
           "example": "carmen@example.com"
         }
+      }
+    },
+    "owner": {
+      "type": "object",
+      "nullable": true,
+      "description": "Property owner serialized from owner_id relationship.",
+      "properties": {
+        "id": {"type": "integer", "example": 9},
+        "name": {"type": "string", "example": "Maria Proprietaria"},
+        "email": {"type": "string", "format": "email", "example": "maria@example.com"},
+        "phone": {"type": "string", "example": "1130001000"},
+        "mobile": {"type": "string", "example": "11999990000"},
+        "whatsapp": {"type": "string", "example": "11988887777"},
+        "partner_id": {"type": "integer", "nullable": true, "example": 44},
+        "address": {"type": "string", "example": "Rua do Proprietario"},
+        "city": {"type": "string", "example": "Sao Paulo"},
+        "state": {
+          "type": "object",
+          "nullable": true,
+          "properties": {
+            "id": {"type": "integer", "example": 35},
+            "name": {"type": "string", "example": "Sao Paulo"},
+            "code": {"type": "string", "example": "SP"}
+          }
+        },
+        "zip_code": {"type": "string", "example": "01000-000"}
       }
     },
     "company": {
@@ -1783,31 +1893,6 @@ Validation notes:
       "nullable": true,
       "example": "2026-05-04T13:10:00.123456"
     },
-    "owner_email": {
-      "type": "string",
-      "format": "email",
-      "nullable": true,
-      "description": "Owner email. Normalized to lowercase when persisted.",
-      "example": "owner@example.com"
-    },
-    "owner_home_phone": {
-      "type": "string",
-      "nullable": true,
-      "description": "Owner home phone.",
-      "example": "+55 11 3000-1000"
-    },
-    "owner_business_phone": {
-      "type": "string",
-      "nullable": true,
-      "description": "Owner business phone.",
-      "example": "+55 11 3000-2000"
-    },
-    "owner_mobile_phone": {
-      "type": "string",
-      "nullable": true,
-      "description": "Owner mobile phone.",
-      "example": "+55 11 98888-7777"
-    },
     "source_medium": {
       "type": "string",
       "nullable": true,
@@ -1875,8 +1960,9 @@ Validation notes:
     "property_situation": {
       "type": "string",
       "nullable": true,
-      "description": "Property situation.",
-      "example": "occupied"
+      "description": "Property situation. Accepted values are documented in GET /api/v1/properties/options.",
+      "enum": ["Não Informado", "Desocupado", "Ocupado", "Reservado", "Em construção", "Lançamento", "Novo"],
+      "example": "Desocupado"
     },
     "year_of_renovation": {
       "type": "string",
@@ -2003,8 +2089,8 @@ Validation notes:
     "commercial_condition": {
       "type": "string",
       "nullable": true,
-      "description": "Commercial condition.",
-      "example": "standard"
+      "description": "Commercial condition free-text value.",
+      "example": "Condição comercial padrão"
     },
     "iptu_code": {
       "type": "string",
@@ -2154,8 +2240,41 @@ Defaults are stable: strings/dates return `null`, booleans return `false`, and c
     },
     "status": {
       "type": "string",
-      "description": "Property status.",
+      "description": "Legacy alias for property_status.",
       "example": "available"
+    },
+    "property_status": {
+      "type": "string",
+      "description": "Property status enum.",
+      "example": "available"
+    },
+    "for_sale": {
+      "type": "boolean",
+      "description": "Available for sale.",
+      "example": true
+    },
+    "for_rent": {
+      "type": "boolean",
+      "description": "Available for rent.",
+      "example": false
+    },
+    "accepts_financing": {
+      "type": "boolean",
+      "description": "Accepts financing.",
+      "example": true
+    },
+    "fgts": {
+      "type": "object",
+      "readOnly": true,
+      "description": "FGTS data and computed eligibility for this property.",
+      "properties": {
+        "accepts_fgts": {"type": "boolean", "example": true},
+        "used_fgts": {"type": "boolean", "example": true},
+        "last_usage_date": {"type": "string", "format": "date", "nullable": true, "example": "2024-03-10"},
+        "eligible_from": {"type": "string", "format": "date", "nullable": true, "example": "2027-03-11"},
+        "eligible_now": {"type": "boolean", "example": false},
+        "usage_notes": {"type": "string", "nullable": true, "example": "Uso identificado na matricula anterior"}
+      }
     },
     "property_type": {
       "type": "object",
@@ -2192,6 +2311,32 @@ Defaults are stable: strings/dates return `null`, booleans return `false`, and c
           "format": "email",
           "example": "carmen@example.com"
         }
+      }
+    },
+    "owner": {
+      "type": "object",
+      "nullable": true,
+      "description": "Property owner serialized from owner_id relationship.",
+      "properties": {
+        "id": {"type": "integer", "example": 9},
+        "name": {"type": "string", "example": "Maria Proprietaria"},
+        "email": {"type": "string", "format": "email", "example": "maria@example.com"},
+        "phone": {"type": "string", "example": "1130001000"},
+        "mobile": {"type": "string", "example": "11999990000"},
+        "whatsapp": {"type": "string", "example": "11988887777"},
+        "partner_id": {"type": "integer", "nullable": true, "example": 44},
+        "address": {"type": "string", "example": "Rua do Proprietario"},
+        "city": {"type": "string", "example": "Sao Paulo"},
+        "state": {
+          "type": "object",
+          "nullable": true,
+          "properties": {
+            "id": {"type": "integer", "example": 35},
+            "name": {"type": "string", "example": "Sao Paulo"},
+            "code": {"type": "string", "example": "SP"}
+          }
+        },
+        "zip_code": {"type": "string", "example": "01000-000"}
       }
     },
     "company": {
@@ -2333,31 +2478,6 @@ Defaults are stable: strings/dates return `null`, booleans return `false`, and c
       "nullable": true,
       "example": "2026-05-04T13:10:00.123456"
     },
-    "owner_email": {
-      "type": "string",
-      "format": "email",
-      "nullable": true,
-      "description": "Owner email. Normalized to lowercase when persisted.",
-      "example": "owner@example.com"
-    },
-    "owner_home_phone": {
-      "type": "string",
-      "nullable": true,
-      "description": "Owner home phone.",
-      "example": "+55 11 3000-1000"
-    },
-    "owner_business_phone": {
-      "type": "string",
-      "nullable": true,
-      "description": "Owner business phone.",
-      "example": "+55 11 3000-2000"
-    },
-    "owner_mobile_phone": {
-      "type": "string",
-      "nullable": true,
-      "description": "Owner mobile phone.",
-      "example": "+55 11 98888-7777"
-    },
     "source_medium": {
       "type": "string",
       "nullable": true,
@@ -2425,8 +2545,9 @@ Defaults are stable: strings/dates return `null`, booleans return `false`, and c
     "property_situation": {
       "type": "string",
       "nullable": true,
-      "description": "Property situation.",
-      "example": "occupied"
+      "description": "Property situation. Accepted values are documented in GET /api/v1/properties/options.",
+      "enum": ["Não Informado", "Desocupado", "Ocupado", "Reservado", "Em construção", "Lançamento", "Novo"],
+      "example": "Desocupado"
     },
     "year_of_renovation": {
       "type": "string",
@@ -2553,8 +2674,8 @@ Defaults are stable: strings/dates return `null`, booleans return `false`, and c
     "commercial_condition": {
       "type": "string",
       "nullable": true,
-      "description": "Commercial condition.",
-      "example": "standard"
+      "description": "Commercial condition free-text value.",
+      "example": "Condição comercial padrão"
     },
     "iptu_code": {
       "type": "string",
@@ -2808,7 +2929,7 @@ Omitted arrays do not clear existing collections. Sent arrays replace the corres
     },
     "owner_id": {
       "type": "integer",
-      "description": "Owner ID.",
+      "description": "Property owner relationship ID (real.estate.property.owner).",
       "example": 12
     },
     "complement": {
@@ -2856,35 +2977,16 @@ Omitted arrays do not clear existing collections. Sent arrays replace the corres
       "description": "Accepts financing.",
       "example": true
     },
-    "accepts_fgts": {
-      "type": "boolean",
-      "description": "Accepts FGTS.",
-      "example": true
-    },
-    "owner_email": {
-      "type": "string",
-      "format": "email",
+    "fgts": {
+      "type": "object",
       "nullable": true,
-      "description": "Owner email. Normalized to lowercase when persisted.",
-      "example": "owner@example.com"
-    },
-    "owner_home_phone": {
-      "type": "string",
-      "nullable": true,
-      "description": "Owner home phone.",
-      "example": "+55 11 3000-1000"
-    },
-    "owner_business_phone": {
-      "type": "string",
-      "nullable": true,
-      "description": "Owner business phone.",
-      "example": "+55 11 3000-2000"
-    },
-    "owner_mobile_phone": {
-      "type": "string",
-      "nullable": true,
-      "description": "Owner mobile phone.",
-      "example": "+55 11 98888-7777"
+      "description": "FGTS data for this property.",
+      "properties": {
+        "accepts_fgts": {"type": "boolean", "example": true},
+        "used_fgts": {"type": "boolean", "example": true},
+        "last_usage_date": {"type": "string", "format": "date", "nullable": true, "example": "2024-03-10"},
+        "usage_notes": {"type": "string", "nullable": true, "example": "Uso identificado na matricula anterior"}
+      }
     },
     "source_medium": {
       "type": "string",
@@ -3105,8 +3207,8 @@ Omitted arrays do not clear existing collections. Sent arrays replace the corres
     "commercial_condition": {
       "type": "string",
       "nullable": true,
-      "description": "Commercial condition.",
-      "example": "standard"
+      "description": "Commercial condition free-text value.",
+      "example": "Condição comercial padrão"
     },
     "iptu_code": {
       "type": "string",
@@ -3341,8 +3443,41 @@ Omitted arrays do not clear existing collections. Sent arrays replace the corres
     },
     "status": {
       "type": "string",
-      "description": "Property status.",
+      "description": "Legacy alias for property_status.",
       "example": "available"
+    },
+    "property_status": {
+      "type": "string",
+      "description": "Property status enum.",
+      "example": "available"
+    },
+    "for_sale": {
+      "type": "boolean",
+      "description": "Available for sale.",
+      "example": true
+    },
+    "for_rent": {
+      "type": "boolean",
+      "description": "Available for rent.",
+      "example": false
+    },
+    "accepts_financing": {
+      "type": "boolean",
+      "description": "Accepts financing.",
+      "example": true
+    },
+    "fgts": {
+      "type": "object",
+      "readOnly": true,
+      "description": "FGTS data and computed eligibility for this property.",
+      "properties": {
+        "accepts_fgts": {"type": "boolean", "example": true},
+        "used_fgts": {"type": "boolean", "example": true},
+        "last_usage_date": {"type": "string", "format": "date", "nullable": true, "example": "2024-03-10"},
+        "eligible_from": {"type": "string", "format": "date", "nullable": true, "example": "2027-03-11"},
+        "eligible_now": {"type": "boolean", "example": false},
+        "usage_notes": {"type": "string", "nullable": true, "example": "Uso identificado na matricula anterior"}
+      }
     },
     "property_type": {
       "type": "object",
@@ -3379,6 +3514,32 @@ Omitted arrays do not clear existing collections. Sent arrays replace the corres
           "format": "email",
           "example": "carmen@example.com"
         }
+      }
+    },
+    "owner": {
+      "type": "object",
+      "nullable": true,
+      "description": "Property owner serialized from owner_id relationship.",
+      "properties": {
+        "id": {"type": "integer", "example": 9},
+        "name": {"type": "string", "example": "Maria Proprietaria"},
+        "email": {"type": "string", "format": "email", "example": "maria@example.com"},
+        "phone": {"type": "string", "example": "1130001000"},
+        "mobile": {"type": "string", "example": "11999990000"},
+        "whatsapp": {"type": "string", "example": "11988887777"},
+        "partner_id": {"type": "integer", "nullable": true, "example": 44},
+        "address": {"type": "string", "example": "Rua do Proprietario"},
+        "city": {"type": "string", "example": "Sao Paulo"},
+        "state": {
+          "type": "object",
+          "nullable": true,
+          "properties": {
+            "id": {"type": "integer", "example": 35},
+            "name": {"type": "string", "example": "Sao Paulo"},
+            "code": {"type": "string", "example": "SP"}
+          }
+        },
+        "zip_code": {"type": "string", "example": "01000-000"}
       }
     },
     "company": {
@@ -3520,31 +3681,6 @@ Omitted arrays do not clear existing collections. Sent arrays replace the corres
       "nullable": true,
       "example": "2026-05-04T13:10:00.123456"
     },
-    "owner_email": {
-      "type": "string",
-      "format": "email",
-      "nullable": true,
-      "description": "Owner email. Normalized to lowercase when persisted.",
-      "example": "owner@example.com"
-    },
-    "owner_home_phone": {
-      "type": "string",
-      "nullable": true,
-      "description": "Owner home phone.",
-      "example": "+55 11 3000-1000"
-    },
-    "owner_business_phone": {
-      "type": "string",
-      "nullable": true,
-      "description": "Owner business phone.",
-      "example": "+55 11 3000-2000"
-    },
-    "owner_mobile_phone": {
-      "type": "string",
-      "nullable": true,
-      "description": "Owner mobile phone.",
-      "example": "+55 11 98888-7777"
-    },
     "source_medium": {
       "type": "string",
       "nullable": true,
@@ -3612,8 +3748,9 @@ Omitted arrays do not clear existing collections. Sent arrays replace the corres
     "property_situation": {
       "type": "string",
       "nullable": true,
-      "description": "Property situation.",
-      "example": "occupied"
+      "description": "Property situation. Accepted values are documented in GET /api/v1/properties/options.",
+      "enum": ["Não Informado", "Desocupado", "Ocupado", "Reservado", "Em construção", "Lançamento", "Novo"],
+      "example": "Desocupado"
     },
     "year_of_renovation": {
       "type": "string",
@@ -3740,8 +3877,8 @@ Omitted arrays do not clear existing collections. Sent arrays replace the corres
     "commercial_condition": {
       "type": "string",
       "nullable": true,
-      "description": "Commercial condition.",
-      "example": "standard"
+      "description": "Commercial condition free-text value.",
+      "example": "Condição comercial padrão"
     },
     "iptu_code": {
       "type": "string",
@@ -5009,6 +5146,20 @@ Returns: Owner object with id, name, email, cpf, phone, mobile, company_count, c
             "properties": {
               "id": {"type": "integer", "example": 3},
               "name": {"type": "string", "example": "Maria Corretora"}
+            }
+          },
+          "owner": {
+            "type": "object",
+            "nullable": true,
+            "description": "Property owner serialized from owner_id relationship.",
+            "properties": {
+              "id": {"type": "integer", "example": 9},
+              "name": {"type": "string", "example": "Maria Proprietaria"},
+              "email": {"type": "string", "format": "email", "example": "maria@example.com"},
+              "phone": {"type": "string", "example": "1130001000"},
+              "mobile": {"type": "string", "example": "11999990000"},
+              "whatsapp": {"type": "string", "example": "11988887777"},
+              "partner_id": {"type": "integer", "nullable": true, "example": 44}
             }
           },
           "for_sale": {"type": "boolean", "example": true},

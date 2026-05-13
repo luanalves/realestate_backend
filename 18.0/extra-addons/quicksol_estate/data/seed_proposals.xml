@@ -156,9 +156,23 @@
     <!-- Para que owner@seed.com.br tenha jornada completa                -->
     <!-- ================================================================ -->
 
+    <!-- Property owner used by the Seed property journey -->
+    <record id="seed_property_owner" model="real.estate.property.owner">
+        <field name="name">Proprietário Seed</field>
+        <field name="partner_id" ref="user_seed_propowner_res_partner"/>
+        <field name="email">propowner@seed.com.br</field>
+        <field name="phone">(11) 3000-4000</field>
+        <field name="mobile">(11) 98888-7777</field>
+        <field name="whatsapp">(11) 98888-7777</field>
+        <field name="city">São Paulo</field>
+        <field name="state_id" ref="base.state_br_sp"/>
+        <field name="zip_code">01310-100</field>
+    </record>
+
     <!-- Properties -->
     <record id="seed_property_1" model="real.estate.property">
         <field name="name">Apartamento Seed - Bairro Nobre</field>
+        <field name="owner_id" ref="seed_property_owner"/>
         <field name="property_type_id" ref="property_type_apartment"/>
         <field name="company_id" ref="company_seed_imobiliaria"/>
         <field name="state_id" ref="base.state_br_sp"/>
@@ -174,6 +188,7 @@
 
     <record id="seed_property_2" model="real.estate.property">
         <field name="name">Casa Seed - Condomínio Fechado</field>
+        <field name="owner_id" ref="seed_property_owner"/>
         <field name="property_type_id" ref="property_type_house"/>
         <field name="company_id" ref="company_seed_imobiliaria"/>
         <field name="state_id" ref="base.state_br_sp"/>
@@ -184,11 +199,19 @@
         <field name="street_number">500</field>
         <field name="area">200.0</field>
         <field name="status">available</field>
+        <field name="property_situation">Desocupado</field>
+        <field name="commercial_condition">Condição comercial padrão</field>
+        <field name="accepts_fgts">True</field>
+        <field name="accepts_financing">True</field>
+        <field name="used_fgts">True</field>
+        <field name="fgts_last_usage_date">2024-03-10</field>
+        <field name="fgts_usage_notes">Uso identificado na matricula anterior</field>
         <field name="description">Casa seed para testes de jornada (Imobiliária Seed).</field>
     </record>
 
     <record id="seed_property_3" model="real.estate.property">
         <field name="name">Sala Comercial Seed - Centro</field>
+        <field name="owner_id" ref="seed_property_owner"/>
         <field name="property_type_id" ref="property_type_commercial"/>
         <field name="company_id" ref="company_seed_imobiliaria"/>
         <field name="state_id" ref="base.state_br_sp"/>

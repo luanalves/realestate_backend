@@ -87,6 +87,7 @@ Property Form Sections:
         'data/mail_templates_proposal.xml',
         'data/proposal_cron.xml',
         'data/seed_proposals.xml',  # Seed: Proposals em todos os 8 estados FSM para testes de jornada
+        'data/seed_property_relationships.xml',
         'data/seed_proposals_states.xml',  # Seed: Fase 2 — corrige estados FSM via SQL
         # 'data/default_groups.xml',  # Demo data temporarily disabled - complex dependencies
 

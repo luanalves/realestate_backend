@@ -212,6 +212,11 @@
                                 <group string="Financial Options">
                                     <field name="accepts_fgts"/>
                                     <field name="accepts_financing"/>
+                                    <field name="used_fgts"/>
+                                    <field name="fgts_last_usage_date"/>
+                                    <field name="fgts_eligible_from" readonly="1"/>
+                                    <field name="fgts_eligible_now" readonly="1" widget="boolean"/>
+                                    <field name="fgts_usage_notes"/>
                                 </group>
                                 <group string="Relationships">
                                     <field name="profile_id"/>

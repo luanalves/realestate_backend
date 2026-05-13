@@ -35,7 +35,7 @@
 | `commission_type` | `commission_type` | char/null | Direct form value; does not replace commission line records. |
 | `captured_intention` | `captured_intention` | char/null | Direct form value. |
 | `included_in_commission_date` | `included_in_commission_date` | date/null | ISO date. |
-| `commercial_condition` | `commercial_condition` | char/null | Direct form value. |
+| `commercial_condition` | `commercial_condition` | char/null | Direct free-text form value; only the string type is validated. |
 | `iptu_code` | `iptu_code` | char/null | Existing documentation field. |
 | `registration_number` | `matricula_number` | char/null | Existing documentation field. |
 | `electricity_network_code` | `electricity_network_code` | char/null | Direct form value. |

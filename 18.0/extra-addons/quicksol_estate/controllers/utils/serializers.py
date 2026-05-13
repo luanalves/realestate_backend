@@ -10,6 +10,8 @@ def serialize_property(property_record):
     if not property_record:
         return None
 
+    property_status = property_record.property_status or 'available'
+
     return {
         'id': property_record.id,
         'name': property_record.name or '',
@@ -19,7 +21,10 @@ def serialize_property(property_record):
             f"R$ {property_record.price:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
             if property_record.price else 'R$ 0,00'
         ),
-        'status': property_record.property_status or 'available',
+        'status': property_status,
+        'property_status': property_status,
+        'for_sale': bool(property_record.for_sale),
+        'for_rent': bool(property_record.for_rent),
         'property_type': {
             'id': property_record.property_type_id.id,
             'name': property_record.property_type_id.name
@@ -29,6 +34,7 @@ def serialize_property(property_record):
             'name': property_record.agent_id.name,
             'email': property_record.agent_id.email or ''
         } if property_record.agent_id else None,
+        'owner': serialize_property_owner(property_record),
         'company': {
             'id': property_record.company_id.id if property_record.company_id else None,
             'name': property_record.company_id.name if property_record.company_id else None
@@ -65,11 +71,34 @@ def serialize_property(property_record):
     }
 
 
+def serialize_property_owner(property_record):
+    owner = getattr(property_record, 'owner_id', False)
+    if not owner:
+        return None
+
+    partner = getattr(owner, 'partner_id', False)
+    state = getattr(owner, 'state_id', False)
+
+    return {
+        'id': owner.id,
+        'name': owner.name or '',
+        'email': owner.email or '',
+        'phone': owner.phone or '',
+        'mobile': owner.mobile or '',
+        'whatsapp': owner.whatsapp or '',
+        'partner_id': partner.id if partner else None,
+        'address': owner.address or '',
+        'city': owner.city or '',
+        'state': {
+            'id': state.id,
+            'name': state.name,
+            'code': state.code,
+        } if state else None,
+        'zip_code': owner.zip_code or '',
+    }
+
+
 PROPERTY_MAPPING_SCALAR_FIELDS = {
-    'owner_email': ('owner_email', 'email'),
-    'owner_home_phone': ('owner_home_phone', 'string'),
-    'owner_business_phone': ('owner_business_phone', 'string'),
-    'owner_mobile_phone': ('owner_mobile_phone', 'string'),
     'source_medium': ('origin_media', 'string'),
     'send_activities_to_owner': ('send_activities_to_owner', 'boolean'),
     'search_street': ('street', 'string'),
@@ -81,6 +110,7 @@ PROPERTY_MAPPING_SCALAR_FIELDS = {
     'rental_guarantee_insurance': ('rental_guarantee_insurance', 'string'),
     'fire_insurance': ('fire_insurance', 'string'),
     'exclusivity': ('exclusivity', 'boolean'),
+    'accepts_financing': ('accepts_financing', 'boolean'),
     'property_situation': ('property_situation', 'string'),
     'year_of_renovation': ('reform_year', 'integer_string'),
     'zoning': ('zoning_type', 'string'),
@@ -107,7 +137,38 @@ PROPERTY_MAPPING_SCALAR_FIELDS = {
 }
 
 PROPERTY_MAPPING_COLLECTION_FIELDS = {'tags', 'property_images', 'property_files'}
+FGTS_TOP_LEVEL_FIELDS = {
+    'accepts_fgts',
+    'used_fgts',
+    'fgts_last_usage_date',
+    'fgts_eligible_from',
+    'fgts_eligible_now',
+    'fgts_usage_notes',
+}
+FGTS_INPUT_FIELDS = {
+    'accepts_fgts': ('accepts_fgts', 'boolean'),
+    'used_fgts': ('used_fgts', 'boolean'),
+    'last_usage_date': ('fgts_last_usage_date', 'date'),
+    'usage_notes': ('fgts_usage_notes', 'string'),
+}
+FGTS_READ_ONLY_FIELDS = {'eligible_from', 'eligible_now'}
+LEGACY_PROPERTY_OWNER_FIELDS = {
+    'owner',
+    'owner_email',
+    'owner_home_phone',
+    'owner_business_phone',
+    'owner_mobile_phone',
+}
 EMAIL_REGEX = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+PROPERTY_SITUATION_FALLBACKS = {
+    'available': 'Desocupado',
+    'occupied': 'Ocupado',
+    'rented': 'Ocupado',
+    'reserved': 'Reservado',
+    'sold': 'Ocupado',
+    'under_construction': 'Em construção',
+    'maintenance': 'Não Informado',
+}
 
 
 def serialize_property_mapping_fields(property_record):
@@ -123,6 +184,29 @@ def serialize_property_mapping_fields(property_record):
             result[api_field] = str(value) if value not in (False, None, 0) else None
         else:
             result[api_field] = value or None
+
+    if not result['property_situation']:
+        property_status = getattr(property_record, 'property_status', False)
+        result['property_situation'] = PROPERTY_SITUATION_FALLBACKS.get(
+            property_status,
+            'Não Informado',
+        )
+
+    fgts_eligible_from = (
+        property_record.fgts_eligible_from.isoformat()
+        if getattr(property_record, 'fgts_eligible_from', False) else None
+    )
+    result['fgts'] = {
+        'accepts_fgts': bool(getattr(property_record, 'accepts_fgts', False)),
+        'used_fgts': bool(getattr(property_record, 'used_fgts', False)),
+        'last_usage_date': (
+            property_record.fgts_last_usage_date.isoformat()
+            if getattr(property_record, 'fgts_last_usage_date', False) else None
+        ),
+        'eligible_from': fgts_eligible_from,
+        'eligible_now': bool(getattr(property_record, 'fgts_eligible_now', False)),
+        'usage_notes': getattr(property_record, 'fgts_usage_notes', False) or None,
+    }
 
     result['tags'] = [tag.name for tag in property_record.tag_ids if tag.name]
 
@@ -194,6 +278,20 @@ def build_property_mapping_values(data):
     vals = {}
     errors = []
 
+    for field in sorted(LEGACY_PROPERTY_OWNER_FIELDS):
+        if field in data:
+            errors.append({
+                'field': field,
+                'message': 'Use owner_id to link a property owner',
+            })
+
+    for field in sorted(FGTS_TOP_LEVEL_FIELDS):
+        if field in data:
+            errors.append({
+                'field': field,
+                'message': 'Use fgts object to send FGTS data',
+            })
+
     for api_field, (odoo_field, field_type) in PROPERTY_MAPPING_SCALAR_FIELDS.items():
         if api_field not in data:
             continue
@@ -205,12 +303,59 @@ def build_property_mapping_values(data):
             continue
         vals[odoo_field] = normalized
 
+    if 'fgts' in data:
+        fgts_vals, fgts_errors = _normalize_fgts_values(data['fgts'])
+        errors.extend(fgts_errors)
+        vals.update(fgts_vals)
+
     for field in PROPERTY_MAPPING_COLLECTION_FIELDS:
         if field in data and not isinstance(data[field], list):
             errors.append({
                 'field': field,
                 'message': 'Must be an array',
             })
+
+    return vals, errors
+
+
+def _normalize_fgts_values(value):
+    if value in (None, ''):
+        return {
+            'accepts_fgts': False,
+            'used_fgts': False,
+            'fgts_last_usage_date': False,
+            'fgts_usage_notes': False,
+        }, []
+
+    if not isinstance(value, dict):
+        return {}, [{
+            'field': 'fgts',
+            'message': 'Must be an object',
+        }]
+
+    vals = {}
+    errors = []
+
+    for field in sorted(FGTS_READ_ONLY_FIELDS):
+        if field in value:
+            errors.append({
+                'field': f'fgts.{field}',
+                'message': 'Read-only field',
+            })
+
+    for api_field, (odoo_field, field_type) in FGTS_INPUT_FIELDS.items():
+        if api_field not in value:
+            continue
+
+        normalized, error = _normalize_property_mapping_value(
+            f'fgts.{api_field}',
+            value.get(api_field),
+            field_type,
+        )
+        if error:
+            errors.append(error)
+            continue
+        vals[odoo_field] = normalized
 
     return vals, errors
 
