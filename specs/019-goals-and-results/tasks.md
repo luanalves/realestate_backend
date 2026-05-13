@@ -335,14 +335,14 @@ Expected: 200 with all company users, `totals` present, filters applied correctl
 
 **Purpose**: Integration test runner, multitenancy validation, Swagger verification, install validation.
 
-- [ ] T040 [P] Write `integration_tests/test_us019_s6_multitenancy.sh`:
+- [X] T040 [P] Write `integration_tests/test_us019_s6_multitenancy.sh`:
   - Create goals as Manager of Company A
   - Login as Manager of Company B → GET /api/v1/goals → assert Company A goals not visible
   - GET /api/v1/goals/report as Company B → assert Company A users not in response
 
 - [X] T041 [P] Write `integration_tests/run_feature019_tests.sh` orchestrator script that runs all 6 integration tests in order and reports pass/fail per test
 
-- [ ] T042 Verify Swagger registration post-install:
+- [X] T042 Verify Swagger registration post-install:
   - `curl -s http://localhost:8069/api/docs/openapi.json | python3 -c "import sys,json; paths=[p for p in json.load(sys.stdin)['paths'] if '/api/v1/goals' in p]; print(len(paths), paths)"`
   - Assert output count = 5 (all 5 route paths present)
   - If missing: check `data/api_endpoints_data.xml` XML validity and re-run `--update`
@@ -355,7 +355,7 @@ Expected: 200 with all company users, `totals` present, filters applied correctl
   - `bash integration_tests/run_feature019_tests.sh`
   - Fix any failures before marking tasks complete
 
-- [ ] T046 [P] Generate Postman collection for Feature 019 via `thedevkitchen.postman` agent:
+- [X] T046 [P] Generate Postman collection for Feature 019 via `thedevkitchen.postman` agent:
   - Run agent: all 5 endpoints (`POST /api/v1/goals`, `PUT /api/v1/goals/<id>`, `DELETE /api/v1/goals/<id>`, `GET /api/v1/goals`, `GET /api/v1/goals/report`)
   - Output: `docs/postman/feature019_goals_results_v1.0_postman_collection.json` (ADR-016)
   - Include OAuth token flow, session management, auto-save token scripts, and GET/POST header conventions

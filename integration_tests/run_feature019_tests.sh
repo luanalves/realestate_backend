@@ -40,6 +40,7 @@ run_test "US019-S2: Goal Lifecycle"         "test_us019_s2_goal_lifecycle.sh"
 run_test "US019-S3: Report Single Month"    "test_us019_s3_report_single_month.sh"
 run_test "US019-S4: Report Date Range"      "test_us019_s4_report_date_range.sh"
 run_test "US019-S5: RBAC Matrix"            "test_us019_s5_rbac_matrix.sh"
+run_test "US019-S6: Multitenancy"           "test_us019_s6_multitenancy.sh"
 
 echo ""
 echo "========================================"

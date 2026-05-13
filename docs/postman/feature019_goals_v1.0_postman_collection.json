@@ -1,0 +1,315 @@
+{
+  "info": {
+    "name": "Feature 019 — Goals & Results API",
+    "version": "1.0",
+    "description": "Postman collection for the `thedevkitchen_estate_goals` module (Feature 019).\n\nCovers all 5 endpoints:\n- POST /api/v1/goals\n- PUT /api/v1/goals/{id}\n- DELETE /api/v1/goals/{id}\n- GET /api/v1/goals\n- GET /api/v1/goals/report\n\n**Authentication:** Bearer Token + Session ID required for all endpoints.\n**Multi-tenancy:** Company isolation active (@require_company).\n\nImport variables from the environment file before running.\nRun \"1. Authentication\" folder first to populate `access_token` and `session_id`.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {"key": "base_url",       "value": "http://localhost:8069"},
+    {"key": "client_id",      "value": "client_xxx"},
+    {"key": "client_secret",  "value": "secret_yyy"},
+    {"key": "access_token",   "value": ""},
+    {"key": "refresh_token",  "value": ""},
+    {"key": "session_id",     "value": ""},
+    {"key": "company_id",     "value": ""},
+    {"key": "user_agent",     "value": "PostmanRuntime/7.26.8"},
+    {"key": "user_email",     "value": "manager_019@example.com"},
+    {"key": "user_password",  "value": "ManagerPass019!"},
+    {"key": "goal_id",        "value": ""}
+  ],
+  "item": [
+    {
+      "name": "1. Authentication",
+      "item": [
+        {
+          "name": "Get OAuth Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_id\": \"{{client_id}}\",\n  \"client_secret\": \"{{client_secret}}\",\n  \"grant_type\": \"client_credentials\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/token",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "token"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.access_token) {",
+                  "    pm.collectionVariables.set('access_token', jsonData.access_token);",
+                  "    console.log('✅ Access token saved');",
+                  "    if (jsonData.refresh_token) {",
+                  "        pm.collectionVariables.set('refresh_token', jsonData.refresh_token);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "User Login (Manager)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type",  "value": "application/json"},
+              {"key": "User-Agent",    "value": "{{user_agent}}",          "description": "Required for session fingerprint validation"},
+              {"key": "Authorization", "value": "Bearer {{access_token}}", "description": "OAuth 2.0 Bearer token"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"login\": \"{{user_email}}\",\n  \"password\": \"{{user_password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users", "login"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.session_id) {",
+                  "    pm.collectionVariables.set('session_id', jsonData.session_id);",
+                  "    console.log('✅ Session ID saved:', jsonData.session_id);",
+                  "}",
+                  "if (jsonData && jsonData.user && jsonData.user.default_company_id) {",
+                  "    pm.collectionVariables.set('company_id', String(jsonData.user.default_company_id));",
+                  "    console.log('✅ Company ID saved:', jsonData.user.default_company_id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Goals CRUD",
+      "item": [
+        {
+          "name": "Create Goal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type",         "value": "application/json"},
+              {"key": "User-Agent",            "value": "{{user_agent}}",          "description": "Required for session fingerprint validation"},
+              {"key": "Authorization",         "value": "Bearer {{access_token}}", "description": "OAuth 2.0 Bearer token"},
+              {"key": "X-Odoo-Session-Id",     "value": "{{session_id}}"},
+              {"key": "X-Company-Id",          "value": "{{company_id}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": 5,\n  \"year\": 2026,\n  \"month\": 5,\n  \"metric_type\": \"captacao\",\n  \"operation_type\": \"sale\",\n  \"target_count\": 10,\n  \"target_vgv\": 500000.00\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/goals",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "goals"]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n\nCreates a new monthly performance goal. Caller must be Owner, Director, or Manager.\n\n**Required Fields:** user_id, year, month, metric_type, operation_type, target_count\n**Optional:** target_vgv (only for captacao/propostas/fechamento)\n\n**Errors:** 400 (missing fields), 403 (not manager), 409 (duplicate), 422 (validation)"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "if (pm.response.code === 201 && jsonData && jsonData.id) {",
+                  "    pm.collectionVariables.set('goal_id', String(jsonData.id));",
+                  "    console.log('✅ Goal ID saved:', jsonData.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Goal",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {"key": "Content-Type",         "value": "application/json"},
+              {"key": "User-Agent",            "value": "{{user_agent}}",          "description": "Required for session fingerprint validation"},
+              {"key": "Authorization",         "value": "Bearer {{access_token}}", "description": "OAuth 2.0 Bearer token"},
+              {"key": "X-Odoo-Session-Id",     "value": "{{session_id}}"},
+              {"key": "X-Company-Id",          "value": "{{company_id}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"target_count\": 12,\n  \"target_vgv\": 600000.00\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/goals/{{goal_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "goals", "{{goal_id}}"]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n\nUpdates target_count and/or target_vgv of an existing active goal. Identity fields are immutable.\n\n**Errors:** 403 (not manager), 404 (not found), 422 (validation)"
+          }
+        },
+        {
+          "name": "List Goals",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Content-Type",         "value": "application/json"},
+              {"key": "User-Agent",            "value": "{{user_agent}}",          "description": "Required for session fingerprint validation"},
+              {"key": "Authorization",         "value": "Bearer {{access_token}}", "description": "OAuth 2.0 Bearer token"},
+              {"key": "X-Odoo-Session-Id",     "value": "{{session_id}}",          "description": "Session ID for fingerprint validation (REQUIRED for GET)"},
+              {"key": "X-Company-Id",          "value": "{{company_id}}"}
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/goals?year=2026&month=5",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "goals"],
+              "query": [
+                {"key": "year",           "value": "2026"},
+                {"key": "month",          "value": "5"},
+                {"key": "user_id",        "value": "",   "disabled": true},
+                {"key": "metric_type",    "value": "",   "disabled": true},
+                {"key": "operation_type", "value": "",   "disabled": true}
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For GET requests, session_id MUST be sent via header `X-Odoo-Session-Id`, NOT in request body.\n\nAgents can only see their own goals. Receptionist/Prospector → 403."
+          }
+        },
+        {
+          "name": "Delete Goal",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {"key": "Content-Type",         "value": "application/json"},
+              {"key": "User-Agent",            "value": "{{user_agent}}",          "description": "Required for session fingerprint validation"},
+              {"key": "Authorization",         "value": "Bearer {{access_token}}", "description": "OAuth 2.0 Bearer token"},
+              {"key": "X-Odoo-Session-Id",     "value": "{{session_id}}"},
+              {"key": "X-Company-Id",          "value": "{{company_id}}"}
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/goals/{{goal_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "goals", "{{goal_id}}"]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n\nSoft-deletes (archives) a goal. Record retained for audit. Only Owner, Director, or Manager.\n\n**Errors:** 403 (not manager), 404 (not found or already archived)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Goals Report",
+      "item": [
+        {
+          "name": "Report — Single Month",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Content-Type",         "value": "application/json"},
+              {"key": "User-Agent",            "value": "{{user_agent}}",          "description": "Required for session fingerprint validation"},
+              {"key": "Authorization",         "value": "Bearer {{access_token}}", "description": "OAuth 2.0 Bearer token"},
+              {"key": "X-Odoo-Session-Id",     "value": "{{session_id}}",          "description": "Session ID for fingerprint validation (REQUIRED for GET)"},
+              {"key": "X-Company-Id",          "value": "{{company_id}}"}
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/goals/report?year=2026&month=5",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "goals", "report"],
+              "query": [
+                {"key": "year",         "value": "2026"},
+                {"key": "month",        "value": "5"},
+                {"key": "user_id",      "value": "",     "disabled": true},
+                {"key": "profile",      "value": "",     "disabled": true},
+                {"key": "goal_status",  "value": "",     "disabled": true}
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent + Accept-Language)\n\n**IMPORTANT:** For GET requests, session_id MUST be sent via header `X-Odoo-Session-Id`, NOT in request body.\n\nReturns per-user, per-metric achievement report. Agents see only their own data.\n\n**period.mode:** `single_month`\n**Response shape:** `{users, totals, period}`"
+          }
+        },
+        {
+          "name": "Report — Accumulated Range",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Content-Type",         "value": "application/json"},
+              {"key": "User-Agent",            "value": "{{user_agent}}",          "description": "Required for session fingerprint validation"},
+              {"key": "Authorization",         "value": "Bearer {{access_token}}", "description": "OAuth 2.0 Bearer token"},
+              {"key": "X-Odoo-Session-Id",     "value": "{{session_id}}",          "description": "Session ID for fingerprint validation (REQUIRED for GET)"},
+              {"key": "X-Company-Id",          "value": "{{company_id}}"}
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/goals/report?date_from=2026-01-01&date_to=2026-03-31",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "goals", "report"],
+              "query": [
+                {"key": "date_from",    "value": "2026-01-01"},
+                {"key": "date_to",      "value": "2026-03-31"},
+                {"key": "profile",      "value": "",     "disabled": true},
+                {"key": "goal_status",  "value": "",     "disabled": true}
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n\nAccumulated report across a date range. Max 366 days (SEC-6).\n\n**period.mode:** `accumulated`\n**Errors:** 400 if range > 366 days or reversed dates"
+          }
+        },
+        {
+          "name": "Report — Filter by Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Content-Type",         "value": "application/json"},
+              {"key": "User-Agent",            "value": "{{user_agent}}",          "description": "Required for session fingerprint validation"},
+              {"key": "Authorization",         "value": "Bearer {{access_token}}", "description": "OAuth 2.0 Bearer token"},
+              {"key": "X-Odoo-Session-Id",     "value": "{{session_id}}",          "description": "Session ID for fingerprint validation (REQUIRED for GET)"},
+              {"key": "X-Company-Id",          "value": "{{company_id}}"}
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/goals/report?year=2026&month=5&profile=quicksol_estate.group_real_estate_agent",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "goals", "report"],
+              "query": [
+                {"key": "year",     "value": "2026"},
+                {"key": "month",    "value": "5"},
+                {"key": "profile",  "value": "quicksol_estate.group_real_estate_agent"}
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n\nFilters report to only include users belonging to the specified Odoo group.\nProfile value must be a valid XML ID (SEC-9 regex validated).\n\n**Example profiles:**\n- `quicksol_estate.group_real_estate_agent`\n- `quicksol_estate.group_real_estate_manager`"
+          }
+        },
+        {
+          "name": "Report — Filter by Goal Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Content-Type",         "value": "application/json"},
+              {"key": "User-Agent",            "value": "{{user_agent}}",          "description": "Required for session fingerprint validation"},
+              {"key": "Authorization",         "value": "Bearer {{access_token}}", "description": "OAuth 2.0 Bearer token"},
+              {"key": "X-Odoo-Session-Id",     "value": "{{session_id}}",          "description": "Session ID for fingerprint validation (REQUIRED for GET)"},
+              {"key": "X-Company-Id",          "value": "{{company_id}}"}
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/goals/report?year=2026&month=5&goal_status=complete",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "goals", "report"],
+              "query": [
+                {"key": "year",        "value": "2026"},
+                {"key": "month",       "value": "5"},
+                {"key": "goal_status", "value": "complete"}
+              ]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID required\n\nFilters response to only include users matching the goal_status.\n\n**Values:** `complete`, `in_progress`, `no_goals`\n- `complete`: all set goals were met\n- `in_progress`: at least one goal set but not fully met\n- `no_goals`: user has zero goals defined"
+          }
+        }
+      ]
+    }
+  ]
+}
