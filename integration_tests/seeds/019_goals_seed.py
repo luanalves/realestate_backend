@@ -1,21 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Seed data for Feature 019 — Goals & Results integration tests.
 
-Usage (from repo root):
-    cd 18.0
-    docker compose exec odoo python /mnt/extra-addons/thedevkitchen_estate_goals/scripts/seed_019.py
-    # OR via odoo shell:
-    docker compose exec odoo odoo shell -d realestate < /path/to/this/file
-
-Idempotent: all creates check-before-insert.
-Creates:
-    - 2 companies
-    - 5 users with seed_019_ prefix
-    - Real estate data for May 2026 (properties, services, proposals)
-    - 6 goals for agent_a (May 2026)
-"""
 import logging
 import sys
 import os

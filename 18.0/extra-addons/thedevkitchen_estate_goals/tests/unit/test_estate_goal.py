@@ -1,14 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Unit Tests: Estate Goal (Feature 019)
 
-Covers:
-- T017: Model constraint tests (unique, non-negative, month range, year, VGV)
-- T029: Period resolution and goal_status computation
-- T047: SQL query method unit tests
-
-ADRs: ADR-003 (Testing Standards)
-"""
 from datetime import date, datetime
 from unittest.mock import patch, MagicMock
 from odoo.tests import TransactionCase
@@ -16,8 +7,6 @@ from odoo.exceptions import ValidationError
 
 
 class TestEstateGoalConstraints(TransactionCase):
-    """T017 — Model constraint tests."""
-
     def setUp(self):
         super().setUp()
         self.GoalModel = self.env['thedevkitchen.estate.goal']
