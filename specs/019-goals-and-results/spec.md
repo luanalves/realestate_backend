@@ -92,7 +92,7 @@ As conquistas (realizações) são calculadas automaticamente cruzando os dados 
 - [ ] Given an Agent, when `GET /api/v1/goals/report?user_id={self.id}&year=2026&month=5`, then returns own metrics only
 - [ ] Given an Agent, when `user_id` refers to another user, then 403 Forbidden
 - [ ] Given no goals set for the period, when `GET report`, then returns conquistas with `meta_count=null`
-- [ ] Given accumulated period (e.g. Jan–May), when `GET` with `date_from=2026-01&date_to=2026-05`, then sums conquistas vs sum of monthly goals
+- [ ] Given accumulated period (e.g. Jan–May), when `GET` with `date_from=2026-01-01&date_to=2026-05-31`, then sums conquistas vs sum of monthly goals
 
 **Test Coverage**:
 
@@ -181,10 +181,10 @@ As conquistas (realizações) são calculadas automaticamente cruzando os dados 
 | Visitas | `real.estate.service` | `agent_id` (direct `res.users`) | stage→`visit` via `mail.tracking.value` | `operation_type` |
 | Propostas | `real.estate.proposal` | `agent_id` | `create_date` | `proposal_type` (sale/lease) |
 | Propostas VGV | same | same | same | sum `proposal_value` |
-| Fechamento | `real.estate.service` | `agent_id.user_id` | stage→`won` via `mail.tracking.value` | `operation_type` |
+| Fechamento | `real.estate.service` | `agent_id` (direct `res.users`) | stage→`won` via `mail.tracking.value` | `operation_type` |
 | Fechamento VGV | `real.estate.proposal` (state=accepted, linked service=won) | via service | same period | sum `proposal_value` |
 
-- FR2.1: Period filter — single month (`year`+`month`) or accumulated (`date_from` to `date_to` in YYYY-MM format)
+- FR2.1: Period filter — single month (`year`+`month`) or accumulated (`date_from` to `date_to` in YYYY-MM-DD format); maximum date range 366 days; return 400 if `date_to - date_from > 366 days`
 - FR2.2: Stage tracking uses `mail.tracking.value` records where `field_id.name='stage'` and `new_value_char` = target stage within the date range
 - FR2.3: When `operation_type=all`, conquistas combine both sale and rent
 - FR2.4: `proposal_type: lease` aligns with `operation_type: rent`; `proposal_type: sale` aligns with `operation_type: sale`
@@ -193,7 +193,7 @@ As conquistas (realizações) são calculadas automaticamente cruzando os dados 
 - FR3.1: Report endpoint returns per-user rows with all 5 metrics (conquista vs meta)
 - FR3.2: A `totals` object at root aggregates all returned users
 - FR3.3: `completion_pct` = `(conquista / meta) * 100`; null when `meta_count=null` or `meta_count=0`
-- FR3.4: `goal_status=complete` = every metric that has a goal set (`meta_count` is not null) satisfies `conquista >= meta_count`; metrics with no goal set are neutral and excluded from evaluation. A user with zero goals set is **not** considered complete.
+- FR3.4: Per-user response field `goal_status` has three values: `complete` = every metric with a goal set satisfies `conquista >= meta_count`; `in_progress` = at least one goal is set but not yet fully met; `no_goals` = user has zero goals set for the period. A user with zero goals is **never** `complete`. The filter param `goal_status=incomplete` matches users whose `goal_status` is `in_progress` OR `no_goals`.
 - FR3.5: Report is computed in real-time (v1); Redis cache TTL 60s is a future enhancement
 - FR3.6: When the report is filtered with `operation_type=sale` or `operation_type=rent`, only goals explicitly set with that same `operation_type` are included as targets. Goals set with `operation_type=all` are excluded from filtered views to prevent misleading `completion_pct` calculations; they appear only when the report is queried unfiltered (default `operation_type=all`).
 
@@ -251,13 +251,16 @@ def _check_vgv_only_for_vgv_metrics(self):
 ```
 
 **Database Indexes**:
+
+The unique constraint implicitly creates an index on `(user_id, company_id, year, month, metric_type, operation_type)`. An additional composite index for team-report queries must be created via `_auto_init()` (Odoo 18.0 has no `_indexes` class attribute):
+
 ```python
-# Covered by unique constraint (implicit index)
-# Additional composite index for report queries:
-_indexes = [
-    ('company_id', 'year', 'month'),
-    ('user_id', 'company_id', 'year', 'month'),
-]
+def _auto_init(self):
+    super()._auto_init()
+    self.env.cr.execute(
+        "CREATE INDEX IF NOT EXISTS thedevkitchen_estate_goal_company_year_month_idx "
+        "ON thedevkitchen_estate_goal (company_id, year, month)"
+    )
 ```
 
 **Record Rules** (per ADR-019):
@@ -438,12 +441,12 @@ Sets `active=False` (ADR-015). Never hard-deletes.
 |-----------|------|----------|-------------|
 | `year` | integer | conditional | Required when using single-month mode (`month` param); ignored when `date_from`/`date_to` are provided |
 | `month` | integer | no | Single month (1–12); mutually exclusive with `date_from`/`date_to` |
-| `date_from` | YYYY-MM | no | Accumulated period start |
-| `date_to` | YYYY-MM | no | Accumulated period end (defaults to current month) |
+| `date_from` | YYYY-MM-DD | no | Accumulated period start (e.g. `2026-01-01`) |
+| `date_to` | YYYY-MM-DD | no | Accumulated period end, e.g. `2026-05-31` (defaults to last day of current month) |
 | `user_id` | integer | no | Filter by user (agents: forced to own user_id) |
-| `profile` | string | no | Filter by group XML ID (e.g. `group_real_estate_agent`) |
+| `profile` | string | no | Filter by full group XML ID (e.g. `quicksol_estate.group_real_estate_agent`) |
 | `operation_type` | all/sale/rent | no | Filter by operation type (default: all) |
-| `goal_status` | complete/incomplete | no | Filter by completion status |
+| `goal_status` | complete/incomplete | no | Filter by completion status; `incomplete` matches users with per-user `goal_status` of `in_progress` or `no_goals` |
 
 **Response 200**:
 ```json
@@ -465,47 +468,48 @@ Sets `active=False` (ADR-015). Never hard-deletes.
       "user_name": "Bárbara",
       "profile": "Director",
       "team": null,
+      "goal_status": "no_goals",
       "metrics": {
         "captacoes": {
           "conquista": 1,
-          "meta_count": 0,
+          "meta_count": null,
           "conquista_vgv": 3500000.00,
-          "meta_vgv": 0.00,
+          "meta_vgv": null,
           "completion_pct": null
         },
         "novos_clientes": {
           "conquista": 0,
-          "meta_count": 0,
+          "meta_count": null,
           "completion_pct": null
         },
         "visitas": {
           "conquista": 0,
-          "meta_count": 0,
+          "meta_count": null,
           "completion_pct": null
         },
         "propostas": {
           "conquista": 0,
-          "meta_count": 0,
+          "meta_count": null,
           "conquista_vgv": 0.00,
-          "meta_vgv": 0.00,
+          "meta_vgv": null,
           "completion_pct": null
         },
         "fechamento": {
           "conquista": 0,
-          "meta_count": 0,
+          "meta_count": null,
           "conquista_vgv": 0.00,
-          "meta_vgv": 0.00,
+          "meta_vgv": null,
           "completion_pct": null
         }
       }
     }
   ],
   "totals": {
-    "captacoes":      {"conquista": 3, "meta_count": 0, "conquista_vgv": 4958000.00, "meta_vgv": 0.00},
-    "novos_clientes": {"conquista": 1, "meta_count": 0},
-    "visitas":        {"conquista": 0, "meta_count": 0},
-    "propostas":      {"conquista": 0, "meta_count": 0, "conquista_vgv": 0.00, "meta_vgv": 0.00},
-    "fechamento":     {"conquista": 0, "meta_count": 0, "conquista_vgv": 0.00, "meta_vgv": 0.00}
+    "captacoes":      {"conquista": 3, "meta_count": null, "conquista_vgv": 4958000.00, "meta_vgv": null},
+    "novos_clientes": {"conquista": 1, "meta_count": null},
+    "visitas":        {"conquista": 0, "meta_count": null},
+    "propostas":      {"conquista": 0, "meta_count": null, "conquista_vgv": 0.00, "meta_vgv": null},
+    "fechamento":     {"conquista": 0, "meta_count": null, "conquista_vgv": 0.00, "meta_vgv": null}
   },
   "links": [
     {"href": "/api/v1/goals/report", "rel": "self", "type": "GET"},
@@ -517,12 +521,13 @@ Sets `active=False` (ADR-015). Never hard-deletes.
 > **Note on `meta_count`**: `null` means no goal record exists for this user/period/metric; `0` means a goal was explicitly set with target=0. `completion_pct` is `null` when meta is null or 0.
 
 **Error Responses**:
-| Code | Condition |
-|------|-----------|
-| 400 | `month` and `date_from`/`date_to` both provided |
-| 400 | Neither `month`+`year` nor `date_from` provided (no period specified) |
-| 403 | Agent filtering another user's data |
-| 422 | Matching user count exceeds 200-user hard cap |
+| Code | Condition | Response Body |
+|------|-----------|---------------|
+| 400 | `month` and `date_from`/`date_to` both provided | `{"error": "bad_request", "detail": "Cannot use month and date_from/date_to together."}` |
+| 400 | Neither `month`+`year` nor `date_from` provided | `{"error": "bad_request", "detail": "Provide year+month or date_from to specify a period."}` |
+| 400 | `date_to - date_from > 366 days` | `{"error": "bad_request", "detail": "Date range exceeds maximum of 366 days (12 months)."}` |
+| 403 | Agent filtering another user's data | `{"error": "forbidden"}` |
+| 422 | Matching user count exceeds 200-user hard cap | `{"error": "unprocessable_entity", "detail": "Report limited to 200 users. Matching users: {count}.", "count": N}` |
 
 ---
 
@@ -585,14 +590,15 @@ seed_goals = [
 
 **NFR1: Security** (ADR-008, ADR-011, ADR-017, ADR-019)
 - Triple decorators on all 5 endpoints
-- Agents restricted to own data at both record-rule and application layer
+- Agents restricted to own data at both record-rule and application layer; 403 if `user_id` param provided and does not match own ID
+- Receptionist and Prospector profiles: 403 on all goals endpoints (no read or write access)
 - Company isolation enforced at DB level via record rules
 
 **NFR2: Performance**
 - Single-month report (≤50 users): < 500ms
 - Accumulated 12-month report (≤50 users): < 2s
 - Hard cap: 200 users per report request; returns `422 Unprocessable Entity` if company has more than 200 active users matching filters
-- DB indexes on `(user_id, company_id, year, month, metric_type)` (from unique constraint)
+- DB indexes on `(user_id, company_id, year, month, metric_type, operation_type)` (from unique constraint)
 - Additional composite index on `(company_id, year, month)` for team report queries
 - `mail.tracking.value` queries scoped with date range filter
 

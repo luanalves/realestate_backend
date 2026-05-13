@@ -75,7 +75,7 @@ components:
       properties:
         error:
           type: string
-        message:
+        detail:
           type: string
 
   responses:
@@ -85,12 +85,18 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
+          example:
+            error: "unauthorized"
+            detail: "Authentication required"
     Forbidden:
       description: Forbidden – caller lacks permission or goal belongs to another company
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
+          example:
+            error: "forbidden"
+            detail: "Only Owner, Director, or Manager may delete goals"
     NotFound:
       description: Not Found – goal with this ID does not exist or is already inactive
       content:
@@ -98,5 +104,5 @@ components:
           schema:
             $ref: '#/components/schemas/Error'
           example:
-            error: "Not Found"
-            message: "Goal not found"
+            error: "not_found"
+            detail: "Goal not found or already inactive"

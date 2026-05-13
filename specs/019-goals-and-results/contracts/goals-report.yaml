@@ -8,12 +8,13 @@ info:
     ## Period Modes
     
     **Single-month mode** (default): Provide `year` + `month`.
-    - `year`: required (≥ 2020)
+    - `year`: required (≥ 2000)
     - `month`: required (1-12)
     
     **Accumulated mode**: Provide `date_from` + `date_to`.
     - `date_from`: ISO 8601 date (e.g., "2025-01-01")
     - `date_to`: ISO 8601 date (e.g., "2025-03-31") — inclusive
+    - Maximum range: 366 days (12 months); returns 400 if exceeded
     - When provided, `year`/`month` params are ignored
     
     ## Hard Cap
@@ -50,7 +51,7 @@ paths:
           required: false
           schema:
             type: integer
-            minimum: 2020
+            minimum: 2000
           description: |
             Calendar year. Required in single-month mode (when date_from/date_to not provided).
           example: 2025
@@ -102,8 +103,22 @@ paths:
           required: false
           schema:
             type: integer
-          description: Filter report to a single user (for self-service view by agents)
+          description: |
+            Filter report to a single user (for self-service view by agents).
+            Agents: if omitted, defaults to own user; if provided and does not match own ID → 403.
           example: 5
+        - name: goal_status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [complete, incomplete]
+          description: |
+            Filter users by goal completion status.
+            - "complete": only users where goal_status = complete
+            - "incomplete": only users where goal_status = in_progress OR no_goals
+            Totals are recomputed after filtering.
+          example: complete
       responses:
         "200":
           description: Goals report generated successfully
@@ -117,42 +132,38 @@ paths:
                     user_name: "Ana Costa"
                     goal_status: complete
                     metrics:
-                      captacao:
-                        target: 10
-                        achievement: 12
-                        target_vgv: 500000.00
-                        achievement_vgv: 620000.00
+                      captacoes:
+                        meta_count: 10
+                        conquista: 12
+                        meta_vgv: 500000.00
+                        conquista_vgv: 620000.00
                         completion_pct: 120.0
                       novos_clientes:
-                        target: 15
-                        achievement: 15
-                        target_vgv: null
-                        achievement_vgv: null
+                        meta_count: 15
+                        conquista: 15
                         completion_pct: 100.0
                       visitas:
-                        target: 8
-                        achievement: 7
-                        target_vgv: null
-                        achievement_vgv: null
+                        meta_count: 8
+                        conquista: 7
                         completion_pct: 87.5
                       propostas:
-                        target: 5
-                        achievement: 6
-                        target_vgv: 200000.00
-                        achievement_vgv: 250000.00
+                        meta_count: 5
+                        conquista: 6
+                        meta_vgv: 200000.00
+                        conquista_vgv: 250000.00
                         completion_pct: 120.0
                       fechamento:
-                        target: 3
-                        achievement: 2
-                        target_vgv: 150000.00
-                        achievement_vgv: 100000.00
+                        meta_count: 3
+                        conquista: 2
+                        meta_vgv: 150000.00
+                        conquista_vgv: 100000.00
                         completion_pct: 66.7
                 totals:
-                  users_with_goals: 8
-                  users_complete: 2
-                  users_in_progress: 5
-                  users_no_goals: 1
-                  team_completion_pct: 25.0
+                  captacoes: {conquista: 12, meta_count: 10, conquista_vgv: 620000.00, meta_vgv: 500000.00}
+                  novos_clientes: {conquista: 15, meta_count: 15}
+                  visitas: {conquista: 7, meta_count: 8}
+                  propostas: {conquista: 6, meta_count: 5, conquista_vgv: 250000.00, meta_vgv: 200000.00}
+                  fechamento: {conquista: 2, meta_count: 3, conquista_vgv: 100000.00, meta_vgv: 150000.00}
                 period:
                   year: 2025
                   month: 3
@@ -171,7 +182,6 @@ paths:
             - year is missing in single-month mode
             - month is out of range
             - date_to is provided without date_from
-            - date range spans more than 12 calendar months
             - resolved user list exceeds 200 users (hard cap)
           content:
             application/json:
@@ -181,13 +191,14 @@ paths:
                 missing_year:
                   summary: Missing year parameter
                   value:
-                    error: "Unprocessable Entity"
-                    message: "year is required when date_from/date_to are not provided"
+                    error: "unprocessable_entity"
+                    detail: "year is required when date_from/date_to are not provided"
                 user_cap_exceeded:
                   summary: User cap exceeded
                   value:
-                    error: "Unprocessable Entity"
-                    message: "Report exceeds maximum of 200 users. Found 234 users. Apply stricter filters."
+                    error: "unprocessable_entity"
+                    detail: "Report limited to 200 users. Matching users: 234."
+                    count: 234
 
 components:
   securitySchemes:
@@ -205,21 +216,21 @@ components:
       type: object
       description: Achievement result for a single metric
       properties:
-        target:
-          type: number
+        meta_count:
+          type: integer
           nullable: true
           description: Goal quantity target. Null if no goal is set for this metric.
           example: 10
-        achievement:
-          type: number
+        conquista:
+          type: integer
           description: Actual achievement count in the period
           example: 12
-        target_vgv:
+        meta_vgv:
           type: number
           nullable: true
           description: Optional VGV (BRL) target. Null if not set or metric doesn't support VGV.
           example: 500000.00
-        achievement_vgv:
+        conquista_vgv:
           type: number
           nullable: true
           description: Actual VGV achieved in the period. Null for metrics that don't have VGV.
@@ -228,8 +239,8 @@ components:
           type: number
           nullable: true
           description: |
-            Percentage: (achievement / target) * 100. 
-            Null if target is null (no goal set).
+            Percentage: (conquista / meta_count) * 100. 
+            Null if meta_count is null (no goal set) or meta_count = 0.
           example: 120.0
 
     UserReportRow:
@@ -253,7 +264,7 @@ components:
           type: object
           description: Results for each of the 5 metrics
           properties:
-            captacao:
+            captacoes:
               $ref: '#/components/schemas/MetricResult'
             novos_clientes:
               $ref: '#/components/schemas/MetricResult'
@@ -266,27 +277,42 @@ components:
 
     ReportTotals:
       type: object
+      description: |
+        Per-metric aggregation across all returned users.
+        `meta_count` is null if ALL users have null for that metric (no goals set);
+        otherwise sum of non-null values only.
       properties:
-        users_with_goals:
-          type: integer
-          description: Number of users who have at least one goal set in the period
-          example: 8
-        users_complete:
-          type: integer
-          description: Number of users with goal_status=complete
-          example: 2
-        users_in_progress:
-          type: integer
-          description: Number of users with goal_status=in_progress
-          example: 5
-        users_no_goals:
-          type: integer
-          description: Number of users with goal_status=no_goals
-          example: 1
-        team_completion_pct:
-          type: number
-          description: Percentage of users_with_goals who are complete (users_complete / users_with_goals * 100)
-          example: 25.0
+        captacoes:
+          type: object
+          properties:
+            conquista: {type: integer, example: 12}
+            meta_count: {type: integer, nullable: true, example: 10}
+            conquista_vgv: {type: number, nullable: true, example: 620000.00}
+            meta_vgv: {type: number, nullable: true, example: 500000.00}
+        novos_clientes:
+          type: object
+          properties:
+            conquista: {type: integer, example: 15}
+            meta_count: {type: integer, nullable: true, example: 15}
+        visitas:
+          type: object
+          properties:
+            conquista: {type: integer, example: 7}
+            meta_count: {type: integer, nullable: true, example: 8}
+        propostas:
+          type: object
+          properties:
+            conquista: {type: integer, example: 6}
+            meta_count: {type: integer, nullable: true, example: 5}
+            conquista_vgv: {type: number, nullable: true, example: 250000.00}
+            meta_vgv: {type: number, nullable: true, example: 200000.00}
+        fechamento:
+          type: object
+          properties:
+            conquista: {type: integer, example: 2}
+            meta_count: {type: integer, nullable: true, example: 3}
+            conquista_vgv: {type: number, nullable: true, example: 100000.00}
+            meta_vgv: {type: number, nullable: true, example: 150000.00}
 
     ReportPeriod:
       type: object
@@ -330,7 +356,7 @@ components:
       properties:
         error:
           type: string
-        message:
+        detail:
           type: string
 
   responses:
@@ -340,14 +366,27 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
+          example:
+            error: "bad_request"
+            detail: "Date range exceeds maximum of 366 days (12 months)."
     Unauthorized:
       description: Unauthorized – missing or invalid JWT / session
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
+          example:
+            error: "unauthorized"
+            detail: "Authentication required"
     Forbidden:
       description: Forbidden – caller lacks permission
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "forbidden"
+            detail: "Access denied"
       content:
         application/json:
           schema:

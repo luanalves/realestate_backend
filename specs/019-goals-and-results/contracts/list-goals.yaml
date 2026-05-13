@@ -23,14 +23,17 @@ paths:
           required: false
           schema:
             type: integer
-          description: Filter goals for a specific user
+          description: |
+            Filter goals for a specific user.
+            Agents: if omitted, defaults to own user; if provided and does not match own ID → 403.
+            Receptionist and Prospector profiles receive 403 regardless of this param.
           example: 5
         - name: year
           in: query
           required: false
           schema:
             type: integer
-            minimum: 2020
+            minimum: 2000
           description: Filter by year
           example: 2025
         - name: month
@@ -75,9 +78,8 @@ paths:
                     month: 3
                     metric_type: captacao
                     operation_type: sale
-                    target: 10.0
+                    target_count: 10
                     target_vgv: 500000.00
-                    notes: "Meta de março"
                     active: true
                     create_date: "2025-03-01T09:00:00Z"
                     write_date: "2025-03-01T09:00:00Z"
@@ -128,17 +130,13 @@ components:
           type: string
           enum: [all, sale, rent]
           example: sale
-        target:
-          type: number
-          example: 10.0
+        target_count:
+          type: integer
+          example: 10
         target_vgv:
           type: number
           nullable: true
           example: 500000.00
-        notes:
-          type: string
-          nullable: true
-          example: "Meta de março"
         active:
           type: boolean
           example: true
@@ -168,7 +166,7 @@ components:
       properties:
         error:
           type: string
-        message:
+        detail:
           type: string
 
   responses:
@@ -178,9 +176,15 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
+          example:
+            error: "unauthorized"
+            detail: "Authentication required"
     Forbidden:
       description: Forbidden – caller lacks permission
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
+          example:
+            error: "forbidden"
+            detail: "Access denied"

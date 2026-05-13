@@ -32,9 +32,8 @@ paths:
             schema:
               $ref: '#/components/schemas/UpdateGoalRequest'
             example:
-              target: 12
+              target_count: 12
               target_vgv: 600000.00
-              notes: "Atualizado após revisão"
       responses:
         "200":
           description: Goal updated successfully
@@ -72,12 +71,11 @@ components:
         Identity fields (user_id, year, month, metric_type, operation_type) cannot be changed
         — delete and recreate if those need to change.
       properties:
-        target:
-          type: number
-          format: float
-          exclusiveMinimum: 0
-          description: New goal quantity target (must be > 0)
-          example: 12.0
+        target_count:
+          type: integer
+          minimum: 0
+          description: New goal quantity target (≥ 0; use 0 for a placeholder goal not yet quantified — FR1.6)
+          example: 12
         target_vgv:
           type: number
           format: float
@@ -88,12 +86,6 @@ components:
             Applicable only for metric_type: captacao, propostas, fechamento.
             Pass null to clear.
           example: 600000.00
-        notes:
-          type: string
-          nullable: true
-          maxLength: 1000
-          description: Optional free-text annotation. Pass null to clear.
-          example: "Atualizado após revisão"
 
     GoalResponse:
       type: object
@@ -122,17 +114,13 @@ components:
         operation_type:
           type: string
           example: sale
-        target:
-          type: number
-          example: 12.0
+        target_count:
+          type: integer
+          example: 12
         target_vgv:
           type: number
           nullable: true
           example: 600000.00
-        notes:
-          type: string
-          nullable: true
-          example: "Atualizado após revisão"
         active:
           type: boolean
           example: true
@@ -150,7 +138,7 @@ components:
       properties:
         error:
           type: string
-        message:
+        detail:
           type: string
 
   responses:
@@ -179,8 +167,8 @@ components:
           schema:
             $ref: '#/components/schemas/Error'
           example:
-            error: "Not Found"
-            message: "Goal not found"
+            error: "not_found"
+            detail: "Goal not found"
     UnprocessableEntity:
       description: Unprocessable Entity – business rule violation
       content:

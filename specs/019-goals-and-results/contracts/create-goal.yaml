@@ -28,9 +28,8 @@ paths:
               month: 3
               metric_type: captacao
               operation_type: sale
-              target: 10
+              target_count: 10
               target_vgv: 500000.00
-              notes: "Meta de março para Ana"
       responses:
         "201":
           description: Goal created successfully
@@ -51,8 +50,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
               example:
-                error: "Conflict"
-                message: "A goal for this user/company/period/metric/operation already exists."
+                error: "conflict"
+                detail: "A goal for this user/company/period/metric/operation already exists."
         "422":
           $ref: '#/components/responses/UnprocessableEntity'
 
@@ -76,7 +75,7 @@ components:
         - month
         - metric_type
         - operation_type
-        - target
+        - target_count
       properties:
         user_id:
           type: integer
@@ -84,7 +83,7 @@ components:
           example: 5
         year:
           type: integer
-          minimum: 2020
+          minimum: 2000
           description: Calendar year
           example: 2025
         month:
@@ -103,12 +102,11 @@ components:
           enum: [all, sale, rent]
           description: Operation scope. Use "all" when goal covers both sale and rent.
           example: sale
-        target:
-          type: number
-          format: float
-          exclusiveMinimum: 0
-          description: Goal quantity target (must be > 0)
-          example: 10.0
+        target_count:
+          type: integer
+          minimum: 0
+          description: Goal quantity target (≥ 0; use 0 for a placeholder goal not yet quantified — FR1.6)
+          example: 10
         target_vgv:
           type: number
           format: float
@@ -118,12 +116,6 @@ components:
             Optional VGV (Valor Geral de Vendas) target in BRL.
             Applicable only for metric_type: captacao, propostas, fechamento.
           example: 500000.00
-        notes:
-          type: string
-          nullable: true
-          maxLength: 1000
-          description: Optional free-text annotation
-          example: "Meta de março para Ana"
 
     GoalResponse:
       type: object
@@ -152,17 +144,13 @@ components:
         operation_type:
           type: string
           example: sale
-        target:
-          type: number
-          example: 10.0
+        target_count:
+          type: integer
+          example: 10
         target_vgv:
           type: number
           nullable: true
           example: 500000.00
-        notes:
-          type: string
-          nullable: true
-          example: "Meta de março para Ana"
         active:
           type: boolean
           example: true
@@ -180,7 +168,7 @@ components:
       properties:
         error:
           type: string
-        message:
+        detail:
           type: string
 
   responses:
@@ -191,8 +179,8 @@ components:
           schema:
             $ref: '#/components/schemas/Error'
           example:
-            error: "Bad Request"
-            message: "month must be between 1 and 12"
+            error: "bad_request"
+            detail: "month must be between 1 and 12"
     Unauthorized:
       description: Unauthorized – missing or invalid JWT / session
       content:
@@ -200,8 +188,8 @@ components:
           schema:
             $ref: '#/components/schemas/Error'
           example:
-            error: "Unauthorized"
-            message: "Authentication required"
+            error: "unauthorized"
+            detail: "Authentication required"
     Forbidden:
       description: Forbidden – caller lacks permission to create goals
       content:
@@ -209,8 +197,8 @@ components:
           schema:
             $ref: '#/components/schemas/Error'
           example:
-            error: "Forbidden"
-            message: "Only Owner, Director, or Manager may create goals"
+            error: "forbidden"
+            detail: "Only Owner, Director, or Manager may create goals"
     UnprocessableEntity:
       description: Unprocessable Entity – business rule violation
       content:
@@ -218,5 +206,5 @@ components:
           schema:
             $ref: '#/components/schemas/Error'
           example:
-            error: "Unprocessable Entity"
-            message: "target_vgv is only valid for metric_type: captacao, propostas, fechamento"
+            error: "unprocessable_entity"
+            detail: "target_vgv is only valid for metric_type: captacao, propostas, fechamento"
