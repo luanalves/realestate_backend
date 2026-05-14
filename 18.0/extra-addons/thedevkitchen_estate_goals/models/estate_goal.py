@@ -76,7 +76,9 @@ class EstateGoal(models.Model):
     currency_id = fields.Many2one(
         'res.currency',
         string='Currency',
-        default=lambda self: self.env.company.currency_id,
+        related='company_id.currency_id',
+        readonly=True,
+        store=True,
     )
 
     # ── Constraints ──────────────────────────────────────────────────────────

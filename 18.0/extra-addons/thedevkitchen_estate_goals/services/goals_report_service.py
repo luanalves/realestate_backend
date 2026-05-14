@@ -534,9 +534,7 @@ class GoalsReportService:
                 completion_pct = None
                 if target_count > 0:
                     completion_pct = round((conquista / target_count) * 100, 2)
-                elif target_count == 0:
-                    # Zero target: complete if achievement ≥ 0 (always met)
-                    completion_pct = 100.0
+                # target_count == 0 → spec §FR3.3: return null (no measurable target)
 
                 # Check if this goal is met for goal_status determination
                 if conquista < target_count:

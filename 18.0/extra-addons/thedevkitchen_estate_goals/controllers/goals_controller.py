@@ -132,10 +132,19 @@ class GoalsController(http.Controller):
             # Validate month range at Python level (SQL CHECK raises IntegrityError)
             month = vals['month']
             if month < 1 or month > 12:
-                return _error(422, 'unprocessable_entity', f'Month must be between 1 and 12, got {month}.')
+                return _error(400, 'bad_request', f'Month must be between 1 and 12, got {month}.')
             year = vals['year']
             if year < 2000:
-                return _error(422, 'unprocessable_entity', f'Year must be >= 2000, got {year}.')
+                return _error(400, 'bad_request', f'Year must be >= 2000, got {year}.')
+
+            # CHK013: validate target_count >= 0 before DB (IntegrityError would be caught as 409)
+            if vals['target_count'] < 0:
+                return _error(400, 'bad_request', 'target_count cannot be negative.')
+
+            # CHK017: validate user_id exists
+            target_user = request.env['res.users'].sudo().browse(vals['user_id'])
+            if not target_user.exists():
+                return _error(404, 'not_found', f'User {vals["user_id"]} not found.')
 
             try:
                 goal = request.env['thedevkitchen.estate.goal'].sudo().create(vals)
@@ -147,7 +156,9 @@ class GoalsController(http.Controller):
 
             body = _goal_to_dict(goal)
             body['links'] = {
-                'self': f'/api/v1/goals/{goal.id}',
+                'self':       f'/api/v1/goals/{goal.id}',
+                'update':     f'/api/v1/goals/{goal.id}',
+                'delete':     f'/api/v1/goals/{goal.id}',
                 'collection': '/api/v1/goals',
             }
             return _ok(201, body)
@@ -206,7 +217,9 @@ class GoalsController(http.Controller):
 
             body = _goal_to_dict(goal)
             body['links'] = {
-                'self': f'/api/v1/goals/{goal.id}',
+                'self':       f'/api/v1/goals/{goal.id}',
+                'update':     f'/api/v1/goals/{goal.id}',
+                'delete':     f'/api/v1/goals/{goal.id}',
                 'collection': '/api/v1/goals',
             }
             return _ok(200, body)
@@ -310,11 +323,27 @@ class GoalsController(http.Controller):
                 if val:
                     domain.append((field, '=', int(val) if param in ('year', 'month') else val))
 
-            goals = request.env['thedevkitchen.estate.goal'].sudo().search(domain)
+            # CHK008: pagination
+            try:
+                limit = int(params.get('limit', 50))
+                offset = int(params.get('offset', 0))
+            except (ValueError, TypeError):
+                return _error(400, 'bad_request', 'limit and offset must be integers.')
+            if limit < 1 or limit > 200:
+                return _error(400, 'bad_request', 'limit must be between 1 and 200.')
+
+            total = request.env['thedevkitchen.estate.goal'].sudo().search_count(domain)
+            goals = request.env['thedevkitchen.estate.goal'].sudo().search(
+                domain, limit=limit, offset=offset
+            )
             results = [_goal_to_dict(g) for g in goals]
 
             return _ok(200, {
-                'count': len(results),
+                'pagination': {
+                    'total': total,
+                    'limit': limit,
+                    'offset': offset,
+                },
                 'results': results,
                 'links': {'self': '/api/v1/goals'},
             })
