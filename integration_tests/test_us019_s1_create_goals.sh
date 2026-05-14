@@ -30,8 +30,8 @@ NC='\033[0m'
 PASS=0
 FAIL=0
 
-pass() { echo -e "${GREEN}✓ $1${NC}"; ((PASS++)); }
-fail() { echo -e "${RED}✗ $1${NC}"; ((FAIL++)); }
+pass() { echo -e "${GREEN}✓ $1${NC}"; PASS=$((PASS + 1)); }
+fail() { echo -e "${RED}✗ $1${NC}"; FAIL=$((FAIL + 1)); }
 info() { echo -e "${YELLOW}  $1${NC}"; }
 
 echo "========================================"
@@ -63,10 +63,10 @@ login_user() {
 }
 
 # ── Credentials from env or defaults ───────────────────────────────────────
-MANAGER_EMAIL="${TEST_MANAGER_EMAIL:-manager_019@example.com}"
-MANAGER_PASS="${TEST_MANAGER_PASS:-ManagerPass019!}"
-AGENT_EMAIL="${TEST_AGENT_EMAIL:-agent_019@example.com}"
-AGENT_PASS="${TEST_AGENT_PASS:-AgentPass019!}"
+MANAGER_EMAIL="${US019_MANAGER_EMAIL:-manager_019@example.com}"
+MANAGER_PASS="${US019_MANAGER_PASS:-ManagerPass019!}"
+AGENT_EMAIL="${US019_AGENT_EMAIL:-agent_019@example.com}"
+AGENT_PASS="${US019_AGENT_PASS:-AgentPass019!}"
 
 # ── Login as Manager ────────────────────────────────────────────────────────
 echo ""
@@ -99,7 +99,7 @@ goals_request() {
     local method="$1" url="$2" sid="$3" cid="$4" body="$5"
     local args=(-s -X "$method" "$url"
         -H "Authorization: Bearer $BEARER_TOKEN"
-        -H "X-Odoo-Session-Id: $sid"
+        -H "X-Openerp-Session-Id: $sid"
         -H "X-Company-Id: $cid")
     if [ -n "$body" ]; then
         args+=(-H "Content-Type: application/json" -d "$body")
@@ -112,18 +112,13 @@ echo ""
 echo "Step 3: Manager creates goal → expect 201..."
 CREATE_BODY=$(jq -n \
     --argjson uid "$AGT_UID" \
-    '{user_id: $uid, year: 2026, month: 5, metric_type: "captacao",
+    '{user_id: $uid, year: 2026, month: 8, metric_type: "captacao",
       operation_type: "sale", target_count: 10}')
 
-RESP=$(goals_request POST "$API_BASE/goals" "$MGR_SID" "$MGR_CID" "$CREATE_BODY")
-STATUS=$(echo "$RESP" | jq -r '.id // empty')
-HTTP_CODE=$(goals_request POST "$API_BASE/goals" "$MGR_SID" "$MGR_CID" "$CREATE_BODY" | jq -r '.error // "ok"')
-
-# Re-run and capture HTTP code properly
 RESP=$(curl -s -o /tmp/019_create_resp.json -w "%{http_code}" \
     -X POST "$API_BASE/goals" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Odoo-Session-Id: $MGR_SID" \
+    -H "X-Openerp-Session-Id: $MGR_SID" \
     -H "X-Company-Id: $MGR_CID" \
     -H "Content-Type: application/json" \
     -d "$CREATE_BODY")
@@ -143,7 +138,7 @@ echo "Step 4: Duplicate goal → expect 409..."
 RESP=$(curl -s -o /tmp/019_dup_resp.json -w "%{http_code}" \
     -X POST "$API_BASE/goals" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Odoo-Session-Id: $MGR_SID" \
+    -H "X-Openerp-Session-Id: $MGR_SID" \
     -H "X-Company-Id: $MGR_CID" \
     -H "Content-Type: application/json" \
     -d "$CREATE_BODY")
@@ -166,7 +161,7 @@ AGENT_BODY=$(jq -n \
 RESP=$(curl -s -o /tmp/019_agent_post_resp.json -w "%{http_code}" \
     -X POST "$API_BASE/goals" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Odoo-Session-Id: $AGT_SID" \
+    -H "X-Openerp-Session-Id: $AGT_SID" \
     -H "X-Company-Id: $AGT_CID" \
     -H "Content-Type: application/json" \
     -d "$AGENT_BODY")
@@ -189,7 +184,7 @@ INVALID_BODY=$(jq -n \
 RESP=$(curl -s -o /tmp/019_invalid_resp.json -w "%{http_code}" \
     -X POST "$API_BASE/goals" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Odoo-Session-Id: $MGR_SID" \
+    -H "X-Openerp-Session-Id: $MGR_SID" \
     -H "X-Company-Id: $MGR_CID" \
     -H "Content-Type: application/json" \
     -d "$INVALID_BODY")
@@ -207,7 +202,7 @@ echo "Step 7: Agent GET /api/v1/goals (no user_id) → expect 200..."
 RESP=$(curl -s -o /tmp/019_agent_list.json -w "%{http_code}" \
     -X GET "$API_BASE/goals" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Odoo-Session-Id: $AGT_SID" \
+    -H "X-Openerp-Session-Id: $AGT_SID" \
     -H "X-Company-Id: $AGT_CID")
 
 if [ "$RESP" = "200" ]; then
@@ -224,7 +219,7 @@ echo "Step 8: Agent GET /api/v1/goals?user_id=own → expect 200..."
 RESP=$(curl -s -o /tmp/019_agent_own.json -w "%{http_code}" \
     -X GET "$API_BASE/goals?user_id=$AGT_UID" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Odoo-Session-Id: $AGT_SID" \
+    -H "X-Openerp-Session-Id: $AGT_SID" \
     -H "X-Company-Id: $AGT_CID")
 
 if [ "$RESP" = "200" ]; then
@@ -240,7 +235,7 @@ echo "Step 9: Agent GET /api/v1/goals?user_id=manager → expect 403 (SEC-3)..."
 RESP=$(curl -s -o /tmp/019_agent_other.json -w "%{http_code}" \
     -X GET "$API_BASE/goals?user_id=$MGR_UID" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Odoo-Session-Id: $AGT_SID" \
+    -H "X-Openerp-Session-Id: $AGT_SID" \
     -H "X-Company-Id: $AGT_CID")
 
 if [ "$RESP" = "403" ]; then

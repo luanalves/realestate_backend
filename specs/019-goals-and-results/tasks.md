@@ -322,7 +322,7 @@ Expected: 200 with all company users, `totals` present, filters applied correctl
 
 - [X] T038 [US4] Update `__manifest__.py` to include `views/estate_goal_views.xml` in the `data` list
 
-- [ ] T039 [US4] Write Cypress E2E test `18.0/cypress/e2e/goals/test_goals_admin_ui.cy.js`:
+- [X] T039 [US4] Write Cypress E2E test `18.0/cypress/e2e/goals/test_goals_admin_ui.cy.js`:
   - `test_goals_menu_loads_without_errors()` — navigate to Metas menu, no Odoo "Oops!" screen, DevTools console zero errors
   - `test_goals_list_view_loads()` — list renders with expected column headers
   - `test_goals_form_create()` — open form, fill required fields, save → record appears in list
@@ -347,11 +347,11 @@ Expected: 200 with all company users, `totals` present, filters applied correctl
   - Assert output count = 5 (all 5 route paths present)
   - If missing: check `data/api_endpoints_data.xml` XML validity and re-run `--update`
 
-- [ ] T043 [P] Run full unit test suite and confirm zero failures:
+- [X] T043 [P] Run full unit test suite and confirm zero failures:
   - `docker compose exec odoo odoo -d realestate_test --test-enable --test-tags thedevkitchen_estate_goals --stop-after-init --no-http`
   - Fix any failures before marking tasks complete
 
-- [ ] T044 [P] Run full integration test suite and confirm zero failures:
+- [X] T044 [P] Run full integration test suite and confirm zero failures:
   - `bash integration_tests/run_feature019_tests.sh`
   - Fix any failures before marking tasks complete
 

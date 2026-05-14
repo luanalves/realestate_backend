@@ -26,8 +26,8 @@ NC='\033[0m'
 PASS=0
 FAIL=0
 
-pass() { echo -e "${GREEN}✓ $1${NC}"; ((PASS++)); }
-fail() { echo -e "${RED}✗ $1${NC}"; ((FAIL++)); }
+pass() { echo -e "${GREEN}✓ $1${NC}"; PASS=$((PASS + 1)); }
+fail() { echo -e "${RED}✗ $1${NC}"; FAIL=$((FAIL + 1)); }
 
 echo "========================================"
 echo "US019-S4: Report — Accumulated Date Range"
@@ -38,8 +38,8 @@ BEARER_TOKEN=$(get_oauth2_token)
 if [ -z "$BEARER_TOKEN" ]; then echo -e "${RED}✗ OAuth2 failed${NC}"; exit 1; fi
 pass "Bearer token obtained"
 
-MANAGER_EMAIL="${TEST_MANAGER_EMAIL:-manager_019@example.com}"
-MANAGER_PASS="${TEST_MANAGER_PASS:-ManagerPass019!}"
+MANAGER_EMAIL="${US019_MANAGER_EMAIL:-manager_019@example.com}"
+MANAGER_PASS="${US019_MANAGER_PASS:-ManagerPass019!}"
 
 MGR_RESP=$(curl -s -X POST "$API_BASE/users/login" \
     -H "Content-Type: application/json" \
@@ -57,7 +57,7 @@ report_call() {
     curl -s -o /tmp/019_daterange_resp.json -w "%{http_code}" \
         -X GET "$API_BASE/goals/report?$qs" \
         -H "Authorization: Bearer $BEARER_TOKEN" \
-        -H "X-Odoo-Session-Id: $MGR_SID" \
+        -H "X-Openerp-Session-Id: $MGR_SID" \
         -H "X-Company-Id: $MGR_CID"
 }
 

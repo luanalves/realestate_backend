@@ -129,6 +129,14 @@ class GoalsController(http.Controller):
             if 'target_vgv' in data and data['target_vgv'] is not None:
                 vals['target_vgv'] = float(data['target_vgv'])
 
+            # Validate month range at Python level (SQL CHECK raises IntegrityError)
+            month = vals['month']
+            if month < 1 or month > 12:
+                return _error(422, 'unprocessable_entity', f'Month must be between 1 and 12, got {month}.')
+            year = vals['year']
+            if year < 2000:
+                return _error(422, 'unprocessable_entity', f'Year must be >= 2000, got {year}.')
+
             try:
                 goal = request.env['thedevkitchen.estate.goal'].sudo().create(vals)
             except IntegrityError:

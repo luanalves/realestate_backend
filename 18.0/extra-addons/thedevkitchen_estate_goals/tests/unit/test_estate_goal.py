@@ -267,8 +267,8 @@ class TestGoalsSQLQueries(TransactionCase):
         """_query_captacao with operation_type='sale' returns count + vgv per user."""
         mock_env, mock_cr = self._mock_env_cr([(5, 3, 150000.0)])
         result = self.Service._query_captacao(mock_env, 1, [5], self.df, self.dt, 'sale')
-        self.assertEqual(result[3]['count'], 3)
-        self.assertEqual(result[3]['vgv'], 150000.0)
+        self.assertEqual(result[5]['count'], 3)
+        self.assertEqual(result[5]['vgv'], 150000.0)
         # Verify FOR SALE filter in SQL
         sql_call = mock_cr.execute.call_args[0][0]
         self.assertIn('for_sale', sql_call)

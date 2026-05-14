@@ -58,16 +58,20 @@ def seed(env):
     ResCompany = env['res.company']
     company_a = ResCompany.sudo().search([('name', '=', COMPANY_A_NAME)], limit=1)
     if not company_a:
-        company_a = ResCompany.sudo().create({'name': COMPANY_A_NAME})
+        company_a = ResCompany.sudo().create({'name': COMPANY_A_NAME, 'is_real_estate': True})
         _logger.info('Created company A: %s', COMPANY_A_NAME)
     else:
+        if not company_a.is_real_estate:
+            company_a.sudo().write({'is_real_estate': True})
         _logger.info('Company A already exists: %s', COMPANY_A_NAME)
 
     company_b = ResCompany.sudo().search([('name', '=', COMPANY_B_NAME)], limit=1)
     if not company_b:
-        company_b = ResCompany.sudo().create({'name': COMPANY_B_NAME})
+        company_b = ResCompany.sudo().create({'name': COMPANY_B_NAME, 'is_real_estate': True})
         _logger.info('Created company B: %s', COMPANY_B_NAME)
     else:
+        if not company_b.is_real_estate:
+            company_b.sudo().write({'is_real_estate': True})
         _logger.info('Company B already exists: %s', COMPANY_B_NAME)
 
     company_map = {'company_a': company_a, 'company_b': company_b}
@@ -109,16 +113,20 @@ def seed(env):
 
     # ── Real estate agent record for agent_a ────────────────────────────────
     # (Only if real.estate.agent model exists)
+    agent_re_id = None
     try:
         REAgent = env['real.estate.agent'].sudo()
-        agent_rec = REAgent.search([('user_id', '=', agent_a.id), ('company_id', '=', company_a_id)], limit=1)
-        if not agent_rec:
-            agent_rec = REAgent.create({
-                'user_id': agent_a.id,
-                'company_id': company_a_id,
-                'name': agent_a.name,
-            })
-            _logger.info('Created real.estate.agent for agent_019')
+        with env.cr.savepoint():
+            agent_rec = REAgent.search([('user_id', '=', agent_a.id), ('company_id', '=', company_a_id)], limit=1)
+            if not agent_rec:
+                agent_rec = REAgent.create({
+                    'user_id': agent_a.id,
+                    'company_id': company_a_id,
+                    'name': agent_a.name,
+                    'cpf': '019.019.019-19',
+                    'hire_date': '2026-01-01',
+                })
+                _logger.info('Created real.estate.agent for agent_019')
         agent_re_id = agent_rec.id
     except Exception as e:
         _logger.warning('real.estate.agent model unavailable: %s', e)
@@ -149,24 +157,34 @@ def seed(env):
 
     # ── Services (for novos_clientes + visitas + fechamento) ─────────────────
     service_ids = []
+    # Use owner's partner as the client for test services
+    client_partner_id = created_users['owner_019@example.com'].partner_id.id
     try:
         REService = env['real.estate.service'].sudo()
         for i in range(1, 4):
-            existing_svc = REService.search([
-                ('name', '=', f'Seed Service 019-A-{i}'),
-                ('company_id', '=', company_a_id),
-            ], limit=1)
-            if not existing_svc:
-                svc = REService.create({
-                    'name': f'Seed Service 019-A-{i}',
-                    'agent_id': agent_a.id,
-                    'company_id': company_a_id,
-                    'operation_type': 'sale',
-                })
-                service_ids.append(svc.id)
-                _logger.info('Created service Seed Service 019-A-%s', i)
-            else:
-                service_ids.append(existing_svc.id)
+            try:
+                with env.cr.savepoint():
+                    existing_svc = REService.search([
+                        ('name', '=', f'Seed Service 019-A-{i}'),
+                        ('company_id', '=', company_a_id),
+                    ], limit=1)
+                    if not existing_svc:
+                        # Fetch first available source (site, portal, etc.)
+                        source = env['real.estate.service.source'].sudo().search([], limit=1)
+                        svc = REService.create({
+                            'name': f'Seed Service 019-A-{i}',
+                            'agent_id': agent_a.id,
+                            'company_id': company_a_id,
+                            'operation_type': 'sale',
+                            'client_partner_id': client_partner_id,
+                            'source_id': source.id if source else 1,
+                        })
+                        service_ids.append(svc.id)
+                        _logger.info('Created service Seed Service 019-A-%s', i)
+                    else:
+                        service_ids.append(existing_svc.id)
+            except Exception as e:
+                _logger.warning('Could not create service %s: %s', i, e)
     except Exception as e:
         _logger.warning('Could not create services: %s', e)
 
@@ -203,6 +221,7 @@ def seed(env):
         else:
             _logger.info('Goal already exists: metric=%s op=%s', g['metric_type'], g['operation_type'])
 
+    env.cr.commit()
     _logger.info('✓ Feature 019 seed complete.')
     print("✓ Feature 019 seed complete.")
 

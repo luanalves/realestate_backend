@@ -27,8 +27,8 @@ NC='\033[0m'
 PASS=0
 FAIL=0
 
-pass() { echo -e "${GREEN}✓ $1${NC}"; ((PASS++)); }
-fail() { echo -e "${RED}✗ $1${NC}"; ((FAIL++)); }
+pass() { echo -e "${GREEN}✓ $1${NC}"; PASS=$((PASS + 1)); }
+fail() { echo -e "${RED}✗ $1${NC}"; FAIL=$((FAIL + 1)); }
 
 echo "========================================"
 echo "US019-S3: Report — Single Month"
@@ -54,10 +54,10 @@ login_user() {
     echo "$sid|$cid|$uid"
 }
 
-MANAGER_EMAIL="${TEST_MANAGER_EMAIL:-manager_019@example.com}"
-MANAGER_PASS="${TEST_MANAGER_PASS:-ManagerPass019!}"
-AGENT_EMAIL="${TEST_AGENT_EMAIL:-agent_019@example.com}"
-AGENT_PASS="${TEST_AGENT_PASS:-AgentPass019!}"
+MANAGER_EMAIL="${US019_MANAGER_EMAIL:-manager_019@example.com}"
+MANAGER_PASS="${US019_MANAGER_PASS:-ManagerPass019!}"
+AGENT_EMAIL="${US019_AGENT_EMAIL:-agent_019@example.com}"
+AGENT_PASS="${US019_AGENT_PASS:-AgentPass019!}"
 
 echo ""
 echo "Step 1: Login as Manager and Agent..."
@@ -82,7 +82,7 @@ report_call() {
     curl -s -o /tmp/019_report_resp.json -w "%{http_code}" \
         -X GET "$API_BASE/goals/report?$qs" \
         -H "Authorization: Bearer $BEARER_TOKEN" \
-        -H "X-Odoo-Session-Id: $sid" \
+        -H "X-Openerp-Session-Id: $sid" \
         -H "X-Company-Id: $cid"
 }
 

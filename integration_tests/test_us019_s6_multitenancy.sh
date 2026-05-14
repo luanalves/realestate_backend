@@ -25,8 +25,8 @@ NC='\033[0m'
 PASS=0
 FAIL=0
 
-pass() { echo -e "${GREEN}✓ $1${NC}"; ((PASS++)); }
-fail() { echo -e "${RED}✗ $1${NC}"; ((FAIL++)); }
+pass() { echo -e "${GREEN}✓ $1${NC}"; PASS=$((PASS + 1)); }
+fail() { echo -e "${RED}✗ $1${NC}"; FAIL=$((FAIL + 1)); }
 
 echo "========================================"
 echo "US019-S6: Multitenancy Isolation"
@@ -51,8 +51,8 @@ login_user() {
 }
 
 # ── Load credentials ───────────────────────────────────────────────────────
-MANAGER_A_EMAIL="${TEST_MANAGER_EMAIL:-manager_019@example.com}"
-MANAGER_A_PASS="${TEST_MANAGER_PASS:-ManagerPass019!}"
+MANAGER_A_EMAIL="${US019_MANAGER_EMAIL:-manager_019@example.com}"
+MANAGER_A_PASS="${US019_MANAGER_PASS:-ManagerPass019!}"
 OWNER_B_EMAIL="${TEST_OWNER_B_EMAIL:-owner_b_019@example.com}"
 OWNER_B_PASS="${TEST_OWNER_B_PASS:-OwnerBPass019!}"
 
@@ -89,7 +89,7 @@ CREATE_RESP=$(curl -s -o /tmp/019_mt_create.json -w "%{http_code}" \
     -X POST "$API_BASE/goals" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Odoo-Session-Id: $MGR_A_SID" \
+    -H "X-Openerp-Session-Id: $MGR_A_SID" \
     -H "X-Company-Id: $MGR_A_CID" \
     -d "{
         \"user_id\": $OWN_B_UID,
@@ -107,8 +107,8 @@ if [ "$CREATE_RESP" = "403" ] || [ "$CREATE_RESP" = "422" ]; then
     COMPANY_A_GOAL_ID=""
 else
     # Create a legitimate Company A goal for Company A user
-    AGENT_A_EMAIL="${TEST_AGENT_EMAIL:-agent_019@example.com}"
-    AGENT_A_PASS="${TEST_AGENT_PASS:-AgentPass019!}"
+    AGENT_A_EMAIL="${US019_AGENT_EMAIL:-agent_019@example.com}"
+    AGENT_A_PASS="${US019_AGENT_PASS:-AgentPass019!}"
     AGT_A=$(login_user "$AGENT_A_EMAIL" "$AGENT_A_PASS")
     AGT_A_UID=$(echo "$AGT_A" | cut -d'|' -f3)
 
@@ -116,7 +116,7 @@ else
         -X POST "$API_BASE/goals" \
         -H "Content-Type: application/json" \
         -H "Authorization: Bearer $BEARER_TOKEN" \
-        -H "X-Odoo-Session-Id: $MGR_A_SID" \
+        -H "X-Openerp-Session-Id: $MGR_A_SID" \
         -H "X-Company-Id: $MGR_A_CID" \
         -d "{
             \"user_id\": $AGT_A_UID,
@@ -142,7 +142,7 @@ echo "Step 3: Company B owner lists goals → should not see Company A goals..."
 LIST_RESP=$(curl -s -o /tmp/019_mt_list.json -w "%{http_code}" \
     -X GET "$API_BASE/goals?year=2026" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Odoo-Session-Id: $OWN_B_SID" \
+    -H "X-Openerp-Session-Id: $OWN_B_SID" \
     -H "X-Company-Id: $OWN_B_CID")
 
 if [ "$LIST_RESP" = "200" ]; then
@@ -164,12 +164,12 @@ echo "Step 4: Company B report → no Company A users in response..."
 REPORT_RESP=$(curl -s -o /tmp/019_mt_report.json -w "%{http_code}" \
     -X GET "$API_BASE/goals/report?year=2026&month=5" \
     -H "Authorization: Bearer $BEARER_TOKEN" \
-    -H "X-Odoo-Session-Id: $OWN_B_SID" \
+    -H "X-Openerp-Session-Id: $OWN_B_SID" \
     -H "X-Company-Id: $OWN_B_CID")
 
 if [ "$REPORT_RESP" = "200" ]; then
     # Verify Company A agent is not in Company B report
-    AGENT_A_EMAIL="${TEST_AGENT_EMAIL:-agent_019@example.com}"
+    AGENT_A_EMAIL="${US019_AGENT_EMAIL:-agent_019@example.com}"
     AGT_A_IN_B=$(jq --arg email "$AGENT_A_EMAIL" \
         '[.users[]? | select(.user_name | test($email; "i"))] | length' \
         /tmp/019_mt_report.json 2>/dev/null || echo 0)

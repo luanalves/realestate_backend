@@ -24,16 +24,25 @@ run_test() {
 
     if bash "$SCRIPT_DIR/$file"; then
         echo -e "${GREEN}✓ PASSED: $name${NC}"
-        ((PASS++))
+        PASS=$((PASS + 1))
     else
         echo -e "${RED}✗ FAILED: $name${NC}"
-        ((FAIL++))
+        FAIL=$((FAIL + 1))
     fi
 }
 
 echo "========================================"
 echo "Feature 019 — Goals & Results Tests"
 echo "========================================"
+
+# ── Pre-cleanup: remove test-created goals (keep seed month=5 data only) ──
+echo ""
+echo "Pre-cleanup: removing non-seed test goals (month != 5)..."
+cd "$(dirname "$SCRIPT_DIR")/18.0" 2>/dev/null || true
+docker compose exec -T db psql -U odoo -d realestate \
+    -c "DELETE FROM thedevkitchen_estate_goal g USING res_users u WHERE g.user_id=u.id AND u.login LIKE '%019%' AND g.month != 5" \
+    2>/dev/null | grep -v '^$' || echo "  (no cleanup needed or docker unavailable)"
+cd - > /dev/null 2>&1 || true
 
 run_test "US019-S1: Create Goals (RBAC)"   "test_us019_s1_create_goals.sh"
 run_test "US019-S2: Goal Lifecycle"         "test_us019_s2_goal_lifecycle.sh"

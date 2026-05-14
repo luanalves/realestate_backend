@@ -92,7 +92,7 @@
         <menuitem
             id="menu_estate_goals_root"
             name="Goals"
-            parent="quicksol_estate.menu_real_estate_main"
+            parent="quicksol_estate.menu_real_estate_root"
             sequence="50"/>
 
         <menuitem

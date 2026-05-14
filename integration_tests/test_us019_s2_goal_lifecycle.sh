@@ -24,8 +24,8 @@ NC='\033[0m'
 PASS=0
 FAIL=0
 
-pass() { echo -e "${GREEN}✓ $1${NC}"; ((PASS++)); }
-fail() { echo -e "${RED}✗ $1${NC}"; ((FAIL++)); }
+pass() { echo -e "${GREEN}✓ $1${NC}"; PASS=$((PASS + 1)); }
+fail() { echo -e "${RED}✗ $1${NC}"; FAIL=$((FAIL + 1)); }
 
 echo "========================================"
 echo "US019-S2: Goal Lifecycle"
@@ -42,8 +42,8 @@ fi
 pass "Bearer token obtained"
 
 # ── Login as Manager ────────────────────────────────────────────────────────
-MANAGER_EMAIL="${TEST_MANAGER_EMAIL:-manager_019@example.com}"
-MANAGER_PASS="${TEST_MANAGER_PASS:-ManagerPass019!}"
+MANAGER_EMAIL="${US019_MANAGER_EMAIL:-manager_019@example.com}"
+MANAGER_PASS="${US019_MANAGER_PASS:-ManagerPass019!}"
 
 MGR_RESP=$(curl -s -X POST "$API_BASE/users/login" \
     -H "Content-Type: application/json" \
@@ -67,7 +67,7 @@ goals_call() {
     local args=(-s -o "$out_file" -w "%{http_code}"
         -X "$method" "$API_BASE$path"
         -H "Authorization: Bearer $BEARER_TOKEN"
-        -H "X-Odoo-Session-Id: $MGR_SID"
+        -H "X-Openerp-Session-Id: $MGR_SID"
         -H "X-Company-Id: $MGR_CID")
     if [ -n "$body" ]; then
         args+=(-H "Content-Type: application/json" -d "$body")
