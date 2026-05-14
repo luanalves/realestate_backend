@@ -10,7 +10,7 @@
 #
 # Behaviour:
 #   Fresh DB  → installs all modules, loads seed data, sets admin password
-#   Existing DB → upgrades modules (--update), re-applies admin password
+#   Existing DB → installs new modules (--init), then upgrades all (--update)
 # =============================================================================
 
 set -e
@@ -90,9 +90,26 @@ if [ -z "$_has_odoo" ]; then
     log_ok "Modules installed: $MODULES"
 
 # ---------------------------------------------------------------------------
-# 3b. EXISTING DB — upgrade modules (picks up code/data changes on redeploy)
+# 3b. EXISTING DB — install new modules first, then upgrade all
+#
+# --update only applies to already-installed modules; it silently ignores
+# modules with state != 'installed'. New modules added to ODOO_INIT_MODULES
+# on a redeploy must be installed with --init before --update runs.
 # ---------------------------------------------------------------------------
 else
+    # Detect modules in the list that are not yet installed in this DB
+    _NEW_MODULES=$(PGPASSWORD="$_PASS" psql \
+        -h "$_HOST" -p "$_PORT" -U "$_USER" -d "$_DB" \
+        -tAc "SELECT string_agg(m, ',') FROM unnest(string_to_array('$MODULES', ',')) AS m
+              WHERE m NOT IN (SELECT name FROM ir_module_module WHERE state = 'installed')" \
+        2>/dev/null || echo "")
+
+    if [ -n "$_NEW_MODULES" ]; then
+        log "New modules detected — installing: $_NEW_MODULES"
+        odoo "${_ODOO_BASE_ARGS[@]}" --init="$_NEW_MODULES"
+        log_ok "New modules installed: $_NEW_MODULES"
+    fi
+
     log "Existing database — upgrading modules: $MODULES"
     odoo "${_ODOO_BASE_ARGS[@]}" --update="$MODULES"
     log_ok "Modules upgraded: $MODULES"
