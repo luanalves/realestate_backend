@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+
+        <!-- Goals &amp; Results API Endpoints (Feature 019) -->
+
+        <!-- POST /api/v1/goals — Create Goal -->
+        <record id="api_endpoint_goals_create" model="thedevkitchen.api.endpoint">
+            <field name="name">Create Goal</field>
+            <field name="path">/api/v1/goals</field>
+            <field name="method">POST</field>
+            <field name="module_name">thedevkitchen_estate_goals</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Goals</field>
+            <field name="summary">Create a monthly performance goal for a user</field>
+            <field name="description">Creates a new monthly performance goal for a specific user. Only Owner, Director, or Manager may call this endpoint.
+
+**Required Headers:**
+- `Authorization: Bearer {jwt_token}`
+- `X-Openerp-Session-Id: {session_id}`
+- `X-Company-Id: {company_id}`
+
+**Required Fields:**
+- `user_id`: Target user (integer)
+- `year`: Goal year ≥ 2000 (integer)
+- `month`: Goal month 1-12 (integer)
+- `metric_type`: One of: captacao, novos_clientes, visitas, propostas, fechamento
+- `operation_type`: One of: all, sale, rent
+- `target_count`: Target count ≥ 0 (integer)
+
+**Optional Fields:**
+- `target_vgv`: VGV target (float, only for captacao/propostas/fechamento)
+
+**Response (201 Created):**
+```json
+{
+  "id": 1,
+  "user_id": 5,
+  "year": 2026,
+  "month": 5,
+  "metric_type": "captacao",
+  "operation_type": "sale",
+  "target_count": 10,
+  "target_vgv": 500000.00
+}
+```
+
+**Error Responses:**
+- **400 Bad Request**: Missing required fields or invalid values
+- **403 Forbidden**: Caller lacks permission (not Owner/Director/Manager)
+- **409 Conflict**: Duplicate goal for same user/period/metric/operation
+- **422 Unprocessable Entity**: Validation error (VGV on non-VGV metric, etc.)</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <!-- PUT /api/v1/goals/{id} — Update Goal -->
+        <record id="api_endpoint_goals_update" model="thedevkitchen.api.endpoint">
+            <field name="name">Update Goal</field>
+            <field name="path">/api/v1/goals/{id}</field>
+            <field name="method">PUT</field>
+            <field name="module_name">thedevkitchen_estate_goals</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Goals</field>
+            <field name="summary">Update target values of an existing goal</field>
+            <field name="description">Updates target_count and/or target_vgv of an existing active goal. Identity fields (user_id, year, month, metric_type, operation_type) are immutable after creation. Only Owner, Director, or Manager may call this endpoint.
+
+**Required Headers:**
+- `Authorization: Bearer {jwt_token}`
+- `X-Openerp-Session-Id: {session_id}`
+- `X-Company-Id: {company_id}`
+
+**URL Path Parameter:**
+- `id`: Goal ID (integer)
+
+**Optional Fields (at least one required):**
+- `target_count`: New target count ≥ 0 (integer)
+- `target_vgv`: New VGV target (float)
+
+**Response (200 OK):**
+```json
+{
+  "id": 1,
+  "target_count": 12,
+  "target_vgv": 600000.00
+}
+```
+
+**Error Responses:**
+- **403 Forbidden**: Caller lacks permission
+- **404 Not Found**: Goal not found or inactive
+- **422 Unprocessable Entity**: Validation error</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <!-- DELETE /api/v1/goals/{id} — Soft-delete Goal -->
+        <record id="api_endpoint_goals_delete" model="thedevkitchen.api.endpoint">
+            <field name="name">Delete Goal</field>
+            <field name="path">/api/v1/goals/{id}</field>
+            <field name="method">DELETE</field>
+            <field name="module_name">thedevkitchen_estate_goals</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Goals</field>
+            <field name="summary">Soft-delete (archive) a goal</field>
+            <field name="description">Sets a goal as inactive (active=False). The record is retained in the database for audit purposes. Only Owner, Director, or Manager may call this endpoint.
+
+**Required Headers:**
+- `Authorization: Bearer {jwt_token}`
+- `X-Openerp-Session-Id: {session_id}`
+- `X-Company-Id: {company_id}`
+
+**URL Path Parameter:**
+- `id`: Goal ID (integer)
+
+**Response (200 OK):**
+```json
+{
+  "id": 42,
+  "active": false,
+  "message": "Goal archived successfully"
+}
+```
+
+**Error Responses:**
+- **403 Forbidden**: Caller lacks permission
+- **404 Not Found**: Goal not found or already inactive</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <!-- GET /api/v1/goals — List Goals -->
+        <record id="api_endpoint_goals_list" model="thedevkitchen.api.endpoint">
+            <field name="name">List Goals</field>
+            <field name="path">/api/v1/goals</field>
+            <field name="method">GET</field>
+            <field name="module_name">thedevkitchen_estate_goals</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Goals</field>
+            <field name="summary">List active goals with optional filters</field>
+            <field name="description">Returns a list of active goals filtered by optional query parameters. Agents can only see their own goals. Receptionist and Prospector profiles receive 403.
+
+**Required Headers:**
+- `Authorization: Bearer {jwt_token}`
+- `X-Openerp-Session-Id: {session_id}`
+- `X-Company-Id: {company_id}`
+
+**Optional Query Parameters:**
+- `user_id`: Filter by user (integer)
+- `year`: Filter by year (integer)
+- `month`: Filter by month 1-12 (integer)
+- `metric_type`: Filter by metric
+- `operation_type`: Filter by operation type
+
+**Response (200 OK):**
+```json
+{
+  "count": 2,
+  "results": [
+    {
+      "id": 1,
+      "user_id": 5,
+      "year": 2026,
+      "month": 5,
+      "metric_type": "captacao",
+      "operation_type": "sale",
+      "target_count": 10,
+      "target_vgv": 500000.00
+    }
+  ]
+}
+```
+
+**Error Responses:**
+- **403 Forbidden**: Caller is Receptionist/Prospector, or Agent requesting another user's goals</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <!-- GET /api/v1/goals/report — Goals Report -->
+        <record id="api_endpoint_goals_report" model="thedevkitchen.api.endpoint">
+            <field name="name">Goals Report</field>
+            <field name="path">/api/v1/goals/report</field>
+            <field name="method">GET</field>
+            <field name="module_name">thedevkitchen_estate_goals</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">Goals</field>
+            <field name="summary">Achievement report with per-metric targets and actuals</field>
+            <field name="description">Returns a per-user, per-metric achievement report comparing goals vs. actual results computed from domain entities. Supports single-month and date-range accumulated modes.
+
+**Required Headers:**
+- `Authorization: Bearer {jwt_token}`
+- `X-Openerp-Session-Id: {session_id}`
+- `X-Company-Id: {company_id}`
+
+**Query Parameters (single-month mode — required):**
+- `year`: Integer ≥ 2000
+- `month`: Integer 1-12
+
+**Query Parameters (accumulated mode — alternative):**
+- `date_from`: ISO date string (YYYY-MM-DD)
+- `date_to`: ISO date string (YYYY-MM-DD); maximum range 366 days
+
+**Optional Query Parameters:**
+- `operation_type`: all | sale | rent (default: all)
+- `user_id`: Restrict to single user (Agent: own only; 403 if other)
+- `profile`: Full XML ID filter (e.g. quicksol_estate.group_real_estate_agent)
+- `goal_status`: complete | incomplete
+
+**Hard limit:** Maximum 200 users; returns 422 if exceeded.
+
+**Response (200 OK):** Per-user rows with per-metric meta_count, conquista, completion_pct, plus totals.
+
+**Error Responses:**
+- **400 Bad Request**: Invalid date range or format; date range exceeds 366 days
+- **403 Forbidden**: Agent requesting another user; Receptionist/Prospector calling
+- **422 Unprocessable Entity**: User count exceeds 200; missing required period params</field>
+            <field name="active" eval="True"/>
+        </record>
+
+    </data>
+</odoo>

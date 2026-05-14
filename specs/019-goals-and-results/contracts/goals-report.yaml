@@ -1,0 +1,393 @@
+openapi: "3.0.3"
+info:
+  title: Goals API – Goals Report
+  version: "1.0.0"
+  description: |
+    Generates a goals vs. achievement report for the caller's company.
+    
+    ## Period Modes
+    
+    **Single-month mode** (default): Provide `year` + `month`.
+    - `year`: required (≥ 2000)
+    - `month`: required (1-12)
+    
+    **Accumulated mode**: Provide `date_from` + `date_to`.
+    - `date_from`: ISO 8601 date (e.g., "2025-01-01")
+    - `date_to`: ISO 8601 date (e.g., "2025-03-31") — inclusive
+    - Maximum range: 366 days (12 months); returns 400 if exceeded
+    - When provided, `year`/`month` params are ignored
+    
+    ## Hard Cap
+    
+    Returns HTTP 422 if the resolved user list exceeds 200 users.
+    
+    ## Achievement Computation
+    
+    - `captacao`: new properties with create_date in period, attributed via `agent_id → real.estate.agent → user_id`
+    - `novos_clientes`: new services with create_date in period, attributed via `agent_id → res.users` (direct)
+    - `visitas`: services where stage transitioned to `visit` in period (via `mail.tracking.value`)
+    - `propostas`: proposals with create_date in period, attributed via `agent_id → real.estate.agent → user_id`
+    - `fechamento`: services where stage transitioned to `won` in period; VGV from linked accepted proposals
+    
+    ## Operation Type Filtering
+    
+    Goals with `operation_type=all` are EXCLUDED from `sale`-only or `rent`-only filtered reports.
+    
+    Requires triple auth: JWT + session + company scope.
+
+paths:
+  /api/v1/goals/report:
+    get:
+      summary: Generate goals vs. achievement report
+      operationId: getGoalsReport
+      tags:
+        - Goals
+      security:
+        - BearerAuth: []
+        - SessionCookie: []
+      parameters:
+        - name: year
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 2000
+          description: |
+            Calendar year. Required in single-month mode (when date_from/date_to not provided).
+          example: 2025
+        - name: month
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 12
+          description: Calendar month (1-12). Required in single-month mode.
+          example: 3
+        - name: date_from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: |
+            Start date for accumulated period report (ISO 8601, e.g., "2025-01-01").
+            When provided together with date_to, activates accumulated mode.
+          example: "2025-01-01"
+        - name: date_to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: |
+            End date for accumulated period report (ISO 8601, inclusive, e.g., "2025-03-31").
+            Required when date_from is provided.
+          example: "2025-03-31"
+        - name: operation_type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [all, sale, rent]
+            default: all
+          description: |
+            Filter report by operation type.
+            - "all": include goals and achievements for all operation types (default)
+            - "sale": only goals with operation_type=sale; achievements counted for sale operations only
+            - "rent": only goals with operation_type=rent; achievements counted for rent operations only
+            Note: Goals with operation_type=all are EXCLUDED from sale/rent filtered views.
+          example: sale
+        - name: user_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: |
+            Filter report to a single user (for self-service view by agents).
+            Agents: if omitted, defaults to own user; if provided and does not match own ID → 403.
+          example: 5
+        - name: goal_status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [complete, incomplete]
+          description: |
+            Filter users by goal completion status.
+            - "complete": only users where goal_status = complete
+            - "incomplete": only users where goal_status = in_progress OR no_goals
+            Totals are recomputed after filtering.
+          example: complete
+      responses:
+        "200":
+          description: Goals report generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GoalsReportResponse'
+              example:
+                users:
+                  - user_id: 5
+                    user_name: "Ana Costa"
+                    goal_status: complete
+                    metrics:
+                      captacoes:
+                        meta_count: 10
+                        conquista: 12
+                        meta_vgv: 500000.00
+                        conquista_vgv: 620000.00
+                        completion_pct: 120.0
+                      novos_clientes:
+                        meta_count: 15
+                        conquista: 15
+                        completion_pct: 100.0
+                      visitas:
+                        meta_count: 8
+                        conquista: 7
+                        completion_pct: 87.5
+                      propostas:
+                        meta_count: 5
+                        conquista: 6
+                        meta_vgv: 200000.00
+                        conquista_vgv: 250000.00
+                        completion_pct: 120.0
+                      fechamento:
+                        meta_count: 3
+                        conquista: 2
+                        meta_vgv: 150000.00
+                        conquista_vgv: 100000.00
+                        completion_pct: 66.7
+                totals:
+                  captacoes: {conquista: 12, meta_count: 10, conquista_vgv: 620000.00, meta_vgv: 500000.00}
+                  novos_clientes: {conquista: 15, meta_count: 15}
+                  visitas: {conquista: 7, meta_count: 8}
+                  propostas: {conquista: 6, meta_count: 5, conquista_vgv: 250000.00, meta_vgv: 200000.00}
+                  fechamento: {conquista: 2, meta_count: 3, conquista_vgv: 100000.00, meta_vgv: 150000.00}
+                period:
+                  year: 2025
+                  month: 3
+                  date_from: "2025-03-01"
+                  date_to: "2025-03-31"
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "422":
+          description: |
+            Unprocessable Entity.
+            Returned when:
+            - year is missing in single-month mode
+            - month is out of range
+            - date_to is provided without date_from
+            - resolved user list exceeds 200 users (hard cap)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                missing_year:
+                  summary: Missing year parameter
+                  value:
+                    error: "unprocessable_entity"
+                    detail: "year is required when date_from/date_to are not provided"
+                user_cap_exceeded:
+                  summary: User cap exceeded
+                  value:
+                    error: "unprocessable_entity"
+                    detail: "Report limited to 200 users. Matching users: 234."
+                    count: 234
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    SessionCookie:
+      type: apiKey
+      in: cookie
+      name: session_id
+
+  schemas:
+    MetricResult:
+      type: object
+      description: Achievement result for a single metric
+      properties:
+        meta_count:
+          type: integer
+          nullable: true
+          description: Goal quantity target. Null if no goal is set for this metric.
+          example: 10
+        conquista:
+          type: integer
+          description: Actual achievement count in the period
+          example: 12
+        meta_vgv:
+          type: number
+          nullable: true
+          description: Optional VGV (BRL) target. Null if not set or metric doesn't support VGV.
+          example: 500000.00
+        conquista_vgv:
+          type: number
+          nullable: true
+          description: Actual VGV achieved in the period. Null for metrics that don't have VGV.
+          example: 620000.00
+        completion_pct:
+          type: number
+          nullable: true
+          description: |
+            Percentage: (conquista / meta_count) * 100. 
+            Null if meta_count is null (no goal set) or meta_count = 0.
+          example: 120.0
+
+    UserReportRow:
+      type: object
+      properties:
+        user_id:
+          type: integer
+          example: 5
+        user_name:
+          type: string
+          example: "Ana Costa"
+        goal_status:
+          type: string
+          enum: [complete, in_progress, no_goals]
+          description: |
+            - complete: all set goals have achievement >= target
+            - in_progress: has goals set but at least one not yet met
+            - no_goals: no active goals for this period/operation_type
+          example: complete
+        metrics:
+          type: object
+          description: Results for each of the 5 metrics
+          properties:
+            captacoes:
+              $ref: '#/components/schemas/MetricResult'
+            novos_clientes:
+              $ref: '#/components/schemas/MetricResult'
+            visitas:
+              $ref: '#/components/schemas/MetricResult'
+            propostas:
+              $ref: '#/components/schemas/MetricResult'
+            fechamento:
+              $ref: '#/components/schemas/MetricResult'
+
+    ReportTotals:
+      type: object
+      description: |
+        Per-metric aggregation across all returned users.
+        `meta_count` is null if ALL users have null for that metric (no goals set);
+        otherwise sum of non-null values only.
+      properties:
+        captacoes:
+          type: object
+          properties:
+            conquista: {type: integer, example: 12}
+            meta_count: {type: integer, nullable: true, example: 10}
+            conquista_vgv: {type: number, nullable: true, example: 620000.00}
+            meta_vgv: {type: number, nullable: true, example: 500000.00}
+        novos_clientes:
+          type: object
+          properties:
+            conquista: {type: integer, example: 15}
+            meta_count: {type: integer, nullable: true, example: 15}
+        visitas:
+          type: object
+          properties:
+            conquista: {type: integer, example: 7}
+            meta_count: {type: integer, nullable: true, example: 8}
+        propostas:
+          type: object
+          properties:
+            conquista: {type: integer, example: 6}
+            meta_count: {type: integer, nullable: true, example: 5}
+            conquista_vgv: {type: number, nullable: true, example: 250000.00}
+            meta_vgv: {type: number, nullable: true, example: 200000.00}
+        fechamento:
+          type: object
+          properties:
+            conquista: {type: integer, example: 2}
+            meta_count: {type: integer, nullable: true, example: 3}
+            conquista_vgv: {type: number, nullable: true, example: 100000.00}
+            meta_vgv: {type: number, nullable: true, example: 150000.00}
+
+    ReportPeriod:
+      type: object
+      properties:
+        year:
+          type: integer
+          nullable: true
+          description: Year (populated in single-month mode)
+          example: 2025
+        month:
+          type: integer
+          nullable: true
+          description: Month (populated in single-month mode)
+          example: 3
+        date_from:
+          type: string
+          format: date
+          description: Effective start date of the report period
+          example: "2025-03-01"
+        date_to:
+          type: string
+          format: date
+          description: Effective end date (inclusive) of the report period
+          example: "2025-03-31"
+
+    GoalsReportResponse:
+      type: object
+      properties:
+        users:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserReportRow'
+          description: Per-user goal vs. achievement rows
+        totals:
+          $ref: '#/components/schemas/ReportTotals'
+        period:
+          $ref: '#/components/schemas/ReportPeriod'
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        detail:
+          type: string
+
+  responses:
+    BadRequest:
+      description: Bad Request – malformed request parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "bad_request"
+            detail: "Date range exceeds maximum of 366 days (12 months)."
+    Unauthorized:
+      description: Unauthorized – missing or invalid JWT / session
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "unauthorized"
+            detail: "Authentication required"
+    Forbidden:
+      description: Forbidden – caller lacks permission
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "forbidden"
+            detail: "Access denied"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'

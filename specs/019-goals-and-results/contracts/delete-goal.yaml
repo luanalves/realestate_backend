@@ -1,0 +1,108 @@
+openapi: "3.0.3"
+info:
+  title: Goals API – Delete Goal
+  version: "1.0.0"
+  description: |
+    Soft-deletes a monthly performance goal (sets active=False).
+    The record is retained in the database for audit purposes.
+    Requires triple auth: JWT + session + company scope.
+
+paths:
+  /api/v1/goals/{id}:
+    delete:
+      summary: Soft-delete a monthly goal
+      operationId: deleteGoal
+      tags:
+        - Goals
+      security:
+        - BearerAuth: []
+        - SessionCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Goal record ID to soft-delete
+          example: 42
+      responses:
+        "200":
+          description: Goal deactivated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteResponse'
+              example:
+                id: 42
+                active: false
+                message: "Goal deactivated successfully"
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    SessionCookie:
+      type: apiKey
+      in: cookie
+      name: session_id
+
+  schemas:
+    DeleteResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: ID of the deactivated goal
+          example: 42
+        active:
+          type: boolean
+          description: Always false after soft-delete
+          example: false
+        message:
+          type: string
+          example: "Goal deactivated successfully"
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        detail:
+          type: string
+
+  responses:
+    Unauthorized:
+      description: Unauthorized – missing or invalid JWT / session
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "unauthorized"
+            detail: "Authentication required"
+    Forbidden:
+      description: Forbidden – caller lacks permission or goal belongs to another company
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "forbidden"
+            detail: "Only Owner, Director, or Manager may delete goals"
+    NotFound:
+      description: Not Found – goal with this ID does not exist or is already inactive
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "not_found"
+            detail: "Goal not found or already inactive"
