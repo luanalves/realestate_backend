@@ -1,10 +1,37 @@
-# Plano RBAC - Capacidades do Usuario Logado
+# Plano RBAC - Regras Seguras Para Frontend
 
 ## Objetivo
 
 Criar uma camada segura para expor ao frontend quais menus, rotas e acoes o usuario logado pode visualizar ou acionar, sem revelar detalhes internos de seguranca do Odoo.
 
-Este plano cobre somente a exposicao controlada de capacidades para UX. A autorizacao real deve continuar sendo aplicada nos endpoints backend por decorators, record rules, validacoes de dominio e regras especificas de negocio.
+Este plano cobre somente a exposicao controlada de autorizacao para UX. A autorizacao real deve continuar sendo aplicada no backend por decorators, record rules, validacoes de dominio e regras especificas de negocio.
+
+## Decisao Atual
+
+O frontend deve usar CASL (`@casl/ability` e `@casl/react`) para avaliar permissoes na interface. Portanto, o backend deve retornar regras seguras no formato de produto, orientadas a `action` e `subject`.
+
+Nao implementar o contrato inicial de booleanos como fonte principal:
+
+```json
+{
+  "capabilities": {
+    "properties.view": true
+  }
+}
+```
+
+O contrato alvo deve ser:
+
+```json
+{
+  "rules": [
+    { "action": "view", "subject": "Property" },
+    { "action": "create", "subject": "Property" }
+  ]
+}
+```
+
+Essas regras sao "CASL-safe": descrevem capacidades de produto, nao detalhes internos do Odoo.
 
 ## Contexto Atual
 
@@ -19,7 +46,7 @@ O backend ja possui uma base de seguranca com:
 
 Tambem existe o endpoint `GET /api/v1/me`, que retorna dados basicos do usuario logado, como `role`, empresas e `is_admin`.
 
-O que ainda falta e uma representacao segura e padronizada das capacidades do usuario para o frontend.
+O que ainda falta e uma representacao segura e padronizada das regras de UI do usuario para o frontend.
 
 ## Principio de Seguranca
 
@@ -32,21 +59,16 @@ O frontend nao deve receber:
 - detalhes tecnicos de por que uma regra permitiu ou negou acesso;
 - regras condicionais completas, como dominios baseados em `company_id`, `agent_id` ou `user_id`.
 
-O frontend deve receber apenas capacidades de produto, em formato simples:
+O frontend deve receber apenas regras de produto:
 
 ```json
 {
-  "capabilities": {
-    "menu.crm": true,
-    "menu.admin": false,
-    "properties.view": true,
-    "properties.create": true,
-    "properties.delete": false
-  }
+  "action": "view",
+  "subject": "Property"
 }
 ```
 
-Essas capacidades servem para montar a interface. Elas nao substituem seguranca backend.
+Essas regras servem para montar a interface. Elas nao substituem seguranca backend.
 
 ## Escopo Inicial
 
@@ -64,7 +86,8 @@ Fora do escopo inicial:
 - explicacao detalhada de negacao;
 - alteracao dinamica de regras pelo usuario;
 - exposicao de permissoes tecnicas;
-- substituicao das validacoes atuais dos endpoints.
+- substituicao das validacoes atuais dos endpoints;
+- regras condicionais CASL com campos sensiveis do backend.
 
 ## Endpoint Proposto
 
@@ -73,6 +96,8 @@ Criar um novo endpoint:
 ```http
 GET /api/v1/me/capabilities
 ```
+
+Manter o nome `capabilities` para clareza de produto, mas a resposta deve usar `rules` para integrar com CASL no frontend.
 
 Decorators obrigatorios:
 
@@ -91,43 +116,75 @@ Resposta sugerida:
     "role": "agent",
     "company_id": 5
   },
-  "capabilities": {
-    "menu.crm": true,
-    "menu.admin": false,
-    "menu.cms": false,
+  "rules": [
+    { "action": "view", "subject": "MenuCRM" },
+    { "action": "view", "subject": "Dashboard" },
 
-    "dashboard.view": true,
+    { "action": "view", "subject": "Property" },
+    { "action": "create", "subject": "Property" },
+    { "action": "update", "subject": "Property" },
 
-    "properties.view": true,
-    "properties.create": true,
-    "properties.update": true,
-    "properties.delete": false,
+    { "action": "view", "subject": "Lead" },
+    { "action": "create", "subject": "Lead" },
+    { "action": "update", "subject": "Lead" },
 
-    "leads.view": true,
-    "leads.create": true,
-    "leads.update": true,
-    "leads.delete": false,
+    { "action": "view", "subject": "Service" },
+    { "action": "create", "subject": "Service" },
+    { "action": "update", "subject": "Service" },
 
-    "services.view": true,
-    "services.create": true,
-    "services.update": true,
-    "services.reassign": false,
+    { "action": "view", "subject": "Proposal" },
+    { "action": "create", "subject": "Proposal" },
 
-    "proposals.view": true,
-    "proposals.create": true,
-    "proposals.approve": false,
-
-    "agents.view": false,
-    "agents.create": false,
-    "agents.update": false,
-
-    "companies.view": false,
-    "companies.update": false,
-
-    "settings.view": true
-  }
+    { "action": "view", "subject": "Settings" }
+  ]
 }
 ```
+
+Para acoes negadas, preferir omitir a regra. O CASL deve interpretar ausencia de regra como negado.
+
+## Subjects e Actions Iniciais
+
+Subjects de menu:
+
+```text
+MenuCRM
+MenuAdmin
+MenuCMS
+```
+
+Subjects de dominio:
+
+```text
+Dashboard
+Property
+Lead
+Service
+Proposal
+Agent
+Company
+Settings
+Appointment
+Report
+Goal
+CMSPage
+CMSMedia
+```
+
+Actions iniciais:
+
+```text
+view
+create
+update
+delete
+reassign
+approve
+cancel
+export
+manage
+```
+
+Usar `manage` com parcimonia. Prefira actions explicitas quando o frontend precisa distinguir botoes ou rotas.
 
 ## Servico Backend
 
@@ -147,11 +204,11 @@ Responsabilidades:
 
 - receber `env`, `user` e empresa ativa;
 - identificar o papel seguro do usuario;
-- mapear perfis para capacidades de produto;
-- retornar somente a whitelist de capacidades permitidas para exposicao;
+- mapear perfis para regras CASL-safe de produto;
+- retornar somente a whitelist de regras permitidas para exposicao;
 - centralizar a logica usada pelo endpoint `/api/v1/me/capabilities`.
 
-Importante: o servico deve ser declarativo e conservador. Se houver duvida, a capacidade deve ser `false`.
+Importante: o servico deve ser declarativo e conservador. Se houver duvida, nao retornar a regra.
 
 ## Mapeamento Inicial Fixo
 
@@ -175,55 +232,50 @@ O endpoint `/api/v1/me` ja possui um `role_map`. A implementacao pode reutilizar
 Exemplo conceitual:
 
 ```python
-ROLE_CAPABILITIES = {
-    "owner": {
-        "menu.crm": True,
-        "menu.admin": True,
-        "properties.view": True,
-        "properties.create": True,
-        "properties.update": True,
-        "properties.delete": True,
-        "agents.view": True,
-        "agents.create": True,
-    },
-    "agent": {
-        "menu.crm": True,
-        "menu.admin": False,
-        "properties.view": True,
-        "properties.create": True,
-        "properties.update": True,
-        "properties.delete": False,
-        "agents.view": False,
-        "agents.create": False,
-    },
+ROLE_RULES = {
+    "owner": [
+        {"action": "view", "subject": "MenuCRM"},
+        {"action": "view", "subject": "MenuAdmin"},
+        {"action": "manage", "subject": "Property"},
+        {"action": "manage", "subject": "Agent"},
+        {"action": "view", "subject": "Company"},
+        {"action": "update", "subject": "Company"},
+    ],
+    "agent": [
+        {"action": "view", "subject": "MenuCRM"},
+        {"action": "view", "subject": "Dashboard"},
+        {"action": "view", "subject": "Property"},
+        {"action": "create", "subject": "Property"},
+        {"action": "update", "subject": "Property"},
+        {"action": "view", "subject": "Lead"},
+        {"action": "create", "subject": "Lead"},
+        {"action": "update", "subject": "Lead"},
+    ],
 }
 ```
 
-Todas as capacidades conhecidas devem existir na resposta final, mesmo quando `false`. Isso simplifica o frontend e evita comportamento ambiguo.
-
 ## Menus
 
-As capacidades de menu devem ser explicitas:
+As regras de menu devem ser explicitas:
 
-```text
-menu.crm
-menu.admin
-menu.cms
+```json
+{ "action": "view", "subject": "MenuCRM" }
+{ "action": "view", "subject": "MenuAdmin" }
+{ "action": "view", "subject": "MenuCMS" }
 ```
 
-Submenus podem usar capacidades do dominio:
+Submenus podem usar regras do dominio:
 
-```text
-properties.view
-leads.view
-services.view
-proposals.view
-agents.view
-companies.view
-settings.view
+```json
+{ "action": "view", "subject": "Property" }
+{ "action": "view", "subject": "Lead" }
+{ "action": "view", "subject": "Service" }
+{ "action": "view", "subject": "Proposal" }
+{ "action": "view", "subject": "Agent" }
+{ "action": "view", "subject": "Company" }
 ```
 
-O frontend deve filtrar itens de menu usando essas chaves, sem depender de `role`, `is_admin` ou nome tecnico de grupo.
+O frontend deve filtrar itens de menu usando CASL, sem depender de `role`, `is_admin` ou nome tecnico de grupo.
 
 ## Relacao Com Seguranca Real
 
@@ -243,7 +295,7 @@ Nenhum controller existente deve remover validacoes por causa deste endpoint.
 
 ## Multiempresa
 
-As capacidades devem ser calculadas para a empresa ativa da sessao/request.
+As regras devem ser calculadas para a empresa ativa da sessao/request.
 
 Um usuario pode ter papeis ou escopos diferentes em empresas diferentes. Portanto, a resposta deve incluir a empresa considerada:
 
@@ -257,7 +309,7 @@ Um usuario pode ter papeis ou escopos diferentes em empresas diferentes. Portant
 }
 ```
 
-Se futuramente houver troca de empresa no frontend, as capacidades devem ser recarregadas apos a troca.
+Se futuramente houver troca de empresa no frontend, as regras devem ser recarregadas apos a troca.
 
 ## Cache e Invalidador Futuro
 
@@ -279,36 +331,43 @@ Uso futuro:
 - evitar menu stale apos alteracao de grupo;
 - permitir ETag ou conditional request.
 
-Nesta primeira fase, o frontend pode buscar as capacidades no login e ao recarregar a aplicacao.
+Nesta primeira fase, o frontend pode buscar as regras no login e ao recarregar a aplicacao. O cache HTTP/fetch deve ficar no frontend com TanStack Query.
 
 ## Integracao Frontend Esperada
 
-O frontend deve criar uma camada equivalente a:
+O frontend deve usar:
 
 ```text
-PermissionsProvider
-can(capability: string): boolean
+@casl/ability
+@casl/react
+@tanstack/react-query
 ```
 
-Exemplo:
+Fluxo esperado:
+
+```text
+/api/v1/me/capabilities
+        |
+        v
+TanStack Query cacheia a resposta
+        |
+        v
+Adapter monta Ability CASL com as rules
+        |
+        v
+AbilityProvider disponibiliza ability
+        |
+        v
+Menus, rotas e botoes usam ability.can()
+```
+
+Exemplos no frontend:
 
 ```ts
-can("properties.create")
-can("menu.admin")
-can("services.reassign")
+ability.can("view", "MenuAdmin")
+ability.can("create", "Property")
+ability.can("reassign", "Service")
 ```
-
-Os menus devem declarar a capacidade necessaria:
-
-```ts
-{
-  label: "Propriedades",
-  href: "/properties",
-  capability: "properties.view"
-}
-```
-
-Se `can(item.capability)` for `false`, o item nao aparece.
 
 ## Tratamento de Erros
 
@@ -328,29 +387,29 @@ Backend:
 - usuario sem sessao recebe `401`;
 - usuario sem JWT recebe `401`;
 - usuario sem company valida recebe `403`;
-- owner recebe capacidades administrativas;
-- manager recebe capacidades gerenciais;
-- agent nao recebe menu admin nem acoes administrativas;
-- todas as chaves conhecidas aparecem na resposta;
+- owner recebe regra para `view MenuAdmin`;
+- agent nao recebe regra para `view MenuAdmin`;
+- manager recebe regras gerenciais;
+- ausencia de regra equivale a acesso negado;
 - nenhuma resposta contem XML IDs de grupos Odoo;
 - nenhuma resposta contem record rules ou domains.
 
 Frontend, quando implementado:
 
 - menu admin fica oculto para agent;
-- propriedades aparece para quem tem `properties.view`;
-- botao de criar propriedade aparece somente com `properties.create`;
-- acesso direto por URL a rota sem capacidade redireciona ou exibe tela de acesso negado;
+- propriedades aparece para quem tem `view Property`;
+- botao de criar propriedade aparece somente com `create Property`;
+- acesso direto por URL a rota sem regra redireciona ou exibe tela de acesso negado;
 - endpoint protegido continua retornando `403` mesmo se a UI for manipulada manualmente.
 
 ## Criterios de Aceite
 
 - Existe `GET /api/v1/me/capabilities`.
 - O endpoint exige JWT, sessao e empresa.
-- A resposta expoe apenas capacidades seguras de produto.
+- A resposta expoe `rules` CASL-safe.
 - O backend nao vaza grupos tecnicos, domains ou record rules.
-- Todas as capacidades conhecidas sao retornadas como boolean.
-- O frontend consegue montar menus sem usar `role` diretamente.
+- Acoes negadas nao sao retornadas como detalhes tecnicos.
+- O frontend consegue montar menus usando CASL, sem usar `role` diretamente.
 - Nenhuma validacao de seguranca existente e removida.
 
 ## Arquivos Provaveis
@@ -367,10 +426,13 @@ Backend:
 Frontend, em etapa posterior:
 
 ```text
+frontend/plan_rbac.md
 frontend/src/config/api.ts
 frontend/src/lib/auth.ts
 frontend/src/services/authService.ts
+frontend/src/permissions/
 frontend/src/components/crm/DashboardLayout.tsx
+frontend/src/App.tsx
 ```
 
 ## Observacao Final
@@ -380,6 +442,6 @@ Este plano melhora a transparencia e a experiencia de uso, mas nao deve ser trat
 A regra de ouro e:
 
 ```text
-Frontend usa capabilities para UX.
+Frontend usa CASL para UX.
 Backend usa RBAC, record rules e validacoes para seguranca.
 ```
