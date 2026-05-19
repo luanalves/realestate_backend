@@ -36,6 +36,7 @@ Technical Details:
         'web',
         'mail',
         'bus',
+        'quicksol_estate',  # role_resolver.py embeds quicksol_estate.group_real_estate_* XML IDs (ADR-020 I1)
     ],
     'external_dependencies': {
         'python': [

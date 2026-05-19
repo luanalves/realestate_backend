@@ -32,5 +32,6 @@
 ## Notes
 
 - Source intent and constraints were preserved from `specs/020-rbac-capabilities-api/spec-idea.md`, including API-only scope, unchanged `/api/v1/me`, authenticated `GET /api/v1/me/capabilities`, and DB-driven Swagger handling.
+- Canonical `rules` ordering was clarified against `/opt/homebrew/var/www/realestate/frontend/plan_rbac.md`: the backend contract is deterministic and declarative, grouped in business/navigation subject order from the backend whitelist/matrix rather than alphabetical sorting, with semantic action progression inside each subject.
 - The branch name and feature directory were kept exactly as requested: `020-rbac-capabilities-api`.
 - The specification is ready for `/speckit.plan`. `/speckit.clarify` is optional because no open clarification markers remain.
