@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
-from datetime import date, datetime
-from unittest.mock import patch, MagicMock
+from datetime import datetime
+from unittest.mock import MagicMock
 from odoo.tests import TransactionCase
 from odoo.exceptions import ValidationError
 
@@ -209,7 +209,7 @@ class TestGoalsOperationTypeFilter(TransactionCase):
         GoalModel = self.env['thedevkitchen.estate.goal']
 
         # Create an 'all' goal and a 'sale' goal
-        goal_all = GoalModel.sudo().create({
+        GoalModel.sudo().create({
             'user_id': user.id,
             'year': 2025,
             'month': 3,
@@ -218,7 +218,7 @@ class TestGoalsOperationTypeFilter(TransactionCase):
             'target_count': 5,
             'company_id': company.id,
         })
-        goal_sale = GoalModel.sudo().create({
+        GoalModel.sudo().create({
             'user_id': user.id,
             'year': 2025,
             'month': 3,

@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 import logging
 from datetime import date, datetime, timedelta
-from calendar import monthrange
 from odoo.exceptions import ValidationError
+from odoo.addons.quicksol_estate.services.role_resolver import resolve_role
 
 _logger = logging.getLogger(__name__)
 
@@ -15,7 +15,7 @@ VGV_METRICS = {'captacoes', 'propostas', 'fechamento'}
 # Map goal metric_type DB values → response JSON keys
 METRIC_TYPE_TO_KEY = {
     'captacao':      'captacoes',
-    'novos_clientes':'novos_clientes',
+    'novos_clientes': 'novos_clientes',
     'visitas':       'visitas',
     'propostas':     'propostas',
     'fechamento':    'fechamento',
@@ -26,18 +26,6 @@ KEY_TO_METRIC_TYPE = {v: k for k, v in METRIC_TYPE_TO_KEY.items()}
 
 # Map operation_type param → proposal_type DB value (D004 mapping)
 OP_TYPE_TO_PROPOSAL_TYPE = {'sale': 'sale', 'rent': 'lease', 'all': None}
-
-# RBAC group XML IDs in descending hierarchy (for profile label resolution)
-_GROUP_PROFILE_MAP = [
-    ('quicksol_estate.group_real_estate_owner',       'Owner'),
-    ('quicksol_estate.group_real_estate_director',    'Director'),
-    ('quicksol_estate.group_real_estate_manager',     'Manager'),
-    ('quicksol_estate.group_real_estate_agent',       'Agent'),
-    ('quicksol_estate.group_real_estate_prospector',  'Prospector'),
-    ('quicksol_estate.group_real_estate_receptionist','Receptionist'),
-    ('quicksol_estate.group_real_estate_financial',   'Financial'),
-    ('quicksol_estate.group_real_estate_legal',       'Legal'),
-]
 
 
 def _empty_metric():
@@ -138,55 +126,64 @@ class GoalsReportService:
     def _resolve_period(year, month, date_from, date_to):
         """Return (date_from_dt, date_to_dt, period_info_dict)."""
         if date_from and date_to:
-            try:
-                df = datetime.strptime(date_from, '%Y-%m-%d')
-                dt = datetime.strptime(date_to, '%Y-%m-%d')
-            except ValueError:
-                raise ValidationError('date_from and date_to must be in YYYY-MM-DD format.')
+            return GoalsReportService._resolve_accumulated_period(date_from, date_to)
+        return GoalsReportService._resolve_single_month_period(year, month)
 
-            if (dt - df).days > 366:
-                raise ValidationError(
-                    'Date range exceeds maximum of 366 days (12 months).'
-                )
-            if dt < df:
-                raise ValidationError('date_to must be >= date_from.')
+    @staticmethod
+    def _resolve_accumulated_period(date_from, date_to):
+        try:
+            date_from_dt = datetime.strptime(date_from, '%Y-%m-%d')
+            date_to_dt = datetime.strptime(date_to, '%Y-%m-%d')
+        except ValueError:
+            raise ValidationError('date_from and date_to must be in YYYY-MM-DD format.')
 
-            return df, dt + timedelta(days=1), {
-                'mode': 'accumulated',
-                'date_from': date_from,
-                'date_to': date_to,
-            }
+        if date_to_dt < date_from_dt:
+            raise ValidationError('date_to must be >= date_from.')
+        if (date_to_dt - date_from_dt).days > 366:
+            raise ValidationError('Date range exceeds maximum of 366 days (12 months).')
 
-        # Single-month mode
+        return date_from_dt, date_to_dt + timedelta(days=1), {
+            'mode': 'accumulated',
+            'date_from': date_from,
+            'date_to': date_to,
+        }
+
+    @staticmethod
+    def _resolve_single_month_period(year, month):
+        year_value, month_value = GoalsReportService._coerce_year_month(year, month)
+        next_month = GoalsReportService._get_next_month_start(year_value, month_value)
+        return datetime(year_value, month_value, 1), datetime(
+            next_month.year,
+            next_month.month,
+            next_month.day,
+        ), {
+            'mode': 'single_month',
+            'year': year_value,
+            'month': month_value,
+        }
+
+    @staticmethod
+    def _coerce_year_month(year, month):
         if not year:
             raise ValidationError('year is required when date_from/date_to are not provided.')
         if not month:
             raise ValidationError('month is required when date_from/date_to are not provided.')
 
         try:
-            year = int(year)
-            month = int(month)
+            year_value = int(year)
+            month_value = int(month)
         except (ValueError, TypeError):
             raise ValidationError('year and month must be integers.')
 
-        if not (1 <= month <= 12):
-            raise ValidationError('month must be between 1 and 12.')
+        if 1 <= month_value <= 12:
+            return year_value, month_value
+        raise ValidationError('month must be between 1 and 12.')
 
-        first_day = date(year, month, 1)
-        # First day of next month
+    @staticmethod
+    def _get_next_month_start(year, month):
         if month == 12:
-            next_month = date(year + 1, 1, 1)
-        else:
-            next_month = date(year, month + 1, 1)
-
-        df = datetime(year, month, 1)
-        dt = datetime(next_month.year, next_month.month, next_month.day)
-
-        return df, dt, {
-            'mode': 'single_month',
-            'year': year,
-            'month': month,
-        }
+            return date(year + 1, 1, 1)
+        return date(year, month + 1, 1)
 
     # ─────────────────────────────────────────────────────────────────────────
     # Goal loading
@@ -230,7 +227,6 @@ class GoalsReportService:
             domain.extend([('year', '=', y), ('month', '=', mo)])
         else:
             # Multi-month: use tuple domain
-            year_month_tuples = [(y, mo) for y, mo in period_months]
             # Simplified: filter year in range; refine with month in Python if needed
             start_y = period_months[0][0]
             end_y = period_months[-1][0]
@@ -281,11 +277,11 @@ class GoalsReportService:
 
         for uid in user_ids:
             result[uid] = {
-                'captacoes':     captacao.get(uid, {'count': 0, 'vgv': 0.0}),
-                'novos_clientes':novos.get(uid, {'count': 0}),
-                'visitas':       visitas.get(uid, {'count': 0}),
-                'propostas':     propostas.get(uid, {'count': 0, 'vgv': 0.0}),
-                'fechamento':    fechamento.get(uid, {'count': 0, 'vgv': 0.0}),
+                'captacoes': captacao.get(uid, {'count': 0, 'vgv': 0.0}),
+                'novos_clientes': novos.get(uid, {'count': 0}),
+                'visitas': visitas.get(uid, {'count': 0}),
+                'propostas': propostas.get(uid, {'count': 0, 'vgv': 0.0}),
+                'fechamento': fechamento.get(uid, {'count': 0, 'vgv': 0.0}),
             }
 
         return result
@@ -490,15 +486,8 @@ class GoalsReportService:
         user = env['res.users'].sudo().browse(user_id)
 
         # Resolve profile label
-        profile_label = None
-        for xml_id, label in _GROUP_PROFILE_MAP:
-            try:
-                group = env.ref(xml_id)
-                if group.id in user.groups_id.ids:
-                    profile_label = label
-                    break
-            except ValueError:
-                continue
+        resolved_role = resolve_role(user)
+        profile_label = resolved_role.capitalize() if resolved_role else None
 
         metrics = {}
         has_any_goal = False
