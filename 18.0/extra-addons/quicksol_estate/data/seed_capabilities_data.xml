@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0" context="{'tracking_disable': True, 'no_recompute': True}">
+
+        <!-- Feature 020: RBAC capabilities fixtures -->
+
+        <record id="company_capabilities_a" model="res.company">
+            <field name="name">Capabilities Company A</field>
+            <field name="is_real_estate" eval="True"/>
+            <field name="legal_name">Capabilities Company A LTDA</field>
+            <field name="cnpj">31.415.926/0001-71</field>
+            <field name="creci">CRECI/SP 92001</field>
+            <field name="email">company-a-capabilities@example.com</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="company_capabilities_b" model="res.company">
+            <field name="name">Capabilities Company B</field>
+            <field name="is_real_estate" eval="True"/>
+            <field name="legal_name">Capabilities Company B LTDA</field>
+            <field name="cnpj">27.182.818/0001-29</field>
+            <field name="creci">CRECI/SP 92002</field>
+            <field name="email">company-b-capabilities@example.com</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="user_capabilities_owner_a" model="res.users">
+            <field name="name">Capabilities Owner A</field>
+            <field name="login">cap.owner.a@example.com</field>
+            <field name="password">seed123</field>
+            <field name="email">cap.owner.a@example.com</field>
+            <field name="groups_id" eval="[(6, 0, [ref('base.group_user'), ref('quicksol_estate.group_real_estate_owner')])]"/>
+            <field name="company_ids" eval="[(6, 0, [ref('quicksol_estate.company_capabilities_a')])]"/>
+            <field name="company_id" ref="quicksol_estate.company_capabilities_a"/>
+        </record>
+
+        <record id="user_capabilities_director_a" model="res.users">
+            <field name="name">Capabilities Director A</field>
+            <field name="login">cap.director.a@example.com</field>
+            <field name="password">seed123</field>
+            <field name="email">cap.director.a@example.com</field>
+            <field name="groups_id" eval="[(6, 0, [ref('base.group_user'), ref('quicksol_estate.group_real_estate_director')])]"/>
+            <field name="company_ids" eval="[(6, 0, [ref('quicksol_estate.company_capabilities_a')])]"/>
+            <field name="company_id" ref="quicksol_estate.company_capabilities_a"/>
+        </record>
+
+        <record id="user_capabilities_manager_a" model="res.users">
+            <field name="name">Capabilities Manager A</field>
+            <field name="login">cap.manager.a@example.com</field>
+            <field name="password">seed123</field>
+            <field name="email">cap.manager.a@example.com</field>
+            <field name="groups_id" eval="[(6, 0, [ref('base.group_user'), ref('quicksol_estate.group_real_estate_manager')])]"/>
+            <field name="company_ids" eval="[(6, 0, [ref('quicksol_estate.company_capabilities_a')])]"/>
+            <field name="company_id" ref="quicksol_estate.company_capabilities_a"/>
+        </record>
+
+        <record id="user_capabilities_agent_a" model="res.users">
+            <field name="name">Capabilities Agent A</field>
+            <field name="login">cap.agent.a@example.com</field>
+            <field name="password">seed123</field>
+            <field name="email">cap.agent.a@example.com</field>
+            <field name="groups_id" eval="[(6, 0, [ref('base.group_user'), ref('quicksol_estate.group_real_estate_agent')])]"/>
+            <field name="company_ids" eval="[(6, 0, [ref('quicksol_estate.company_capabilities_a')])]"/>
+            <field name="company_id" ref="quicksol_estate.company_capabilities_a"/>
+        </record>
+
+        <record id="user_capabilities_prospector_a" model="res.users">
+            <field name="name">Capabilities Prospector A</field>
+            <field name="login">cap.prospector.a@example.com</field>
+            <field name="password">seed123</field>
+            <field name="email">cap.prospector.a@example.com</field>
+            <field name="groups_id" eval="[(6, 0, [ref('base.group_user'), ref('quicksol_estate.group_real_estate_prospector')])]"/>
+            <field name="company_ids" eval="[(6, 0, [ref('quicksol_estate.company_capabilities_a')])]"/>
+            <field name="company_id" ref="quicksol_estate.company_capabilities_a"/>
+        </record>
+
+        <record id="user_capabilities_receptionist_a" model="res.users">
+            <field name="name">Capabilities Receptionist A</field>
+            <field name="login">cap.receptionist.a@example.com</field>
+            <field name="password">seed123</field>
+            <field name="email">cap.receptionist.a@example.com</field>
+            <field name="groups_id" eval="[(6, 0, [ref('base.group_user'), ref('quicksol_estate.group_real_estate_receptionist')])]"/>
+            <field name="company_ids" eval="[(6, 0, [ref('quicksol_estate.company_capabilities_a')])]"/>
+            <field name="company_id" ref="quicksol_estate.company_capabilities_a"/>
+        </record>
+
+        <record id="user_capabilities_financial_a" model="res.users">
+            <field name="name">Capabilities Financial A</field>
+            <field name="login">cap.financial.a@example.com</field>
+            <field name="password">seed123</field>
+            <field name="email">cap.financial.a@example.com</field>
+            <field name="groups_id" eval="[(6, 0, [ref('base.group_user'), ref('quicksol_estate.group_real_estate_financial')])]"/>
+            <field name="company_ids" eval="[(6, 0, [ref('quicksol_estate.company_capabilities_a')])]"/>
+            <field name="company_id" ref="quicksol_estate.company_capabilities_a"/>
+        </record>
+
+        <record id="user_capabilities_legal_a" model="res.users">
+            <field name="name">Capabilities Legal A</field>
+            <field name="login">cap.legal.a@example.com</field>
+            <field name="password">seed123</field>
+            <field name="email">cap.legal.a@example.com</field>
+            <field name="groups_id" eval="[(6, 0, [ref('base.group_user'), ref('quicksol_estate.group_real_estate_legal')])]"/>
+            <field name="company_ids" eval="[(6, 0, [ref('quicksol_estate.company_capabilities_a')])]"/>
+            <field name="company_id" ref="quicksol_estate.company_capabilities_a"/>
+        </record>
+
+        <record id="user_capabilities_property_owner_a" model="res.users">
+            <field name="name">Capabilities Property Owner A</field>
+            <field name="login">cap.property-owner.a@example.com</field>
+            <field name="password">seed123</field>
+            <field name="email">cap.property-owner.a@example.com</field>
+            <field name="groups_id" eval="[(6, 0, [ref('base.group_portal'), ref('quicksol_estate.group_real_estate_property_owner')])]"/>
+            <field name="company_ids" eval="[(6, 0, [ref('quicksol_estate.company_capabilities_a')])]"/>
+            <field name="company_id" ref="quicksol_estate.company_capabilities_a"/>
+        </record>
+
+        <record id="user_capabilities_tenant_a" model="res.users">
+            <field name="name">Capabilities Tenant A</field>
+            <field name="login">cap.tenant.a@example.com</field>
+            <field name="password">seed123</field>
+            <field name="email">cap.tenant.a@example.com</field>
+            <field name="groups_id" eval="[(6, 0, [ref('base.group_portal'), ref('quicksol_estate.group_real_estate_portal_user')])]"/>
+            <field name="company_ids" eval="[(6, 0, [ref('quicksol_estate.company_capabilities_a')])]"/>
+            <field name="company_id" ref="quicksol_estate.company_capabilities_a"/>
+        </record>
+
+        <record id="user_capabilities_multi_role_a" model="res.users">
+            <field name="name">Capabilities Multi Role A</field>
+            <field name="login">cap.multi-role.a@example.com</field>
+            <field name="password">seed123</field>
+            <field name="email">cap.multi-role.a@example.com</field>
+            <field name="groups_id" eval="[(6, 0, [ref('base.group_user'), ref('quicksol_estate.group_real_estate_manager'), ref('quicksol_estate.group_real_estate_agent')])]"/>
+            <field name="company_ids" eval="[(6, 0, [ref('quicksol_estate.company_capabilities_a')])]"/>
+            <field name="company_id" ref="quicksol_estate.company_capabilities_a"/>
+        </record>
+
+        <record id="user_capabilities_owner_multi_company" model="res.users">
+            <field name="name">Capabilities Owner Multi Company</field>
+            <field name="login">cap.owner.multi@example.com</field>
+            <field name="password">seed123</field>
+            <field name="email">cap.owner.multi@example.com</field>
+            <field name="groups_id" eval="[(6, 0, [ref('base.group_user'), ref('quicksol_estate.group_real_estate_owner')])]"/>
+            <field name="company_ids" eval="[(6, 0, [ref('quicksol_estate.company_capabilities_a'), ref('quicksol_estate.company_capabilities_b')])]"/>
+            <field name="company_id" ref="quicksol_estate.company_capabilities_a"/>
+        </record>
+
+        <record id="user_capabilities_owner_b" model="res.users">
+            <field name="name">Capabilities Owner B</field>
+            <field name="login">cap.owner.b@example.com</field>
+            <field name="password">seed123</field>
+            <field name="email">cap.owner.b@example.com</field>
+            <field name="groups_id" eval="[(6, 0, [ref('base.group_user'), ref('quicksol_estate.group_real_estate_owner')])]"/>
+            <field name="company_ids" eval="[(6, 0, [ref('quicksol_estate.company_capabilities_b')])]"/>
+            <field name="company_id" ref="quicksol_estate.company_capabilities_b"/>
+        </record>
+
+        <record id="user_capabilities_manager_b" model="res.users">
+            <field name="name">Capabilities Manager B</field>
+            <field name="login">cap.manager.b@example.com</field>
+            <field name="password">seed123</field>
+            <field name="email">cap.manager.b@example.com</field>
+            <field name="groups_id" eval="[(6, 0, [ref('base.group_user'), ref('quicksol_estate.group_real_estate_manager')])]"/>
+            <field name="company_ids" eval="[(6, 0, [ref('quicksol_estate.company_capabilities_b')])]"/>
+            <field name="company_id" ref="quicksol_estate.company_capabilities_b"/>
+        </record>
+
+        <record id="user_capabilities_agent_b" model="res.users">
+            <field name="name">Capabilities Agent B</field>
+            <field name="login">cap.agent.b@example.com</field>
+            <field name="password">seed123</field>
+            <field name="email">cap.agent.b@example.com</field>
+            <field name="groups_id" eval="[(6, 0, [ref('base.group_user'), ref('quicksol_estate.group_real_estate_agent')])]"/>
+            <field name="company_ids" eval="[(6, 0, [ref('quicksol_estate.company_capabilities_b')])]"/>
+            <field name="company_id" ref="quicksol_estate.company_capabilities_b"/>
+        </record>
+
+        <record id="user_capabilities_no_role_a" model="res.users">
+            <field name="name">Capabilities No Role A</field>
+            <field name="login">cap.no-role.a@example.com</field>
+            <field name="password">seed123</field>
+            <field name="email">cap.no-role.a@example.com</field>
+            <field name="groups_id" eval="[(6, 0, [ref('base.group_user')])]"/>
+            <field name="company_ids" eval="[(6, 0, [ref('quicksol_estate.company_capabilities_a')])]"/>
+            <field name="company_id" ref="quicksol_estate.company_capabilities_a"/>
+        </record>
+
+    </data>
+</odoo>

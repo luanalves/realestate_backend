@@ -1,6 +1,91 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data noupdate="0">
+        <record id="api_endpoint_me_capabilities" model="thedevkitchen.api.endpoint">
+            <field name="name">Get Current User Capabilities</field>
+            <field name="path">/api/v1/me/capabilities</field>
+            <field name="method">GET</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">User Authentication</field>
+            <field name="summary">Get the authenticated user's frontend capabilities</field>
+            <field name="description">Returns the authenticated user's CASL-safe capability bootstrap payload for the active company context.
+
+**Authentication:**
+- `Authorization: Bearer {access_token}`
+- `X-Openerp-Session-Id: {session_id}`
+- `X-Company-ID: {company_id}`
+
+**Behavior:**
+- Response contains exactly two top-level keys: `user` and `rules`
+- `user` contains only `id`, `role`, and `company_id`
+- Rules are returned in the backend canonical declaration order
+- Denied rules are omitted entirely
+- Users with no supported estate role receive `role = null` and `rules = []`
+
+**Error Responses:**
+- **401 Unauthorized**: Missing or invalid token/session
+- **403 Forbidden**: Unauthorized company context
+- **500 Internal Server Error**: Generic internal error</field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "CapabilityResponse",
+  "additionalProperties": false,
+  "required": ["user", "rules"],
+  "properties": {
+    "user": {
+      "type": "object",
+      "title": "CapabilityUser",
+      "additionalProperties": false,
+      "required": ["id", "role", "company_id"],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "example": 42
+        },
+        "role": {
+          "type": ["string", "null"],
+          "enum": ["owner", "director", "manager", "agent", "prospector", "receptionist", "financial", "legal", "property_owner", "tenant", null],
+          "example": "manager"
+        },
+        "company_id": {
+          "type": "integer",
+          "example": 5
+        }
+      }
+    },
+    "rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "title": "CapabilityRule",
+        "additionalProperties": false,
+        "required": ["action", "subject"],
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": ["view", "create", "update", "delete", "reassign", "approve", "cancel", "export"],
+            "example": "view"
+          },
+          "subject": {
+            "type": "string",
+            "enum": ["MenuCRM", "MenuAdmin", "MenuCMS", "Dashboard", "Property", "Lead", "Service", "Proposal", "Agent", "Company", "Settings", "Appointment", "Report", "Goal", "CMSPage", "CMSMedia"],
+            "example": "Property"
+          }
+        }
+      },
+      "example": [
+        {"action": "view", "subject": "MenuCRM"},
+        {"action": "view", "subject": "Dashboard"},
+        {"action": "view", "subject": "Property"}
+      ]
+    }
+  }
+}
+]]></field>
+            <field name="active" eval="True"/>
+        </record>
         
         <!-- Property API Endpoints -->
 

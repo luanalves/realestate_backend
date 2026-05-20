@@ -281,35 +281,57 @@ Seed code should live in a `@classmethod setUpClass` in the `HttpCase` or in a d
 # From Docker host
 cd /opt/homebrew/var/www/realestate/odoo-docker
 
-# Unit tests (fast, no HTTP server needed)
-docker compose exec odoo python -m pytest \
-  18.0/extra-addons/quicksol_estate/tests/utils/test_capability_service.py -v
+# Capabilities unit tests
+docker compose exec odoo python3 \
+  /mnt/extra-addons/quicksol_estate/tests/unit/test_capability_service_unit.py
 
-# E2E API tests
+# Capabilities API tests
 docker compose exec odoo python -m pytest \
   18.0/extra-addons/quicksol_estate/tests/api/test_capabilities_api.py -v
 
-# Or via Odoo test runner:
-docker compose exec odoo odoo \
-  --test-enable \
-  --test-tags /quicksol_estate/test_capability_service,/quicksol_estate/test_capabilities_api \
-  -d <database> --stop-after-init
+# Repository quality gate
+cd 18.0 && ./lint.sh quicksol_estate
 ```
 
 ---
 
-## Step 8 — Swagger Registration (Post-Implementation)
+## Step 8 — Performance Gate (SC-005)
+
+```bash
+cd /opt/homebrew/var/www/realestate/odoo-docker/18.0
+bash integration_tests/test_us020_s4_performance.sh
+```
+
+The script performs 100 sequential authenticated `GET /api/v1/me/capabilities`
+requests and fails if p95 is `>= 1000 ms`.
+
+---
+
+## Step 9 — Swagger Registration (Post-Implementation)
 
 After the implementation passes all tests, register the endpoint in Swagger via the
 DB-backed workflow (do **not** edit static YAML files):
 
-1. Use the `swagger-updater` skill / ADR-005 workflow to add a `thedevkitchen_api_endpoint` record.
-2. Key fields: `path=/api/v1/me/capabilities`, `method=GET`, `auth=jwt+session+company`.
+1. Keep the endpoint definition in `18.0/extra-addons/quicksol_estate/data/api_endpoints.xml`.
+2. Upgrade the `quicksol_estate` module so XML syncs into `thedevkitchen_api_endpoint`.
 3. Verify the endpoint appears in `/api/docs`.
 
 ---
 
-## Step 9 — Module Version Bump
+## Step 10 — Postman Collection
+
+Use the collection version below for this feature:
+
+```text
+docs/postman/quicksol_api_v1.33_postman_collection.json
+```
+
+Keep `session_id` in `X-Openerp-Session-Id` for this GET request and include
+`X-Company-ID` per ADR-016.
+
+---
+
+## Step 11 — Module Version Bump
 
 In `18.0/extra-addons/quicksol_estate/__manifest__.py`:
 ```python
@@ -325,8 +347,11 @@ In `18.0/extra-addons/quicksol_estate/__manifest__.py`:
 - [ ] Controller registered in `controllers/__init__.py`
 - [ ] Unit tests pass: deduplication, ordering, omission, whitelist
 - [ ] E2E API tests pass: 10-role matrix, 401/403 guards, multi-company isolation
+- [ ] Performance script passes: `integration_tests/test_us020_s4_performance.sh`
 - [ ] `/api/v1/me` regression test passes (contract unchanged)
 - [ ] No XML IDs / Odoo internals appear in any response payload
 - [ ] `quicksol_estate` version bumped to `18.0.5.0.0`
-- [ ] Swagger registration planned (post-merge workflow)
+- [ ] Swagger updated via XML → module upgrade → DB → `/api/docs`
+- [ ] Postman collection updated to `quicksol_api_v1.33_postman_collection.json`
 - [ ] Linting: `ruff` + `black` passing (`./lint.sh`)
+- [ ] No Cypress tests added (API-only feature)

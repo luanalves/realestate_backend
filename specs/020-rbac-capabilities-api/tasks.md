@@ -18,8 +18,8 @@
 
 **Purpose**: Create the feature scaffolding before shared logic and tests are filled in.
 
-- [ ] T001 [P] Create source scaffolding in `18.0/extra-addons/thedevkitchen_apigateway/services/role_resolver.py`, `18.0/extra-addons/quicksol_estate/services/capability_service.py`, and `18.0/extra-addons/quicksol_estate/controllers/capabilities_controller.py`
-- [ ] T002 [P] Create test and seed scaffolding in `18.0/extra-addons/quicksol_estate/tests/unit/test_capability_service_unit.py`, `18.0/extra-addons/quicksol_estate/tests/api/test_capabilities_api.py`, and `18.0/extra-addons/quicksol_estate/data/seed_capabilities_data.xml`
+- [X] T001 [P] Create source scaffolding in `18.0/extra-addons/thedevkitchen_apigateway/services/role_resolver.py`, `18.0/extra-addons/quicksol_estate/services/capability_service.py`, and `18.0/extra-addons/quicksol_estate/controllers/capabilities_controller.py`
+- [X] T002 [P] Create test and seed scaffolding in `18.0/extra-addons/quicksol_estate/tests/unit/test_capability_service_unit.py`, `18.0/extra-addons/quicksol_estate/tests/api/test_capabilities_api.py`, and `18.0/extra-addons/quicksol_estate/data/seed_capabilities_data.xml`
 
 ---
 
@@ -27,11 +27,11 @@
 
 **Purpose**: Shared resolver, capability contract skeleton, and reusable fixtures that block all user stories.
 
-- [ ] T003 Implement the shared effective-role resolver in `18.0/extra-addons/thedevkitchen_apigateway/services/role_resolver.py`
-- [ ] T004 Refactor `18.0/extra-addons/thedevkitchen_apigateway/controllers/me_controller.py` to consume the shared resolver without changing the `/api/v1/me` response contract
-- [ ] T005 Implement `ALLOWED_ACTIONS`, `ALLOWED_SUBJECTS`, canonical ordering comments, and the projection skeleton in `18.0/extra-addons/quicksol_estate/services/capability_service.py`
-- [ ] T006 Register `18.0/extra-addons/quicksol_estate/data/seed_capabilities_data.xml` in `18.0/extra-addons/quicksol_estate/__manifest__.py`
-- [ ] T007 Populate reusable capability fixtures for 2 companies, 10 roles, a multi-role user, and minimal domain records in `18.0/extra-addons/quicksol_estate/data/seed_capabilities_data.xml` and `18.0/extra-addons/quicksol_estate/tests/api/utils.py`
+- [X] T003 Implement the shared effective-role resolver in `18.0/extra-addons/thedevkitchen_apigateway/services/role_resolver.py`
+- [X] T004 Refactor `18.0/extra-addons/thedevkitchen_apigateway/controllers/me_controller.py` to consume the shared resolver without changing the `/api/v1/me` response contract
+- [X] T005 Implement `ALLOWED_ACTIONS`, `ALLOWED_SUBJECTS`, canonical ordering comments, and the projection skeleton in `18.0/extra-addons/quicksol_estate/services/capability_service.py`
+- [X] T006 Register `18.0/extra-addons/quicksol_estate/data/seed_capabilities_data.xml` in `18.0/extra-addons/quicksol_estate/__manifest__.py`
+- [X] T007 Populate reusable capability fixtures for 2 companies, 10 roles, a multi-role user, and minimal domain records in `18.0/extra-addons/quicksol_estate/data/seed_capabilities_data.xml` and `18.0/extra-addons/quicksol_estate/tests/api/utils.py`
 
 **Checkpoint**: Shared role resolution, capability contract skeleton, and test fixtures are ready.
 
@@ -45,14 +45,14 @@
 
 ### Tests for User Story 1
 
-- [ ] T008 [P] [US1] Write unit tests for resolver parity, deduplication, ordering, and whitelist enforcement in `18.0/extra-addons/quicksol_estate/tests/unit/test_capability_service_unit.py`
-- [ ] T009 [P] [US1] Write real-endpoint API tests for 200 contract shape and 401/403 auth guards in `18.0/extra-addons/quicksol_estate/tests/api/test_capabilities_api.py`
+- [X] T008 [P] [US1] Write unit tests for resolver parity, deduplication, ordering, and whitelist enforcement in `18.0/extra-addons/quicksol_estate/tests/unit/test_capability_service_unit.py`
+- [X] T009 [P] [US1] Write real-endpoint API tests for 200 contract shape and 401/403 auth guards in `18.0/extra-addons/quicksol_estate/tests/api/test_capabilities_api.py`
 
 ### Implementation for User Story 1
 
-- [ ] T010 [US1] Implement ordered `get_rules()` projection and controller-facing service methods in `18.0/extra-addons/quicksol_estate/services/capability_service.py`
-- [ ] T011 [US1] Implement `GET /api/v1/me/capabilities` with `@require_jwt`, `@require_session`, `@require_company`, and `@trace_http_request` in `18.0/extra-addons/quicksol_estate/controllers/capabilities_controller.py`
-- [ ] T012 [US1] Register capability imports in `18.0/extra-addons/quicksol_estate/controllers/__init__.py` and `18.0/extra-addons/quicksol_estate/services/__init__.py`
+- [X] T010 [US1] Implement ordered `get_rules()` projection and controller-facing service methods in `18.0/extra-addons/quicksol_estate/services/capability_service.py`
+- [X] T011 [US1] Implement `GET /api/v1/me/capabilities` with `@require_jwt`, `@require_session`, `@require_company`, and `@trace_http_request` in `18.0/extra-addons/quicksol_estate/controllers/capabilities_controller.py`
+- [X] T012 [US1] Register capability imports in `18.0/extra-addons/quicksol_estate/controllers/__init__.py` and `18.0/extra-addons/quicksol_estate/services/__init__.py`
 
 **Checkpoint**: US1 is independently testable and delivers the MVP endpoint.
 
@@ -66,13 +66,13 @@
 
 ### Tests for User Story 2
 
-- [ ] T013 [P] [US2] Add unit coverage for no-role fallback, allowed-subject enforcement, and allowed-action enforcement in `18.0/extra-addons/quicksol_estate/tests/unit/test_capability_service_unit.py`
-- [ ] T014 [P] [US2] Add API matrix and non-leakage coverage for owner, agent, manager, property_owner, tenant, and 10-role smoke cases in `18.0/extra-addons/quicksol_estate/tests/api/test_capabilities_api.py`
+- [X] T013 [P] [US2] Add unit coverage for no-role fallback, allowed-subject enforcement, and allowed-action enforcement in `18.0/extra-addons/quicksol_estate/tests/unit/test_capability_service_unit.py`
+- [X] T014 [P] [US2] Add API matrix and non-leakage coverage for owner, agent, manager, property_owner, tenant, and 10-role smoke cases in `18.0/extra-addons/quicksol_estate/tests/api/test_capabilities_api.py`
 
 ### Implementation for User Story 2
 
-- [ ] T015 [US2] Encode the authoritative 10-role `ROLE_RULES` matrix in `18.0/extra-addons/quicksol_estate/services/capability_service.py` using the canonical order from `specs/020-rbac-capabilities-api/data-model.md`
-- [ ] T016 [US2] Tighten deny-by-omission payload shaping in `18.0/extra-addons/quicksol_estate/controllers/capabilities_controller.py` so XML IDs, group names, domains, model names, and security reasoning never appear in responses
+- [X] T015 [US2] Encode the authoritative 10-role `ROLE_RULES` matrix in `18.0/extra-addons/quicksol_estate/services/capability_service.py` using the canonical order from `specs/020-rbac-capabilities-api/data-model.md`
+- [X] T016 [US2] Tighten deny-by-omission payload shaping in `18.0/extra-addons/quicksol_estate/controllers/capabilities_controller.py` so XML IDs, group names, domains, model names, and security reasoning never appear in responses
 
 **Checkpoint**: US2 is independently testable and the full conservative capability matrix is shipped.
 
@@ -86,12 +86,12 @@
 
 ### Tests for User Story 3
 
-- [ ] T017 [P] [US3] Add API regression coverage for active-company selection, unauthorized-company 403s, cross-company payload isolation, and `/api/v1/me` parity in `18.0/extra-addons/quicksol_estate/tests/api/test_capabilities_api.py`
-- [ ] T018 [P] [US3] Extend mirrored company-B fixtures, minimal domain records, and multi-role parity helpers in `18.0/extra-addons/quicksol_estate/data/seed_capabilities_data.xml` and `18.0/extra-addons/quicksol_estate/tests/api/utils.py`
+- [X] T017 [P] [US3] Add API regression coverage for active-company selection, unauthorized-company 403s, cross-company payload isolation, and `/api/v1/me` parity in `18.0/extra-addons/quicksol_estate/tests/api/test_capabilities_api.py`
+- [X] T018 [P] [US3] Extend mirrored company-B fixtures, minimal domain records, and multi-role parity helpers in `18.0/extra-addons/quicksol_estate/data/seed_capabilities_data.xml` and `18.0/extra-addons/quicksol_estate/tests/api/utils.py`
 
 ### Implementation for User Story 3
 
-- [ ] T019 [US3] Finalize active-company payload handling and generic 401/403/500 responses in `18.0/extra-addons/quicksol_estate/controllers/capabilities_controller.py`
+- [X] T019 [US3] Finalize active-company payload handling and generic 401/403/500 responses in `18.0/extra-addons/quicksol_estate/controllers/capabilities_controller.py`
 
 **Checkpoint**: US3 is independently testable and multi-company isolation is verified.
 
@@ -101,17 +101,17 @@
 
 **Purpose**: Finish API documentation, Postman deliverables, versioning, and release validation.
 
-- [ ] T020 [P] Add DB-driven Swagger endpoint metadata and response schema for `/api/v1/me/capabilities` in `18.0/extra-addons/quicksol_estate/data/api_endpoints.xml`
-- [ ] T021 [P] Update the main Postman collection from `docs/postman/quicksol_api_v1.32_postman_collection.json` to `docs/postman/quicksol_api_v1.33_postman_collection.json` with Authentication/User Management coverage for `/api/v1/me/capabilities`
-- [ ] T022 [P] Bump `quicksol_estate` to version `18.0.5.0.0` and verify `18.0/extra-addons/quicksol_estate/__manifest__.py` still loads the new capability seed and endpoint data
-- [ ] T023 Update `specs/020-rbac-capabilities-api/quickstart.md` with the final execution sequence, Postman collection version, Swagger sync step, and explicit API-only/no-Cypress validation note
-- [ ] T024 [P] Migrate all inline role-resolution maps across the codebase to consume `role_resolver.resolve_role(user)` — eliminating duplicate group→role dictionaries in three files:
+- [X] T020 [P] Add DB-driven Swagger endpoint metadata and response schema for `/api/v1/me/capabilities` in `18.0/extra-addons/quicksol_estate/data/api_endpoints.xml`
+- [X] T021 [P] Update the main Postman collection from `docs/postman/quicksol_api_v1.32_postman_collection.json` to `docs/postman/quicksol_api_v1.33_postman_collection.json` with Authentication/User Management coverage for `/api/v1/me/capabilities`
+- [X] T022 [P] Bump `quicksol_estate` to version `18.0.5.0.0` and verify `18.0/extra-addons/quicksol_estate/__manifest__.py` still loads the new capability seed and endpoint data
+- [X] T023 Update `specs/020-rbac-capabilities-api/quickstart.md` with the final execution sequence, Postman collection version, Swagger sync step, and explicit API-only/no-Cypress validation note
+- [X] T024 [P] Migrate all inline role-resolution maps across the codebase to consume `role_resolver.resolve_role(user)` — eliminating duplicate group→role dictionaries in three files:
   - `18.0/extra-addons/thedevkitchen_estate_goals/controllers/goals_controller.py`: remove `_GROUP_TO_PROFILE` constant and `_get_caller_profile()` function; replace all call sites with `role_resolver.resolve_role(user)`.
   - `18.0/extra-addons/thedevkitchen_estate_goals/services/goals_report_service.py`: remove `_GROUP_PROFILE_MAP` constant; replace the resolution loop at line 494 with `role_resolver.resolve_role(user).capitalize()` (this service uses Title-case labels for report display; `.capitalize()` is correct for all 8 single-word roles in scope — compound roles `property_owner`/`tenant` are not present in goals context).
   - `18.0/extra-addons/thedevkitchen_user_onboarding/controllers/invite_controller.py`: remove the inline `group_to_profile` fallback dict (lines 375–395); replace with `role_resolver.resolve_role(user) or 'unknown'` as the fallback — the primary partner_id lookup via `thedevkitchen.estate.profile` remains unchanged.
   - **Do NOT touch**: `invite_service.py` (`INVITE_AUTHORIZATION`, `PROFILE_TO_GROUP` are authorization matrices, not role resolution); `property_api.py`, `sale_api.py`, `agent_api.py`, `credit_check_service.py` (use `has_group()` for point-in-time access-control decisions, not role label resolution).
-- [ ] T026 [P] Validate SC-005 performance: run 100 sequential `GET /api/v1/me/capabilities` requests against the running Odoo instance in `18.0/integration_tests/test_us020_s4_performance.sh`; compute p95 response time; assert p95 < 1000 ms and exit non-zero if the threshold is exceeded
-- [ ] T025 Run the feature validation steps from `specs/020-rbac-capabilities-api/quickstart.md` and the repository quality gate in `18.0/lint.sh`
+- [X] T026 [P] Validate SC-005 performance: run 100 sequential `GET /api/v1/me/capabilities` requests against the running Odoo instance in `18.0/integration_tests/test_us020_s4_performance.sh`; compute p95 response time; assert p95 < 1000 ms and exit non-zero if the threshold is exceeded
+- [X] T025 Run the feature validation steps from `specs/020-rbac-capabilities-api/quickstart.md` and the repository quality gate in `18.0/lint.sh`
 
 ---
 

@@ -9,6 +9,7 @@ from odoo.addons.thedevkitchen_apigateway.middleware import (
     require_session,
     require_company,
 )
+from odoo.addons.quicksol_estate.services.role_resolver import resolve_role
 from odoo.addons.thedevkitchen_observability.services.tracer import trace_http_request
 from ..services.invite_service import InviteService
 from ..services.token_service import PasswordTokenService
@@ -34,14 +35,14 @@ class InviteController(http.Controller):
             # Parse request body
             try:
                 data = json.loads(request.httprequest.data.decode("utf-8"))
-            except (ValueError, UnicodeDecodeError) as e:
+            except (ValueError, UnicodeDecodeError):
                 return self._error_response(
                     400, "validation_error", "Invalid JSON in request body"
                 )
 
             # Feature 010: Unified profile flow requires ONLY profile_id + session_id
             profile_id = data.get("profile_id")
-            
+
             if not profile_id:
                 return self._error_response(
                     400,
@@ -49,16 +50,16 @@ class InviteController(http.Controller):
                     "Missing required field: profile_id",
                     {"missing_fields": ["profile_id"]},
                 )
-            
+
             # Load profile record (optimized: search instead of browse+exists)
             ProfileModel = request.env["thedevkitchen.estate.profile"]
             profile_record = ProfileModel.sudo().search([("id", "=", int(profile_id))], limit=1)
-            
+
             if not profile_record:
                 return self._error_response(
                     404, "not_found", f"Profile {profile_id} not found"
                 )
-            
+
             # Check if profile already has a user (via partner_id)
             if profile_record.partner_id:
                 existing_user = (
@@ -73,7 +74,7 @@ class InviteController(http.Controller):
                         f"Profile {profile_id} already has a linked user account",
                         {"user_id": existing_user.id},
                     )
-            
+
             # Extract company and profile data
             company = profile_record.company_id
             profile_type = profile_record.profile_type_id.code
@@ -220,14 +221,14 @@ class InviteController(http.Controller):
             # Parse request body
             try:
                 data = json.loads(request.httprequest.data.decode("utf-8"))
-            except (ValueError, UnicodeDecodeError) as e:
+            except (ValueError, UnicodeDecodeError):
                 return self._error_response(
                     400, "validation_error", "Invalid JSON in request body"
                 )
 
             # Get user_id from body
             user_id = data.get("user_id")
-            
+
             if not user_id:
                 return self._error_response(
                     400,
@@ -235,7 +236,7 @@ class InviteController(http.Controller):
                     "Missing required field: user_id",
                     {"missing_fields": ["user_id"]},
                 )
-            
+
             try:
                 user_id = int(user_id)
             except (TypeError, ValueError):
@@ -351,7 +352,7 @@ class InviteController(http.Controller):
             )
 
         except Exception as e:
-            _logger.exception(f"Unexpected error in resend_invite: {e}")
+            _logger.exception("Unexpected error in resend_invite: %s", e)
             return self._error_response(
                 500, "ERR_INTERNAL_SERVER_ERROR", "An unexpected error occurred"
             )
@@ -370,27 +371,5 @@ class InviteController(http.Controller):
             )
             if profile_record and profile_record.profile_type_id:
                 return profile_record.profile_type_id.code
-        
-        # Fallback: Map groups to profile names (backward compatibility)
-        group_to_profile = {
-            "quicksol_estate.group_real_estate_owner": "owner",
-            "quicksol_estate.group_real_estate_director": "director",
-            "quicksol_estate.group_real_estate_manager": "manager",
-            "quicksol_estate.group_real_estate_agent": "agent",
-            "quicksol_estate.group_real_estate_prospector": "prospector",
-            "quicksol_estate.group_real_estate_receptionist": "receptionist",
-            "quicksol_estate.group_real_estate_financial": "financial",
-            "quicksol_estate.group_real_estate_legal": "legal",
-            # Note: base.group_portal is ambiguous (could be tenant or property_owner)
-            # Unified profile lookup above resolves this
-        }
 
-        for xml_id, profile in group_to_profile.items():
-            try:
-                group = request.env.ref(xml_id)
-                if group.id in user.groups_id.ids:
-                    return profile
-            except ValueError:
-                continue
-
-        return "unknown"
+        return resolve_role(user) or "unknown"

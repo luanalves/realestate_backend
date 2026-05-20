@@ -1,9 +1,9 @@
 {
-    'name': 'Real Estate Management - Kenlo Imóveis Edition',
-    'version': '18.0.4.0.0',  # Feature 015: Service Pipeline (Atendimentos)
-    'category': 'Real Estate',
-    'summary': 'Complete property management system following Kenlo Imóveis standards with RBAC',
-    'description': """
+    "name": "Real Estate Management - Kenlo Imóveis Edition",
+    "version": "18.0.5.0.0",  # Feature 020: RBAC Capabilities API
+    "category": "Real Estate",
+    "summary": "Complete property management system following Kenlo Imóveis standards with RBAC",
+    "description": """
 Real Estate Management Module - Kenlo Imóveis Edition
 =====================================================
 
@@ -52,86 +52,88 @@ Property Form Sections:
 13. Documents
 
 """,
-    'author': 'Quicksol Technologies',
-    'website': 'https://quicksol.ca',
-    'depends': ['base', 'portal', 'mail', 'thedevkitchen_apigateway'],
-    'post_init_hook': 'post_init',
-    'data': [
+    "author": "Quicksol Technologies",
+    "website": "https://quicksol.ca",
+    "depends": ["base", "portal", "mail", "thedevkitchen_apigateway"],
+    "post_init_hook": "post_init",
+    "data": [
         # Security files (must be loaded first)
-        'security/groups.xml',
-        'security/real_estate_security.xml',
-        'security/record_rules.xml',
-        'security/ir.model.access.csv',
-        
+        "security/groups.xml",
+        "security/real_estate_security.xml",
+        "security/record_rules.xml",
+        "security/ir.model.access.csv",
         # Data files (sequences and master data)
-        'data/profile_type_data.xml',  # Feature 010: Profile type lookup table (9 RBAC types)
-        'data/location_types.xml',
+        # Feature 010: Profile type lookup table (9 RBAC types)
+        "data/profile_type_data.xml",
+        "data/location_types.xml",
         # states.xml removed: Feature 011 — use native res.country.state
-        'data/property_data.xml',
-        'data/amenity_data.xml',
-        'data/system_parameters.xml',  # Carregado antes do company_seed: desativa IAP endpoint para evitar timeout do partner_autocomplete
-        'data/company_seed.xml',  # Feature 007: Real Estate Companies seed data
-        'data/demo_users.xml',  # Feature 007: Demo users
-        'data/property_demo_data.xml',
-        'data/agent_seed.xml',  # Feature 007: Agent seed data
-        'data/seed_test_company.xml',  # Seed: Imobiliária Seed + todos os perfis para testes
-        'data/seed_leads.xml',  # Seed: Leads da Imobiliária Seed cobrindo todas as jornadas de filtro
-        'data/oauth2_seed.xml',  # Feature 007: OAuth2 test client
-        'data/mailhog_smtp_seed.xml',  # Test infra: MailHog SMTP (mailhog:1025) para captura de emails nos testes
-        'data/api_endpoints.xml',
-        'data/user_auth_endpoints_data.xml',
-        'data/lease_cron.xml',  # CHK002: Auto-expire leases cron job
+        "data/property_data.xml",
+        "data/amenity_data.xml",
+        # Carregado antes do company_seed: desativa IAP endpoint para evitar timeout do partner_autocomplete
+        "data/system_parameters.xml",
+        "data/company_seed.xml",  # Feature 007: Real Estate Companies seed data
+        "data/demo_users.xml",  # Feature 007: Demo users
+        "data/property_demo_data.xml",
+        "data/agent_seed.xml",  # Feature 007: Agent seed data
+        "data/seed_test_company.xml",  # Seed: Imobiliária Seed + todos os perfis para testes
+        "data/seed_leads.xml",  # Seed: Leads da Imobiliária Seed cobrindo todas as jornadas de filtro
+        "data/oauth2_seed.xml",  # Feature 007: OAuth2 test client
+        # Test infra: MailHog SMTP (mailhog:1025) para captura de emails nos testes
+        "data/mailhog_smtp_seed.xml",
+        "data/seed_capabilities_data.xml",  # Feature 020: Capabilities endpoint fixtures
+        "data/api_endpoints.xml",
+        "data/user_auth_endpoints_data.xml",
+        "data/lease_cron.xml",  # CHK002: Auto-expire leases cron job
         # Feature 013: Property Proposals
-        'security/proposal_record_rules.xml',
-        'data/proposal_sequence.xml',
-        'data/mail_templates_proposal.xml',
-        'data/proposal_cron.xml',
-        'data/seed_proposals.xml',  # Seed: Proposals em todos os 8 estados FSM para testes de jornada
-        'data/seed_property_relationships.xml',
-        'data/seed_proposals_states.xml',  # Seed: Fase 2 — corrige estados FSM via SQL
+        "security/proposal_record_rules.xml",
+        "data/proposal_sequence.xml",
+        "data/mail_templates_proposal.xml",
+        "data/proposal_cron.xml",
+        "data/seed_proposals.xml",  # Seed: Proposals em todos os 8 estados FSM para testes de jornada
+        "data/seed_property_relationships.xml",
+        "data/seed_proposals_states.xml",  # Seed: Fase 2 — corrige estados FSM via SQL
         # 'data/default_groups.xml',  # Demo data temporarily disabled - complex dependencies
-
         # Feature 015: Service Pipeline (Atendimentos)
-        'security/service_record_rules.xml',
-        'data/service_sequence_data.xml',
-        'data/service_tags_data.xml',
-        'data/service_cron_data.xml',
-        'data/service_api_endpoints.xml',
-        'data/seed_services_data.xml',  # T072: Seed services all 7 stages
-        
+        "security/service_record_rules.xml",
+        "data/service_sequence_data.xml",
+        "data/service_tags_data.xml",
+        "data/service_cron_data.xml",
+        "data/service_api_endpoints.xml",
+        "data/seed_services_data.xml",  # T072: Seed services all 7 stages
         # Views (actions must be loaded before menus that reference them)
-        'views/property_views.xml',
-        'views/property_auxiliary_views.xml',
-        'views/agent_views.xml',
-        'views/lead_views.xml',  # FR-001: Lead views for managers
-        'views/commission_rule_views.xml',
-        'views/assignment_views.xml',
-        'views/lease_views.xml',
-        'views/sale_views.xml',
-        'views/company_views.xml',  # Feature 007: Company form, list, search views
-        'views/owner_views.xml',  # Feature 007: Owner list, form views (REATIVADO - xpath corrigido)
-        'views/real_estate_menus.xml',
-        'views/lead_filter_views.xml',  # FR-048: Saved search filters (REATIVADO)
-        'views/res_users_views.xml',
-        'views/proposal_views.xml',  # Feature 013: Proposal Kanban/List/Form
+        "views/property_views.xml",
+        "views/property_auxiliary_views.xml",
+        "views/agent_views.xml",
+        "views/lead_views.xml",  # FR-001: Lead views for managers
+        "views/commission_rule_views.xml",
+        "views/assignment_views.xml",
+        "views/lease_views.xml",
+        "views/sale_views.xml",
+        "views/company_views.xml",  # Feature 007: Company form, list, search views
+        # Feature 007: Owner list, form views (REATIVADO - xpath corrigido)
+        "views/owner_views.xml",
+        "views/real_estate_menus.xml",
+        "views/lead_filter_views.xml",  # FR-048: Saved search filters (REATIVADO)
+        "views/res_users_views.xml",
+        "views/proposal_views.xml",  # Feature 013: Proposal Kanban/List/Form
         # Feature 015: Service Pipeline (Atendimentos) views
-        'views/service_tag_views.xml',
-        'views/service_source_views.xml',
-        'views/service_settings_views.xml',
-        'views/service_views.xml',
-        'views/service_menu.xml',
+        "views/service_tag_views.xml",
+        "views/service_source_views.xml",
+        "views/service_settings_views.xml",
+        "views/service_views.xml",
+        "views/service_menu.xml",
         # Feature 015: Wizards
-        'wizards/service_reassign_wizard_views.xml',
+        "wizards/service_reassign_wizard_views.xml",
     ],
-    'assets': {
-        'web.assets_backend': [
-            'quicksol_estate/static/src/js/phone_widget.js',
-            'quicksol_estate/static/src/js/email_widget.js',
+    "assets": {
+        "web.assets_backend": [
+            "quicksol_estate/static/src/js/phone_widget.js",
+            "quicksol_estate/static/src/js/email_widget.js",
         ],
     },
-    'license': 'LGPL-3',
-    'images': ['static/description/banner.png'],
-    'installable': True,
-    'auto_install': False,
-    'application': True,
+    "license": "LGPL-3",
+    "images": ["static/description/banner.png"],
+    "installable": True,
+    "auto_install": False,
+    "application": True,
 }

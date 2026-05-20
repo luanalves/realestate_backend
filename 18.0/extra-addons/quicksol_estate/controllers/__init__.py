@@ -1,7 +1,4 @@
 # -*- coding: utf-8 -*-
-from . import property_api
-from . import master_data_api
-from . import agent_api
 from . import lead_api  # FR-001: Lead API endpoints
 from . import owner_api  # Feature 007: Owner CRUD API (independent)
 from . import company_api  # Feature 007: Company CRUD API
@@ -9,7 +6,10 @@ from . import profile_api  # Feature 010: Unified profile CRUD API
 from . import lease_api  # Feature 008: Lease lifecycle API
 from . import sale_api  # Feature 008: Sale management API
 from . import proposal_controller  # Feature 013: Property Proposals API
-from . import service_controller   # Feature 015: Service Pipeline (Atendimentos)
-from . import service_tag_controller    # Feature 015: Service Tags CRUD
+from . import service_controller  # Feature 015: Service Pipeline (Atendimentos)
+from . import service_tag_controller  # Feature 015: Service Tags CRUD
 from . import service_source_controller  # Feature 015: Service Sources CRUD
-from . import property_attachments_controller  # Feature 017: Property Attachments Upload API
+from . import (
+    property_attachments_controller,
+)  # Feature 017: Property Attachments Upload API
+from . import capabilities_controller  # Feature 020: RBAC capabilities bootstrap API
