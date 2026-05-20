@@ -18,20 +18,20 @@ from odoo.exceptions import ValidationError
 
 class TestLeadCompanyValidation(unittest.TestCase):
     """Test agent-company validation (FR-023)"""
-    
+
     def setUp(self):
         """Setup test environment"""
         self.lead = MagicMock()
         self.lead.id = 1
-        
+
         # Mock agent with companies
         self.agent = MagicMock()
         self.agent.id = 100
         self.agent.company_ids = MagicMock()
-        
+
         self.lead.agent_id = self.agent
         self.lead.company_ids = MagicMock()
-    
+
     def test_agent_belongs_to_lead_company_passes(self):
         """
         GIVEN: Agent belongs to Company A, Lead assigned to Company A
@@ -41,15 +41,15 @@ class TestLeadCompanyValidation(unittest.TestCase):
         # Arrange: Mock company overlap
         company_a = MagicMock()
         company_a.id = 1
-        
+
         self.agent.company_ids.__iter__ = lambda self: iter([company_a])
         self.lead.company_ids.__iter__ = lambda self: iter([company_a])
-        
+
         # Mock the & operator (intersection)
         agent_companies = {company_a}
         lead_companies = {company_a}
         intersection = agent_companies & lead_companies
-        
+
         # Act
         try:
             if self.lead.agent_id and self.lead.company_ids:
@@ -60,10 +60,10 @@ class TestLeadCompanyValidation(unittest.TestCase):
             success = True
         except ValidationError:
             success = False
-        
+
         # Assert
         self.assertTrue(success)
-    
+
     def test_agent_not_in_lead_company_fails(self):
         """
         GIVEN: Agent belongs to Company A, Lead assigned to Company B
@@ -75,11 +75,11 @@ class TestLeadCompanyValidation(unittest.TestCase):
         company_a.id = 1
         company_b = MagicMock()
         company_b.id = 2
-        
+
         agent_companies = {company_a}
         lead_companies = {company_b}
         intersection = agent_companies & lead_companies
-        
+
         # Act & Assert
         with self.assertRaises(ValidationError) as context:
             if self.lead.agent_id and self.lead.company_ids:
@@ -87,9 +87,9 @@ class TestLeadCompanyValidation(unittest.TestCase):
                     raise ValidationError(
                         "Agent must belong to at least one of the lead's companies."
                     )
-        
-        self.assertIn('Agent must belong to at least one', str(context.exception))
-    
+
+        self.assertIn("Agent must belong to at least one", str(context.exception))
+
     def test_agent_in_multiple_lead_companies_passes(self):
         """
         GIVEN: Agent belongs to Companies A, B, C; Lead assigned to Companies A, D
@@ -105,11 +105,11 @@ class TestLeadCompanyValidation(unittest.TestCase):
         company_c.id = 3
         company_d = MagicMock()
         company_d.id = 4
-        
+
         agent_companies = {company_a, company_b, company_c}
         lead_companies = {company_a, company_d}
         intersection = agent_companies & lead_companies
-        
+
         # Act
         try:
             if self.lead.agent_id and self.lead.company_ids:
@@ -120,10 +120,10 @@ class TestLeadCompanyValidation(unittest.TestCase):
             success = True
         except ValidationError:
             success = False
-        
+
         # Assert
         self.assertTrue(success)
-    
+
     def test_no_agent_assigned_passes(self):
         """
         GIVEN: Lead has no agent assigned (agent_id = False)
@@ -132,7 +132,7 @@ class TestLeadCompanyValidation(unittest.TestCase):
         """
         # Arrange
         self.lead.agent_id = False
-        
+
         # Act
         try:
             if self.lead.agent_id and self.lead.company_ids:
@@ -140,10 +140,10 @@ class TestLeadCompanyValidation(unittest.TestCase):
             success = True
         except ValidationError:
             success = False
-        
+
         # Assert
         self.assertTrue(success)
-    
+
     def test_no_companies_assigned_passes(self):
         """
         GIVEN: Lead has no companies assigned (company_ids = [])
@@ -152,7 +152,7 @@ class TestLeadCompanyValidation(unittest.TestCase):
         """
         # Arrange
         self.lead.company_ids = []
-        
+
         # Act
         try:
             if self.lead.agent_id and self.lead.company_ids:
@@ -160,10 +160,10 @@ class TestLeadCompanyValidation(unittest.TestCase):
             success = True
         except ValidationError:
             success = False
-        
+
         # Assert
         self.assertTrue(success)
-    
+
     def test_agent_in_all_lead_companies_passes(self):
         """
         GIVEN: Agent belongs to Companies A, B; Lead assigned to Companies A, B
@@ -175,11 +175,11 @@ class TestLeadCompanyValidation(unittest.TestCase):
         company_a.id = 1
         company_b = MagicMock()
         company_b.id = 2
-        
+
         agent_companies = {company_a, company_b}
         lead_companies = {company_a, company_b}
         intersection = agent_companies & lead_companies
-        
+
         # Act
         try:
             if self.lead.agent_id and self.lead.company_ids:
@@ -190,10 +190,10 @@ class TestLeadCompanyValidation(unittest.TestCase):
             success = True
         except ValidationError:
             success = False
-        
+
         # Assert
         self.assertTrue(success)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

@@ -43,8 +43,8 @@ class TestOrphanAgentBlocksStageChange(unittest.TestCase):
         """Forward transition (no_service → in_service) blocked when orphan."""
         blocked = _check_orphan_blocks_stage(
             is_orphan_agent=True,
-            origin_stage='no_service',
-            new_stage='in_service',
+            origin_stage="no_service",
+            new_stage="in_service",
         )
         self.assertTrue(blocked)
 
@@ -52,8 +52,8 @@ class TestOrphanAgentBlocksStageChange(unittest.TestCase):
         """Rollback also blocked when orphan."""
         blocked = _check_orphan_blocks_stage(
             is_orphan_agent=True,
-            origin_stage='visit',
-            new_stage='in_service',
+            origin_stage="visit",
+            new_stage="in_service",
         )
         self.assertTrue(blocked)
 
@@ -61,8 +61,8 @@ class TestOrphanAgentBlocksStageChange(unittest.TestCase):
         """Active agent does not trigger block."""
         blocked = _check_orphan_blocks_stage(
             is_orphan_agent=False,
-            origin_stage='no_service',
-            new_stage='in_service',
+            origin_stage="no_service",
+            new_stage="in_service",
         )
         self.assertFalse(blocked)
 
@@ -70,10 +70,10 @@ class TestOrphanAgentBlocksStageChange(unittest.TestCase):
         """No-op stage write (same stage) is never blocked."""
         blocked = _check_orphan_blocks_stage(
             is_orphan_agent=True,
-            origin_stage='in_service',
-            new_stage='in_service',
+            origin_stage="in_service",
+            new_stage="in_service",
         )
-        self.assertFalse(blocked, 'No-op write must not be blocked')
+        self.assertFalse(blocked, "No-op write must not be blocked")
 
     def test_orphan_visible_to_managers_via_filter(self):
         """FR-024a: orphan flag exposes service for manager queue filter."""
@@ -90,5 +90,5 @@ class TestOrphanAgentBlocksStageChange(unittest.TestCase):
         self.assertEqual(len(orphans), 3)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

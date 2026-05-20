@@ -3,57 +3,64 @@ from odoo import models, fields, api
 
 
 class PropertyBuilding(models.Model):
-    _name = 'real.estate.property.building'
-    _description = 'Building/Condominium'
-    _inherit = ['mail.thread', 'mail.activity.mixin']
-    _rec_name = 'name'
+    _name = "real.estate.property.building"
+    _description = "Building/Condominium"
+    _inherit = ["mail.thread", "mail.activity.mixin"]
+    _rec_name = "name"
 
-    name = fields.Char(string='Building Name', required=True, tracking=True)
-    address = fields.Text(string='Address')
-    city = fields.Char(string='City')
-    state_id = fields.Many2one('res.country.state', string='State')
-    zip_code = fields.Char(string='CEP')
+    name = fields.Char(string="Building Name", required=True, tracking=True)
+    address = fields.Text(string="Address")
+    city = fields.Char(string="City")
+    state_id = fields.Many2one("res.country.state", string="State")
+    zip_code = fields.Char(string="CEP")
     country_id = fields.Many2one(
-        'res.country',
-        string='Country',
-        default=lambda self: self.env['res.country'].search(
-            [('code', '=', 'BR')], limit=1
-        ).id or False
+        "res.country",
+        string="Country",
+        default=lambda self: self.env["res.country"]
+        .search([("code", "=", "BR")], limit=1)
+        .id
+        or False,
     )
-    
+
     # Building Details
-    total_floors = fields.Integer(string='Total Floors')
-    total_units = fields.Integer(string='Total Units')
-    construction_year = fields.Integer(string='Construction Year')
-    has_elevator = fields.Boolean(string='Has Elevator')
-    has_security = fields.Boolean(string='Has Security 24h')
-    has_pool = fields.Boolean(string='Has Pool')
-    has_gym = fields.Boolean(string='Has Gym')
-    has_playground = fields.Boolean(string='Has Playground')
-    has_party_room = fields.Boolean(string='Has Party Room')
-    has_sports_court = fields.Boolean(string='Has Sports Court')
-    
+    total_floors = fields.Integer(string="Total Floors")
+    total_units = fields.Integer(string="Total Units")
+    construction_year = fields.Integer(string="Construction Year")
+    has_elevator = fields.Boolean(string="Has Elevator")
+    has_security = fields.Boolean(string="Has Security 24h")
+    has_pool = fields.Boolean(string="Has Pool")
+    has_gym = fields.Boolean(string="Has Gym")
+    has_playground = fields.Boolean(string="Has Playground")
+    has_party_room = fields.Boolean(string="Has Party Room")
+    has_sports_court = fields.Boolean(string="Has Sports Court")
+
     # Financial
-    monthly_fee = fields.Monetary(string='Monthly Condominium Fee', currency_field='currency_id')
+    monthly_fee = fields.Monetary(
+        string="Monthly Condominium Fee", currency_field="currency_id"
+    )
     currency_id = fields.Many2one(
-        'res.currency',
-        string='Currency',
+        "res.currency",
+        string="Currency",
         default=lambda self: self.env.company.currency_id,
     )
-    
-    # Administrator
-    administrator_name = fields.Char(string='Administrator Name')
-    administrator_phone = fields.Char(string='Administrator Phone')
-    administrator_email = fields.Char(string='Administrator Email')
-    
-    notes = fields.Text(string='Notes')
-    active = fields.Boolean(default=True)
-    
-    # Relationships
-    property_ids = fields.One2many('real.estate.property', 'building_id', string='Properties')
-    property_count = fields.Integer(string='Property Count', compute='_compute_property_count')
 
-    @api.depends('property_ids')
+    # Administrator
+    administrator_name = fields.Char(string="Administrator Name")
+    administrator_phone = fields.Char(string="Administrator Phone")
+    administrator_email = fields.Char(string="Administrator Email")
+
+    notes = fields.Text(string="Notes")
+    active = fields.Boolean(default=True)
+
+    # Relationships
+    property_ids = fields.One2many(
+        "real.estate.property", "building_id", string="Properties"
+    )
+    property_count = fields.Integer(
+        string="Property Count", compute="_compute_property_count"
+    )
+
+    @api.depends("property_ids")
     def _compute_property_count(self):
         for building in self:
             building.property_count = len(building.property_ids)

@@ -15,14 +15,14 @@ from odoo.tests.common import HttpCase, tagged
 _logger = logging.getLogger(__name__)
 
 
-@tagged('post_install', '-at_install', 'service_api')
+@tagged("post_install", "-at_install", "service_api")
 class TestServiceSummaryEndpoint(HttpCase):
     """HTTP tests for /api/v1/services/summary."""
 
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.summary_url = '/api/v1/services/summary'
+        cls.summary_url = "/api/v1/services/summary"
 
     def test_summary_requires_auth(self):
         """GET /services/summary without auth returns 401."""
@@ -41,6 +41,6 @@ class TestServiceSummaryEndpoint(HttpCase):
         resp = self.url_open(
             self.summary_url,
             data=json.dumps({}),
-            headers={'Content-Type': 'application/json'},
+            headers={"Content-Type": "application/json"},
         )
         self.assertNotEqual(resp.status_code, 200)
