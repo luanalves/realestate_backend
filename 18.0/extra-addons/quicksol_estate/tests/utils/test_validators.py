@@ -19,7 +19,7 @@ import re
 
 # ===== Email validation from tenant.py =====
 
-EMAIL_REGEX = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+EMAIL_REGEX = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
 
 
 def is_valid_email_regex(email):
@@ -31,69 +31,99 @@ def is_valid_email_regex(email):
 
 # ===== Schema constraint lambdas (from schema.py) =====
 
+
+def _strip_nonempty(value):
+    return len(value.strip()) > 0
+
+
+def _optional_strip_nonempty(value):
+    return _strip_nonempty(value) if value else True
+
+
+def _optional_email(value):
+    return "@" in value and "." in value.split("@")[-1] if value else True
+
+
+def _positive(value):
+    return value > 0
+
+
+def _optional_positive(value):
+    return value > 0 if value else True
+
+
+def _lease_status(value):
+    return value in ("draft", "active") if value else True
+
+
+def _nonnegative_or_none(value):
+    return value >= 0 if value is not None else True
+
+
 # Tenant constraints
-tenant_create_name = lambda v: len(v.strip()) > 0
-tenant_create_email = lambda v: '@' in v and '.' in v.split('@')[-1] if v else True
-tenant_update_name = lambda v: len(v.strip()) > 0 if v else True
-tenant_update_email = lambda v: '@' in v and '.' in v.split('@')[-1] if v else True
+tenant_create_name = _strip_nonempty
+tenant_create_email = _optional_email
+tenant_update_name = _optional_strip_nonempty
+tenant_update_email = _optional_email
 
 # Lease constraints
-lease_property_id = lambda v: v > 0
-lease_tenant_id = lambda v: v > 0
-lease_rent_amount = lambda v: v > 0
-lease_update_rent = lambda v: v > 0 if v else True
-lease_status = lambda v: v in ('draft', 'active') if v else True
-lease_renew_rent = lambda v: v > 0 if v else True
-lease_penalty = lambda v: v >= 0 if v is not None else True
+lease_property_id = _positive
+lease_tenant_id = _positive
+lease_rent_amount = _positive
+lease_update_rent = _optional_positive
+lease_status = _lease_status
+lease_renew_rent = _optional_positive
+lease_penalty = _nonnegative_or_none
 
 # Sale constraints
-sale_property_id = lambda v: v > 0
-sale_company_id = lambda v: v > 0
-sale_buyer_name = lambda v: len(v.strip()) > 0
-sale_price = lambda v: v > 0
-sale_buyer_email = lambda v: '@' in v and '.' in v.split('@')[-1] if v else True
-sale_update_name = lambda v: len(v.strip()) > 0 if v else True
-sale_update_price = lambda v: v > 0 if v else True
-sale_cancel_reason = lambda v: len(v.strip()) > 0
+sale_property_id = _positive
+sale_company_id = _positive
+sale_buyer_name = _strip_nonempty
+sale_price = _positive
+sale_buyer_email = _optional_email
+sale_update_name = _optional_strip_nonempty
+sale_update_price = _optional_positive
+sale_cancel_reason = _strip_nonempty
 
 
 # ===== Test Classes =====
+
 
 class TestEmailRegexValidation(unittest.TestCase):
     """Test the regex-based email validation from tenant model"""
 
     def test_valid_standard_email(self):
-        self.assertTrue(is_valid_email_regex('user@example.com'))
+        self.assertTrue(is_valid_email_regex("user@example.com"))
 
     def test_valid_subdomain_email(self):
-        self.assertTrue(is_valid_email_regex('user@mail.example.com'))
+        self.assertTrue(is_valid_email_regex("user@mail.example.com"))
 
     def test_valid_email_with_dots(self):
-        self.assertTrue(is_valid_email_regex('first.last@example.com'))
+        self.assertTrue(is_valid_email_regex("first.last@example.com"))
 
     def test_valid_email_with_plus(self):
-        self.assertTrue(is_valid_email_regex('user+tag@example.com'))
+        self.assertTrue(is_valid_email_regex("user+tag@example.com"))
 
     def test_valid_email_with_numbers(self):
-        self.assertTrue(is_valid_email_regex('user123@example.com'))
+        self.assertTrue(is_valid_email_regex("user123@example.com"))
 
     def test_invalid_no_at(self):
-        self.assertFalse(is_valid_email_regex('userexample.com'))
+        self.assertFalse(is_valid_email_regex("userexample.com"))
 
     def test_invalid_no_domain(self):
-        self.assertFalse(is_valid_email_regex('user@'))
+        self.assertFalse(is_valid_email_regex("user@"))
 
     def test_invalid_short_tld(self):
-        self.assertFalse(is_valid_email_regex('user@example.c'))
+        self.assertFalse(is_valid_email_regex("user@example.c"))
 
     def test_invalid_spaces(self):
-        self.assertFalse(is_valid_email_regex('user @example.com'))
+        self.assertFalse(is_valid_email_regex("user @example.com"))
 
     def test_invalid_double_at(self):
-        self.assertFalse(is_valid_email_regex('user@@example.com'))
+        self.assertFalse(is_valid_email_regex("user@@example.com"))
 
     def test_empty_string_skips(self):
-        self.assertTrue(is_valid_email_regex(''))
+        self.assertTrue(is_valid_email_regex(""))
 
     def test_none_skips(self):
         self.assertTrue(is_valid_email_regex(None))
@@ -103,60 +133,60 @@ class TestSchemaEmailConstraint(unittest.TestCase):
     """Test the schema-level email constraint lambdas"""
 
     def test_valid_email(self):
-        self.assertTrue(tenant_create_email('user@example.com'))
+        self.assertTrue(tenant_create_email("user@example.com"))
 
     def test_invalid_email_no_at(self):
-        self.assertFalse(tenant_create_email('userexample.com'))
+        self.assertFalse(tenant_create_email("userexample.com"))
 
     def test_invalid_email_no_dot_in_domain(self):
-        self.assertFalse(tenant_create_email('user@examplecom'))
+        self.assertFalse(tenant_create_email("user@examplecom"))
 
     def test_empty_passes(self):
         """Empty/falsy value should return True (skip validation)"""
-        self.assertTrue(tenant_create_email(''))
+        self.assertTrue(tenant_create_email(""))
         self.assertTrue(tenant_create_email(None))
 
     def test_buyer_email_valid(self):
-        self.assertTrue(sale_buyer_email('buyer@example.com'))
+        self.assertTrue(sale_buyer_email("buyer@example.com"))
 
     def test_buyer_email_invalid(self):
-        self.assertFalse(sale_buyer_email('not-valid'))
+        self.assertFalse(sale_buyer_email("not-valid"))
 
     def test_buyer_email_empty(self):
-        self.assertTrue(sale_buyer_email(''))
+        self.assertTrue(sale_buyer_email(""))
 
 
 class TestNameConstraints(unittest.TestCase):
     """Test name constraint lambdas across schemas"""
 
     def test_tenant_name_valid(self):
-        self.assertTrue(tenant_create_name('João Silva'))
+        self.assertTrue(tenant_create_name("João Silva"))
 
     def test_tenant_name_whitespace_only(self):
-        self.assertFalse(tenant_create_name('   '))
+        self.assertFalse(tenant_create_name("   "))
 
     def test_tenant_name_single_char(self):
-        self.assertTrue(tenant_create_name('A'))
+        self.assertTrue(tenant_create_name("A"))
 
     def test_tenant_update_name_none(self):
         """None/empty in update should pass (optional field)"""
         self.assertTrue(tenant_update_name(None))
-        self.assertTrue(tenant_update_name(''))
+        self.assertTrue(tenant_update_name(""))
 
     def test_sale_buyer_name_valid(self):
-        self.assertTrue(sale_buyer_name('Maria Santos'))
+        self.assertTrue(sale_buyer_name("Maria Santos"))
 
     def test_sale_buyer_name_empty(self):
-        self.assertFalse(sale_buyer_name('   '))
+        self.assertFalse(sale_buyer_name("   "))
 
     def test_sale_update_name_none(self):
         self.assertTrue(sale_update_name(None))
 
     def test_cancel_reason_valid(self):
-        self.assertTrue(sale_cancel_reason('Buyer withdrew'))
+        self.assertTrue(sale_cancel_reason("Buyer withdrew"))
 
     def test_cancel_reason_empty(self):
-        self.assertFalse(sale_cancel_reason('   '))
+        self.assertFalse(sale_cancel_reason("   "))
 
 
 class TestNumericConstraints(unittest.TestCase):
@@ -244,23 +274,23 @@ class TestStatusConstraints(unittest.TestCase):
     """Test status constraint lambda for lease creation"""
 
     def test_draft_valid(self):
-        self.assertTrue(lease_status('draft'))
+        self.assertTrue(lease_status("draft"))
 
     def test_active_valid(self):
-        self.assertTrue(lease_status('active'))
+        self.assertTrue(lease_status("active"))
 
     def test_terminated_invalid(self):
         """'terminated' is not allowed in create schema"""
-        self.assertFalse(lease_status('terminated'))
+        self.assertFalse(lease_status("terminated"))
 
     def test_invalid_value(self):
-        self.assertFalse(lease_status('random'))
+        self.assertFalse(lease_status("random"))
 
     def test_none_passes(self):
         """None/falsy should pass (optional default)"""
         self.assertTrue(lease_status(None))
-        self.assertTrue(lease_status(''))
+        self.assertTrue(lease_status(""))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

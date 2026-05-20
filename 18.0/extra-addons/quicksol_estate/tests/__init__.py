@@ -13,6 +13,7 @@ from .api import test_property_api_auth
 from .api import test_master_data_api
 from .api import test_company_isolation_api
 from .api import test_property_attachments_api  # Feature 017
+from .api import test_capabilities_api  # Feature 020
 
 # Integration tests directory (TransactionCase - WITH database)
 from . import integration

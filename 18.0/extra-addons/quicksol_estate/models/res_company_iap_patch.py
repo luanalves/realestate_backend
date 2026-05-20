@@ -15,6 +15,8 @@ class ResCompanyIapPatch(models.Model):
     _inherit = "res.company"
 
     def iap_enrich_auto(self):
-        if self.env.context.get("no_recompute") or self.env.context.get("tracking_disable"):
+        if self.env.context.get("no_recompute") or self.env.context.get(
+            "tracking_disable"
+        ):
             return True
         return super().iap_enrich_auto()

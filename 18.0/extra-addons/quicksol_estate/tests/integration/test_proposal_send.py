@@ -5,19 +5,19 @@ Covers: US1/FR-007 (draft→sent), FR-008 (default validity), FR-038 (email noti
 """
 from datetime import date, timedelta
 from odoo.tests import tagged
-from odoo.exceptions import UserError, ValidationError
+from odoo.exceptions import UserError
 
 from .base_proposal_test import BaseProposalTest
 
 
-@tagged('post_install', '-at_install', 'proposal', 'proposal_send')
+@tagged("post_install", "-at_install", "proposal", "proposal_send")
 class TestProposalSend(BaseProposalTest):
 
     def test_send_transitions_to_sent(self):
         """FR-007: action_send() moves draft → sent."""
         proposal = self._create_proposal()
         proposal.action_send()
-        self.assertEqual(proposal.state, 'sent')
+        self.assertEqual(proposal.state, "sent")
 
     def test_send_sets_sent_date(self):
         """FR-007: sent_date is recorded on send."""
@@ -42,7 +42,7 @@ class TestProposalSend(BaseProposalTest):
     def test_send_from_wrong_state_raises(self):
         """FSM guard: cannot send a queued proposal."""
         proposal = self._create_proposal()
-        proposal.write({'state': 'queued'})
+        proposal.write({"state": "queued"})
         with self.assertRaises(UserError):
             proposal.action_send()
 
@@ -50,6 +50,6 @@ class TestProposalSend(BaseProposalTest):
         """FSM guard: cannot re-send a cancelled proposal."""
         proposal = self._create_proposal()
         proposal.action_send()
-        proposal.action_cancel('test')
+        proposal.action_cancel("test")
         with self.assertRaises(UserError):
             proposal.action_send()

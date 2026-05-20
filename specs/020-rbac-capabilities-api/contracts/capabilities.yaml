@@ -1,0 +1,363 @@
+openapi: "3.0.3"
+
+info:
+  title: RBAC Capabilities API
+  version: "1.0.0"
+  description: |
+    Design contract reference for `GET /api/v1/me/capabilities`.
+
+    **Important**: This YAML file is a planning artefact only. Live Swagger/OpenAPI
+    registration MUST be done via the `thedevkitchen_api_endpoint` database records
+    per ADR-005. Do NOT edit static files to add this endpoint to the live docs.
+
+    The endpoint returns a minimal, CASL-safe capability payload derived from the
+    authenticated session context. No backend RBAC internals (Odoo group names, XML IDs,
+    record rules, domains, model names) are present in any response.
+
+servers:
+  - url: /api/v1
+    description: Odoo 18.0 REST API base
+
+paths:
+  /me/capabilities:
+    get:
+      operationId: getMyCapabilities
+      summary: Get authenticated user's CASL-safe capability rules
+      description: |
+        Returns a conservative allow-list of `action` + `subject` rule pairs for the
+        authenticated user's active session and company context. The response is suitable
+        for direct use with CASL (`@casl/ability`) on the headless frontend.
+
+        **Rule ordering**: Subjects appear in backend-declared business/navigation order
+        (not alphabetical). Actions within each subject follow semantic progression:
+        `view → create → update → delete → reassign → approve → cancel → export`.
+
+        **Deny-by-omission**: A missing rule means the action is denied. Denied rules
+        are never returned as boolean flags or with deny reasons.
+
+        **No-role users**: Authenticated users with no recognized real-estate role receive
+        `200 OK` with `user.role = null` and `rules = []`.
+
+      tags:
+        - Identity
+
+      security:
+        - BearerAuth: []
+        - SessionId: []
+        - CompanyId: []
+
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          description: "OAuth 2.0 Bearer token. Format: `Bearer <token>`"
+          schema:
+            type: string
+            example: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+
+        - name: X-Openerp-Session-Id
+          in: header
+          required: true
+          description: Active Odoo session identifier (validated by `@require_session`)
+          schema:
+            type: string
+            minLength: 60
+            maxLength: 100
+            example: "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2"
+
+        - name: X-Company-ID
+          in: header
+          required: false
+          description: |
+            Active company ID. Validated by `@require_company`. If the user's authenticated
+            company context does not include a valid real-estate company, a 403 is returned.
+          schema:
+            type: integer
+            example: 5
+
+      responses:
+        "200":
+          description: |
+            Capability payload for the authenticated user. Always returns exactly two
+            top-level keys: `user` and `rules`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CapabilityResponse"
+              examples:
+                agent_response:
+                  summary: Response for an agent user
+                  value:
+                    user:
+                      id: 42
+                      role: "agent"
+                      company_id: 5
+                    rules:
+                      - action: "view"
+                        subject: "MenuCRM"
+                      - action: "view"
+                        subject: "Dashboard"
+                      - action: "view"
+                        subject: "Property"
+                      - action: "create"
+                        subject: "Property"
+                      - action: "update"
+                        subject: "Property"
+                      - action: "view"
+                        subject: "Lead"
+                      - action: "create"
+                        subject: "Lead"
+                      - action: "update"
+                        subject: "Lead"
+                      - action: "view"
+                        subject: "Service"
+                      - action: "create"
+                        subject: "Service"
+                      - action: "update"
+                        subject: "Service"
+                      - action: "cancel"
+                        subject: "Service"
+                      - action: "view"
+                        subject: "Proposal"
+                      - action: "create"
+                        subject: "Proposal"
+                      - action: "update"
+                        subject: "Proposal"
+                      - action: "cancel"
+                        subject: "Proposal"
+                      - action: "view"
+                        subject: "Goal"
+
+                owner_response:
+                  summary: Response for an owner user (abbreviated)
+                  value:
+                    user:
+                      id: 1
+                      role: "owner"
+                      company_id: 3
+                    rules:
+                      - action: "view"
+                        subject: "MenuCRM"
+                      - action: "view"
+                        subject: "MenuAdmin"
+                      - action: "view"
+                        subject: "Dashboard"
+                      - action: "view"
+                        subject: "Property"
+                      - action: "create"
+                        subject: "Property"
+                      - action: "update"
+                        subject: "Property"
+                      - action: "delete"
+                        subject: "Property"
+                      # ... additional rules omitted for brevity
+
+                external_role_response:
+                  summary: Response for a property_owner or tenant (minimal external-safe rules)
+                  value:
+                    user:
+                      id: 99
+                      role: "property_owner"
+                      company_id: 5
+                    rules:
+                      - action: "view"
+                        subject: "Property"
+                      - action: "view"
+                        subject: "Proposal"
+
+                no_role_response:
+                  summary: Response when user has no recognized real-estate role
+                  value:
+                    user:
+                      id: 77
+                      role: null
+                      company_id: 5
+                    rules: []
+
+        "401":
+          description: |
+            Authentication failed. Possible causes:
+            - Missing or invalid Bearer token
+            - Expired token
+            - Missing or invalid session ID
+            - Session fingerprint mismatch (IP, User-Agent, or Accept-Language changed)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "unauthorized"
+
+        "403":
+          description: |
+            Authorization failed. Possible causes:
+            - User has no active real-estate company
+            - Company context is invalid or unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "forbidden"
+
+        "500":
+          description: |
+            Internal server error. The response is intentionally generic and
+            does not reveal security internals, stack traces, or RBAC details.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "internal_server_error"
+
+components:
+  schemas:
+    CapabilityResponse:
+      type: object
+      description: |
+        The complete capability payload. Contains exactly two top-level keys.
+        No additional fields are present in any version of this contract.
+      required:
+        - user
+        - rules
+      additionalProperties: false
+      properties:
+        user:
+          $ref: "#/components/schemas/CapabilityUser"
+        rules:
+          type: array
+          description: |
+            Ordered list of allowed CASL-safe rule pairs. Empty array (`[]`) when the user
+            has no recognized real-estate role. Never `null`.
+            Ordering: canonical backend declarative contract order (business/navigation
+            subject order; semantic action progression within each subject).
+          items:
+            $ref: "#/components/schemas/CapabilityRule"
+
+    CapabilityUser:
+      type: object
+      description: |
+        Minimal identity context for the active authenticated session.
+        Contains exactly three fields — no name, email, or other `/api/v1/me` fields.
+      required:
+        - id
+        - role
+        - company_id
+      additionalProperties: false
+      properties:
+        id:
+          type: integer
+          description: Odoo `res.users` ID of the authenticated user
+          example: 42
+        role:
+          type: string
+          nullable: true
+          description: |
+            Resolved real-estate role string for the active session.
+            `null` when no recognized role is found.
+          enum:
+            - owner
+            - director
+            - manager
+            - agent
+            - prospector
+            - receptionist
+            - financial
+            - legal
+            - property_owner
+            - tenant
+          example: "agent"
+        company_id:
+          type: integer
+          description: Active `res.company` ID from the authenticated company context
+          example: 5
+
+    CapabilityRule:
+      type: object
+      description: |
+        A single CASL-safe permission rule. Shape is `{ action, subject }` — no `inverted`,
+        `conditions`, `fields`, or other CASL extended fields in this MVP contract.
+        Presence means allowed; absence means denied.
+      required:
+        - action
+        - subject
+      additionalProperties: false
+      properties:
+        action:
+          type: string
+          description: Product action allowed in the UI
+          enum:
+            - view
+            - create
+            - update
+            - delete
+            - reassign
+            - approve
+            - cancel
+            - export
+          example: "view"
+        subject:
+          type: string
+          description: Product subject the action applies to
+          enum:
+            - MenuCRM
+            - MenuAdmin
+            - MenuCMS
+            - Dashboard
+            - Property
+            - Lead
+            - Service
+            - Proposal
+            - Agent
+            - Company
+            - Settings
+            - Appointment
+            - Report
+            - Goal
+            - CMSPage
+            - CMSMedia
+          example: "Property"
+
+    ErrorResponse:
+      type: object
+      description: |
+        Generic error envelope. Intentionally minimal — no stack traces, Odoo internals,
+        RBAC details, or security reasoning are ever included.
+      required:
+        - error
+      additionalProperties: false
+      properties:
+        error:
+          type: string
+          description: Machine-readable snake_case error code
+          enum:
+            - unauthorized
+            - forbidden
+            - internal_server_error
+          example: "unauthorized"
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: "OAuth 2.0 Bearer token (validated by @require_jwt)"
+
+    SessionId:
+      type: apiKey
+      in: header
+      name: X-Openerp-Session-Id
+      description: "Active Odoo session identifier (validated by @require_session)"
+
+    CompanyId:
+      type: apiKey
+      in: header
+      name: X-Company-ID
+      description: "Active company ID (validated by @require_company)"
+
+tags:
+  - name: Identity
+    description: |
+      Endpoints for authenticated user identity and capability resolution.
+      All endpoints in this group require the triple decorator stack:
+      `@require_jwt + @require_session + @require_company`.

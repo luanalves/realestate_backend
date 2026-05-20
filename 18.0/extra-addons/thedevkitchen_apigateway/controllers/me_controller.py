@@ -41,22 +41,9 @@ class MeController(http.Controller):
                 for c in getattr(user, 'company_ids', user.env['res.company']).filtered(lambda c: c.is_real_estate)
             ]
 
-            role_map = {
-                'quicksol_estate.group_real_estate_owner': 'owner',
-                'quicksol_estate.group_real_estate_director': 'director',
-                'quicksol_estate.group_real_estate_manager': 'manager',
-                'quicksol_estate.group_real_estate_agent': 'agent',
-                'quicksol_estate.group_real_estate_prospector': 'prospector',
-                'quicksol_estate.group_real_estate_receptionist': 'receptionist',
-                'quicksol_estate.group_real_estate_financial': 'financial',
-                'quicksol_estate.group_real_estate_legal': 'legal',
-                'quicksol_estate.group_real_estate_property_owner': 'property_owner',
-                'quicksol_estate.group_real_estate_tenant': 'tenant',
-            }
-            role = next(
-                (role_name for xml_id, role_name in role_map.items() if user.has_group(xml_id)),
-                None
-            )
+            from odoo.addons.quicksol_estate.services.role_resolver import resolve_role
+
+            role = resolve_role(user)
 
             user_data = {
                 'id': user.id,

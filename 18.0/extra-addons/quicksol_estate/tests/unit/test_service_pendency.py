@@ -18,7 +18,11 @@ def _compute_is_pending(last_activity_date, threshold_days=3):
     if not last_activity_date:
         return False
     cutoff = date.today() - timedelta(days=threshold_days)
-    return last_activity_date.date() <= cutoff if hasattr(last_activity_date, 'date') else last_activity_date <= cutoff
+    return (
+        last_activity_date.date() <= cutoff
+        if hasattr(last_activity_date, "date")
+        else last_activity_date <= cutoff
+    )
 
 
 def _compute_last_activity(write_date, message_dates=None):
@@ -97,7 +101,9 @@ class TestPendencyThresholdSettings(unittest.TestCase):
         settings = MagicMock()
         settings.pendency_threshold_days = 3
         four_ago = date.today() - timedelta(days=4)
-        pending = _compute_is_pending(four_ago, threshold_days=settings.pendency_threshold_days)
+        pending = _compute_is_pending(
+            four_ago, threshold_days=settings.pendency_threshold_days
+        )
         self.assertTrue(pending)
 
     def test_custom_threshold_respected(self):
@@ -106,9 +112,11 @@ class TestPendencyThresholdSettings(unittest.TestCase):
         settings.pendency_threshold_days = 7
         five_ago = date.today() - timedelta(days=5)
         # 5 days ago < 7 days threshold → not pending yet
-        pending = _compute_is_pending(five_ago, threshold_days=settings.pendency_threshold_days)
+        pending = _compute_is_pending(
+            five_ago, threshold_days=settings.pendency_threshold_days
+        )
         self.assertFalse(pending)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

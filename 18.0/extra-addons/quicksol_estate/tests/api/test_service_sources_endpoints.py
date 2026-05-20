@@ -10,10 +10,10 @@ import logging
 from odoo.tests.common import HttpCase, tagged
 
 _logger = logging.getLogger(__name__)
-BASE = '/api/v1/service-sources'
+BASE = "/api/v1/service-sources"
 
 
-@tagged('post_install', '-at_install', 'service_api')
+@tagged("post_install", "-at_install", "service_api")
 class TestServiceSourcesEndpoints(HttpCase):
 
     def test_list_sources_requires_auth(self):
@@ -21,13 +21,15 @@ class TestServiceSourcesEndpoints(HttpCase):
         self.assertEqual(resp.status_code, 401)
 
     def test_create_source_requires_auth(self):
-        resp = self.url_open(BASE,
-                             data=json.dumps({'name': 'Website', 'code': 'site'}),
-                             headers={'Content-Type': 'application/json'})
+        resp = self.url_open(
+            BASE,
+            data=json.dumps({"name": "Website", "code": "site"}),
+            headers={"Content-Type": "application/json"},
+        )
         self.assertEqual(resp.status_code, 401)
 
     def test_get_source_by_id_requires_auth(self):
-        resp = self.url_open(f'{BASE}/1')
+        resp = self.url_open(f"{BASE}/1")
         self.assertIn(resp.status_code, [401, 404])
 
     def test_sources_endpoint_exists(self):

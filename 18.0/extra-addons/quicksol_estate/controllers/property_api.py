@@ -14,14 +14,24 @@ from .utils.serializers import (
     serialize_property,
     validate_property_access,
 )
-from odoo.addons.thedevkitchen_apigateway.middleware import require_session, require_company
+from odoo.addons.thedevkitchen_apigateway.middleware import (
+    require_session,
+    require_company,
+)
 from ..services.company_validator import CompanyValidator
 
 _logger = logging.getLogger(__name__)
 
 
 class PropertyApiController(http.Controller):
-    @http.route('/api/v1/properties',type='http', auth='none', methods=['GET'], csrf=False, cors='*')
+    @http.route(
+        "/api/v1/properties",
+        type="http",
+        auth="none",
+        methods=["GET"],
+        csrf=False,
+        cors="*",
+    )
     @require_jwt
     @require_session
     @require_company
@@ -30,120 +40,141 @@ class PropertyApiController(http.Controller):
             user = request.env.user
 
             # Parse query parameters
-            is_active = kwargs.get('is_active')
-            company_ids_param = kwargs.get('company_ids')
-            limit = min(int(kwargs.get('limit', 20)), 100)
-            offset = int(kwargs.get('offset', 0))
+            is_active = kwargs.get("is_active")
+            company_ids_param = kwargs.get("company_ids")
+            limit = min(int(kwargs.get("limit", 20)), 100)
+            offset = int(kwargs.get("offset", 0))
 
             # Validate company_ids parameter (REQUIRED)
             if not company_ids_param:
-                return error_response(400, 'company_ids parameter is required')
+                return error_response(400, "company_ids parameter is required")
 
             # Parse company_ids (can be comma-separated: "1,2,3")
             try:
-                requested_company_ids = [int(cid.strip()) for cid in company_ids_param.split(',')]
+                requested_company_ids = [
+                    int(cid.strip()) for cid in company_ids_param.split(",")
+                ]
             except ValueError:
-                return error_response(400, 'Invalid company_ids format. Use comma-separated integers (e.g., "1,2,3")')
+                return error_response(
+                    400,
+                    'Invalid company_ids format. Use comma-separated integers (e.g., "1,2,3")',
+                )
 
             # Validate user has access to all requested companies (multi-tenancy security)
             # Admin users (request.user_company_ids is empty for admins) skip this validation
             if request.user_company_ids:  # Not admin
-                unauthorized_companies = [cid for cid in requested_company_ids if cid not in request.user_company_ids]
+                unauthorized_companies = [
+                    cid
+                    for cid in requested_company_ids
+                    if cid not in request.user_company_ids
+                ]
                 if unauthorized_companies:
-                    return error_response(403, f'Access denied to company IDs: {unauthorized_companies}. You can only access companies: {request.user_company_ids}')
+                    return error_response(
+                        403,
+                        f"Access denied to company IDs: {unauthorized_companies}. You can only access companies: {request.user_company_ids}",
+                    )
 
             # Build domain for filtering
             domain = []
 
             # Active filter (ADR-015: soft-delete)
             if is_active is not None:
-                if is_active.lower() == 'true':
-                    domain.append(('active', '=', True))
-                elif is_active.lower() == 'false':
-                    domain.append(('active', '=', False))
+                if is_active.lower() == "true":
+                    domain.append(("active", "=", True))
+                elif is_active.lower() == "false":
+                    domain.append(("active", "=", False))
             # If is_active is None, no filter is applied (returns all)
 
             # Company filter using validated company_ids
             if len(requested_company_ids) == 1:
-                domain.append(('company_id', '=', requested_company_ids[0]))
+                domain.append(("company_id", "=", requested_company_ids[0]))
             else:
-                domain.append(('company_id', 'in', requested_company_ids))
+                domain.append(("company_id", "in", requested_company_ids))
 
             # Optional filters
-            if kwargs.get('property_type_id'):
+            if kwargs.get("property_type_id"):
                 try:
-                    domain.append(('property_type_id', '=', int(kwargs['property_type_id'])))
+                    domain.append(
+                        ("property_type_id", "=", int(kwargs["property_type_id"]))
+                    )
                 except ValueError:
-                    return error_response(400, 'Invalid property_type_id')
+                    return error_response(400, "Invalid property_type_id")
 
-            if kwargs.get('property_status'):
-                status = kwargs['property_status']
+            if kwargs.get("property_status"):
+                status = kwargs["property_status"]
                 valid_statuses = get_property_status_values(request.env)
                 if status not in valid_statuses:
-                    return error_response(400, f"Invalid property_status. Must be: {', '.join(valid_statuses)}")
-                domain.append(('property_status', '=', status))
+                    return error_response(
+                        400,
+                        f"Invalid property_status. Must be: {', '.join(valid_statuses)}",
+                    )
+                domain.append(("property_status", "=", status))
 
-            if kwargs.get('agent_id'):
+            if kwargs.get("agent_id"):
                 try:
-                    domain.append(('agent_id', '=', int(kwargs['agent_id'])))
+                    domain.append(("agent_id", "=", int(kwargs["agent_id"])))
                 except ValueError:
-                    return error_response(400, 'Invalid agent_id')
+                    return error_response(400, "Invalid agent_id")
 
-            if kwargs.get('city'):
-                domain.append(('city', 'ilike', kwargs['city']))
+            if kwargs.get("city"):
+                domain.append(("city", "ilike", kwargs["city"]))
 
-            if kwargs.get('state_id'):
+            if kwargs.get("state_id"):
                 try:
-                    domain.append(('state_id', '=', int(kwargs['state_id'])))
+                    domain.append(("state_id", "=", int(kwargs["state_id"])))
                 except ValueError:
-                    return error_response(400, 'Invalid state_id')
+                    return error_response(400, "Invalid state_id")
 
-            if kwargs.get('min_price'):
+            if kwargs.get("min_price"):
                 try:
-                    domain.append(('price', '>=', float(kwargs['min_price'])))
+                    domain.append(("price", ">=", float(kwargs["min_price"])))
                 except ValueError:
-                    return error_response(400, 'Invalid min_price')
+                    return error_response(400, "Invalid min_price")
 
-            if kwargs.get('max_price'):
+            if kwargs.get("max_price"):
                 try:
-                    domain.append(('price', '<=', float(kwargs['max_price'])))
+                    domain.append(("price", "<=", float(kwargs["max_price"])))
                 except ValueError:
-                    return error_response(400, 'Invalid max_price')
+                    return error_response(400, "Invalid max_price")
 
-            if kwargs.get('for_sale') is not None:
-                for_sale = kwargs['for_sale'].lower() == 'true'
-                domain.append(('for_sale', '=', for_sale))
+            if kwargs.get("for_sale") is not None:
+                for_sale = kwargs["for_sale"].lower() == "true"
+                domain.append(("for_sale", "=", for_sale))
 
-            if kwargs.get('for_rent') is not None:
-                for_rent = kwargs['for_rent'].lower() == 'true'
-                domain.append(('for_rent', '=', for_rent))
+            if kwargs.get("for_rent") is not None:
+                for_rent = kwargs["for_rent"].lower() == "true"
+                domain.append(("for_rent", "=", for_rent))
 
             # RBAC filter
-            is_admin = user.has_group('base.group_system')
-            is_manager = user.has_group('quicksol_estate.group_real_estate_manager')
-            is_owner = user.has_group('quicksol_estate.group_real_estate_owner')
-            is_agent = user.has_group('quicksol_estate.group_real_estate_agent')
+            is_admin = user.has_group("base.group_system")
+            is_manager = user.has_group("quicksol_estate.group_real_estate_manager")
+            is_owner = user.has_group("quicksol_estate.group_real_estate_owner")
+            is_agent = user.has_group("quicksol_estate.group_real_estate_agent")
 
             if not is_admin and not is_manager and not is_owner:
                 if is_agent:
                     # Agent sees only their assigned properties
-                    agent_record = request.env['real.estate.agent'].sudo().search([
-                        ('user_id', '=', user.id)
-                    ], limit=1)
+                    agent_record = (
+                        request.env["real.estate.agent"]
+                        .sudo()
+                        .search([("user_id", "=", user.id)], limit=1)
+                    )
 
                     if agent_record:
-                        domain.append(('agent_id', '=', agent_record.id))
+                        domain.append(("agent_id", "=", agent_record.id))
                     else:
                         # Agent without agent record sees nothing
-                        domain.append(('id', '=', False))
+                        domain.append(("id", "=", False))
 
             # Query properties
-            Property = request.env['real.estate.property']
+            Property = request.env["real.estate.property"]
 
             # Use active_test=False to include inactive records when is_active is not specified
             total = Property.with_context(active_test=False).sudo().search_count(domain)
-            properties = Property.with_context(active_test=False).sudo().search(
-                domain, limit=limit, offset=offset, order='name asc'
+            properties = (
+                Property.with_context(active_test=False)
+                .sudo()
+                .search(domain, limit=limit, offset=offset, order="name asc")
             )
 
             # Serialize properties
@@ -152,35 +183,46 @@ class PropertyApiController(http.Controller):
                 property_list.append(serialize_property(prop))
 
             # Build response with pagination (ADR-007: HATEOAS)
-            company_ids_str = ','.join(str(cid) for cid in requested_company_ids)
+            company_ids_str = ",".join(str(cid) for cid in requested_company_ids)
             response_data = {
-                'success': True,
-                'data': property_list,
-                'count': len(property_list),
-                'total': total,
-                'limit': limit,
-                'offset': offset,
-                '_links': {
-                    'self': f'/api/v1/properties?company_ids={company_ids_str}&limit={limit}&offset={offset}',
-                }
+                "success": True,
+                "data": property_list,
+                "count": len(property_list),
+                "total": total,
+                "limit": limit,
+                "offset": offset,
+                "_links": {
+                    "self": f"/api/v1/properties?company_ids={company_ids_str}&limit={limit}&offset={offset}",
+                },
             }
 
             # Add next/prev links
             if offset + limit < total:
-                response_data['_links']['next'] = f'/api/v1/properties?company_ids={company_ids_str}&limit={limit}&offset={offset + limit}'
+                response_data["_links"][
+                    "next"
+                ] = f"/api/v1/properties?company_ids={company_ids_str}&limit={limit}&offset={offset + limit}"
             if offset > 0:
                 prev_offset = max(0, offset - limit)
-                response_data['_links']['prev'] = f'/api/v1/properties?company_ids={company_ids_str}&limit={limit}&offset={prev_offset}'
+                response_data["_links"][
+                    "prev"
+                ] = f"/api/v1/properties?company_ids={company_ids_str}&limit={limit}&offset={prev_offset}"
 
             return success_response(response_data)
 
         except ValueError as e:
-            return error_response(400, f'Invalid parameter: {str(e)}')
+            return error_response(400, f"Invalid parameter: {str(e)}")
         except Exception as e:
-            _logger.exception('Error listing properties')
-            return error_response(500, f'Internal server error: {str(e)}')
+            _logger.exception("Error listing properties")
+            return error_response(500, f"Internal server error: {str(e)}")
 
-    @http.route('/api/v1/properties', type='http', auth='none', methods=['POST'], csrf=False, cors='*')
+    @http.route(
+        "/api/v1/properties",
+        type="http",
+        auth="none",
+        methods=["POST"],
+        csrf=False,
+        cors="*",
+    )
     @require_jwt
     @require_session
     @require_company
@@ -190,31 +232,33 @@ class PropertyApiController(http.Controller):
             user = request.env.user
 
             # RBAC: Owners, Managers, and Admins can create properties (ADR-019)
-            is_owner = user.has_group('quicksol_estate.group_real_estate_owner')
-            is_manager = user.has_group('quicksol_estate.group_real_estate_manager')
-            is_admin = user.has_group('base.group_system')
+            is_owner = user.has_group("quicksol_estate.group_real_estate_owner")
+            is_manager = user.has_group("quicksol_estate.group_real_estate_manager")
+            is_admin = user.has_group("base.group_system")
 
             if not (is_owner or is_manager or is_admin):
-                return error_response(403, 'Only Owners, Managers, or Admins can create properties')
+                return error_response(
+                    403, "Only Owners, Managers, or Admins can create properties"
+                )
 
             # Parse request body
             try:
-                data = json.loads(request.httprequest.data.decode('utf-8'))
+                data = json.loads(request.httprequest.data.decode("utf-8"))
             except (ValueError, UnicodeDecodeError):
-                return error_response(400, 'Invalid JSON in request body')
+                return error_response(400, "Invalid JSON in request body")
 
             # Garantir que company_ids está presente (usa default se não tiver)
             data = CompanyValidator.ensure_company_ids(data)
 
             # Validar que as empresas estão autorizadas
             company_ids = None
-            if 'company_ids' in data:
+            if "company_ids" in data:
                 # Extrai IDs da tupla many2many (6, 0, [id1, id2])
-                if isinstance(data['company_ids'], list) and data['company_ids']:
-                    if isinstance(data['company_ids'][0], (tuple, list)):
-                        company_ids = data['company_ids'][0][2]
+                if isinstance(data["company_ids"], list) and data["company_ids"]:
+                    if isinstance(data["company_ids"][0], (tuple, list)):
+                        company_ids = data["company_ids"][0][2]
                     else:
-                        company_ids = data['company_ids']
+                        company_ids = data["company_ids"]
 
             if company_ids:
                 valid, error = CompanyValidator.validate_company_ids(company_ids)
@@ -222,88 +266,100 @@ class PropertyApiController(http.Controller):
                     return error_response(403, error)
 
             # Validate required fields
-            required_fields = ['name', 'property_type_id', 'area', 'zip_code', 'state_id', 'city', 'street', 'street_number', 'location_type_id']
+            required_fields = [
+                "name",
+                "property_type_id",
+                "area",
+                "zip_code",
+                "state_id",
+                "city",
+                "street",
+                "street_number",
+                "location_type_id",
+            ]
             missing_fields = [field for field in required_fields if field not in data]
             if missing_fields:
-                return error_response(400, f"Missing required fields: {', '.join(missing_fields)}")
+                return error_response(
+                    400, f"Missing required fields: {', '.join(missing_fields)}"
+                )
 
             # Prepare property data
             property_vals = {
-                'name': data.get('name'),
-                'property_type_id': data.get('property_type_id'),
-                'area': data.get('area'),
-                'zip_code': data.get('zip_code'),
-                'state_id': data.get('state_id'),
-                'city': data.get('city'),
-                'street': data.get('street'),
-                'street_number': data.get('street_number'),
-                'location_type_id': data.get('location_type_id'),
+                "name": data.get("name"),
+                "property_type_id": data.get("property_type_id"),
+                "area": data.get("area"),
+                "zip_code": data.get("zip_code"),
+                "state_id": data.get("state_id"),
+                "city": data.get("city"),
+                "street": data.get("street"),
+                "street_number": data.get("street_number"),
+                "location_type_id": data.get("location_type_id"),
             }
 
             # Optional fields
             optional_fields = {
-                'description': str,
-                'price': float,
-                'rent_price': float,
-                'property_status': str,
-                'property_situation': str,
-                'property_purpose': str,
-                'num_rooms': int,
-                'num_suites': int,
-                'num_bathrooms': int,
-                'num_parking': int,
-                'total_area': float,
-                'agent_id': int,
-                'owner_id': int,
-                'complement': str,
-                'neighborhood': str,
-                'latitude': float,
-                'longitude': float,
-                'condition': str,
-                'construction_year': int,
-                'for_sale': bool,
-                'for_rent': bool,
-                'accepts_financing': bool,
-                'accepts_fgts': bool,
+                "description": str,
+                "price": float,
+                "rent_price": float,
+                "property_status": str,
+                "property_situation": str,
+                "property_purpose": str,
+                "num_rooms": int,
+                "num_suites": int,
+                "num_bathrooms": int,
+                "num_parking": int,
+                "total_area": float,
+                "agent_id": int,
+                "owner_id": int,
+                "complement": str,
+                "neighborhood": str,
+                "latitude": float,
+                "longitude": float,
+                "condition": str,
+                "construction_year": int,
+                "for_sale": bool,
+                "for_rent": bool,
+                "accepts_financing": bool,
+                "accepts_fgts": bool,
                 # Structure fields
-                'building_id': int,
-                'floor_number': int,
-                'unit_number': str,
-                'num_floors': int,
-                'private_area': float,
-                'land_area': float,
+                "building_id": int,
+                "floor_number": int,
+                "unit_number": str,
+                "num_floors": int,
+                "private_area": float,
+                "land_area": float,
                 # Primary data fields
-                'iptu_annual': float,
-                'insurance_value': float,
-                'condominium_fee': float,
-                'authorization_start_date': str,
-                'authorization_end_date': str,
-                'reform_year': int,
+                "iptu_annual": float,
+                "insurance_value": float,
+                "condominium_fee": float,
+                "authorization_start_date": str,
+                "authorization_end_date": str,
+                "reform_year": int,
                 # Zoning fields
-                'zoning_type': str,
-                'zoning_restrictions': str,
+                "zoning_type": str,
+                "zoning_restrictions": str,
                 # Web publishing fields
-                'publish_website': bool,
-                'publish_featured': bool,
-                'publish_super_featured': bool,
-                'youtube_video_url': str,
-                'virtual_tour_url': str,
-                'meta_title': str,
-                'meta_description': str,
-                'meta_keywords': str,
-                'description_short': str,
-                'internal_notes': str,
+                "publish_website": bool,
+                "publish_featured": bool,
+                "publish_super_featured": bool,
+                "youtube_video_url": str,
+                "virtual_tour_url": str,
+                "meta_title": str,
+                "meta_description": str,
+                "meta_keywords": str,
+                "description_short": str,
+                "internal_notes": str,
                 # Signs fields
-                'has_sign': bool,
-                'sign_type': str,
-                'sign_installation_date': str,
-                'sign_removal_date': str,
-                'sign_notes': str,
+                "has_sign": bool,
+                "sign_type": str,
+                "sign_installation_date": str,
+                "sign_removal_date": str,
+                "sign_notes": str,
                 # Documents fields
-                'matricula_number': str,
-                'iptu_code': str,
+                "matricula_number": str,
+                "iptu_code": str,
                 # Other fields
-                'origin_media': str,
+                "origin_media": str,
             }
 
             for field, field_type in optional_fields.items():
@@ -314,78 +370,128 @@ class PropertyApiController(http.Controller):
             if mapping_errors:
                 return error_response(
                     400,
-                    'Invalid property mapping fields',
-                    'validation_error',
+                    "Invalid property mapping fields",
+                    "validation_error",
                     details=mapping_errors,
                 )
             property_vals.update(mapping_vals)
 
             # Handle company field (M2O)
-            if 'company_ids' in data:
-                cids = data['company_ids']
+            if "company_ids" in data:
+                cids = data["company_ids"]
                 if isinstance(cids, list) and cids:
                     if isinstance(cids[0], (tuple, list)):
-                        property_vals['company_id'] = cids[0][2][0] if cids[0][2] else False
+                        property_vals["company_id"] = (
+                            cids[0][2][0] if cids[0][2] else False
+                        )
                     else:
-                        property_vals['company_id'] = cids[0]
+                        property_vals["company_id"] = cids[0]
                 elif isinstance(cids, int):
-                    property_vals['company_id'] = cids
-            elif 'company_id' in data:
-                property_vals['company_id'] = data['company_id']
+                    property_vals["company_id"] = cids
+            elif "company_id" in data:
+                property_vals["company_id"] = data["company_id"]
             elif user.company_id:
-                property_vals['company_id'] = user.company_id.id
+                property_vals["company_id"] = user.company_id.id
 
-            if 'tag_ids' in data:
-                property_vals['tag_ids'] = [(6, 0, data['tag_ids'])]
+            if "tag_ids" in data:
+                property_vals["tag_ids"] = [(6, 0, data["tag_ids"])]
 
-            if 'amenities' in data:
-                property_vals['amenities'] = [(6, 0, data['amenities'])]
+            if "amenities" in data:
+                property_vals["amenities"] = [(6, 0, data["amenities"])]
 
             # Create property with savepoint to catch integrity errors
-            Property = request.env['real.estate.property'].sudo()
+            Property = request.env["real.estate.property"].sudo()
             relation_errors = []
 
             try:
                 with request.env.cr.savepoint():
                     property_record = Property.create(property_vals)
-                    relation_errors = apply_property_mapping_relations(property_record, data)
+                    relation_errors = apply_property_mapping_relations(
+                        property_record, data
+                    )
                     if relation_errors:
-                        raise ValidationError('__relation_mapping_errors__')
+                        raise ValidationError("__relation_mapping_errors__")
                     # Force flush to catch integrity errors immediately
                     request.env.cr.flush()
             except ValidationError as savepoint_error:
-                if savepoint_error.args and savepoint_error.args[0] == '__relation_mapping_errors__':
+                if (
+                    savepoint_error.args
+                    and savepoint_error.args[0] == "__relation_mapping_errors__"
+                ):
                     return error_response(
                         400,
-                        'Invalid relation mapping data',
-                        'validation_error',
+                        "Invalid relation mapping data",
+                        "validation_error",
                         details=relation_errors,
                     )
                 raise
             except Exception as savepoint_error:
                 # Handle errors that occur during creation/flush
                 error_str = str(savepoint_error)
-                if "foreign key constraint" in error_str.lower() or "violates foreign key" in error_str.lower():
+                if (
+                    "foreign key constraint" in error_str.lower()
+                    or "violates foreign key" in error_str.lower()
+                ):
                     if "real_estate_amenity" in error_str:
-                        return error_response(400, "One or more amenity IDs do not exist. Please verify the amenity IDs.", 'foreign_key_violation')
+                        return error_response(
+                            400,
+                            "One or more amenity IDs do not exist. Please verify the amenity IDs.",
+                            "foreign_key_violation",
+                        )
                     elif "real_estate_property_tag" in error_str:
-                        return error_response(400, "One or more tag IDs do not exist. Please verify the tag IDs.", 'foreign_key_violation')
+                        return error_response(
+                            400,
+                            "One or more tag IDs do not exist. Please verify the tag IDs.",
+                            "foreign_key_violation",
+                        )
                     elif "real_estate_property_owner" in error_str:
-                        return error_response(400, "Owner ID does not exist. Please verify the owner_id.", 'foreign_key_violation')
+                        return error_response(
+                            400,
+                            "Owner ID does not exist. Please verify the owner_id.",
+                            "foreign_key_violation",
+                        )
                     elif "real_estate_agent" in error_str:
-                        return error_response(400, "Agent ID does not exist. Please verify the agent_id.", 'foreign_key_violation')
+                        return error_response(
+                            400,
+                            "Agent ID does not exist. Please verify the agent_id.",
+                            "foreign_key_violation",
+                        )
                     elif "real_estate_property_type" in error_str:
-                        return error_response(400, "Property type ID does not exist. Please verify the property_type_id.", 'foreign_key_violation')
+                        return error_response(
+                            400,
+                            "Property type ID does not exist. Please verify the property_type_id.",
+                            "foreign_key_violation",
+                        )
                     elif "real_estate_location_type" in error_str:
-                        return error_response(400, "Location type ID does not exist. Please verify the location_type_id.", 'foreign_key_violation')
+                        return error_response(
+                            400,
+                            "Location type ID does not exist. Please verify the location_type_id.",
+                            "foreign_key_violation",
+                        )
                     elif "real_estate_state" in error_str:
-                        return error_response(400, "State ID does not exist. Please verify the state_id.", 'foreign_key_violation')
+                        return error_response(
+                            400,
+                            "State ID does not exist. Please verify the state_id.",
+                            "foreign_key_violation",
+                        )
                     elif "real_estate_property_building" in error_str:
-                        return error_response(400, "Building ID does not exist. Please verify the building_id.", 'foreign_key_violation')
+                        return error_response(
+                            400,
+                            "Building ID does not exist. Please verify the building_id.",
+                            "foreign_key_violation",
+                        )
                     elif "res_company" in error_str:
-                        return error_response(400, "One or more company IDs do not exist. Please verify the company_ids.", 'foreign_key_violation')
+                        return error_response(
+                            400,
+                            "One or more company IDs do not exist. Please verify the company_ids.",
+                            "foreign_key_violation",
+                        )
                     else:
-                        return error_response(400, "Invalid reference ID. One or more related records do not exist.", 'foreign_key_violation')
+                        return error_response(
+                            400,
+                            "Invalid reference ID. One or more related records do not exist.",
+                            "foreign_key_violation",
+                        )
                 # Re-raise if not a foreign key error
                 raise
 
@@ -395,21 +501,21 @@ class PropertyApiController(http.Controller):
 
         except ValidationError as e:
             _logger.error(f"Validation error in create_property: {e}")
-            return error_response(400, str(e), 'validation_error')
+            return error_response(400, str(e), "validation_error")
         except AccessError as e:
             _logger.error(f"Access error in create_property: {e}")
-            return error_response(403, 'Access denied', 'access_denied')
+            return error_response(403, "Access denied", "access_denied")
         except UserError as e:
             _logger.error(f"User error in create_property: {e}")
-            return error_response(400, str(e), 'user_error')
+            return error_response(400, str(e), "user_error")
         except ValueError as e:
             # Catches "Wrong value for..." errors from Selection fields
             _logger.error(f"Value error in create_property: {e}")
             error_msg = str(e)
             # Extract field name and invalid value for better error message
             if "Wrong value for" in error_msg:
-                return error_response(400, error_msg, 'invalid_field_value')
-            return error_response(400, error_msg, 'value_error')
+                return error_response(400, error_msg, "invalid_field_value")
+            return error_response(400, error_msg, "value_error")
         except psycopg2.IntegrityError as e:
             # Catches foreign key violations, unique constraints, etc
             _logger.error(f"Integrity error in create_property: {e}")
@@ -419,60 +525,158 @@ class PropertyApiController(http.Controller):
             if "foreign key constraint" in error_msg.lower():
                 # Extract table and key information
                 if "real_estate_amenity" in error_msg:
-                    return error_response(400, "One or more amenity IDs do not exist. Please verify the amenity IDs.", 'foreign_key_violation')
+                    return error_response(
+                        400,
+                        "One or more amenity IDs do not exist. Please verify the amenity IDs.",
+                        "foreign_key_violation",
+                    )
                 elif "real_estate_property_tag" in error_msg:
-                    return error_response(400, "One or more tag IDs do not exist. Please verify the tag IDs.", 'foreign_key_violation')
+                    return error_response(
+                        400,
+                        "One or more tag IDs do not exist. Please verify the tag IDs.",
+                        "foreign_key_violation",
+                    )
                 elif "real_estate_property_owner" in error_msg:
-                    return error_response(400, "Owner ID does not exist. Please verify the owner_id.", 'foreign_key_violation')
+                    return error_response(
+                        400,
+                        "Owner ID does not exist. Please verify the owner_id.",
+                        "foreign_key_violation",
+                    )
                 elif "real_estate_agent" in error_msg:
-                    return error_response(400, "Agent ID does not exist. Please verify the agent_id.", 'foreign_key_violation')
+                    return error_response(
+                        400,
+                        "Agent ID does not exist. Please verify the agent_id.",
+                        "foreign_key_violation",
+                    )
                 elif "real_estate_property_type" in error_msg:
-                    return error_response(400, "Property type ID does not exist. Please verify the property_type_id.", 'foreign_key_violation')
+                    return error_response(
+                        400,
+                        "Property type ID does not exist. Please verify the property_type_id.",
+                        "foreign_key_violation",
+                    )
                 elif "real_estate_location_type" in error_msg:
-                    return error_response(400, "Location type ID does not exist. Please verify the location_type_id.", 'foreign_key_violation')
+                    return error_response(
+                        400,
+                        "Location type ID does not exist. Please verify the location_type_id.",
+                        "foreign_key_violation",
+                    )
                 elif "real_estate_state" in error_msg:
-                    return error_response(400, "State ID does not exist. Please verify the state_id.", 'foreign_key_violation')
+                    return error_response(
+                        400,
+                        "State ID does not exist. Please verify the state_id.",
+                        "foreign_key_violation",
+                    )
                 elif "real_estate_property_building" in error_msg:
-                    return error_response(400, "Building ID does not exist. Please verify the building_id.", 'foreign_key_violation')
+                    return error_response(
+                        400,
+                        "Building ID does not exist. Please verify the building_id.",
+                        "foreign_key_violation",
+                    )
                 elif "res_company" in error_msg:
-                    return error_response(400, "One or more company IDs do not exist. Please verify the company_ids.", 'foreign_key_violation')
+                    return error_response(
+                        400,
+                        "One or more company IDs do not exist. Please verify the company_ids.",
+                        "foreign_key_violation",
+                    )
                 else:
-                    return error_response(400, "Invalid reference ID. One or more related records do not exist.", 'foreign_key_violation')
+                    return error_response(
+                        400,
+                        "Invalid reference ID. One or more related records do not exist.",
+                        "foreign_key_violation",
+                    )
             elif "unique constraint" in error_msg.lower():
-                return error_response(400, "Duplicate value detected. This record already exists.", 'unique_violation')
+                return error_response(
+                    400,
+                    "Duplicate value detected. This record already exists.",
+                    "unique_violation",
+                )
             else:
-                return error_response(400, f"Data integrity error: {error_msg}", 'integrity_error')
+                return error_response(
+                    400, f"Data integrity error: {error_msg}", "integrity_error"
+                )
         except Exception as e:
             # Check if it's a wrapped IntegrityError or contains integrity error message
             error_str = str(e)
             _logger.error(f"Unexpected error in create_property: {e}", exc_info=True)
 
             # Check for integrity errors in the exception message
-            if "foreign key constraint" in error_str.lower() or "violates foreign key" in error_str.lower():
+            if (
+                "foreign key constraint" in error_str.lower()
+                or "violates foreign key" in error_str.lower()
+            ):
                 if "real_estate_amenity" in error_str:
-                    return error_response(400, "One or more amenity IDs do not exist. Please verify the amenity IDs.", 'foreign_key_violation')
+                    return error_response(
+                        400,
+                        "One or more amenity IDs do not exist. Please verify the amenity IDs.",
+                        "foreign_key_violation",
+                    )
                 elif "real_estate_property_tag" in error_str:
-                    return error_response(400, "One or more tag IDs do not exist. Please verify the tag IDs.", 'foreign_key_violation')
+                    return error_response(
+                        400,
+                        "One or more tag IDs do not exist. Please verify the tag IDs.",
+                        "foreign_key_violation",
+                    )
                 elif "real_estate_property_owner" in error_str:
-                    return error_response(400, "Owner ID does not exist. Please verify the owner_id.", 'foreign_key_violation')
+                    return error_response(
+                        400,
+                        "Owner ID does not exist. Please verify the owner_id.",
+                        "foreign_key_violation",
+                    )
                 elif "real_estate_agent" in error_str:
-                    return error_response(400, "Agent ID does not exist. Please verify the agent_id.", 'foreign_key_violation')
+                    return error_response(
+                        400,
+                        "Agent ID does not exist. Please verify the agent_id.",
+                        "foreign_key_violation",
+                    )
                 elif "real_estate_property_type" in error_str:
-                    return error_response(400, "Property type ID does not exist. Please verify the property_type_id.", 'foreign_key_violation')
+                    return error_response(
+                        400,
+                        "Property type ID does not exist. Please verify the property_type_id.",
+                        "foreign_key_violation",
+                    )
                 elif "real_estate_location_type" in error_str:
-                    return error_response(400, "Location type ID does not exist. Please verify the location_type_id.", 'foreign_key_violation')
+                    return error_response(
+                        400,
+                        "Location type ID does not exist. Please verify the location_type_id.",
+                        "foreign_key_violation",
+                    )
                 elif "real_estate_state" in error_str:
-                    return error_response(400, "State ID does not exist. Please verify the state_id.", 'foreign_key_violation')
+                    return error_response(
+                        400,
+                        "State ID does not exist. Please verify the state_id.",
+                        "foreign_key_violation",
+                    )
                 elif "real_estate_property_building" in error_str:
-                    return error_response(400, "Building ID does not exist. Please verify the building_id.", 'foreign_key_violation')
+                    return error_response(
+                        400,
+                        "Building ID does not exist. Please verify the building_id.",
+                        "foreign_key_violation",
+                    )
                 elif "res_company" in error_str:
-                    return error_response(400, "One or more company IDs do not exist. Please verify the company_ids.", 'foreign_key_violation')
+                    return error_response(
+                        400,
+                        "One or more company IDs do not exist. Please verify the company_ids.",
+                        "foreign_key_violation",
+                    )
                 else:
-                    return error_response(400, "Invalid reference ID. One or more related records do not exist.", 'foreign_key_violation')
+                    return error_response(
+                        400,
+                        "Invalid reference ID. One or more related records do not exist.",
+                        "foreign_key_violation",
+                    )
 
-            return error_response(500, f'Internal server error: {str(e)}', 'internal_error')
+            return error_response(
+                500, f"Internal server error: {str(e)}", "internal_error"
+            )
 
-    @http.route('/api/v1/properties/<int:property_id>',type='http', auth='none', methods=['GET'], csrf=False, cors='*')
+    @http.route(
+        "/api/v1/properties/<int:property_id>",
+        type="http",
+        auth="none",
+        methods=["GET"],
+        csrf=False,
+        cors="*",
+    )
     @require_jwt
     @require_session
     @require_company
@@ -481,16 +685,18 @@ class PropertyApiController(http.Controller):
             user = request.env.user
 
             # Search for property with company filter
-            Property = request.env['real.estate.property'].sudo()
-            domain = [('id', '=', property_id)] + request.company_domain
+            Property = request.env["real.estate.property"].sudo()
+            domain = [("id", "=", property_id)] + request.company_domain
             property_record = Property.search(domain, limit=1)
 
             # Check if property exists and user has access
             if not property_record:
-                return error_response(404, 'Property not found')
-            has_access, access_error = validate_property_access(property_record, user, operation='read')
+                return error_response(404, "Property not found")
+            has_access, access_error = validate_property_access(
+                property_record, user, operation="read"
+            )
             if not has_access:
-                return error_response(403, access_error, 'access_denied')
+                return error_response(403, access_error, "access_denied")
 
             # Serialize and return
             property_data = serialize_property(property_record)
@@ -498,12 +704,19 @@ class PropertyApiController(http.Controller):
 
         except AccessError as e:
             _logger.error(f"Access error in get_property: {e}")
-            return error_response(403, 'Access denied')
+            return error_response(403, "Access denied")
         except Exception as e:
             _logger.error(f"Error in get_property: {e}")
-            return error_response(500, 'Internal server error')
+            return error_response(500, "Internal server error")
 
-    @http.route('/api/v1/properties/<int:property_id>',type='http', auth='none', methods=['PUT'], csrf=False, cors='*')
+    @http.route(
+        "/api/v1/properties/<int:property_id>",
+        type="http",
+        auth="none",
+        methods=["PUT"],
+        csrf=False,
+        cors="*",
+    )
     @require_jwt
     @require_session
     @require_company
@@ -515,42 +728,85 @@ class PropertyApiController(http.Controller):
             try:
                 data = request.get_json_data()
                 if data is None:
-                    return error_response(400, 'Invalid JSON in request body')
+                    return error_response(400, "Invalid JSON in request body")
             except Exception:
-                return error_response(400, 'Invalid JSON in request body')
+                return error_response(400, "Invalid JSON in request body")
 
             # IMPORTANTE: Bloquear alteração de company_ids via API
-            if 'company_ids' in data:
-                return error_response(403, 'Cannot change company_ids via API')
+            if "company_ids" in data:
+                return error_response(403, "Cannot change company_ids via API")
 
             # Search for property with company filter
-            Property = request.env['real.estate.property'].sudo()
-            domain = [('id', '=', property_id)] + request.company_domain
+            Property = request.env["real.estate.property"].sudo()
+            domain = [("id", "=", property_id)] + request.company_domain
             property_record = Property.search(domain, limit=1)
 
             # Check if property exists and user has access
             if not property_record:
-                return error_response(404, 'Property not found')
-            has_access, access_error = validate_property_access(property_record, user, operation='write')
+                return error_response(404, "Property not found")
+            has_access, access_error = validate_property_access(
+                property_record, user, operation="write"
+            )
             if not has_access:
-                return error_response(403, access_error, 'access_denied')
+                return error_response(403, access_error, "access_denied")
 
             # Build update values (only allowed fields)
             allowed_fields = {
-                'name', 'description', 'price', 'rent_price', 'property_status',
-                'property_situation', 'property_purpose', 'num_rooms', 'num_suites', 'num_bathrooms',
-                'num_parking', 'area', 'total_area', 'agent_id', 'owner_id',
-                'complement', 'neighborhood', 'latitude', 'longitude', 'condition',
-                'construction_year', 'for_sale', 'for_rent', 'accepts_financing',
-                'accepts_fgts', 'building_id', 'floor_number', 'unit_number',
-                'num_floors', 'private_area', 'land_area', 'iptu_annual',
-                'insurance_value', 'condominium_fee', 'authorization_start_date',
-                'authorization_end_date', 'zoning_restrictions', 'meta_title',
-                'meta_description', 'meta_keywords', 'description_short',
-                'sign_type', 'sign_installation_date', 'sign_removal_date',
-                'sign_notes', 'matricula_number', 'status', 'street', 'city',
-                'state_id', 'zip_code', 'street_number', 'location_type_id',
-                'property_type_id', 'origin_media',
+                "name",
+                "description",
+                "price",
+                "rent_price",
+                "property_status",
+                "property_situation",
+                "property_purpose",
+                "num_rooms",
+                "num_suites",
+                "num_bathrooms",
+                "num_parking",
+                "area",
+                "total_area",
+                "agent_id",
+                "owner_id",
+                "complement",
+                "neighborhood",
+                "latitude",
+                "longitude",
+                "condition",
+                "construction_year",
+                "for_sale",
+                "for_rent",
+                "accepts_financing",
+                "accepts_fgts",
+                "building_id",
+                "floor_number",
+                "unit_number",
+                "num_floors",
+                "private_area",
+                "land_area",
+                "iptu_annual",
+                "insurance_value",
+                "condominium_fee",
+                "authorization_start_date",
+                "authorization_end_date",
+                "zoning_restrictions",
+                "meta_title",
+                "meta_description",
+                "meta_keywords",
+                "description_short",
+                "sign_type",
+                "sign_installation_date",
+                "sign_removal_date",
+                "sign_notes",
+                "matricula_number",
+                "status",
+                "street",
+                "city",
+                "state_id",
+                "zip_code",
+                "street_number",
+                "location_type_id",
+                "property_type_id",
+                "origin_media",
             }
 
             update_vals = {}
@@ -562,17 +818,17 @@ class PropertyApiController(http.Controller):
             if mapping_errors:
                 return error_response(
                     400,
-                    'Invalid property mapping fields',
-                    'validation_error',
+                    "Invalid property mapping fields",
+                    "validation_error",
                     details=mapping_errors,
                 )
             update_vals.update(mapping_vals)
 
             has_relation_updates = any(
-                field in data for field in ('tags', 'property_images', 'property_files')
+                field in data for field in ("tags", "property_images", "property_files")
             )
             if not update_vals and not has_relation_updates:
-                return error_response(400, 'No valid fields to update')
+                return error_response(400, "No valid fields to update")
 
             # Update property
             relation_errors = []
@@ -580,15 +836,20 @@ class PropertyApiController(http.Controller):
                 with request.env.cr.savepoint():
                     if update_vals:
                         property_record.write(update_vals)
-                    relation_errors = apply_property_mapping_relations(property_record, data)
+                    relation_errors = apply_property_mapping_relations(
+                        property_record, data
+                    )
                     if relation_errors:
-                        raise ValidationError('__relation_mapping_errors__')
+                        raise ValidationError("__relation_mapping_errors__")
             except ValidationError as savepoint_error:
-                if savepoint_error.args and savepoint_error.args[0] == '__relation_mapping_errors__':
+                if (
+                    savepoint_error.args
+                    and savepoint_error.args[0] == "__relation_mapping_errors__"
+                ):
                     return error_response(
                         400,
-                        'Invalid relation mapping data',
-                        'validation_error',
+                        "Invalid relation mapping data",
+                        "validation_error",
                         details=relation_errors,
                     )
                 raise
@@ -599,20 +860,20 @@ class PropertyApiController(http.Controller):
 
         except ValidationError as e:
             _logger.error(f"Validation error in update_property: {e}")
-            return error_response(400, str(e), 'validation_error')
+            return error_response(400, str(e), "validation_error")
         except AccessError as e:
             _logger.error(f"Access error in update_property: {e}")
-            return error_response(403, 'Access denied', 'access_denied')
+            return error_response(403, "Access denied", "access_denied")
         except UserError as e:
             _logger.error(f"User error in update_property: {e}")
-            return error_response(400, str(e), 'user_error')
+            return error_response(400, str(e), "user_error")
         except ValueError as e:
             # Catches "Wrong value for..." errors from Selection fields
             _logger.error(f"Value error in update_property: {e}")
             error_msg = str(e)
             if "Wrong value for" in error_msg:
-                return error_response(400, error_msg, 'invalid_field_value')
-            return error_response(400, error_msg, 'value_error')
+                return error_response(400, error_msg, "invalid_field_value")
+            return error_response(400, error_msg, "value_error")
         except psycopg2.IntegrityError as e:
             # Catches foreign key violations, unique constraints, etc
             _logger.error(f"Integrity error in update_property: {e}")
@@ -620,20 +881,47 @@ class PropertyApiController(http.Controller):
 
             if "foreign key constraint" in error_msg.lower():
                 if "real_estate_amenity" in error_msg:
-                    return error_response(400, "One or more amenity IDs do not exist. Please verify the amenity IDs.", 'foreign_key_violation')
+                    return error_response(
+                        400,
+                        "One or more amenity IDs do not exist. Please verify the amenity IDs.",
+                        "foreign_key_violation",
+                    )
                 elif "real_estate_property_tag" in error_msg:
-                    return error_response(400, "One or more tag IDs do not exist. Please verify the tag IDs.", 'foreign_key_violation')
+                    return error_response(
+                        400,
+                        "One or more tag IDs do not exist. Please verify the tag IDs.",
+                        "foreign_key_violation",
+                    )
                 else:
-                    return error_response(400, "Invalid reference ID. One or more related records do not exist.", 'foreign_key_violation')
+                    return error_response(
+                        400,
+                        "Invalid reference ID. One or more related records do not exist.",
+                        "foreign_key_violation",
+                    )
             elif "unique constraint" in error_msg.lower():
-                return error_response(400, "Duplicate value detected. This record already exists.", 'unique_violation')
+                return error_response(
+                    400,
+                    "Duplicate value detected. This record already exists.",
+                    "unique_violation",
+                )
             else:
-                return error_response(400, f"Data integrity error: {error_msg}", 'integrity_error')
+                return error_response(
+                    400, f"Data integrity error: {error_msg}", "integrity_error"
+                )
         except Exception as e:
             _logger.error(f"Unexpected error in update_property: {e}", exc_info=True)
-            return error_response(500, f'Internal server error: {str(e)}', 'internal_error')
+            return error_response(
+                500, f"Internal server error: {str(e)}", "internal_error"
+            )
 
-    @http.route('/api/v1/properties/<int:property_id>',type='http', auth='none', methods=['DELETE'], csrf=False, cors='*')
+    @http.route(
+        "/api/v1/properties/<int:property_id>",
+        type="http",
+        auth="none",
+        methods=["DELETE"],
+        csrf=False,
+        cors="*",
+    )
     @require_jwt
     @require_session
     @require_company
@@ -642,36 +930,39 @@ class PropertyApiController(http.Controller):
             user = request.env.user
 
             # Only managers can delete properties
-            if not user.has_group('quicksol_estate.group_real_estate_manager') and \
-               not user.has_group('base.group_system'):
-                return error_response(403, 'Only managers can delete properties')
+            if not user.has_group(
+                "quicksol_estate.group_real_estate_manager"
+            ) and not user.has_group("base.group_system"):
+                return error_response(403, "Only managers can delete properties")
 
             # Search for property with company filter
-            Property = request.env['real.estate.property'].sudo()
-            domain = [('id', '=', property_id)] + request.company_domain
+            Property = request.env["real.estate.property"].sudo()
+            domain = [("id", "=", property_id)] + request.company_domain
             property_record = Property.search(domain, limit=1)
 
             # Check if property exists and user has access
             if not property_record:
-                return error_response(404, 'Property not found')
+                return error_response(404, "Property not found")
 
             # Delete property
             property_title = property_record.name
             property_record.unlink()
 
             # Return success message
-            return success_response({
-                'message': 'Property deleted successfully',
-                'id': property_id,
-                'name': property_title
-            })
+            return success_response(
+                {
+                    "message": "Property deleted successfully",
+                    "id": property_id,
+                    "name": property_title,
+                }
+            )
 
         except AccessError as e:
             _logger.error(f"Access error in delete_property: {e}")
-            return error_response(403, 'Access denied')
+            return error_response(403, "Access denied")
         except Exception as e:
             _logger.error(f"Error in delete_property: {e}")
-            return error_response(500, 'Internal server error')
+            return error_response(500, "Internal server error")
 
 
 # Aliases for backward compatibility with tests

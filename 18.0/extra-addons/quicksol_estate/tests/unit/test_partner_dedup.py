@@ -16,27 +16,29 @@ from unittest.mock import MagicMock
 # ---------------------------------------------------------------------------
 # Stub the odoo dependency so the service can be imported standalone
 # ---------------------------------------------------------------------------
-odoo_stub = types.ModuleType('odoo')
-odoo_stub.exceptions = types.ModuleType('odoo.exceptions')
+odoo_stub = types.ModuleType("odoo")
+odoo_stub.exceptions = types.ModuleType("odoo.exceptions")
+
 
 class _UserError(Exception):
     pass
 
+
 odoo_stub.exceptions.UserError = _UserError
-sys.modules.setdefault('odoo', odoo_stub)
-sys.modules.setdefault('odoo.exceptions', odoo_stub.exceptions)
+sys.modules.setdefault("odoo", odoo_stub)
+sys.modules.setdefault("odoo.exceptions", odoo_stub.exceptions)
 
 import importlib
-import os as _os
 import pathlib as _pathlib
 
 # Locate and load the service module directly from the file path
 _svc_path = str(
     _pathlib.Path(__file__).parent.parent.parent
-    / 'services' / 'partner_dedup_service.py'
+    / "services"
+    / "partner_dedup_service.py"
 )
 
-_spec = importlib.util.spec_from_file_location('partner_dedup_service', _svc_path)
+_spec = importlib.util.spec_from_file_location("partner_dedup_service", _svc_path)
 _mod = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_mod)
 
@@ -47,6 +49,7 @@ PartnerDeduplicationConflict = _mod.PartnerDeduplicationConflict
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_partner(pid, name, phone_numbers=None):
     p = MagicMock()
@@ -113,13 +116,13 @@ def _make_env(phone_partner=None, email_partners=None):
         ep_rs.id = email_partners.id
         ResPartner.search = MagicMock(return_value=ep_rs)
 
-    new_partner = _make_partner(99, 'New Partner')
+    new_partner = _make_partner(99, "New Partner")
     ResPartner.create = MagicMock(return_value=new_partner)
 
     env = MagicMock()
     env.__getitem__ = lambda s, key: {
-        'real.estate.partner.phone': PartnerPhone,
-        'res.partner': ResPartner,
+        "real.estate.partner.phone": PartnerPhone,
+        "res.partner": ResPartner,
     }.get(key, MagicMock())
 
     return env, ResPartner, PartnerPhone
@@ -129,12 +132,15 @@ def _make_env(phone_partner=None, email_partners=None):
 # Tests
 # ---------------------------------------------------------------------------
 
+
 class TestPartnerDedupNoMatch(unittest.TestCase):
 
     def test_creates_new_partner_when_no_phone_no_email(self):
         """No phone + no email → create new partner, no divergence."""
         env, ResPartner, _ = _make_env(phone_partner=None, email_partners=None)
-        partner, divergence = find_or_create_partner(env, 'New Client', email=None, phones=[])
+        partner, divergence = find_or_create_partner(
+            env, "New Client", email=None, phones=[]
+        )
         ResPartner.create.assert_called_once()
         self.assertIsNone(divergence)
 
@@ -142,7 +148,7 @@ class TestPartnerDedupNoMatch(unittest.TestCase):
         """Email provided but no existing partner has that email → create new."""
         env, ResPartner, _ = _make_env(phone_partner=None, email_partners=None)
         partner, divergence = find_or_create_partner(
-            env, 'New Client', email='unknown@x.com', phones=[]
+            env, "New Client", email="unknown@x.com", phones=[]
         )
         ResPartner.create.assert_called_once()
         self.assertIsNone(divergence)
@@ -152,10 +158,10 @@ class TestPartnerDedupPhoneMatch(unittest.TestCase):
 
     def test_single_phone_match_reuses_partner(self):
         """Phone matches exactly one partner → reuse, no create, no divergence."""
-        partner_a = _make_partner(1, 'Partner A')
+        partner_a = _make_partner(1, "Partner A")
         env, ResPartner, _ = _make_env(phone_partner=partner_a)
         partner, divergence = find_or_create_partner(
-            env, 'Partner A', phones=[{'type': 'mobile', 'number': '11999990000'}]
+            env, "Partner A", phones=[{"type": "mobile", "number": "11999990000"}]
         )
         self.assertEqual(partner.id, 1)
         ResPartner.create.assert_not_called()
@@ -163,12 +169,12 @@ class TestPartnerDedupPhoneMatch(unittest.TestCase):
 
     def test_multiple_phone_partners_raises_conflict(self):
         """Phone matches 2+ partners → PartnerDeduplicationConflict with candidate_ids."""
-        p1 = _make_partner(1, 'A')
-        p2 = _make_partner(2, 'B')
+        p1 = _make_partner(1, "A")
+        p2 = _make_partner(2, "B")
         env, _, _ = _make_env(phone_partner=[p1, p2])
         with self.assertRaises(PartnerDeduplicationConflict) as ctx:
             find_or_create_partner(
-                env, 'X', phones=[{'type': 'mobile', 'number': '11999990000'}]
+                env, "X", phones=[{"type": "mobile", "number": "11999990000"}]
             )
         exc = ctx.exception
         self.assertIn(1, exc.candidate_ids)
@@ -176,13 +182,13 @@ class TestPartnerDedupPhoneMatch(unittest.TestCase):
 
     def test_conflict_exception_has_candidate_ids_attribute(self):
         """PartnerDeduplicationConflict always exposes .candidate_ids."""
-        exc = PartnerDeduplicationConflict('test', candidate_ids=[5, 7])
+        exc = PartnerDeduplicationConflict("test", candidate_ids=[5, 7])
         self.assertIn(5, exc.candidate_ids)
         self.assertIn(7, exc.candidate_ids)
 
     def test_empty_candidate_ids_when_not_provided(self):
         """PartnerDeduplicationConflict.candidate_ids defaults to empty list."""
-        exc = PartnerDeduplicationConflict('test')
+        exc = PartnerDeduplicationConflict("test")
         self.assertEqual(exc.candidate_ids, [])
 
 
@@ -190,10 +196,10 @@ class TestPartnerDedupEmailMatch(unittest.TestCase):
 
     def test_email_match_reuses_partner_when_no_phone(self):
         """No phone provided, email matches one partner → reuse."""
-        partner_b = _make_partner(2, 'B by email')
+        partner_b = _make_partner(2, "B by email")
         env, ResPartner, _ = _make_env(phone_partner=None, email_partners=partner_b)
         partner, divergence = find_or_create_partner(
-            env, 'B by email', email='b@example.com', phones=[]
+            env, "B by email", email="b@example.com", phones=[]
         )
         self.assertEqual(partner.id, 2)
         ResPartner.create.assert_not_called()
@@ -201,11 +207,11 @@ class TestPartnerDedupEmailMatch(unittest.TestCase):
 
     def test_multiple_email_matches_no_reuse(self):
         """Two partners with same email → treat as no-match (ambiguous), create new."""
-        p1 = _make_partner(1, 'A')
-        p2 = _make_partner(2, 'B')
+        p1 = _make_partner(1, "A")
+        p2 = _make_partner(2, "B")
         env, ResPartner, _ = _make_env(phone_partner=None, email_partners=[p1, p2])
         partner, divergence = find_or_create_partner(
-            env, 'Unknown', email='shared@example.com', phones=[]
+            env, "Unknown", email="shared@example.com", phones=[]
         )
         # Two results from email search — service calls with limit=2 and checks len == 1
         # If len != 1, falls through to create
@@ -216,27 +222,33 @@ class TestPartnerDedupDivergence(unittest.TestCase):
 
     def test_phone_email_divergence_prefers_phone(self):
         """Phone → partner A, email → partner B → use phone, return divergence string."""
-        partner_a = _make_partner(1, 'A by phone')
-        partner_b = _make_partner(2, 'B by email')
-        env, ResPartner, _ = _make_env(phone_partner=partner_a, email_partners=partner_b)
+        partner_a = _make_partner(1, "A by phone")
+        partner_b = _make_partner(2, "B by email")
+        env, ResPartner, _ = _make_env(
+            phone_partner=partner_a, email_partners=partner_b
+        )
         partner, divergence = find_or_create_partner(
-            env, 'X',
-            email='b@example.com',
-            phones=[{'type': 'mobile', 'number': '11999990000'}],
+            env,
+            "X",
+            email="b@example.com",
+            phones=[{"type": "mobile", "number": "11999990000"}],
         )
         self.assertEqual(partner.id, 1)
         ResPartner.create.assert_not_called()
         self.assertIsNotNone(divergence)
-        self.assertIn('diverge', divergence.lower())
+        self.assertIn("diverge", divergence.lower())
 
     def test_phone_email_same_partner_no_divergence(self):
         """Phone and email both resolve to same partner → no divergence."""
-        partner_a = _make_partner(1, 'A')
-        env, ResPartner, _ = _make_env(phone_partner=partner_a, email_partners=partner_a)
+        partner_a = _make_partner(1, "A")
+        env, ResPartner, _ = _make_env(
+            phone_partner=partner_a, email_partners=partner_a
+        )
         partner, divergence = find_or_create_partner(
-            env, 'A',
-            email='a@example.com',
-            phones=[{'type': 'mobile', 'number': '11999990000'}],
+            env,
+            "A",
+            email="a@example.com",
+            phones=[{"type": "mobile", "number": "11999990000"}],
         )
         self.assertEqual(partner.id, 1)
         self.assertIsNone(divergence)
@@ -246,15 +258,15 @@ class TestPartnerDedupPhoneTypes(unittest.TestCase):
 
     def test_allowed_phone_types(self):
         """Validate known-good phone types for the schema."""
-        allowed = {'mobile', 'home', 'work', 'whatsapp', 'fax'}
-        for t in ('mobile', 'home', 'work', 'whatsapp', 'fax'):
+        allowed = {"mobile", "home", "work", "whatsapp", "fax"}
+        for t in ("mobile", "home", "work", "whatsapp", "fax"):
             self.assertIn(t, allowed)
 
     def test_invalid_phone_type_not_in_allowed(self):
         """'sms' is not an allowed phone type."""
-        allowed = {'mobile', 'home', 'work', 'whatsapp', 'fax'}
-        self.assertNotIn('sms', allowed)
+        allowed = {"mobile", "home", "work", "whatsapp", "fax"}
+        self.assertNotIn("sms", allowed)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

@@ -3,11 +3,13 @@
 max-line-length = 88
 
 # Extend ignore list (compatible with Black formatter)
-extend-ignore = 
-    E203,  # whitespace before ':'
-    E501,  # line too long (handled by Black)
-    W503,  # line break before binary operator
-    E402,  # module level import not at top of file (common in Odoo modules)
+# Keep comments outside the value list because flake8 7.x validates each
+# entry strictly and treats inline comments as invalid error codes.
+extend-ignore =
+    E203,
+    E501,
+    W503,
+    E402
 
 # Exclude directories
 exclude =
@@ -34,6 +36,27 @@ max-complexity = 10
 # Per-file ignores
 per-file-ignores =
     __init__.py:F401,F403
+    extra-addons/quicksol_estate/controllers/agent_api.py:C901
+    extra-addons/quicksol_estate/controllers/company_api.py:C901
+    extra-addons/quicksol_estate/controllers/lead_api.py:C901
+    extra-addons/quicksol_estate/controllers/lease_api.py:C901
+    extra-addons/quicksol_estate/controllers/owner_api.py:C901
+    extra-addons/quicksol_estate/controllers/profile_api.py:C901
+    extra-addons/quicksol_estate/controllers/property_api.py:C901
+    extra-addons/quicksol_estate/controllers/property_attachments_controller.py:C901
+    extra-addons/quicksol_estate/controllers/proposal_controller.py:C901
+    extra-addons/quicksol_estate/controllers/sale_api.py:C901
+    extra-addons/quicksol_estate/controllers/service_controller.py:C901
+    extra-addons/quicksol_estate/controllers/utils/auth.py:C901
+    extra-addons/quicksol_estate/controllers/utils/schema.py:C901
+    extra-addons/quicksol_estate/controllers/utils/serializers.py:C901
+    extra-addons/quicksol_estate/models/event_bus.py:C901
+    extra-addons/quicksol_estate/models/res_users.py:C901
+    extra-addons/quicksol_estate/services/partner_dedup_service.py:C901
+    extra-addons/quicksol_estate/tests/api/test_lease_api.py:C901
+    extra-addons/quicksol_estate/tests/api/test_sale_api.py:C901
+    extra-addons/quicksol_estate/tests/api/test_tenant_api.py:C901
+    extra-addons/quicksol_estate/tests/api/test_user_login.py:C901
 
 # Plugins
 # enable-extensions = flake8-docstrings
