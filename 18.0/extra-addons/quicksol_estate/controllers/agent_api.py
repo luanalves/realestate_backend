@@ -36,40 +36,40 @@ class AgentApiController(http.Controller):
             # Parse query parameters
             # Optional: None=all, 'true'=active only, 'false'=inactive only
             is_active = kwargs.get("is_active")
-            company_ids_param = kwargs.get("company_ids")  # Required, comma-separated
+            company_ids_param = kwargs.get("company_ids")  # Optional, comma-separated
             creci_number = kwargs.get("creci_number")
             creci_state = kwargs.get("creci_state")
             limit = min(int(kwargs.get("limit", 20)), 100)
             offset = int(kwargs.get("offset", 0))
 
-            # Validate company_ids parameter (REQUIRED)
-            if not company_ids_param:
-                return error_response(400, "company_ids parameter is required")
-
-            # Parse company_ids (can be comma-separated: "1,2,3")
-            try:
-                requested_company_ids = [
-                    int(cid.strip()) for cid in company_ids_param.split(",")
-                ]
-            except ValueError:
-                return error_response(
-                    400,
-                    'Invalid company_ids format. Use comma-separated integers (e.g., "1,2,3")',
-                )
-
-            # Validate user has access to all requested companies (multi-tenancy security)
-            # Admin users (request.user_company_ids is empty for admins) skip this validation
-            if request.user_company_ids:  # Not admin
-                unauthorized_companies = [
-                    cid
-                    for cid in requested_company_ids
-                    if cid not in request.user_company_ids
-                ]
-                if unauthorized_companies:
+            # Parse company_ids if provided, otherwise fall back to user's companies
+            if company_ids_param:
+                try:
+                    requested_company_ids = [
+                        int(cid.strip()) for cid in company_ids_param.split(",")
+                    ]
+                except ValueError:
                     return error_response(
-                        403,
-                        f"Access denied to company IDs: {unauthorized_companies}. You can only access companies: {request.user_company_ids}",
+                        400,
+                        'Invalid company_ids format. Use comma-separated integers (e.g., "1,2,3")',
                     )
+
+                # Validate user has access to all requested companies (multi-tenancy security)
+                # Admin users (request.user_company_ids is empty for admins) skip this validation
+                if request.user_company_ids:  # Not admin
+                    unauthorized_companies = [
+                        cid
+                        for cid in requested_company_ids
+                        if cid not in request.user_company_ids
+                    ]
+                    if unauthorized_companies:
+                        return error_response(
+                            403,
+                            f"Access denied to company IDs: {unauthorized_companies}. You can only access companies: {request.user_company_ids}",
+                        )
+            else:
+                # No company_ids provided: use all companies the user belongs to
+                requested_company_ids = list(request.user_company_ids) if request.user_company_ids else []
 
             # Build domain for filtering
             domain = []
@@ -85,11 +85,12 @@ class AgentApiController(http.Controller):
                     domain.append(("active", "=", False))
             # If is_active is None, no filter is applied (returns all)
 
-            # Company filter using validated company_ids
-            if len(requested_company_ids) == 1:
-                domain.append(("company_id", "=", requested_company_ids[0]))
-            else:
-                domain.append(("company_id", "in", requested_company_ids))
+            # Company filter using validated company_ids (empty list = admin with no restriction)
+            if requested_company_ids:
+                if len(requested_company_ids) == 1:
+                    domain.append(("company_id", "=", requested_company_ids[0]))
+                else:
+                    domain.append(("company_id", "in", requested_company_ids))
 
             # CRECI filters
             if creci_number:

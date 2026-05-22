@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+from . import agent_api  # FR-001: Agent API endpoints
+from . import property_api  # FR-001: Property API endpoints
+from . import master_data_api  # FR-001: Master data API endpoints
 from . import lead_api  # FR-001: Lead API endpoints
 from . import owner_api  # Feature 007: Owner CRUD API (independent)
 from . import company_api  # Feature 007: Company CRUD API

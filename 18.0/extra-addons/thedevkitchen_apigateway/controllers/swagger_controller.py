@@ -2,7 +2,7 @@
 import json
 from odoo import http
 from odoo.http import request
-from odoo.modules.module import get_module_resource
+from odoo.tools.misc import file_open
 from odoo.addons.thedevkitchen_observability.services.tracer import trace_http_request
 
 
@@ -11,8 +11,7 @@ class SwaggerController(http.Controller):
     @trace_http_request
     def swagger_ui(self, **kwargs):
         """Serve Swagger UI"""
-        swagger_path = get_module_resource('thedevkitchen_apigateway', 'static', 'src', 'swagger.html')
-        with open(swagger_path, 'r') as f:
+        with file_open('thedevkitchen_apigateway/static/src/swagger.html', 'r', filter_ext=('.html',)) as f:
             content = f.read()
         return request.make_response(content, headers=[('Content-Type', 'text/html')])
 
