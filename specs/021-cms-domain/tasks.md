@@ -112,12 +112,11 @@
 ### Implementação de US3
 
 - [ ] T025 Criar `controllers/cms_public_controller.py` com endpoint:
-  - `GET /api/v1/public/cms/:company_slug/pages/:page_slug` — público com token de integração
-  Lógica: validar token de integração; resolver `company_slug → company_id`; buscar página com `status=published` e `active=True`; retornar Puck JSON + campos SEO; **nunca retornar** `custom_js`, `custom_css`, `status`, `created_at`, `updated_at`.
-  Marcar como `# public endpoint` com `auth='none'`; validação do token de integração no service layer.
-- [ ] T026 Criar `services/cms_integration_token_service.py`: validar token de integração contra configuração da plataforma; retornar 401 para token ausente/inválido/expirado
+  - `GET /api/v1/public/cms/:company_slug/pages/:page_slug` — autenticado via `@require_jwt` existente (sem `@require_session` nem `@require_company`)
+  Lógica: validar JWT via decorador padrão; resolver `company_slug → company_id` via `cms.settings`; buscar página com `status=published` e `active=True`; retornar Puck JSON + campos SEO; **nunca retornar** `custom_js`, `custom_css`, `status`, `created_at`, `updated_at`.
+  Marcar como `# public endpoint` com `auth='none'` + aplicar `@require_jwt` manualmente (padrão para rotas que precisam de JWT mas não de sessão).
 
-**Checkpoint**: US3 funcional — rota interna e pública operando com autenticações distintas
+**Checkpoint**: US3 funcional — rota interna (JWT+session+company) e rota pública (JWT only) operando corretamente
 
 ---
 

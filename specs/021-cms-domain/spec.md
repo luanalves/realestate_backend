@@ -6,6 +6,16 @@
 **Solution Type**: Both — API REST headless + Odoo UI (admin)
 **Input**: CMS Domain com Puck editor, SEO avançado, biblioteca de mídia, company slug multi-tenant, observabilidade
 
+## Clarifications
+
+### Session 2026-05-24
+
+- Q: O token de integração da rota pública é um mecanismo novo (ex: campo em cms.settings) ou reutiliza a autenticação existente da plataforma? → A: Reutiliza o JWT existente da aplicação (`@require_jwt`). A rota pública NÃO é anônima e NÃO cria nova infraestrutura de token. A company é resolvida pelo `company_slug` na URL em vez de via sessão.
+- Q: O conteúdo do template (`content` Puck JSON) deve ficar na própria tabela ou em tabela separada como as páginas? → A: Tabela separada (`thedevkitchen.cms.template.content`) — mesmo padrão das páginas para consistência e performance em listagens.
+- Q: Páginas CMS precisam suportar múltiplos idiomas (locale por página, traduções vinculadas)? → A: Não — idioma único por página, sem suporte multilingual neste escopo. Pode ser adicionado como extensão futura sem quebrar o modelo atual.
+- Q: O registro em `cms.page.content` é criado imediatamente no `POST` (com `content=null`) ou de forma lazy no primeiro `PUT` com conteúdo? → A: Imediatamente no `POST` com `content=null` — join sempre garantido, sem lógica condicional no service layer.
+- Q: O `agent` acessa metadados apenas ou metadados + `content` completo de páginas publicadas via rota interna? → A: Metadados + `content` completo — mesma resposta que owner/director/manager para páginas `published`. O mesmo conteúdo já está disponível via rota pública com JWT.
+
 ---
 
 ## User Scenarios & Testing *(mandatory)*
@@ -76,11 +86,11 @@ Equipes editoriais precisam fazer upload e organizar imagens, vídeos e document
 
 ### User Story 3 - Consultar páginas CMS: rota interna e rota pública (Priority: P1)
 
-O sistema precisa expor dois pontos de acesso distintos para leitura de páginas: um para integrantes autenticados da imobiliária (que podem ver páginas em qualquer status) e outro para o frontend público (Next.js SSR), que deve carregar apenas páginas publicadas e autenticar o chamador via token de integração — sem expor dados de operação interna.
+O sistema precisa expor dois pontos de acesso distintos para leitura de páginas: um para integrantes autenticados da imobiliária (que podem ver páginas em qualquer status) e outro para o frontend público (Next.js SSR), que deve carregar apenas páginas publicadas. Ambas as rotas reutilizam o JWT existente da aplicação — sem criar novo mecanismo de autenticação. A diferença está nos dados retornados e em como a company é identificada.
 
-**Why this priority**: A separação de rotas é crítica para segurança: a rota interna expõe campos operacionais (`status`, `created_at`, `updated_at`) que não devem aparecer no website público; a rota pública precisa de um mecanismo de autenticação próprio (token de integração) para garantir que apenas o frontend autorizado consome o CMS.
+**Why this priority**: A separação de rotas é crítica para segurança: a rota interna expõe campos operacionais (`status`, `created_at`, `updated_at`) que não devem aparecer no website público; a rota pública identifica a company pelo `company_slug` na URL em vez de via sessão, e retorna apenas páginas publicadas sem dados operacionais internos.
 
-**Independent Test**: Pode ser testado chamando a rota interna com JWT válido e a rota pública com token de integração válido, verificando que cada uma retorna apenas os campos adequados ao seu contexto.
+**Independent Test**: Pode ser testado chamando a rota interna com JWT+session+company e a rota pública com JWT (sem session/company), verificando que cada uma retorna apenas os campos adequados ao seu contexto.
 
 **Acceptance Scenarios**:
 
@@ -90,15 +100,15 @@ O sistema precisa expor dois pontos de acesso distintos para leitura de páginas
 
 2. **Given** owner/director/manager autenticado, **When** `GET /api/v1/cms/pages/:id`, **Then** retorna metadados + conteúdo completo da página incluindo campos SEO e operacionais.
 
-3. **Given** role `agent` autenticado, **When** `GET /api/v1/cms/pages`, **Then** retorna apenas páginas com `status=published` — agents têm acesso somente leitura de páginas publicadas.
+3. **Given** role `agent` autenticado, **When** `GET /api/v1/cms/pages`, **Then** retorna apenas páginas com `status=published` — agents têm acesso somente leitura de páginas publicadas, incluindo metadados e `content` completo.
 
 4. **Given** autenticado na imobiliária A, **When** `GET /api/v1/cms/pages/:id` de página pertencente à imobiliária B, **Then** retorna 404.
 
 **Rota Pública (frontend / Next.js SSR)**
 
-5. **Given** chamada com token de integração válido, **When** `GET /api/v1/public/cms/:company_slug/pages/:page_slug`, **Then** retorna 200 com Puck JSON + campos SEO completos (title, meta_description, og_*, canonical_url, robots_meta, structured_data) — somente se `status=published` e `active=True`.
+5. **Given** chamada com JWT válido da aplicação, **When** `GET /api/v1/public/cms/:company_slug/pages/:page_slug`, **Then** retorna 200 com Puck JSON + campos SEO completos (title, meta_description, og_*, canonical_url, robots_meta, structured_data) — somente se `status=published` e `active=True`.
 
-6. **Given** chamada sem token de integração ou com token inválido, **When** `GET /api/v1/public/cms/:company_slug/pages/:page_slug`, **Then** retorna 401 — rota pública não é anônima.
+6. **Given** chamada sem JWT ou com JWT inválido, **When** `GET /api/v1/public/cms/:company_slug/pages/:page_slug`, **Then** retorna 401 — rota pública não é anônima, reutiliza `@require_jwt` existente.
 
 7. **Given** `company_slug` inexistente na plataforma, **When** acesso com token válido, **Then** retorna 404 genérico — sem revelar existência ou não de companies (prevenção de enumeração).
 
@@ -244,9 +254,8 @@ Engenheiros de plataforma precisam monitorar operações CMS (publicações, upl
 - `og_image_id` referencia mídia de outra imobiliária → Validação de constraint rejeita antes de persistir.
 - `custom_css` maior que 64KB → Retorna 422 `{"error": "css_too_large"}`.
 - `page_slug` com path traversal (`../admin`) → Validação regex bloqueia antes de qualquer operação de banco.
-- Token de integração expirado ou revogado na rota pública → Retorna 401 — rota pública não é degradada para anônima.
+- JWT expirado ou inválido na rota pública → Retorna 401 via `@require_jwt` existente — rota pública não é degradada para anônima.
 - `PUT` com `status` inválido (ex: `{"status": "deleted"}`) → Retorna 422 `{"error": "invalid_status_value", "allowed": ["draft", "pending_review", "published", "archived"]}`.
-- Tabela de conteúdo (`cms.page.content`) sem registro correspondente para uma página → `GET` retorna `content: null` sem erro — registro de conteúdo criado de forma lazy no primeiro `PUT` com `content`.
 
 ---
 
@@ -260,7 +269,7 @@ Engenheiros de plataforma precisam monitorar operações CMS (publicações, upl
 
 - **FR-003**: O sistema DEVE validar que `content` é JSON válido e não excede 512KB; rejeitar com erro explicativo antes de persistir.
 
-- **FR-004**: O sistema DEVE expor duas rotas de leitura distintas: rota interna autenticada (`GET /api/v1/cms/pages`) com acesso a campos operacionais (status, datas) para integrantes da imobiliária; rota pública autenticada por token de integração (`GET /api/v1/public/cms/:company_slug/pages/:page_slug`) que retorna apenas páginas publicadas sem campos operacionais internos.
+- **FR-004**: O sistema DEVE expor duas rotas de leitura distintas, ambas autenticadas via `@require_jwt` existente: (1) rota interna (`GET /api/v1/cms/pages`) — com `@require_session` + `@require_company`, retorna páginas em qualquer status com campos operacionais; (2) rota pública (`GET /api/v1/public/cms/:company_slug/pages/:page_slug`) — somente `@require_jwt`, company resolvida pelo `company_slug` na URL, retorna apenas páginas publicadas sem campos operacionais. Nenhum novo mecanismo de autenticação é criado.
 
 - **FR-005**: O sistema DEVE identificar imobiliárias no endpoint público via `company_slug` configurado nas settings — único na plataforma, resolução feita pelo servidor de aplicação.
 
@@ -290,9 +299,9 @@ Engenheiros de plataforma precisam monitorar operações CMS (publicações, upl
 
 - **CMS Page** (`thedevkitchen.cms.page`): Metadados da página — `name`, `slug`, `status` (4 estados), campos SEO (`title`, `og_*`, `canonical_url`, `robots_meta`), `published_at`, `created_at`, `updated_at`, `company_id`. O campo `content` reside em tabela separada. Chave natural composta: `(slug, company_id)`. Suporta `mail.thread` para auditoria de transições de status.
 
-- **CMS Page Content** (`thedevkitchen.cms.page.content`): Armazena o corpo da página em coluna `TEXT`. Relacionada à página via `page_id` (1:1). Tabela separada para evitar impacto de performance nas consultas de listagem e metadados, que não precisam carregar o conteúdo completo.
+- **CMS Page Content** (`thedevkitchen.cms.page.content`): Armazena o corpo da página em coluna `TEXT`. Relacionada à página via `page_id` (1:1, `ondelete='cascade'`). Registro criado automaticamente junto com a página (no `POST`), com `content=null` até o primeiro `PUT` com conteúdo. Tabela separada para evitar impacto de performance nas consultas de listagem.
 
-- **CMS Template** (`thedevkitchen.cms.template`): Layout reutilizável com conteúdo Puck JSON pré-definido por categoria (`landing`, `property`, `about`). Escopo por imobiliária. O conteúdo do template também pode residir em tabela separada (`thedevkitchen.cms.template.content`) seguindo o mesmo padrão.
+- **CMS Template** (`thedevkitchen.cms.template`): Layout reutilizável com conteúdo Puck JSON pré-definido por categoria (`landing`, `property`, `about`). Escopo por imobiliária. O conteúdo reside obrigatoriamente em tabela separada `thedevkitchen.cms.template.content` (mesmo padrão de `cms.page.content`) — listagens de templates não carregam o JSON completo.
 
 - **CMS Media** (`thedevkitchen.cms.media`): Arquivo binário com MIME type validado por conteúdo, tamanho limitado por tipo, vinculado a `ir.attachment`. Deleção permanente — exceção documentada ao soft delete padrão.
 
@@ -320,7 +329,7 @@ Engenheiros de plataforma precisam monitorar operações CMS (publicações, upl
 
 - **SC-008**: Todas as transições de estado inválidas são rejeitadas com erro explícito contendo `from`, `to` e `allowed` — verificado por testes unitários de state machine.
 
-- **SC-009**: Rota pública retorna 401 em 100% das chamadas sem token de integração ou com token inválido — zero acesso anônimo à rota pública.
+- **SC-009**: Rota pública retorna 401 em 100% das chamadas sem JWT válido — zero acesso anônimo à rota pública, validado pelo `@require_jwt` existente.
 
 ---
 
@@ -333,11 +342,12 @@ Engenheiros de plataforma precisam monitorar operações CMS (publicações, upl
 - O frontend Next.js usa `@measured/puck` para renderização — o backend não valida a estrutura interna do JSON Puck, apenas que é JSON válido dentro do limite de tamanho
 - Rate limiting no gateway é configurado externamente ao módulo Odoo
 - `thedevkitchen_observability` módulo funcional e integrado na versão 18.0
-- O token de integração para a rota pública é gerenciado fora deste módulo (pré-existente na plataforma ou configurado via settings)
+- A rota pública reutiliza `@require_jwt` da plataforma — sem nova infraestrutura de token. A company é resolvida pelo `company_slug` da URL.
 
 ### Out of Scope (Technical Debt)
 
 - Agendamento de publicação e demais operações CRUD agendadas — movido para débito técnico (ver `TECHNICAL_DEBIT.md`)
+- Suporte multilingual (múltiplos idiomas por página) — fora do escopo; modelo atual suporta extensão futura sem quebra de schema
 
 ### Module Dependencies
 
