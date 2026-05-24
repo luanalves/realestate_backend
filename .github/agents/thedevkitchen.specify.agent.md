@@ -541,6 +541,13 @@ users = {
 
 ## Artifacts to Generate
 
+> **⚠️ OBRIGATÓRIO**: Ao gerar qualquer artefato desta spec, **SEMPRE utilize as skills do projeto** disponíveis em `.github/skills/`. Em especial:
+> - **`development-best-practices`** (`.github/skills/development-best-practices/SKILL.md`) — leia antes de gerar qualquer modelo, controller, endpoint ou decisão de nomenclatura
+> - **`swagger-updater`** (`.github/skills/swagger-updater/SKILL.md`) — obrigatório para toda geração/atualização de Swagger
+> - **`postman-collection-manager`** (`.github/skills/postman-collection-manager/SKILL.md`) — obrigatório para criação/atualização de coleções Postman
+>
+> As skills garantem conformidade com os ADRs do projeto e evitam violações de padrões estabelecidos.
+
 After specification approval, generate:
 
 1. **Constitution Update** (MANDATORY for new patterns)
@@ -554,6 +561,7 @@ After specification approval, generate:
    - Location: `.github/copilot-instructions.md`
    - Add new controller patterns or examples
    - Update security decorator examples if needed
+   - **Consult `development-best-practices` skill** before adding any pattern
 
 3. **Post-Development Tasks** (to be executed AFTER implementation is complete and validated)
    - **OpenAPI/Swagger** (per ADR-005)
@@ -566,6 +574,7 @@ After specification approval, generate:
    - **Postman Collection** (per ADR-016)
      - Location: `docs/postman/[feature].postman_collection.json`
      - Include request examples and test scripts
+     - **MUST use the `postman-collection-manager` skill** (`.github/skills/postman-collection-manager/SKILL.md`)
      - Generate using handoff to `thedevkitchen.postman`
 
    - **Journey Flowcharts** (MANDATORY)
@@ -575,6 +584,7 @@ After specification approval, generate:
      - Include one flowchart per major user story
      - Use `sequenceDiagram` or `flowchart TD` Mermaid syntax
      - Reference all API endpoints defined in the spec
+     - **Consult `development-best-practices` skill** to ensure endpoints and flows seguem os padrões do projeto (ADR-007, ADR-011)
 
 ---
 
