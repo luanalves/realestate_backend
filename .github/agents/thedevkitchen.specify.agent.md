@@ -459,6 +459,10 @@ users = {
 
 ### Documentation
 - [ ] Constitution feedback analyzed and documented
+- [ ] Swagger/OpenAPI generated using `swagger-updater` skill (per ADR-005)
+- [ ] Journey flowcharts created at `specs/[###]-[feature-name]/flowcharts.md`
+  - [ ] One Mermaid diagram per major user story
+  - [ ] Each diagram covers actor, actions, endpoints, and decision points
 
 ---
 
@@ -529,8 +533,9 @@ users = {
 ### Phase 4: Documentation & Artifacts
 - Constitution update (if new patterns)
 - Post-Development Tasks:
-  - API documentation (Swagger/OpenAPI per ADR-005)
+  - API documentation (Swagger/OpenAPI per ADR-005) — use `swagger-updater` skill
   - Postman collection (per ADR-016)
+  - Journey flowcharts (`flowcharts.md` in spec directory)
 
 ---
 
@@ -550,16 +555,26 @@ After specification approval, generate:
    - Add new controller patterns or examples
    - Update security decorator examples if needed
 
-3. **Post-Development Tasks** (to be executed AFTER implementation is complete)
+3. **Post-Development Tasks** (to be executed AFTER implementation is complete and validated)
    - **OpenAPI/Swagger** (per ADR-005)
      - Location: `docs/openapi/[feature].yaml`
      - Include all endpoints with examples
+     - **MUST use the `swagger-updater` skill** (`.github/skills/swagger-updater/SKILL.md`)
+     - Swagger is generated from the database — never edit static files directly
      - Generate using handoff to `thedevkitchen.swagger`
    
    - **Postman Collection** (per ADR-016)
      - Location: `docs/postman/[feature].postman_collection.json`
      - Include request examples and test scripts
      - Generate using handoff to `thedevkitchen.postman`
+
+   - **Journey Flowcharts** (MANDATORY)
+     - Location: `specs/[###]-[feature-name]/flowcharts.md`
+     - Document all user journeys developed in the spec as Mermaid flowcharts
+     - Each journey must include: actor, sequence of actions, endpoints called (method + path), and decision points
+     - Include one flowchart per major user story
+     - Use `sequenceDiagram` or `flowchart TD` Mermaid syntax
+     - Reference all API endpoints defined in the spec
 
 ---
 
@@ -1012,12 +1027,18 @@ Based on this specification, the following patterns may need to be added to the 
 2. **Create implementation plan** → Use handoff: `speckit.plan` (will generate `plan-idea.md`)
 3. **Define test strategy** → Use handoff: `speckit.test-strategy`
 
-### Post-Development Tasks (to be executed AFTER implementation):
+### Post-Development Tasks (to be executed AFTER implementation is complete and validated):
 
-4. **Generate API documentation** → Use handoff: `thedevkitchen.swagger` (per ADR-005)
+4. **Generate API documentation (Swagger)** → Use the `swagger-updater` skill and handoff: `thedevkitchen.swagger` (per ADR-005)
+   - Read `.github/skills/swagger-updater/SKILL.md` before starting
+   - Swagger is generated from the database — never edit static files directly
 5. **Generate Postman collection** → Use handoff: `thedevkitchen.postman` (per ADR-016)
+6. **Create journey flowcharts** → Create `specs/[###]-[feature-name]/flowcharts.md`
+   - One Mermaid diagram per major user journey (sequenceDiagram or flowchart TD)
+   - Include actor, actions, endpoints (method + path), and decision points for each journey
+   - Cover all user stories defined in the specification
 
-> **Note**: Tasks 4 and 5 should be executed only after the feature development is complete and tested.
+> **Note**: Tasks 4, 5, and 6 should be executed only after the feature development is complete and tested.
 > These will be included in the implementation plan as final deliverables.
 
 Would you like me to proceed with any of these?
