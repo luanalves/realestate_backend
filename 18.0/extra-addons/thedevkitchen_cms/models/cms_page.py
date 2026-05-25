@@ -82,6 +82,11 @@ class CmsPage(models.Model):
         inverse_name="page_id",
         string="Page Content",
     )
+    html_content = fields.Html(
+        string="HTML Content",
+        sanitize=False,
+        help="Rich text content for editing in the Odoo admin UI. The API uses the Puck JSON (content_ids).",
+    )
 
     # ==================== SQL CONSTRAINTS ====================
 

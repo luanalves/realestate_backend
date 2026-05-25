@@ -31,6 +31,10 @@
                                 <field name="name" placeholder="File Name"/>
                             </h1>
                         </div>
+                        <!-- Image preview (only for image media type) -->
+                        <field name="image_1920" widget="image" nolabel="1"
+                               class="o_field_image"
+                               invisible="media_type != 'image'"/>
                         <group>
                             <group>
                                 <field name="media_type"/>
@@ -39,7 +43,8 @@
                                 <field name="company_id" groups="base.group_multi_company"/>
                             </group>
                             <group>
-                                <field name="url" widget="url"/>
+                                <!-- API: path/URL used by the REST API -->
+                                <field name="url" widget="url" string="File URL (API)"/>
                                 <field name="attachment_id"/>
                             </group>
                         </group>

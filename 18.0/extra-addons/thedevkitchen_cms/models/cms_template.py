@@ -34,6 +34,11 @@ class CmsTemplate(models.Model):
         inverse_name="template_id",
         string="Template Content",
     )
+    html_content = fields.Html(
+        string="HTML Content",
+        sanitize=False,
+        help="Rich text content for editing in the Odoo admin UI. The API uses the Puck JSON (content_ids).",
+    )
 
     # ==================== SQL CONSTRAINTS ====================
 

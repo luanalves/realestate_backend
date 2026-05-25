@@ -36,13 +36,21 @@
                                 <field name="company_id" groups="base.group_multi_company"/>
                             </group>
                         </group>
-                        <group string="Content (Puck JSON)">
-                            <field name="content_ids" nolabel="1">
-                                <list>
-                                    <field name="content" widget="text"/>
-                                </list>
-                            </field>
-                        </group>
+                        <notebook>
+                            <page string="Content" name="content">
+                                <!-- Odoo UI: rich HTML editor for admin editing -->
+                                <field name="html_content" widget="html" nolabel="1"
+                                       placeholder="Write template content here..."/>
+                            </page>
+                            <page string="Puck JSON (API)" name="puck_content">
+                                <!-- API: raw Puck editor JSON payload -->
+                                <field name="content_ids" nolabel="1">
+                                    <list>
+                                        <field name="content" widget="text"/>
+                                    </list>
+                                </field>
+                            </page>
+                        </notebook>
                     </sheet>
                 </form>
             </field>

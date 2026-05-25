@@ -32,6 +32,12 @@ class CmsMedia(models.Model):
         required=True,
         ondelete="restrict",
     )
+    image_1920 = fields.Binary(
+        string="Image Preview",
+        related="attachment_id.datas",
+        readonly=True,
+        help="Binary preview loaded from the linked attachment. Available for images.",
+    )
     company_id = fields.Many2one(
         comodel_name="res.company",
         string="Company",
