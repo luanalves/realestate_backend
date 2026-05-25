@@ -131,9 +131,12 @@ npx cypress run --spec "cypress/e2e/views/cms.cy.js"
 # Grafana: http://localhost:3000 → Explore → Loki
 # Query: {app="odoo"} |= "cms.page.published"
 
-# Métricas Prometheus
-curl http://localhost:8069/metrics | grep cms_
-# Esperado: cms_pages_by_status, cms_media_uploads_total
+# Observabilidade CMS (OpenTelemetry span events via _emit)
+# O módulo usa span events, não exporta contadores Prometheus.
+# Para monitorar: use Loki/Jaeger com queries nos eventos abaixo:
+#   cms.page.status_changed  — toda transição de status
+#   cms.page.published        — página publicada
+#   cms_media_uploads_total   — upload de mídia concluído
 ```
 
 ---

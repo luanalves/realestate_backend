@@ -188,7 +188,7 @@ class CmsPageController(http.Controller):
             return _cms_error(422, "validation_error", err_str)
         except (ValidationError, Exception) as exc:
             _logger.exception("CMS update_page unexpected error")
-            return _cms_error(500, "server_error", str(exc))
+            return _cms_error(500, "server_error", "An unexpected error occurred")
 
         payload = CmsPageService.serialize(page, include_content=True)
         return Response(json.dumps(payload), status=200, content_type="application/json")
@@ -252,7 +252,7 @@ class CmsPageController(http.Controller):
             return _cms_error(404, "not_found", f"Page {page_id} not found")
         except Exception as exc:
             _logger.exception("CMS duplicate_page unexpected error")
-            return _cms_error(500, "server_error", str(exc))
+            return _cms_error(500, "server_error", "An unexpected error occurred")
 
         payload = CmsPageService.serialize(new_page)
         payload["links"] = {"self": f"/api/v1/cms/pages/{new_page.id}"}

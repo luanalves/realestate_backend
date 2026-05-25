@@ -53,10 +53,9 @@ class CmsPageService:
 
         page = env["thedevkitchen.cms.page"].sudo().create(vals)
 
-        # Always create a content record (may be null)
-        env["thedevkitchen.cms.page.content"].sudo().create(
-            {"page_id": page.id, "content": content}
-        )
+        # Reuse _update_content so JSON/size validation is enforced on create
+        # (same rules as update — prevents storing invalid/oversized content).
+        CmsPageService._update_content(env, page, content)
         return page
 
     # ==================== UPDATE ====================
@@ -136,6 +135,7 @@ class CmsPageService:
         }
 
         original_content = page.content_ids[0].content if page.content_ids else None
+        new_vals["content"] = original_content
         return CmsPageService.create_page(env, new_vals, company_id, template_id=None)
 
     @staticmethod

@@ -88,7 +88,7 @@ class CmsMediaService:
     def upload(env, file_bytes, filename, claimed_mime, company_id):
         info = CmsMediaService.validate_upload(file_bytes, filename, claimed_mime)
 
-        # Store binary in ir.attachment
+        # Store binary in ir.attachment (private by default — served via CMS API)
         attachment = env["ir.attachment"].sudo().create({
             "name": info["filename"],
             "datas": base64.b64encode(file_bytes).decode("utf-8"),
@@ -97,21 +97,18 @@ class CmsMediaService:
             "company_id": company_id,
         })
 
-        # Build public URL (Odoo standard)
-        base_url = env["ir.config_parameter"].sudo().get_param(
-            "web.base.url", "http://localhost:8069"
-        )
-        url = f"{base_url}/web/content/{attachment.id}/{info['filename']}"
-
         media = env["thedevkitchen.cms.media"].sudo().create({
             "name": info["filename"],
             "mime_type": info["detected_mime"],
             "media_type": info["media_type"],
             "file_size": info["size"],
-            "url": url,
             "attachment_id": attachment.id,
             "company_id": company_id,
         })
+
+        # Use stable API URL (enforces JWT + company auth, avoids /web/content/ bypass)
+        media.sudo().write({"url": f"/api/v1/cms/media/{media.id}/file"})
+        attachment.sudo().write({"res_id": media.id})
 
         # T042: increment counter cms_media_uploads_total
         _emit("cms_media_uploads_total", {

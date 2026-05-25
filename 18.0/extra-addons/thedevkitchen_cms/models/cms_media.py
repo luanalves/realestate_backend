@@ -62,8 +62,9 @@ class CmsMedia(models.Model):
         attachment = self.env["ir.attachment"].sudo().create({
             "name": filename,
             "datas": file_data,
-            "public": True,
             "res_model": self._name,
+            "company_id": self.env.company.id,
+            # public=False (default) — files served via CMS API (JWT + company)
         })
 
         mime = attachment.mimetype or "application/octet-stream"
@@ -79,7 +80,8 @@ class CmsMedia(models.Model):
             "name": attachment.name,
             "mime_type": mime,
             "file_size": attachment.file_size or 0,
-            "url": f"/web/content/{attachment.id}/{filename}",
+            # URL set to empty; updated after record creation with stable API route
+            "url": "",
             "media_type": media_type,
         })
 
@@ -87,7 +89,13 @@ class CmsMedia(models.Model):
     def create(self, vals_list):
         for vals in vals_list:
             self._process_file_upload(vals)
-        return super().create(vals_list)
+        records = super().create(vals_list)
+        # Set stable API URL and link attachment to record for traceability
+        for record in records:
+            if record.attachment_id:
+                record.attachment_id.sudo().write({"res_id": record.id})
+                record.url = f"/api/v1/cms/media/{record.id}/file"
+        return records
 
     def write(self, vals):
         file_data = vals.get("file_upload")

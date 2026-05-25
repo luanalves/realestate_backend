@@ -54,15 +54,19 @@
                     <header>
                         <button name="action_submit_review" string="Submit for Review"
                                 type="object" class="btn-primary"
+                                groups="quicksol_estate.group_real_estate_owner,quicksol_estate.group_real_estate_director,quicksol_estate.group_real_estate_manager"
                                 invisible="status != 'draft'"/>
                         <button name="action_publish" string="Publish"
                                 type="object" class="btn-primary"
+                                groups="quicksol_estate.group_real_estate_owner,quicksol_estate.group_real_estate_director,quicksol_estate.group_real_estate_manager"
                                 invisible="status not in ['draft', 'pending_review']"/>
                         <button name="action_archive_page" string="Archive"
                                 type="object"
+                                groups="quicksol_estate.group_real_estate_owner,quicksol_estate.group_real_estate_director,quicksol_estate.group_real_estate_manager"
                                 invisible="status == 'archived'"/>
                         <button name="action_reset_draft" string="Reset to Draft"
                                 type="object"
+                                groups="quicksol_estate.group_real_estate_owner,quicksol_estate.group_real_estate_director,quicksol_estate.group_real_estate_manager"
                                 invisible="status not in ['pending_review', 'archived']"/>
                         <field name="status" widget="statusbar"
                                statusbar_visible="draft,pending_review,published,archived"/>

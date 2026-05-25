@@ -8,12 +8,6 @@ from ..services.cms_error_helpers import _cms_error
 
 _logger = logging.getLogger(__name__)
 
-# Fields excluded from the public payload (operational/internal data)
-_EXCLUDED_FIELDS = frozenset({
-    "status", "active", "company_id", "custom_js", "custom_css",
-    "create_date", "write_date", "created_at", "updated_at",
-})
-
 
 class CmsPublicController(http.Controller):
 

@@ -66,9 +66,11 @@ class CmsTemplateController(http.Controller):
             request.env["thedevkitchen.cms.template.content"].sudo().create(
                 {"template_id": template.id, "content": content}
             )
-        except Exception as exc:
-            _logger.exception("CMS create_template error")
+        except ValueError as exc:
             return _cms_error(422, "validation_error", str(exc))
+        except Exception:
+            _logger.exception("CMS create_template error")
+            return _cms_error(500, "server_error", "An unexpected error occurred")
 
         return Response(
             json.dumps(_serialize_template(template, include_content=True)),

@@ -97,7 +97,7 @@ class CmsSettingsController(http.Controller):
             return _cms_error(422, "validation_error", str(exc))
         except Exception as exc:
             _logger.exception("CMS update_settings unexpected error")
-            return _cms_error(500, "server_error", str(exc))
+            return _cms_error(500, "server_error", "An unexpected error occurred")
 
         payload = CmsSettingsService.serialize_for_role(settings, role)
         return Response(json.dumps(payload), status=200, content_type="application/json")
