@@ -136,7 +136,7 @@ flowchart TD
     F -- No --> G[Append '-2', '-3' ...\nuntil unique]
     G --> F
     F -- Yes --> H[Copy page fields\nstatus = draft]
-    H --> I[Copy content from\ncontent_ids[0]]
+    H --> I["Copy content from\nfirst content record"]
     I --> J[create_page() atomic]
     J --> K([201 Created — new page])
 ```
