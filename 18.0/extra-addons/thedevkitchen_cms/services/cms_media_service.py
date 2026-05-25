@@ -47,12 +47,11 @@ class CmsMediaService:
         try:
             import magic
             detected_mime = magic.from_buffer(file_bytes[:2048], mime=True)
-        except ImportError:
-            _logger.warning(
-                "python-magic not available — falling back to claimed MIME. "
-                "Install: pip install python-magic"
-            )
-            detected_mime = claimed_mime or "application/octet-stream"
+        except ImportError as exc:
+            raise RuntimeError(
+                "python-magic is required for file upload validation but is not installed. "
+                "Run: pip install python-magic"
+            ) from exc
 
         # 1. Whitelist check
         media_type = MEDIA_TYPE_BY_MIME.get(detected_mime)

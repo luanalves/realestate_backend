@@ -3,29 +3,35 @@ access_cms_page_user,User: CMS Page,model_thedevkitchen_cms_page,quicksol_estate
 access_cms_page_owner,Owner: CMS Page,model_thedevkitchen_cms_page,quicksol_estate.group_real_estate_owner,1,1,1,1
 access_cms_page_manager,Manager: CMS Page,model_thedevkitchen_cms_page,quicksol_estate.group_real_estate_manager,1,1,1,1
 access_cms_page_agent,Agent: CMS Page,model_thedevkitchen_cms_page,quicksol_estate.group_real_estate_agent,1,0,0,0
+access_cms_page_director,Director: CMS Page,model_thedevkitchen_cms_page,quicksol_estate.group_real_estate_director,1,1,1,1
 access_cms_page_admin,Admin: CMS Page,model_thedevkitchen_cms_page,base.group_system,1,1,1,1
 access_cms_page_content_user,User: CMS Page Content,model_thedevkitchen_cms_page_content,quicksol_estate.group_real_estate_user,1,1,1,1
 access_cms_page_content_owner,Owner: CMS Page Content,model_thedevkitchen_cms_page_content,quicksol_estate.group_real_estate_owner,1,1,1,1
 access_cms_page_content_manager,Manager: CMS Page Content,model_thedevkitchen_cms_page_content,quicksol_estate.group_real_estate_manager,1,1,1,1
 access_cms_page_content_agent,Agent: CMS Page Content,model_thedevkitchen_cms_page_content,quicksol_estate.group_real_estate_agent,1,0,0,0
+access_cms_page_content_director,Director: CMS Page Content,model_thedevkitchen_cms_page_content,quicksol_estate.group_real_estate_director,1,1,1,1
 access_cms_page_content_admin,Admin: CMS Page Content,model_thedevkitchen_cms_page_content,base.group_system,1,1,1,1
 access_cms_template_user,User: CMS Template,model_thedevkitchen_cms_template,quicksol_estate.group_real_estate_user,1,1,1,1
 access_cms_template_owner,Owner: CMS Template,model_thedevkitchen_cms_template,quicksol_estate.group_real_estate_owner,1,1,1,1
 access_cms_template_manager,Manager: CMS Template,model_thedevkitchen_cms_template,quicksol_estate.group_real_estate_manager,1,1,1,1
 access_cms_template_agent,Agent: CMS Template,model_thedevkitchen_cms_template,quicksol_estate.group_real_estate_agent,1,0,0,0
+access_cms_template_director,Director: CMS Template,model_thedevkitchen_cms_template,quicksol_estate.group_real_estate_director,1,1,1,1
 access_cms_template_admin,Admin: CMS Template,model_thedevkitchen_cms_template,base.group_system,1,1,1,1
 access_cms_template_content_user,User: CMS Template Content,model_thedevkitchen_cms_template_content,quicksol_estate.group_real_estate_user,1,1,1,1
 access_cms_template_content_owner,Owner: CMS Template Content,model_thedevkitchen_cms_template_content,quicksol_estate.group_real_estate_owner,1,1,1,1
 access_cms_template_content_manager,Manager: CMS Template Content,model_thedevkitchen_cms_template_content,quicksol_estate.group_real_estate_manager,1,1,1,1
 access_cms_template_content_agent,Agent: CMS Template Content,model_thedevkitchen_cms_template_content,quicksol_estate.group_real_estate_agent,1,0,0,0
+access_cms_template_content_director,Director: CMS Template Content,model_thedevkitchen_cms_template_content,quicksol_estate.group_real_estate_director,1,1,1,1
 access_cms_template_content_admin,Admin: CMS Template Content,model_thedevkitchen_cms_template_content,base.group_system,1,1,1,1
 access_cms_media_user,User: CMS Media,model_thedevkitchen_cms_media,quicksol_estate.group_real_estate_user,1,1,1,1
 access_cms_media_owner,Owner: CMS Media,model_thedevkitchen_cms_media,quicksol_estate.group_real_estate_owner,1,1,1,1
 access_cms_media_manager,Manager: CMS Media,model_thedevkitchen_cms_media,quicksol_estate.group_real_estate_manager,1,1,1,1
 access_cms_media_agent,Agent: CMS Media,model_thedevkitchen_cms_media,quicksol_estate.group_real_estate_agent,1,0,0,0
+access_cms_media_director,Director: CMS Media,model_thedevkitchen_cms_media,quicksol_estate.group_real_estate_director,1,1,1,1
 access_cms_media_admin,Admin: CMS Media,model_thedevkitchen_cms_media,base.group_system,1,1,1,1
 access_cms_settings_user,User: CMS Settings,model_thedevkitchen_cms_settings,quicksol_estate.group_real_estate_user,1,1,1,0
 access_cms_settings_owner,Owner: CMS Settings,model_thedevkitchen_cms_settings,quicksol_estate.group_real_estate_owner,1,1,1,0
 access_cms_settings_manager,Manager: CMS Settings,model_thedevkitchen_cms_settings,quicksol_estate.group_real_estate_manager,1,1,1,0
 access_cms_settings_agent,Agent: CMS Settings,model_thedevkitchen_cms_settings,quicksol_estate.group_real_estate_agent,1,0,0,0
+access_cms_settings_director,Director: CMS Settings,model_thedevkitchen_cms_settings,quicksol_estate.group_real_estate_director,1,1,1,0
 access_cms_settings_admin,Admin: CMS Settings,model_thedevkitchen_cms_settings,base.group_system,1,1,1,1

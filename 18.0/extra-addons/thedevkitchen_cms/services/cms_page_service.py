@@ -89,7 +89,7 @@ class CmsPageService:
 
     @staticmethod
     def _update_content(env, page, content):
-        if content:
+        if content is not None and content != "":
             if len(content.encode("utf-8")) > MAX_CONTENT_BYTES:
                 raise ValueError("content_too_large")
             try:

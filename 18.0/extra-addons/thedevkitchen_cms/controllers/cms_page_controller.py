@@ -186,7 +186,9 @@ class CmsPageController(http.Controller):
                     allowed=["draft", "pending_review", "published", "archived"],
                 )
             return _cms_error(422, "validation_error", err_str)
-        except (ValidationError, Exception) as exc:
+        except ValidationError as exc:
+            return _cms_error(422, "validation_error", str(exc.args[0]) if exc.args else "Validation failed")
+        except Exception:
             _logger.exception("CMS update_page unexpected error")
             return _cms_error(500, "server_error", "An unexpected error occurred")
 

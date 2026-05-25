@@ -11,7 +11,9 @@ _logger = logging.getLogger(__name__)
 
 class CmsPublicController(http.Controller):
 
-    # public endpoint
+    # JWT-authenticated endpoint — requires Bearer token from the frontend application.
+    # auth='none' + @require_jwt enforces token validation at the middleware level.
+    # Not unauthenticated: intended for server-to-server or SPA with a service token.
     @http.route(
         "/api/v1/public/cms/<string:company_slug>/pages/<string:page_slug>",
         type="http",

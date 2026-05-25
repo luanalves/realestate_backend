@@ -64,11 +64,13 @@ class CmsMedia(models.Model):
         if not file_data:
             return
 
+        # Respect company_id from vals if provided (multi-company safety)
+        company_id = vals.get("company_id") or self.env.company.id
         attachment = self.env["ir.attachment"].sudo().create({
             "name": filename,
             "datas": file_data,
             "res_model": self._name,
-            "company_id": self.env.company.id,
+            "company_id": company_id,
             # public=False (default) — files served via CMS API (JWT + company)
         })
 

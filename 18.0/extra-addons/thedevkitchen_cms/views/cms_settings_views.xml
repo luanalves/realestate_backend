@@ -23,7 +23,8 @@
                             <field name="custom_css" nolabel="1" widget="text"
                                    placeholder="/* Custom CSS for public pages */"/>
                         </group>
-                        <group string="Advanced Code (Owner Only)">
+                        <group string="Advanced Code (Owner Only)"
+                              groups="quicksol_estate.group_real_estate_owner,base.group_system">
                             <field name="custom_js" nolabel="1" widget="text"
                                    placeholder="// Custom JavaScript — only editable by owner"/>
                             <group>
