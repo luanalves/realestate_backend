@@ -3,6 +3,7 @@ import json
 import logging
 from odoo import http
 from odoo.http import request, Response
+from odoo.exceptions import ValidationError, UserError
 from odoo.addons.quicksol_estate.services.role_resolver import resolve_role
 from odoo.addons.thedevkitchen_apigateway.middleware import (
     require_jwt,
@@ -68,6 +69,8 @@ class CmsTemplateController(http.Controller):
             )
         except ValueError as exc:
             return _cms_error(422, "validation_error", str(exc))
+        except (ValidationError, UserError) as exc:
+            return _cms_error(422, "validation_error", str(exc.args[0]) if exc.args else "Validation failed")
         except Exception:
             _logger.exception("CMS create_template error")
             return _cms_error(500, "server_error", "An unexpected error occurred")
@@ -181,15 +184,21 @@ class CmsTemplateController(http.Controller):
             return _cms_error(404, "not_found", f"Template {template_id} not found")
 
         content = data.pop("content", None)
-        if data:
-            template.write(data)
-        if content is not None:
-            if template.content_ids:
-                template.content_ids[0].write({"content": content})
-            else:
-                request.env["thedevkitchen.cms.template.content"].sudo().create(
-                    {"template_id": template.id, "content": content}
-                )
+        try:
+            if data:
+                template.write(data)
+            if content is not None:
+                if template.content_ids:
+                    template.content_ids[0].write({"content": content})
+                else:
+                    request.env["thedevkitchen.cms.template.content"].sudo().create(
+                        {"template_id": template.id, "content": content}
+                    )
+        except (ValidationError, UserError) as exc:
+            return _cms_error(422, "validation_error", str(exc.args[0]) if exc.args else "Validation failed")
+        except Exception:
+            _logger.exception("CMS update_template error")
+            return _cms_error(500, "server_error", "An unexpected error occurred")
 
         return Response(
             json.dumps(_serialize_template(template, include_content=True)),

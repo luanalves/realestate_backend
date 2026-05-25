@@ -2,7 +2,7 @@
 import json
 import re
 from odoo import models, fields, api
-from odoo.exceptions import ValidationError
+from odoo.exceptions import ValidationError, UserError
 
 
 class CmsPage(models.Model):
@@ -134,22 +134,25 @@ class CmsPage(models.Model):
                 )
 
     # ==================== STATUS TRANSITIONS ====================
+    # Delegates to CmsPageService.change_status() to enforce the same
+    # transition rules as the REST API state machine (no direct status mutation).
+
+    def _change_status_via_service(self, to_status):
+        from ..services.cms_page_service import CmsPageService
+        for rec in self:
+            try:
+                CmsPageService.change_status(self.env, rec.id, to_status)
+            except ValueError as exc:
+                raise UserError(str(exc)) from exc
 
     def action_submit_review(self):
-        for rec in self:
-            rec.status = "pending_review"
+        self._change_status_via_service("pending_review")
 
     def action_publish(self):
-        for rec in self:
-            rec.write({
-                "status": "published",
-                "published_at": fields.Datetime.now(),
-            })
+        self._change_status_via_service("published")
 
     def action_archive_page(self):
-        for rec in self:
-            rec.status = "archived"
+        self._change_status_via_service("archived")
 
     def action_reset_draft(self):
-        for rec in self:
-            rec.status = "draft"
+        self._change_status_via_service("draft")

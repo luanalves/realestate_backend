@@ -32,17 +32,19 @@ docker compose exec db psql -U odoo -d realestate -c "\dt thedevkitchen_cms*"
 ## 2. Configurar company_slug (pré-requisito da rota pública)
 
 ```bash
-# Obter JWT da imobiliária (owner)
-TOKEN=$(curl -s -X POST http://localhost:8069/api/v1/auth/login \
+# Obter JWT + session da imobiliária (owner)
+# O endpoint real é /api/v1/users/login — retorna session_id e user (não access_token)
+RESPONSE=$(curl -s -X POST http://localhost:8069/api/v1/users/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"owner@imob.com","password":"senha"}' | jq -r '.access_token')
+  -d '{"email":"owner@imob.com","password":"senha"}')
 
-SESSION=$(curl -s -X POST http://localhost:8069/api/v1/auth/login \
-  -d '...' | jq -r '.session_id')
+TOKEN=$(echo "$RESPONSE" | jq -r '.token')          # JWT app token
+SESSION=$(echo "$RESPONSE" | jq -r '.session_id')   # session cookie
 
 # Configurar slug
 curl -X PUT http://localhost:8069/api/v1/cms/settings \
   -H "Authorization: Bearer $TOKEN" \
+  -H "X-Session-Id: $SESSION" \
   -H "Content-Type: application/json" \
   -H "X-Company-Id: 2" \
   -d '{"company_slug": "minha-agencia"}'

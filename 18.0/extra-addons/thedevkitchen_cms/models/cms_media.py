@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 import logging
+import os
+import re
 from odoo import models, fields, api
 
 _logger = logging.getLogger(__name__)
@@ -55,7 +57,10 @@ class CmsMedia(models.Model):
         """Consume file_upload binary, create ir.attachment, and populate all
         metadata fields in vals. Pops file_upload so the stored column stays NULL."""
         file_data = vals.pop("file_upload", None)
-        filename = vals.pop("file_upload_filename", None) or "upload"
+        raw_filename = vals.pop("file_upload_filename", None) or "upload"
+        # Sanitize: strip directory traversal, then keep only safe characters
+        filename = os.path.basename(raw_filename)
+        filename = re.sub(r"[^\w.\-]", "_", filename) or "upload"
         if not file_data:
             return
 
