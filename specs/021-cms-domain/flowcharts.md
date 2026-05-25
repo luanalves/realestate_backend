@@ -322,3 +322,126 @@ flowchart TD
 | `test_us021_rbac_matrix.sh` | 27 | Full permission matrix across all endpoints |
 | `test_us021_multitenancy.sh` | 6 | Page/template isolation, same slug, slug conflict 409 |
 | **Total** | **81** | **7/7 PASS** |
+
+---
+
+## 14. Endpoint Sequences per Journey
+
+Cada jornada lista os endpoints chamados **em ordem**, com o número de referência da seção 12.
+
+---
+
+### J1 — Autenticação (pré-requisito de todos os fluxos privados)
+
+| # | Endpoint | Finalidade |
+|---|----------|-----------|
+| 1 | `POST /api/v1/auth/token` | Obter JWT (`access_token`) |
+| 2 | `POST /api/v1/users/login` | Criar sessão (`session_id`) |
+
+> Após a autenticação, todos os requests privados enviam:
+> `Authorization: Bearer {token}` + `X-Openerp-Session-Id: {session_id}` + `X-Company-Id: {company_id}`
+
+---
+
+### J2 — Criar e publicar uma página (editor)
+
+| Ordem | # | Method | Endpoint | Ação |
+|-------|---|--------|----------|------|
+| 1 | 7 | `POST` | `/api/v1/cms/media/upload` | Upload de imagens / assets necessários |
+| 2 | 1 | `POST` | `/api/v1/cms/pages` | Criar página (status `draft`) |
+| 3 | 4 | `PUT` | `/api/v1/cms/pages/{id}` | Editar conteúdo Puck JSON |
+| 4 | 4 | `PUT` | `/api/v1/cms/pages/{id}` | Submeter para revisão (`status: pending_review`) |
+| 5 | 3 | `GET` | `/api/v1/cms/pages/{id}` | Verificar estado da página |
+| 6 | 4 | `PUT` | `/api/v1/cms/pages/{id}` | Aprovar e publicar (`status: published`) |
+
+---
+
+### J3 — Criar página a partir de template
+
+| Ordem | # | Method | Endpoint | Ação |
+|-------|---|--------|----------|------|
+| 1 | 13 | `GET` | `/api/v1/cms/templates` | Listar templates disponíveis |
+| 2 | 14 | `GET` | `/api/v1/cms/templates/{id}` | Visualizar conteúdo do template |
+| 3 | 1 | `POST` | `/api/v1/cms/pages` | Criar página com `template_id` (copia conteúdo) |
+| 4 | 4 | `PUT` | `/api/v1/cms/pages/{id}` | Personalizar conteúdo e metadados |
+| 5 | 3 | `GET` | `/api/v1/cms/pages/{id}` | Verificar resultado final |
+
+---
+
+### J4 — Fluxo de aprovação (manager → owner)
+
+| Ordem | # | Method | Endpoint | Ação |
+|-------|---|--------|----------|------|
+| 1 | 1 | `POST` | `/api/v1/cms/pages` | Manager cria rascunho |
+| 2 | 4 | `PUT` | `/api/v1/cms/pages/{id}` | Manager submete: `status: pending_review` |
+| 3 | 2 | `GET` | `/api/v1/cms/pages` | Owner lista páginas em revisão (`?status=pending_review`) |
+| 4 | 3 | `GET` | `/api/v1/cms/pages/{id}` | Owner lê conteúdo completo |
+| 5 | 4 | `PUT` | `/api/v1/cms/pages/{id}` | Owner publica: `status: published` |
+
+---
+
+### J5 — Duplicar e adaptar página existente
+
+| Ordem | # | Method | Endpoint | Ação |
+|-------|---|--------|----------|------|
+| 1 | 2 | `GET` | `/api/v1/cms/pages` | Listar páginas publicadas |
+| 2 | 3 | `GET` | `/api/v1/cms/pages/{id}` | Visualizar página original |
+| 3 | 6 | `POST` | `/api/v1/cms/pages/{id}/duplicate` | Duplicar (gera slug único, status `draft`) |
+| 4 | 4 | `PUT` | `/api/v1/cms/pages/{id}` | Editar cópia (novo conteúdo / slug) |
+| 5 | 4 | `PUT` | `/api/v1/cms/pages/{id}` | Publicar cópia |
+
+---
+
+### J6 — Gerenciar biblioteca de mídia
+
+| Ordem | # | Method | Endpoint | Ação |
+|-------|---|--------|----------|------|
+| 1 | 7 | `POST` | `/api/v1/cms/media/upload` | Upload do arquivo (valida MIME + tamanho) |
+| 2 | 8 | `GET` | `/api/v1/cms/media` | Listar biblioteca para seleção no editor |
+| 3 | 9 | `GET` | `/api/v1/cms/media/{id}` | Obter metadados (URL, mime_type, file_size) |
+| 4 | 10 | `GET` | `/api/v1/cms/media/{id}/file` | Download / preview do arquivo |
+| 5 | 11 | `DELETE` | `/api/v1/cms/media/{id}` | Remover arquivo desnecessário |
+
+---
+
+### J7 — Gerenciar templates
+
+| Ordem | # | Method | Endpoint | Ação |
+|-------|---|--------|----------|------|
+| 1 | 12 | `POST` | `/api/v1/cms/templates` | Criar template com conteúdo base |
+| 2 | 13 | `GET` | `/api/v1/cms/templates` | Listar templates disponíveis |
+| 3 | 14 | `GET` | `/api/v1/cms/templates/{id}` | Inspecionar template específico |
+| 4 | 15 | `PUT` | `/api/v1/cms/templates/{id}` | Atualizar conteúdo do template |
+| 5 | 16 | `DELETE` | `/api/v1/cms/templates/{id}` | Remover template obsoleto |
+
+---
+
+### J8 — Configurar site (owner)
+
+| Ordem | # | Method | Endpoint | Ação |
+|-------|---|--------|----------|------|
+| 1 | 17 | `GET` | `/api/v1/cms/settings` | Ler configurações atuais (inclui `custom_js` para owner) |
+| 2 | 18 | `PUT` | `/api/v1/cms/settings` | Atualizar `company_slug`, OG defaults, `custom_css`, `custom_js` |
+| 3 | 17 | `GET` | `/api/v1/cms/settings` | Confirmar alterações salvas |
+
+---
+
+### J9 — Leitura pública de página (frontend / SEO)
+
+| Ordem | # | Method | Endpoint | Ação |
+|-------|---|--------|----------|------|
+| 1 | 19 | `GET` | `/api/v1/public/cms/{company_slug}/pages/{page_slug}` | Obter página publicada com OG metadata |
+| 2 | 10 | `GET` | `/api/v1/cms/media/{id}/file` | Carregar assets de mídia referenciados no conteúdo |
+
+> **Auth:** apenas JWT (`Authorization: Bearer {token}`) — sem sessão, sem company header.
+> Retorna 404 para páginas `draft`, `pending_review` ou `archived`.
+
+---
+
+### J10 — Arquivar / desativar página
+
+| Ordem | # | Method | Endpoint | Ação |
+|-------|---|--------|----------|------|
+| 1 | 2 | `GET` | `/api/v1/cms/pages` | Localizar página a ser arquivada |
+| 2 | 4 | `PUT` | `/api/v1/cms/pages/{id}` | Mudar status para `archived` |
+| 3 | 5 | `DELETE` | `/api/v1/cms/pages/{id}` | Soft-delete se não for mais necessária (`active=False`) |
