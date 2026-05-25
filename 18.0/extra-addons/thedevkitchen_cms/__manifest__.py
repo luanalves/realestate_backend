@@ -49,6 +49,7 @@ Technical:
         "security/ir.model.access.csv",
         "security/cms_record_rules.xml",
         "data/api_endpoints.xml",
+        "data/cms_demo_pages.xml",
         "views/cms_page_views.xml",
         "views/cms_template_views.xml",
         "views/cms_media_views.xml",

@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        CMS Demo / Seed Pages — Imobiliária Seed
+        Loaded only in demo mode (listed under 'demo' in __manifest__.py).
+        Covers all 4 statuses so owner@seed.com.br can see the full workflow
+        in the Odoo admin UI with real html_content.
+    -->
+    <data noupdate="1">
+
+        <!-- ===== PUBLISHED: Sobre Nós ===== -->
+        <record id="cms_demo_page_about" model="thedevkitchen.cms.page">
+            <field name="name">Sobre Nós</field>
+            <field name="slug">sobre-nos</field>
+            <field name="status">published</field>
+            <field name="published_at" eval="DateTime.now()"/>
+            <field name="company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
+            <field name="title">Sobre a Imobiliária Seed | Imóveis em São Paulo</field>
+            <field name="meta_description">Conheça a Imobiliária Seed, especialista em imóveis residenciais e comerciais em São Paulo há mais de 10 anos.</field>
+            <field name="robots_meta">index,follow</field>
+            <field name="html_content" eval="'&lt;section&gt;&lt;h1&gt;Sobre a Imobiliária Seed&lt;/h1&gt;&lt;p&gt;Há mais de 10 anos conectando pessoas aos melhores imóveis de São Paulo.&lt;/p&gt;&lt;/section&gt;&lt;section&gt;&lt;h2&gt;Nossa História&lt;/h2&gt;&lt;p&gt;Fundada em 2014, a &lt;strong&gt;Imobiliária Seed&lt;/strong&gt; nasceu com o propósito de transformar a experiência de compra, venda e locação de imóveis no Brasil. Hoje somos referência em atendimento personalizado e tecnologia imobiliária.&lt;/p&gt;&lt;/section&gt;&lt;section&gt;&lt;h2&gt;Nossos Valores&lt;/h2&gt;&lt;ul&gt;&lt;li&gt;&lt;strong&gt;Transparência&lt;/strong&gt; — Informações claras em cada etapa.&lt;/li&gt;&lt;li&gt;&lt;strong&gt;Agilidade&lt;/strong&gt; — Processos digitais que aceleram seu negócio.&lt;/li&gt;&lt;li&gt;&lt;strong&gt;Confiança&lt;/strong&gt; — Mais de 2.000 clientes satisfeitos.&lt;/li&gt;&lt;/ul&gt;&lt;/section&gt;'"/>
+        </record>
+
+        <!-- ===== PUBLISHED: Serviços ===== -->
+        <record id="cms_demo_page_services" model="thedevkitchen.cms.page">
+            <field name="name">Serviços Imobiliários</field>
+            <field name="slug">servicos</field>
+            <field name="status">published</field>
+            <field name="published_at" eval="DateTime.now()"/>
+            <field name="company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
+            <field name="title">Serviços | Imobiliária Seed</field>
+            <field name="meta_description">Veja todos os serviços da Imobiliária Seed: compra, venda, locação e administração de imóveis.</field>
+            <field name="robots_meta">index,follow</field>
+            <field name="html_content" eval="'&lt;section&gt;&lt;h1&gt;Nossos Serviços&lt;/h1&gt;&lt;p&gt;Soluções completas para compra, venda e locação de imóveis.&lt;/p&gt;&lt;/section&gt;&lt;section&gt;&lt;h2&gt;Compra e Venda&lt;/h2&gt;&lt;p&gt;Assessoria completa desde a busca do imóvel até a assinatura do contrato. Avaliação de mercado, financiamento e documentação.&lt;/p&gt;&lt;/section&gt;&lt;section&gt;&lt;h2&gt;Locação&lt;/h2&gt;&lt;p&gt;Gestão de contratos de locação com análise de crédito, vistoria e administração mensal. Garantia de aluguel em dia.&lt;/p&gt;&lt;/section&gt;&lt;section&gt;&lt;h2&gt;Administração de Condomínios&lt;/h2&gt;&lt;p&gt;Administração financeira, manutenção predial e atendimento aos condôminos. Relatórios mensais transparentes.&lt;/p&gt;&lt;/section&gt;'"/>
+        </record>
+
+        <!-- ===== PENDING REVIEW: Blog Post ===== -->
+        <record id="cms_demo_page_blog" model="thedevkitchen.cms.page">
+            <field name="name">Dicas para Comprar seu Primeiro Imóvel</field>
+            <field name="slug">dicas-primeiro-imovel</field>
+            <field name="status">pending_review</field>
+            <field name="company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
+            <field name="title">Dicas para Comprar seu Primeiro Imóvel | Blog Seed</field>
+            <field name="meta_description">Confira as principais dicas da Imobiliária Seed para quem vai comprar o primeiro imóvel.</field>
+            <field name="robots_meta">index,follow</field>
+            <field name="html_content" eval="'&lt;article&gt;&lt;h1&gt;Dicas para Comprar seu Primeiro Imóvel&lt;/h1&gt;&lt;p&gt;Por &lt;strong&gt;Equipe Seed&lt;/strong&gt; — Aguardando revisão&lt;/p&gt;&lt;section&gt;&lt;h2&gt;1. Defina seu Orçamento&lt;/h2&gt;&lt;p&gt;Calcule quanto pode gastar incluindo entrada, parcelas e custos extras como ITBI, cartório e reforma.&lt;/p&gt;&lt;/section&gt;&lt;section&gt;&lt;h2&gt;2. Escolha a Localização&lt;/h2&gt;&lt;p&gt;Avalie distância do trabalho, escolas, hospitais e transporte. A localização impacta o valor de revenda.&lt;/p&gt;&lt;/section&gt;&lt;section&gt;&lt;h2&gt;3. Verifique a Documentação&lt;/h2&gt;&lt;p&gt;Certidões negativas, matrícula atualizada e habite-se são documentos essenciais.&lt;/p&gt;&lt;/section&gt;&lt;/article&gt;'"/>
+        </record>
+
+        <!-- ===== DRAFT: Contato ===== -->
+        <record id="cms_demo_page_contact" model="thedevkitchen.cms.page">
+            <field name="name">Entre em Contato</field>
+            <field name="slug">contato</field>
+            <field name="status">draft</field>
+            <field name="company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
+            <field name="title">Contato | Imobiliária Seed</field>
+            <field name="meta_description">Entre em contato com a Imobiliária Seed. Estamos prontos para ajudar você a encontrar o imóvel ideal.</field>
+            <field name="robots_meta">index,follow</field>
+            <field name="html_content" eval="'&lt;section&gt;&lt;h1&gt;Entre em Contato&lt;/h1&gt;&lt;p&gt;Disponíveis de segunda a sexta, das 9h às 18h, e sábados das 9h às 13h.&lt;/p&gt;&lt;/section&gt;&lt;section&gt;&lt;h2&gt;Telefone&lt;/h2&gt;&lt;p&gt;(11) 4000-0000&lt;/p&gt;&lt;h2&gt;E-mail&lt;/h2&gt;&lt;p&gt;contato@imobiliariaseed.com.br&lt;/p&gt;&lt;h2&gt;Endereço&lt;/h2&gt;&lt;p&gt;Av. Paulista, 1000 — Bela Vista, São Paulo, SP&lt;/p&gt;&lt;/section&gt;&lt;p&gt;&lt;em&gt;Rascunho: revisar horários e incluir mapa antes de publicar.&lt;/em&gt;&lt;/p&gt;'"/>
+        </record>
+
+        <!-- ===== ARCHIVED: Promoção Encerrada ===== -->
+        <record id="cms_demo_page_promo" model="thedevkitchen.cms.page">
+            <field name="name">Promoção de Verão 2025 (Encerrada)</field>
+            <field name="slug">promocao-verao-2025</field>
+            <field name="status">archived</field>
+            <field name="company_id" ref="quicksol_estate.company_seed_imobiliaria"/>
+            <field name="title">Promoção de Verão 2025 | Imobiliária Seed</field>
+            <field name="robots_meta">noindex,nofollow</field>
+            <field name="html_content" eval="'&lt;section&gt;&lt;h1&gt;Promoção de Verão 2025&lt;/h1&gt;&lt;p&gt;&lt;strong&gt;Esta promoção está encerrada.&lt;/strong&gt; Confira nossas ofertas atuais.&lt;/p&gt;&lt;/section&gt;&lt;section&gt;&lt;h2&gt;O que foi oferecido&lt;/h2&gt;&lt;p&gt;Clientes que fecharam contrato de locação em jan/fev 2025 ganharam 1 mês de aluguel grátis na assinatura.&lt;/p&gt;&lt;/section&gt;'"/>
+        </record>
+
+    </data>
+</odoo>
