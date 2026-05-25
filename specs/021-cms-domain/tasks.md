@@ -31,16 +31,16 @@
 
 **⚠️ CRÍTICO**: Todas as tarefas T004–T013 devem ser concluídas antes de qualquer fase US.
 
-- [ ] T004 Criar modelo `thedevkitchen.cms.page` em `18.0/extra-addons/thedevkitchen_cms/models/cms_page.py` com: `name` (Char, required), `slug` (Char, required), `status` (Selection: draft/pending_review/published/archived, default=draft), `title`, `meta_description`, `og_title`, `og_description`, `og_image_id` (Many2one cms.media), `canonical_url`, `robots_meta` (Selection), `structured_data` (Text), `published_at` (Datetime), `active` (Boolean, default=True), `company_id` (Many2one res.company, required); herdar `mail.thread`; `_sql_constraints`: `UNIQUE(slug, company_id)`
+- [ ] T004 Criar modelo `thedevkitchen.cms.page` em `18.0/extra-addons/thedevkitchen_cms/models/cms_page.py` com: `name` (Char, required), `slug` (Char, required), `status` (Selection: draft/pending_review/published/archived, default=draft), `title`, `meta_description`, `og_title`, `og_description`, `og_image_id` (Many2one cms.media), `canonical_url`, `robots_meta` (Selection), `structured_data` (Text), `published_at` (Datetime), `active` (Boolean, default=True), `company_id` (Many2one res.company, required); herdar `mail.thread`; `content_ids = One2many('thedevkitchen.cms.page.content', 'page_id')` (back-reference para acesso direto ao conteúdo); `_sql_constraints`: `UNIQUE(slug, company_id)`
 - [ ] T005 [P] Criar modelo `thedevkitchen.cms.page.content` em `18.0/extra-addons/thedevkitchen_cms/models/cms_page_content.py` com: `page_id` (Many2one cms.page, required, ondelete='cascade'), `content` (Text); `_sql_constraints`: `UNIQUE(page_id)` (garante relação 1:1 — padrão One2one no Odoo)
-- [ ] T006 [P] Criar modelo `thedevkitchen.cms.template` em `18.0/extra-addons/thedevkitchen_cms/models/cms_template.py` com: `name` (Char, required), `category` (Selection: landing/property/about, required), `active` (Boolean, default=True), `company_id` (Many2one res.company, required); `_sql_constraints`: `UNIQUE(name, company_id)`
+- [ ] T006 [P] Criar modelo `thedevkitchen.cms.template` em `18.0/extra-addons/thedevkitchen_cms/models/cms_template.py` com: `name` (Char, required), `category` (Selection: landing/property/about, required), `active` (Boolean, default=True), `company_id` (Many2one res.company, required); `content_ids = One2many('thedevkitchen.cms.template.content', 'template_id')` (back-reference para acesso ao conteúdo do template); `_sql_constraints`: `UNIQUE(name, company_id)`
 - [ ] T007 [P] Criar modelo `thedevkitchen.cms.template.content` em `18.0/extra-addons/thedevkitchen_cms/models/cms_template_content.py` com: `template_id` (Many2one cms.template, required, ondelete='cascade'), `content` (Text); `_sql_constraints`: `UNIQUE(template_id)`
 - [ ] T008 [P] Criar modelo `thedevkitchen.cms.media` em `18.0/extra-addons/thedevkitchen_cms/models/cms_media.py` com: `name` (Char, required), `mime_type` (Char, required), `media_type` (Selection: image/video/document, required), `file_size` (Integer, required), `url` (Char, required), `attachment_id` (Many2one ir.attachment, required), `company_id` (Many2one res.company, required); override de `unlink()` para hard delete (remove `ir.attachment` junto) — ADR-015 exception documentada no comentário do método
 - [ ] T009 [P] Criar modelo `thedevkitchen.cms.settings` em `18.0/extra-addons/thedevkitchen_cms/models/cms_settings.py` com: `company_slug` (Char), `og_default_title` (Char), `og_default_description` (Text), `custom_css` (Text), `custom_js` (Text), `custom_js_last_modified_by` (Many2one res.users), `custom_js_last_modified_at` (Datetime), `company_id` (Many2one res.company, required); `_sql_constraints`: `UNIQUE(company_id)` (singleton) e `UNIQUE(company_slug)`; classmethod `get_or_create(cls, env, company_id)`
 - [ ] T010 Adicionar `@api.constrains` em `18.0/extra-addons/thedevkitchen_cms/models/cms_page.py`: (1) `slug` regex `^[a-z0-9]+(?:-[a-z0-9]+)*$`; (2) `structured_data` `json.loads()` válido quando não-nulo; (3) `og_image_id.company_id == self.company_id` quando não-nulo
-- [ ] T011 [P] Adicionar `@api.constrains` em `18.0/extra-addons/thedevkitchen_cms/models/cms_settings.py`: (1) `company_slug` regex `^[a-z0-9]+(?:-[a-z0-9]+)*$` quando não-nulo; (2) `custom_css` contra 5 padrões CSS injection: `expression(`, `behavior:`, `url(javascript:`, `@import`, `-moz-binding`
-- [ ] T012 Criar `18.0/extra-addons/thedevkitchen_cms/security/ir.model.access.csv` com ACLs para os 5 modelos CMS e `18.0/extra-addons/thedevkitchen_cms/security/cms_record_rules.xml` com 3 record rules de isolamento por `company_id` para `cms.page`, `cms.media` e `cms.settings`
-- [ ] T013 [P] Atualizar `18.0/extra-addons/quicksol_estate/services/capability_service.py` adicionando subjects CMS (`CMSPage`, `CMSTemplate`, `CMSMedia`, `CMSSettings`) a `ALLOWED_SUBJECTS` e regras RBAC: owner/director/manager = full access; agent = read-only `CMSPage` e `CMSMedia`; demais roles = sem acesso
+- [ ] T011 [P] Adicionar `@api.constrains` em `18.0/extra-addons/thedevkitchen_cms/models/cms_settings.py` **somente para formato**: `company_slug` regex `^[a-z0-9]+(?:-[a-z0-9]+)*$` quando não-nulo. **NÃO incluir CSS injection aqui** — validação de CSS injection é responsabilidade exclusiva do service layer (T032/T043) para garantir que o evento de observabilidade seja emitido antes da rejeição
+- [ ] T012 Criar `18.0/extra-addons/thedevkitchen_cms/security/ir.model.access.csv` com ACLs para os **6 modelos CMS** (`cms.page`, `cms.page.content`, `cms.template`, `cms.template.content`, `cms.media`, `cms.settings`) e `18.0/extra-addons/thedevkitchen_cms/security/cms_record_rules.xml` com 3 record rules de isolamento por `company_id` para `cms.page`, `cms.media` e `cms.settings`
+- [ ] T013 [P] Atualizar `18.0/extra-addons/quicksol_estate/services/capability_service.py` adicionando subjects CMS (`CMSPage`, `CMSTemplate`, `CMSMedia`, `CMSSettings`) a `ALLOWED_SUBJECTS` e regras RBAC: owner/director/manager = full access; agent = read-only `CMSPage` e `CMSMedia`; `receptionist`, `prospector`, `property_owner` e `portal` = sem acesso a nenhum subject CMS
 
 **Checkpoint**: `odoo -d realestate -u thedevkitchen_cms --stop-after-init` instala sem erros; `\dt thedevkitchen_cms*` lista 6 tabelas no banco
 
@@ -139,7 +139,7 @@
 
 ### Implementação de US6
 
-- [ ] T032 [US6] Criar `18.0/extra-addons/thedevkitchen_cms/services/cms_settings_service.py` com: `get_or_create(env, company_id)` — retorna singleton ou cria novo; `update_settings(env, vals, company_id, user_role)` — valida `custom_js` restrito ao owner (lança `_cms_error(403, "forbidden")`), preenche campos de auditoria; `serialize_for_role(settings, user_role)` — omite `custom_js` se role != owner
+- [ ] T032 [US6] Criar `18.0/extra-addons/thedevkitchen_cms/services/cms_settings_service.py` com: `get_or_create(env, company_id)` — retorna singleton ou cria novo; `update_settings(env, vals, company_id, user_role)` — (1) valida `custom_js` restrito ao owner (lança `_cms_error(403, "forbidden")`), (2) **detecta CSS injection em `custom_css`** contra 5 padrões (`expression(`, `behavior:`, `url(javascript:`, `@import`, `-moz-binding`) — emite evento `cms.css_injection_blocked` com `{company_id, field="custom_css"}` ANTES de retornar `_cms_error(422, "css_injection_detected")`; (3) preenche campos de auditoria; `serialize_for_role(settings, user_role)` — omite `custom_js` se role != owner
 - [ ] T033 [US6] Criar `18.0/extra-addons/thedevkitchen_cms/controllers/cms_settings_controller.py` com 2 endpoints (ambos com `@require_jwt`, `@require_session`, `@require_company`): `GET /api/v1/cms/settings` (auto-cria singleton, omite `custom_js` para roles não-owner), `PUT /api/v1/cms/settings` (valida CSS injection e custom_js RBAC via service)
 
 **Checkpoint**: US6 funcional. `company_slug` resolve na rota pública. `custom_js` auditado. Testes T030–T031 passando.
@@ -182,7 +182,7 @@
 
 - [ ] T041 [US8] Adicionar emissão de eventos em `18.0/extra-addons/thedevkitchen_cms/services/cms_page_service.py`, método `change_status()`: emitir `cms.page.status_changed` com `{company_id, page_id, slug, from_status, to_status, author_id}`; emitir adicionalmente `cms.page.published` com `{published_at}` quando `to_status == published`
 - [ ] T042 [P] [US8] Adicionar incremento de counter `cms_media_uploads_total` em `18.0/extra-addons/thedevkitchen_cms/services/cms_media_service.py` com labels `company_id`, `mime_type`, `type` após upload bem-sucedido
-- [ ] T043 [P] [US8] Adicionar emissão de evento `cms.css_injection_blocked` em `18.0/extra-addons/thedevkitchen_cms/services/cms_settings_service.py` com campos `company_id` e `field` quando injection detectada
+- [ ] T043 [P] [US8] *(Coberto por T032)*: A emissão de `cms.css_injection_blocked` já está definida em `update_settings()` do `cms_settings_service.py`. Garantir cobertura em `test_cms_observability.py` (T040): mock de `update_settings` com CSS injection → verificar que evento é emitido com `{company_id, field="custom_css"}` ANTES do retorno 422
 - [ ] T044 [P] [US8] Registrar gauge `cms_pages_by_status` em `18.0/extra-addons/thedevkitchen_cms/services/cms_page_service.py`: atualizar 4 valores (draft/pending_review/published/archived) após cada `change_status()` via query agregada
 
 **Checkpoint**: Eventos visíveis no Loki após operações. Métricas `cms_pages_by_status` e `cms_media_uploads_total` disponíveis em `/metrics`.
@@ -193,7 +193,7 @@
 
 **Purpose**: Verificação de segurança, isolamento multi-tenant e RBAC cobrindo 100% da matriz de permissões.
 
-- [ ] T045 Criar `integration_tests/test_us021_rbac_matrix.sh`: testar todas as combinações role × endpoint da RBAC matrix em `contracts/api-contracts.md` com pelo menos 2 imobiliárias distintas; verificar 200 para permissões concedidas e 403 para negadas; verificar 404 para cross-company (não 403)
+- [ ] T045 Criar `integration_tests/test_us021_rbac_matrix.sh`: testar todas as combinações role × endpoint da RBAC matrix em `contracts/api-contracts.md` com pelo menos 2 imobiliárias distintas; verificar 200 para permissões concedidas e 403 para negadas; verificar 404 para cross-company (não 403); verificar explicitamente que roles `receptionist`, `prospector`, `property_owner` e `portal` recebem 403 em todos os endpoints CMS autenticados
 - [ ] T046 [P] Criar `integration_tests/test_us021_multitenancy.sh`: para cada entidade (page, template, media, settings) verificar que acesso cross-company retorna 404; verificar que `company_slug` duplicado retorna 409; verificar que `og_image_id` de outra imobiliária é rejeitado com 422; verificar que mesmo `page_slug` em duas imobiliárias são independentes
 
 **Checkpoint**: Matriz RBAC 100% correta. Isolamento multi-tenant verificado para todas as entidades.
@@ -206,8 +206,9 @@
 
 - [ ] T047 Criar `18.0/extra-addons/thedevkitchen_cms/data/api_endpoints.xml` usando a skill `swagger-updater` com todos os endpoints (pages ×6, public ×1, templates ×5, media ×5, settings ×2): cada record com `name`, `path`, `method`, `summary`, `description`, `tags`, `protected`, `request_schema`, `response_schema`; endpoints autenticados com `protected=True` tag `CMS`; endpoint público com `protected=False` tag `CMS Public`
 - [ ] T048 Fazer upgrade do módulo e validar no Swagger UI: `docker compose exec odoo bash -c "odoo -d realestate -u thedevkitchen_cms"`; verificar todos os 19 endpoints visíveis em `/api/docs` e `/api/v1/openapi.json`
+- [ ] T050 Gerar collection Postman usando o agente `thedevkitchen.postman` (skill `postman-collection-manager`, ADR-016): criar `docs/postman/cms-domain.postman_collection.json` com os 19 endpoints CMS (pages ×6, public ×1, templates ×5, media ×5, settings ×2); seguir convenções ADR-016 (variáveis `base_url`, `jwt_token`, `session_id`; script de auto-save de token no endpoint público; headers por tipo GET/POST; estrutura JSON-RPC onde aplicável); validar que todos os endpoints constam com exemplos de request/response
 
-**Checkpoint**: 19 endpoints CMS documentados e visíveis no Swagger UI.
+**Checkpoint**: 19 endpoints CMS documentados no Swagger UI e collection Postman disponível em `docs/postman/`.
 
 ---
 
@@ -300,9 +301,9 @@ Odoo UI:   T034 (Cypress) paralelo com T035+T036+T037+T038 (views) → T039 (men
 | Phase 8 | US7 (P2) | T034–T039 | T034, T035, T036, T037, T038 |
 | Phase 9 | US8 (P3) | T040–T044 | T040, T042, T043, T044 |
 | Phase 10 | Polish | T045–T046 | T046 |
-| Phase 11 | Swagger | T047–T048 | — |
+| Phase 11 | Swagger + Postman | T047–T048, T050 | — |
 | Phase 12 | Flowcharts | T049 | — |
-| **Total** | **8 user stories** | **49 tarefas** | **28 paralelas** |
+| **Total** | **8 user stories** | **50 tarefas** | **28 paralelas** |
 
 **MVP Scope**: Phase 1 + Phase 2 + Phase 3 (T001–T019, 19 tarefas) — entrega US1+US4 funcionais e testados de forma independente.
 

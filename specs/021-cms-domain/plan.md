@@ -5,7 +5,7 @@
 
 ## Summary
 
-Headless CMS domain para imobiliárias gerenciarem páginas web. O módulo `thedevkitchen_cms` expõe 25 endpoints REST (4 entidades + rota pública) com máquina de estados 4-fases (draft→pending_review→published→archived), upload de mídia com validação por magic bytes, editor Puck via JSON, SEO completo e isolamento multi-tenancy por company_id. A rota pública serve páginas publicadas usando apenas `@require_jwt` (sem sessão/company) com company_slug na URL. Não inclui agendamento (technical debt).
+Headless CMS domain para imobiliárias gerenciarem páginas web. O módulo `thedevkitchen_cms` expõe 19 endpoints REST (4 entidades + rota pública) com máquina de estados 4-fases (draft→pending_review→published→archived), upload de mídia com validação por magic bytes, editor Puck via JSON, SEO completo e isolamento multi-tenancy por company_id. A rota pública serve páginas publicadas usando apenas `@require_jwt` (sem sessão/company) com company_slug na URL. Não inclui agendamento (technical debt).
 
 ## Technical Context
 
@@ -17,7 +17,7 @@ Headless CMS domain para imobiliárias gerenciarem páginas web. O módulo `thed
 **Project Type**: Módulo único em `18.0/extra-addons/thedevkitchen_cms/`  
 **Performance Goals**: rota pública < 200ms p95 @ 500 req/s; listagem de páginas < 300ms @ 10k registros  
 **Constraints**: Sem agendamento (ver TECHNICAL_DEBIT.md); sem multilingual; @require_jwt reaproveitado (sem nova infraestrutura de auth); content validation no service layer (não no ORM)  
-**Scale/Scope**: Até 10k páginas/imobiliária; 5 entidades; 25 endpoints; 6 testes unitários
+**Scale/Scope**: Até 10k páginas/imobiliária; 6 entidades; 19 endpoints; 6 testes unitários
 
 ## Constitution Check
 
@@ -27,7 +27,7 @@ Headless CMS domain para imobiliárias gerenciarem páginas web. O módulo `thed
 |-----------|--------|---------------|
 | **I – Security First** | ✅ PASS | Endpoints internos: triple decorator (ADR-011). Rota pública: @require_jwt apenas (company resolvida via company_slug na URL, sem session/company requerida). Multi-tenancy: company_id em todas as 5 entidades + record rules. CSS injection: 5 patterns de regex. MIME: magic bytes via python-magic. |
 | **II – Test Coverage 80%+** | ✅ PASS | 6 arquivos de testes unitários planejados (T013, T014, T019, T023, T030, T040). Testes de integração bash. Testes Cypress para UI Odoo. |
-| **III – API-First** | ✅ PASS | 25 endpoints definidos em contracts/api-contracts.md. OpenAPI via api_endpoints.xml (T047). Postman collection (T048). |
+| **III – API-First** | ✅ PASS | 19 endpoints definidos em contracts/api-contracts.md. OpenAPI via api_endpoints.xml (T047). Postman collection (T050). |
 | **IV – Multi-Tenancy** | ✅ PASS | company_id em: page, template, media, settings. Record rules em cms_record_rules.xml. Validação cruzada: og_image_id deve ter mesmo company_id da página. |
 | **V – ADR Governance** | ✅ PASS | ADR-003 (Git), ADR-004 (naming: thedevkitchen_cms), ADR-005 (Swagger), ADR-007 (testes), ADR-008 (observabilidade), ADR-011 (auth), ADR-015 (hard delete mídia: exceção documentada em constitution v1.7.0), ADR-017 (módulo naming), ADR-018 (JWT), ADR-019 (RBAC). |
 | **VI – Headless Architecture** | ✅ PASS | API REST completa para todos os roles. UI Odoo (backend views) apenas para administração interna. Rota pública sem dependência de sessão Odoo. |
@@ -45,7 +45,7 @@ specs/021-cms-domain/
 ├── data-model.md        # Phase 1: ERD, state machine, 6 entidades
 ├── quickstart.md        # Phase 1: guia de setup para devs
 ├── contracts/
-│   └── api-contracts.md # Phase 1: 25 endpoints, RBAC matrix, error codes
+│   └── api-contracts.md # Phase 1: 19 endpoints, RBAC matrix, error codes
 └── tasks.md             # 49 tarefas, 12 fases (pré-existente)
 ```
 

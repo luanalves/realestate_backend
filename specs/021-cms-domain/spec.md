@@ -317,19 +317,17 @@ Engenheiros de plataforma precisam monitorar operações CMS (publicações, upl
 
 - **SC-002**: 100% das tentativas de upload com MIME proibido ou divergente são rejeitadas antes de chegar ao armazenamento — verificado por suite de testes com 15+ tipos de arquivo.
 
-- **SC-003**: A rota pública `GET /api/v1/public/cms/:company_slug/pages/:page_slug` responde em menos de 200ms para 95% das requisições com até 500 req/s concorrentes — medido em teste de carga.
+- **SC-003**: Zero erros JavaScript no console Odoo ao navegar por todas as views administrativas em Chrome e Firefox — verificado por testes Cypress automatizados.
 
-- **SC-004**: A rota de listagem interna `GET /api/v1/cms/pages` retorna em menos de 300ms com dataset de 10.000 páginas, sem carregar o campo `content` na listagem — verificado por teste de performance com dados sintéticos.
+- **SC-004**: Isolamento multi-tenant: 100% das tentativas de acesso cross-company retornam 404 — verificado por matriz de testes com pelo menos 2 imobiliárias distintas.
 
-- **SC-005**: Zero erros JavaScript no console Odoo ao navegar por todas as views administrativas em Chrome e Firefox — verificado por testes Cypress automatizados.
+- **SC-005**: Campos `custom_js`, `custom_css`, `status`, `created_at` e `updated_at` ausentes em 100% das respostas da rota pública — verificado por asserção nos testes de integração.
 
-- **SC-006**: Isolamento multi-tenant: 100% das tentativas de acesso cross-company retornam 404 — verificado por matriz de testes com pelo menos 2 imobiliárias distintas.
+- **SC-006**: Todas as transições de estado inválidas são rejeitadas com erro explícito contendo `from`, `to` e `allowed` — verificado por testes unitários de state machine.
 
-- **SC-007**: Campos `custom_js`, `custom_css`, `status`, `created_at` e `updated_at` ausentes em 100% das respostas da rota pública — verificado por asserção nos testes de integração.
+- **SC-007**: Rota pública retorna 401 em 100% das chamadas sem JWT válido — zero acesso anônimo à rota pública, validado pelo `@require_jwt` existente.
 
-- **SC-008**: Todas as transições de estado inválidas são rejeitadas com erro explícito contendo `from`, `to` e `allowed` — verificado por testes unitários de state machine.
-
-- **SC-009**: Rota pública retorna 401 em 100% das chamadas sem JWT válido — zero acesso anônimo à rota pública, validado pelo `@require_jwt` existente.
+> **Nota**: Critérios de performance de carga (tempo de resposta p95, throughput) foram removidos do escopo desta iteração. Serão tratados como technical debt após MVP em produção.
 
 ---
 
