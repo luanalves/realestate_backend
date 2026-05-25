@@ -128,6 +128,15 @@ This project uses specialized instruction files that are automatically applied b
 
 When the user is working on these file types, always consult the corresponding instruction file for specific guidelines.
 
+## Skills
+
+This project uses skills for specialized workflows:
+
+- **`odoo-module-security`**: Configure `ir.model.access.csv`, `menuitem groups`, and `res.groups` hierarchy for thedevkitchen modules. Use when creating new modules, debugging menu visibility (`menu não aparece`, `access denied`), or setting up RBAC access for the 9 RE profiles.
+- **`development-best-practices`**: Module naming, controller security decorators, PostgreSQL/Redis patterns, performance.
+- **`swagger-updater`**: Add/update/remove Swagger endpoints via XML data files.
+- **`postman-collection-manager`**: Create/update Postman collections following ADR-016.
+
 ## Key Modules
 
 ### thedevkitchen_user_onboarding (Feature 009)
