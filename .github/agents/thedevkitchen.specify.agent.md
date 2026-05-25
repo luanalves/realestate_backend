@@ -95,7 +95,13 @@ Ask **3-5 targeted clarification questions** before generating the specification
 ```markdown
 ## Feature Scope
 
-1. **Solution Type**: What is the target interface for this feature?
+1. **MVP**: Is this specification for an MVP (Minimum Viable Product) solution?
+   - [ ] No ✅ *(default)* — full specification with all requirements, edge cases, and quality standards
+   - [ ] Yes — focus on the minimum set of requirements to deliver value; defer non-essential features, edge cases, and optimizations to future iterations
+
+   > If **Yes**, mark non-MVP items with `[POST-MVP]` in the spec and reduce acceptance criteria to core flows only.
+
+2. **Solution Type**: What is the target interface for this feature?
    - [ ] API only (REST endpoints, headless/mobile consumers)
    - [ ] Odoo UI only (forms, lists, menus, views inside Odoo)
    - [ ] Both (API + Odoo UI)
@@ -107,38 +113,38 @@ Ask **3-5 targeted clarification questions** before generating the specification
 
    > 🏗️ **Access Model Reminder**: Only the system `admin` user accesses the Odoo UI directly. If the feature targets non-admin roles (Owner, Manager, Agent, Receptionist, Prospector, Portal), the correct answer is always **API only** — those users access the system exclusively via the headless frontend.
 
-2. **Primary Goal**: What is the main objective of this feature?
-3. **User Roles**: Which roles will use this feature?
+3. **Primary Goal**: What is the main objective of this feature?
+4. **User Roles**: Which roles will use this feature?
    - [ ] Owner
    - [ ] Manager  
    - [ ] Agent
    - [ ] Receptionist
    - [ ] Prospector
-4. **User Stories**: What are the key user stories? (describe 2-3 primary flows)
+5. **User Stories**: What are the key user stories? (describe 2-3 primary flows)
 ```
 
 #### 2. Data Model Questions
 ```markdown
 ## Data Model
 
-5. **Entities**: What entities are involved?
+6. **Entities**: What entities are involved?
    - Entity name and purpose
    - Key fields required
    - Relationships to existing entities (properties, agents, leads, etc.)
 
-6. **Constraints**: What validations are needed?
+7. **Constraints**: What validations are needed?
    - Required fields
    - Unique constraints
    - Business rules (e.g., price > 0)
 ```
 
 #### 3. API & Security Questions
-> Skip this section if Solution Type (question 1) is **Odoo UI only**.
+> Skip this section if Solution Type (question 2) is **Odoo UI only**.
 
 ```markdown
 ## API & Security
 
-7. **Endpoints**: What API operations are needed?
+8. **Endpoints**: What API operations are needed?
    - [ ] Create (POST)
    - [ ] Read single (GET /id)
    - [ ] Read list (GET)
@@ -146,7 +152,7 @@ Ask **3-5 targeted clarification questions** before generating the specification
    - [ ] Delete (DELETE)
    - [ ] Custom operations
 
-8. **Authorization**: Who can perform each operation?
+9. **Authorization**: Who can perform each operation?
    | Operation | Allowed Roles |
    |-----------|---------------|
    | Create    | ?             |
@@ -159,12 +165,12 @@ Ask **3-5 targeted clarification questions** before generating the specification
 ```markdown
 ## Testing Requirements
 
-9. **Critical Flows**: What user flows must be tested end-to-end?
-10. **Edge Cases**: What edge cases should be validated?
-11. **Multi-tenancy**: Should data be isolated by company? (default: YES per ADR-008)
-12. **UI Components**: Does this feature include new views/menus? (If YES, Cypress E2E required — only applies if Solution Type includes Odoo UI)
-13. **Frontend Validation**: Should conditional fields be tested in the UI? (only applies if Solution Type includes Odoo UI)
-14. **Seeds**: What seed data is required to exercise each user journey in tests?
+10. **Critical Flows**: What user flows must be tested end-to-end?
+11. **Edge Cases**: What edge cases should be validated?
+12. **Multi-tenancy**: Should data be isolated by company? (default: YES per ADR-008)
+13. **UI Components**: Does this feature include new views/menus? (If YES, Cypress E2E required — only applies if Solution Type includes Odoo UI)
+14. **Frontend Validation**: Should conditional fields be tested in the UI? (only applies if Solution Type includes Odoo UI)
+15. **Seeds**: What seed data is required to exercise each user journey in tests?
     - Seeds are MANDATORY regardless of Solution Type (API only, Odoo UI only, or Both)
     - Describe the minimum dataset needed: users per role, companies, entities with relationships
     - Seeds must cover all roles involved in the user stories
@@ -174,11 +180,12 @@ Ask **3-5 targeted clarification questions** before generating the specification
 - Wait for user responses before proceeding to Phase 2
 - Don't assume answers - clarify explicitly
 - Reference relevant ADRs when asking about standards
-- **Question 1 (Solution Type) is mandatory** — the answer gates which sections of the specification are generated:
+- **Question 1 (MVP) default is No** — assume full specification unless the user explicitly selects Yes
+- **Question 2 (Solution Type) is mandatory** — the answer gates which sections of the specification are generated:
   - `API only` → generate API contract sections, skip Odoo view/menu sections and Cypress tests
   - `Odoo UI only` → generate view/menu/action sections and Cypress tests, skip REST endpoint sections and Postman collection
   - `Both` → generate all sections (full dual-interface specification)
-- **Seeds (question 14) are MANDATORY for all solution types** — every spec must include a seed data section to enable user journey testing
+- **Seeds (question 15) are MANDATORY for all solution types** — every spec must include a seed data section to enable user journey testing
 - **Odoo UI menus must NEVER have a `groups` attribute** — menus are visible to the Odoo administrator user, who is not linked to any group; access control is handled at model/view level via record rules and field-level security, never at the menu level
 
 ### Phase 2: Specification Generation
