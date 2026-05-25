@@ -12,9 +12,18 @@
  *   /web#action=<module>.<action_xml_id>&model=<model>&view_type=<type>
  */
 
-const BASE_URL = 'http://localhost:8069';
-const USER     = Cypress.env('ODOO_USERNAME') || 'admin';
-const PASS     = Cypress.env('ODOO_PASSWORD') || 'admin';
+const BASE_URL = Cypress.env('ODOO_BASE_URL');
+const USER     = Cypress.env('ODOO_USERNAME');
+const PASS     = Cypress.env('ODOO_PASSWORD');
+
+before(() => {
+  if (!BASE_URL || !USER || !PASS) {
+    throw new Error(
+      'Missing required Cypress env vars. ' +
+      'Define ODOO_BASE_URL, ODOO_USERNAME and ODOO_PASSWORD in cypress.env.json.',
+    );
+  }
+});
 
 // Odoo legacy hash-based URL routing (XML ID format)
 const CMS_PAGES     = '/web#action=thedevkitchen_cms.action_cms_pages&model=thedevkitchen.cms.page&view_type=list';

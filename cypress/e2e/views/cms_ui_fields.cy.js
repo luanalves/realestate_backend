@@ -9,12 +9,21 @@
  *
  * Pre-conditions:
  *   - Odoo running, thedevkitchen_cms installed and upgraded (html_content column exists)
- *   - admin user (base.group_system)
+ *   - cypress.env.json or CYPRESS_* env vars must define ODOO_USERNAME, ODOO_PASSWORD, ODOO_BASE_URL
  */
 
-const BASE_URL = 'http://localhost:8069';
-const USER     = Cypress.env('ODOO_USERNAME') || 'admin';
-const PASS     = Cypress.env('ODOO_PASSWORD') || 'admin';
+const BASE_URL = Cypress.env('ODOO_BASE_URL');
+const USER     = Cypress.env('ODOO_USERNAME');
+const PASS     = Cypress.env('ODOO_PASSWORD');
+
+before(() => {
+  if (!BASE_URL || !USER || !PASS) {
+    throw new Error(
+      'Missing required Cypress env vars. ' +
+      'Define ODOO_BASE_URL, ODOO_USERNAME and ODOO_PASSWORD in cypress.env.json.',
+    );
+  }
+});
 
 const CMS_PAGES     = '/web#action=thedevkitchen_cms.action_cms_pages&model=thedevkitchen.cms.page&view_type=list';
 const CMS_TEMPLATES = '/web#action=thedevkitchen_cms.action_cms_templates&model=thedevkitchen.cms.template&view_type=list';
