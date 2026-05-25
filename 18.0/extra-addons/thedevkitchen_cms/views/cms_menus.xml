@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- ===================== ROOT MENU: CMS ===================== -->
+        <menuitem
+            id="menu_cms_root"
+            name="CMS"
+            sequence="90"
+            groups="quicksol_estate.group_real_estate_user"
+        />
+
+        <!-- ===================== SUBMENUS ===================== -->
+        <menuitem
+            id="menu_cms_pages"
+            name="Pages"
+            parent="menu_cms_root"
+            action="action_cms_pages"
+            sequence="10"
+        />
+
+        <menuitem
+            id="menu_cms_templates"
+            name="Templates"
+            parent="menu_cms_root"
+            action="action_cms_templates"
+            sequence="20"
+        />
+
+        <menuitem
+            id="menu_cms_media"
+            name="Media"
+            parent="menu_cms_root"
+            action="action_cms_media"
+            sequence="30"
+        />
+
+        <menuitem
+            id="menu_cms_settings"
+            name="Settings"
+            parent="menu_cms_root"
+            action="action_cms_settings"
+            sequence="40"
+        />
+
+    </data>
+</odoo>

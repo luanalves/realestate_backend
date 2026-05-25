@@ -1,0 +1,13 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_cms_page_user,User: CMS Page,model_thedevkitchen_cms_page,quicksol_estate.group_real_estate_user,1,1,1,1
+access_cms_page_admin,Admin: CMS Page,model_thedevkitchen_cms_page,base.group_system,1,1,1,1
+access_cms_page_content_user,User: CMS Page Content,model_thedevkitchen_cms_page_content,quicksol_estate.group_real_estate_user,1,1,1,1
+access_cms_page_content_admin,Admin: CMS Page Content,model_thedevkitchen_cms_page_content,base.group_system,1,1,1,1
+access_cms_template_user,User: CMS Template,model_thedevkitchen_cms_template,quicksol_estate.group_real_estate_user,1,1,1,1
+access_cms_template_admin,Admin: CMS Template,model_thedevkitchen_cms_template,base.group_system,1,1,1,1
+access_cms_template_content_user,User: CMS Template Content,model_thedevkitchen_cms_template_content,quicksol_estate.group_real_estate_user,1,1,1,1
+access_cms_template_content_admin,Admin: CMS Template Content,model_thedevkitchen_cms_template_content,base.group_system,1,1,1,1
+access_cms_media_user,User: CMS Media,model_thedevkitchen_cms_media,quicksol_estate.group_real_estate_user,1,1,1,1
+access_cms_media_admin,Admin: CMS Media,model_thedevkitchen_cms_media,base.group_system,1,1,1,1
+access_cms_settings_user,User: CMS Settings,model_thedevkitchen_cms_settings,quicksol_estate.group_real_estate_user,1,1,1,0
+access_cms_settings_admin,Admin: CMS Settings,model_thedevkitchen_cms_settings,base.group_system,1,1,1,1

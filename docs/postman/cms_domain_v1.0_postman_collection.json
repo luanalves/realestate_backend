@@ -1,0 +1,963 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "name": "CMS Domain API",
+    "description": "Postman Collection for the CMS Domain (Feature 021) of the thedevkitchen Real Estate Management System.\n\n## Module\n`thedevkitchen_cms` — Content Management System for real estate agencies.\n\n## Features\n- CMS Pages: Create, list, get, update, delete, and duplicate pages\n- CMS Media: Upload, list, get metadata, download file, and delete media assets\n- CMS Public: Public page rendering endpoint (no session/company required)\n- CMS Templates: Create, list, get, update, and delete reusable page templates\n- CMS Settings: Read and update CMS configuration per company\n\n## Authentication Flow\n1. **Get OAuth Token**: POST /api/v1/auth/token → saves `access_token` + `refresh_token`\n2. **User Login**: POST /api/v1/users/login → saves `session_id`\n3. **Set context variables**: `company_id` from your tenant configuration\n4. **Use triple auth on all CMS endpoints**: `Authorization` + `X-Session-Id` + `X-Company-Id`\n\n## Headers (Authenticated Endpoints)\n- `Authorization: Bearer {{access_token}}` — JWT bearer token (@require_jwt)\n- `X-Session-Id: {{session_id}}` — Application session (@require_session)\n- `X-Company-Id: {{company_id}}` — Tenant isolation (@require_company)\n- `User-Agent: {{user_agent}}` — Session fingerprint validation\n- `Content-Type: application/json` — For POST/PUT JSON endpoints\n\n## Headers (Public Endpoint)\n- `Authorization: Bearer {{access_token}}` — JWT only (no session/company)\n- `User-Agent: {{user_agent}}`\n\n## Headers (Media Upload)\n- `Authorization: Bearer {{access_token}}`\n- `X-Session-Id: {{session_id}}`\n- `X-Company-Id: {{company_id}}`\n- `User-Agent: {{user_agent}}`\n- **No Content-Type** — Postman sets it automatically with multipart boundary\n\n## Important Notes (ADR-016)\n- ⚠️ **No JSON-RPC**: All CMS endpoints send JSON directly in body (no wrapper)\n- ✅ **Variables**: Use {{...}} for all auth values — never hardcode\n- ✅ **Test Scripts**: Create Page/Template/Media auto-save IDs to variables\n- ✅ **Multi-tenancy**: All non-public endpoints enforce company isolation\n\n## Changelog v1.0\n- **NEW**: Initial CMS Domain collection (Feature 021)\n- POST /api/v1/cms/pages — Create Page\n- GET /api/v1/cms/pages — List Pages\n- GET /api/v1/cms/pages/{id} — Get Page\n- PUT /api/v1/cms/pages/{id} — Update Page\n- DELETE /api/v1/cms/pages/{id} — Delete Page\n- POST /api/v1/cms/pages/{id}/duplicate — Duplicate Page\n- POST /api/v1/cms/media/upload — Upload Media\n- GET /api/v1/cms/media — List Media\n- GET /api/v1/cms/media/{id} — Get Media Metadata\n- GET /api/v1/cms/media/{id}/file — Get Media File (binary)\n- DELETE /api/v1/cms/media/{id} — Delete Media\n- GET /api/v1/public/cms/{company_slug}/pages/{page_slug} — Get Public Page\n- POST /api/v1/cms/templates — Create Template\n- GET /api/v1/cms/templates — List Templates\n- GET /api/v1/cms/templates/{id} — Get Template\n- PUT /api/v1/cms/templates/{id} — Update Template\n- DELETE /api/v1/cms/templates/{id} — Delete Template\n- GET /api/v1/cms/settings — Get Settings\n- PUT /api/v1/cms/settings — Update Settings",
+    "version": "1.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "CMS Pages",
+      "description": "CRUD operations and duplication for CMS pages.\n\n**Authentication:** Bearer Token + Session ID + Company ID required on all endpoints.\n**Multi-tenancy:** Company isolation active (@require_company).",
+      "item": [
+        {
+          "name": "Create Page",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.id) {",
+                  "    pm.collectionVariables.set('cms_page_id', jsonData.id);",
+                  "    console.log('✅ cms_page_id saved: ' + jsonData.id);",
+                  "} else {",
+                  "    console.error('❌ Failed to extract id from Create Page response');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "X-Session-Id",
+                "value": "{{session_id}}",
+                "type": "text",
+                "description": "Application session ID (@require_session)"
+              },
+              {
+                "key": "X-Company-Id",
+                "value": "{{company_id}}",
+                "type": "text",
+                "description": "Tenant company ID (@require_company)"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "type": "text",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Home Page\",\n  \"slug\": \"home\",\n  \"title\": \"Home — My Agency\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/cms/pages",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "cms", "pages"]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID + Company ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent)\n\nCreates a new CMS page within the current company context.\n\n**Test Script:** Automatically saves the returned `id` to `cms_page_id` collection variable.\n\n**IMPORTANT:** Business endpoints do NOT use JSON-RPC format. Send JSON directly in body."
+          }
+        },
+        {
+          "name": "List Pages",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "X-Session-Id",
+                "value": "{{session_id}}",
+                "type": "text",
+                "description": "Application session ID (@require_session)"
+              },
+              {
+                "key": "X-Company-Id",
+                "value": "{{company_id}}",
+                "type": "text",
+                "description": "Tenant company ID (@require_company)"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "type": "text",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/cms/pages",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "cms", "pages"]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID + Company ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent)\n\nReturns a paginated list of CMS pages for the current company."
+          }
+        },
+        {
+          "name": "Get Page",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "X-Session-Id",
+                "value": "{{session_id}}",
+                "type": "text",
+                "description": "Application session ID (@require_session)"
+              },
+              {
+                "key": "X-Company-Id",
+                "value": "{{company_id}}",
+                "type": "text",
+                "description": "Tenant company ID (@require_company)"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "type": "text",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/cms/pages/{{cms_page_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "cms", "pages", "{{cms_page_id}}"]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID + Company ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent)\n\nReturns full detail of a single CMS page by ID.\n\n**Variable:** Set `cms_page_id` before calling (auto-populated by \"Create Page\" test script)."
+          }
+        },
+        {
+          "name": "Update Page",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "X-Session-Id",
+                "value": "{{session_id}}",
+                "type": "text",
+                "description": "Application session ID (@require_session)"
+              },
+              {
+                "key": "X-Company-Id",
+                "value": "{{company_id}}",
+                "type": "text",
+                "description": "Tenant company ID (@require_company)"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "type": "text",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated Title\",\n  \"status\": \"pending_review\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/cms/pages/{{cms_page_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "cms", "pages", "{{cms_page_id}}"]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID + Company ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent)\n\nUpdates an existing CMS page by ID. Only provided fields are updated (partial update).\n\n**Variable:** Set `cms_page_id` before calling.\n\n**IMPORTANT:** Business endpoints do NOT use JSON-RPC format. Send JSON directly in body."
+          }
+        },
+        {
+          "name": "Delete Page",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "X-Session-Id",
+                "value": "{{session_id}}",
+                "type": "text",
+                "description": "Application session ID (@require_session)"
+              },
+              {
+                "key": "X-Company-Id",
+                "value": "{{company_id}}",
+                "type": "text",
+                "description": "Tenant company ID (@require_company)"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "type": "text",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/cms/pages/{{cms_page_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "cms", "pages", "{{cms_page_id}}"]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID + Company ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent)\n\nPermanently deletes a CMS page by ID.\n\n**Variable:** Set `cms_page_id` before calling."
+          }
+        },
+        {
+          "name": "Duplicate Page",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "X-Session-Id",
+                "value": "{{session_id}}",
+                "type": "text",
+                "description": "Application session ID (@require_session)"
+              },
+              {
+                "key": "X-Company-Id",
+                "value": "{{company_id}}",
+                "type": "text",
+                "description": "Tenant company ID (@require_company)"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "type": "text",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/cms/pages/{{cms_page_id}}/duplicate",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "cms", "pages", "{{cms_page_id}}", "duplicate"]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID + Company ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent)\n\nCreates a full copy of the specified CMS page. No request body required.\n\n**Variable:** Set `cms_page_id` before calling."
+          }
+        }
+      ]
+    },
+    {
+      "name": "CMS Media",
+      "description": "Upload and manage media assets (images, documents) attached to CMS pages.\n\n**Authentication:** Bearer Token + Session ID + Company ID required on all endpoints.\n**Multi-tenancy:** Company isolation active (@require_company).",
+      "item": [
+        {
+          "name": "Upload Media",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.id) {",
+                  "    pm.collectionVariables.set('cms_media_id', jsonData.id);",
+                  "    console.log('✅ cms_media_id saved: ' + jsonData.id);",
+                  "} else {",
+                  "    console.error('❌ Failed to extract id from Upload Media response');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "X-Session-Id",
+                "value": "{{session_id}}",
+                "type": "text",
+                "description": "Application session ID (@require_session)"
+              },
+              {
+                "key": "X-Company-Id",
+                "value": "{{company_id}}",
+                "type": "text",
+                "description": "Tenant company ID (@require_company)"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "type": "text",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "description": "The media file to upload (image, PDF, etc.)"
+                },
+                {
+                  "key": "name",
+                  "value": "banner-home",
+                  "type": "text",
+                  "description": "Optional friendly name for the media asset"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/cms/media/upload",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "cms", "media", "upload"]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID + Company ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent)\n\nUploads a media file (multipart/form-data). Do NOT set Content-Type manually — Postman sets it automatically with the correct multipart boundary.\n\n**Test Script:** Automatically saves the returned `id` to `cms_media_id` collection variable."
+          }
+        },
+        {
+          "name": "List Media",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "X-Session-Id",
+                "value": "{{session_id}}",
+                "type": "text",
+                "description": "Application session ID (@require_session)"
+              },
+              {
+                "key": "X-Company-Id",
+                "value": "{{company_id}}",
+                "type": "text",
+                "description": "Tenant company ID (@require_company)"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "type": "text",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/cms/media",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "cms", "media"]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID + Company ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent)\n\nReturns a paginated list of media assets for the current company."
+          }
+        },
+        {
+          "name": "Get Media Metadata",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "X-Session-Id",
+                "value": "{{session_id}}",
+                "type": "text",
+                "description": "Application session ID (@require_session)"
+              },
+              {
+                "key": "X-Company-Id",
+                "value": "{{company_id}}",
+                "type": "text",
+                "description": "Tenant company ID (@require_company)"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "type": "text",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/cms/media/{{cms_media_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "cms", "media", "{{cms_media_id}}"]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID + Company ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent)\n\nReturns metadata (name, mimetype, size, URL) for a specific media asset.\n\n**Variable:** Set `cms_media_id` before calling (auto-populated by \"Upload Media\" test script)."
+          }
+        },
+        {
+          "name": "Get Media File",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "X-Session-Id",
+                "value": "{{session_id}}",
+                "type": "text",
+                "description": "Application session ID (@require_session)"
+              },
+              {
+                "key": "X-Company-Id",
+                "value": "{{company_id}}",
+                "type": "text",
+                "description": "Tenant company ID (@require_company)"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "type": "text",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/cms/media/{{cms_media_id}}/file",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "cms", "media", "{{cms_media_id}}", "file"]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID + Company ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent)\n\nDownloads the raw binary content of a media asset. Response is binary (image, PDF, etc.).\n\n**Variable:** Set `cms_media_id` before calling."
+          }
+        },
+        {
+          "name": "Delete Media",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "X-Session-Id",
+                "value": "{{session_id}}",
+                "type": "text",
+                "description": "Application session ID (@require_session)"
+              },
+              {
+                "key": "X-Company-Id",
+                "value": "{{company_id}}",
+                "type": "text",
+                "description": "Tenant company ID (@require_company)"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "type": "text",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/cms/media/{{cms_media_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "cms", "media", "{{cms_media_id}}"]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID + Company ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent)\n\nPermanently deletes a media asset by ID.\n\n**Variable:** Set `cms_media_id` before calling."
+          }
+        }
+      ]
+    },
+    {
+      "name": "CMS Public",
+      "description": "Public-facing CMS endpoints. No session or company headers required — JWT only.\n\n**Authentication:** Bearer Token only (@require_jwt, no @require_session or @require_company).",
+      "item": [
+        {
+          "name": "Get Public Page",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "type": "text",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/public/cms/{{cms_company_slug}}/pages/{{cms_page_slug}}",
+              "host": ["{{base_url}}"],
+              "path": [
+                "api",
+                "v1",
+                "public",
+                "cms",
+                "{{cms_company_slug}}",
+                "pages",
+                "{{cms_page_slug}}"
+              ]
+            },
+            "description": "**Authentication:** Bearer Token ONLY — no X-Session-Id or X-Company-Id required\n**Multi-tenancy:** Company resolved from URL path via `company_slug`\n**Fingerprint validation:** N/A (public endpoint)\n\nReturns the rendered content of a published CMS page for public consumption (e.g., agency website, portal).\n\n**Variables:**\n- `cms_company_slug`: Agency identifier slug (e.g., `minha-imobiliaria`)\n- `cms_page_slug`: Page identifier slug (e.g., `home`, `sobre-nos`)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "CMS Templates",
+      "description": "Manage reusable CMS page templates.\n\n**Authentication:** Bearer Token + Session ID + Company ID required on all endpoints.\n**Multi-tenancy:** Company isolation active (@require_company).",
+      "item": [
+        {
+          "name": "Create Template",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.id) {",
+                  "    pm.collectionVariables.set('cms_template_id', jsonData.id);",
+                  "    console.log('✅ cms_template_id saved: ' + jsonData.id);",
+                  "} else {",
+                  "    console.error('❌ Failed to extract id from Create Template response');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "X-Session-Id",
+                "value": "{{session_id}}",
+                "type": "text",
+                "description": "Application session ID (@require_session)"
+              },
+              {
+                "key": "X-Company-Id",
+                "value": "{{company_id}}",
+                "type": "text",
+                "description": "Tenant company ID (@require_company)"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "type": "text",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Property Template\",\n  \"category\": \"landing\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/cms/templates",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "cms", "templates"]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID + Company ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent)\n\nCreates a new reusable CMS page template within the current company context.\n\n**Test Script:** Automatically saves the returned `id` to `cms_template_id` collection variable.\n\n**IMPORTANT:** Business endpoints do NOT use JSON-RPC format. Send JSON directly in body."
+          }
+        },
+        {
+          "name": "List Templates",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "X-Session-Id",
+                "value": "{{session_id}}",
+                "type": "text",
+                "description": "Application session ID (@require_session)"
+              },
+              {
+                "key": "X-Company-Id",
+                "value": "{{company_id}}",
+                "type": "text",
+                "description": "Tenant company ID (@require_company)"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "type": "text",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/cms/templates",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "cms", "templates"]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID + Company ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent)\n\nReturns a paginated list of CMS templates for the current company."
+          }
+        },
+        {
+          "name": "Get Template",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "X-Session-Id",
+                "value": "{{session_id}}",
+                "type": "text",
+                "description": "Application session ID (@require_session)"
+              },
+              {
+                "key": "X-Company-Id",
+                "value": "{{company_id}}",
+                "type": "text",
+                "description": "Tenant company ID (@require_company)"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "type": "text",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/cms/templates/{{cms_template_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "cms", "templates", "{{cms_template_id}}"]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID + Company ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent)\n\nReturns full detail of a single CMS template by ID.\n\n**Variable:** Set `cms_template_id` before calling (auto-populated by \"Create Template\" test script)."
+          }
+        },
+        {
+          "name": "Update Template",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "X-Session-Id",
+                "value": "{{session_id}}",
+                "type": "text",
+                "description": "Application session ID (@require_session)"
+              },
+              {
+                "key": "X-Company-Id",
+                "value": "{{company_id}}",
+                "type": "text",
+                "description": "Tenant company ID (@require_company)"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "type": "text",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Name\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/cms/templates/{{cms_template_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "cms", "templates", "{{cms_template_id}}"]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID + Company ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent)\n\nUpdates an existing CMS template by ID. Only provided fields are updated.\n\n**Variable:** Set `cms_template_id` before calling.\n\n**IMPORTANT:** Business endpoints do NOT use JSON-RPC format. Send JSON directly in body."
+          }
+        },
+        {
+          "name": "Delete Template",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "X-Session-Id",
+                "value": "{{session_id}}",
+                "type": "text",
+                "description": "Application session ID (@require_session)"
+              },
+              {
+                "key": "X-Company-Id",
+                "value": "{{company_id}}",
+                "type": "text",
+                "description": "Tenant company ID (@require_company)"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "type": "text",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/cms/templates/{{cms_template_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "cms", "templates", "{{cms_template_id}}"]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID + Company ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent)\n\nPermanently deletes a CMS template by ID.\n\n**Variable:** Set `cms_template_id` before calling."
+          }
+        }
+      ]
+    },
+    {
+      "name": "CMS Settings",
+      "description": "Read and update CMS configuration for the current company (singleton resource).\n\n**Authentication:** Bearer Token + Session ID + Company ID required on all endpoints.\n**Multi-tenancy:** Company isolation active (@require_company).",
+      "item": [
+        {
+          "name": "Get Settings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "X-Session-Id",
+                "value": "{{session_id}}",
+                "type": "text",
+                "description": "Application session ID (@require_session)"
+              },
+              {
+                "key": "X-Company-Id",
+                "value": "{{company_id}}",
+                "type": "text",
+                "description": "Tenant company ID (@require_company)"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "type": "text",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/cms/settings",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "cms", "settings"]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID + Company ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent)\n\nReturns the CMS configuration (singleton) for the current company — includes default OG tags, custom CSS, and other site-wide settings."
+          }
+        },
+        {
+          "name": "Update Settings",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text",
+                "description": "OAuth 2.0 Bearer token"
+              },
+              {
+                "key": "X-Session-Id",
+                "value": "{{session_id}}",
+                "type": "text",
+                "description": "Application session ID (@require_session)"
+              },
+              {
+                "key": "X-Company-Id",
+                "value": "{{company_id}}",
+                "type": "text",
+                "description": "Tenant company ID (@require_company)"
+              },
+              {
+                "key": "User-Agent",
+                "value": "{{user_agent}}",
+                "type": "text",
+                "description": "Required for session fingerprint validation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"og_default_title\": \"My Agency\",\n  \"custom_css\": \"body { color: red; }\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/cms/settings",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "cms", "settings"]
+            },
+            "description": "**Authentication:** Bearer Token + Session ID + Company ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n**Fingerprint validation:** Active (IP + User-Agent)\n\nUpdates the CMS configuration singleton for the current company. Only provided fields are updated.\n\n**IMPORTANT:** Business endpoints do NOT use JSON-RPC format. Send JSON directly in body."
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8069",
+      "type": "string",
+      "description": "Base URL of the Odoo instance"
+    },
+    {
+      "key": "client_id",
+      "value": "client_xxx",
+      "type": "string",
+      "description": "OAuth 2.0 client ID"
+    },
+    {
+      "key": "client_secret",
+      "value": "secret_yyy",
+      "type": "string",
+      "description": "OAuth 2.0 client secret — replace with your actual value"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string",
+      "description": "Auto-populated by Get OAuth Token test script"
+    },
+    {
+      "key": "refresh_token",
+      "value": "",
+      "type": "string",
+      "description": "Auto-populated by Get OAuth Token test script"
+    },
+    {
+      "key": "session_id",
+      "value": "",
+      "type": "string",
+      "description": "Auto-populated by User Login test script"
+    },
+    {
+      "key": "user_agent",
+      "value": "PostmanRuntime/7.26.8",
+      "type": "string",
+      "description": "User-Agent for session fingerprint validation — must remain consistent"
+    },
+    {
+      "key": "user_email",
+      "value": "admin@example.com",
+      "type": "string",
+      "description": "Login email — replace with your user"
+    },
+    {
+      "key": "user_password",
+      "value": "admin",
+      "type": "string",
+      "description": "Login password — replace with your actual password"
+    },
+    {
+      "key": "company_id",
+      "value": "",
+      "type": "string",
+      "description": "Tenant company ID — set after login (X-Company-Id header)"
+    },
+    {
+      "key": "cms_page_id",
+      "value": "",
+      "type": "string",
+      "description": "Auto-populated by Create Page test script"
+    },
+    {
+      "key": "cms_template_id",
+      "value": "",
+      "type": "string",
+      "description": "Auto-populated by Create Template test script"
+    },
+    {
+      "key": "cms_media_id",
+      "value": "",
+      "type": "string",
+      "description": "Auto-populated by Upload Media test script"
+    },
+    {
+      "key": "cms_company_slug",
+      "value": "",
+      "type": "string",
+      "description": "Agency slug for public page URL (e.g., minha-imobiliaria)"
+    },
+    {
+      "key": "cms_page_slug",
+      "value": "",
+      "type": "string",
+      "description": "Page slug for public page URL (e.g., home, sobre-nos)"
+    }
+  ]
+}
