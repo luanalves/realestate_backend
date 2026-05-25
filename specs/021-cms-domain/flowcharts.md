@@ -137,7 +137,7 @@ flowchart TD
     G --> F
     F -- Yes --> H[Copy page fields\nstatus = draft]
     H --> I["Copy content from\nfirst content record"]
-    I --> J[create_page() atomic]
+    I --> J["create_page() atomic"]
     J --> K([201 Created — new page])
 ```
 
@@ -253,7 +253,7 @@ flowchart TD
     E --> F{Conflict\nfound?}
     F -- Yes --> ERR2([409 Conflict\nslug_conflict])
     F -- No --> SKIP
-    SKIP --> G[settings.write(vals)]
+    SKIP --> G["settings.write(vals)"]
     G --> H([200 OK — updated settings])
 ```
 
