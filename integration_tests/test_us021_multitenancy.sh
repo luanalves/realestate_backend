@@ -96,7 +96,7 @@ HAS_A=$(echo "$RESP_A2" | python3 -c "import sys,json; d=json.load(sys.stdin); p
 # ==================== TEMPLATES: cross-company isolation ====================
 echo ""; echo "--- S3: Template cross-company isolation ---"
 RESP_TMPL=$(cms_a -X POST "$API_BASE/cms/templates" -H "Content-Type: application/json" \
-    -d '{"name": "MT Test Template", "category": "landing"}')
+    -d "{\"name\": \"MT Tmpl $(date +%s)\", \"category\": \"landing\"}")
 TMPL_ID=$(echo "$RESP_TMPL" | python3 -c "import sys,json; print(json.load(sys.stdin).get('id',''))" 2>/dev/null || echo "")
 if [ -n "$TMPL_ID" ]; then
     STATUS=$(cms_b -X GET "$API_BASE/cms/templates/$TMPL_ID" -o /dev/null -w "%{http_code}")
@@ -113,7 +113,7 @@ cms_a -X PUT "$API_BASE/cms/settings" -H "Content-Type: application/json" \
 RESP_CONFLICT=$(cms_b -X PUT "$API_BASE/cms/settings" -H "Content-Type: application/json" \
     -d "{\"company_slug\": \"$SLUG_UNIQUE\"}" -w "%{http_code}" -o /tmp/mt_conflict.json)
 [ "$RESP_CONFLICT" = "409" ] && _pass "Duplicate company_slug returns 409" || \
-    _skip "S4: Got $RESP_CONFLICT (unique constraint may not be enforced at API layer)"
+    _fail "S4: slug conflict" "Expected 409, got $RESP_CONFLICT"
 
 # ==================== LIST ISOLATION ====================
 echo ""; echo "--- S5: List endpoints only return company-scoped data ---"

@@ -65,7 +65,16 @@ class CmsSettingsService:
                     )
                 raise ValueError("css_injection_detected")
 
-        # 3. Audit fields for custom_js
+        # 3. company_slug uniqueness pre-check (avoid ORM-level exception swallowed by framework)
+        if "company_slug" in vals and vals["company_slug"]:
+            conflict = env["thedevkitchen.cms.settings"].sudo().search(
+                [("company_slug", "=", vals["company_slug"]), ("company_id", "!=", company_id)],
+                limit=1,
+            )
+            if conflict:
+                raise ValueError("slug_conflict")
+
+        # 4. Audit fields for custom_js
         if "custom_js" in vals:
             vals["custom_js_last_modified_by"] = env.uid
             vals["custom_js_last_modified_at"] = datetime.utcnow()

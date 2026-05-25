@@ -86,6 +86,12 @@ class CmsSettingsController(http.Controller):
                     422, "css_too_large",
                     "custom_css exceeds the maximum allowed size of 64KB.",
                 )
+            if err_str == "slug_conflict":
+                return _cms_error(
+                    409, "slug_conflict",
+                    "This company_slug is already in use by another company.",
+                    field="company_slug",
+                )
             return _cms_error(422, "validation_error", err_str)
         except ValidationError as exc:
             return _cms_error(422, "validation_error", str(exc))
