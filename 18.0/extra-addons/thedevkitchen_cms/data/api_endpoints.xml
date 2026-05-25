@@ -1,0 +1,640 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+
+        <!-- ======================================================== -->
+        <!-- CMS PAGES (6 endpoints)                                  -->
+        <!-- ======================================================== -->
+
+        <record id="api_endpoint_cms_pages_create" model="thedevkitchen.api.endpoint">
+            <field name="name">Create CMS Page</field>
+            <field name="path">/api/v1/cms/pages</field>
+            <field name="method">POST</field>
+            <field name="module_name">thedevkitchen_cms</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">CMS Pages</field>
+            <field name="summary">Create a new CMS page</field>
+            <field name="description">Creates a new CMS page for the authenticated company.
+
+**Required Roles:** owner, director, manager
+
+**Required Headers:**
+- `Authorization: Bearer {access_token}`
+- `X-Session-Id: {session_id}`
+- `X-Company-Id: {company_id}`
+
+**Optional:** Pass `template_id` to pre-fill content from an existing template.
+
+**Error Responses:**
+- **400 Bad Request**: Invalid JSON body
+- **401 Unauthorized**: Missing or invalid JWT token
+- **403 Forbidden**: Insufficient role (agent or lower)
+- **409 Conflict**: `slug` already exists for this company
+- **422 Unprocessable Entity**: Validation error (slug format, JSON schema)
+</field>
+            <field name="request_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "CreatePageRequest",
+  "required": ["name", "slug"],
+  "properties": {
+    "name": {"type": "string", "example": "Home Page"},
+    "slug": {"type": "string", "example": "home", "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$"},
+    "title": {"type": "string", "example": "Home — My Agency"},
+    "meta_description": {"type": "string", "example": "Best properties in town"},
+    "og_title": {"type": "string", "example": "Home"},
+    "og_description": {"type": "string", "example": "Find your dream property"},
+    "og_image_id": {"type": "integer", "example": 42},
+    "canonical_url": {"type": "string", "example": "https://example.com/home"},
+    "robots_meta": {"type": "string", "example": "index,follow"},
+    "structured_data": {"type": "string", "example": "{\"@context\": \"https://schema.org\"}"},
+    "content": {"type": "string", "description": "Puck JSON content (≤512KB)"},
+    "template_id": {"type": "integer", "description": "Copy content from this template"}
+  }
+}
+]]></field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "PageResponse",
+  "properties": {
+    "id": {"type": "integer", "example": 1},
+    "name": {"type": "string", "example": "Home Page"},
+    "slug": {"type": "string", "example": "home"},
+    "status": {"type": "string", "enum": ["draft", "pending_review", "published", "archived"]},
+    "title": {"type": "string"},
+    "published_at": {"type": "string", "format": "date-time"},
+    "active": {"type": "boolean"},
+    "company_id": {"type": "integer"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "updated_at": {"type": "string", "format": "date-time"}
+  }
+}
+]]></field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_cms_pages_list" model="thedevkitchen.api.endpoint">
+            <field name="name">List CMS Pages</field>
+            <field name="path">/api/v1/cms/pages</field>
+            <field name="method">GET</field>
+            <field name="module_name">thedevkitchen_cms</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">CMS Pages</field>
+            <field name="summary">List all CMS pages for the authenticated company</field>
+            <field name="description">Returns all CMS pages scoped to the authenticated company. Content body is NOT included in list — fetch individual page for content.
+
+**Required Roles:** owner, director, manager, agent
+
+**Query Parameters:**
+- `status` (string, optional): Filter by status (`draft`, `pending_review`, `published`, `archived`)
+- `limit` (int, optional): Max results. Default: 50
+- `offset` (int, optional): Pagination offset. Default: 0
+
+**Error Responses:**
+- **401 Unauthorized**: Missing or invalid JWT
+- **403 Forbidden**: Insufficient permissions
+</field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "PageListResponse",
+  "properties": {
+    "items": {
+      "type": "array",
+      "items": {"$ref": "#/components/schemas/PageResponse"}
+    },
+    "total": {"type": "integer"},
+    "limit": {"type": "integer"},
+    "offset": {"type": "integer"}
+  }
+}
+]]></field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_cms_pages_get" model="thedevkitchen.api.endpoint">
+            <field name="name">Get CMS Page</field>
+            <field name="path">/api/v1/cms/pages/{id}</field>
+            <field name="method">GET</field>
+            <field name="module_name">thedevkitchen_cms</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">CMS Pages</field>
+            <field name="summary">Get a single CMS page including its content</field>
+            <field name="description">Returns full page data including the Puck JSON content body.
+
+**Required Roles:** owner, director, manager, agent
+
+**Path Parameters:**
+- `id` (integer): Page ID
+
+**Error Responses:**
+- **401 Unauthorized**: Missing or invalid JWT
+- **403 Forbidden**: Insufficient permissions
+- **404 Not Found**: Page does not exist or belongs to another company
+</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_cms_pages_update" model="thedevkitchen.api.endpoint">
+            <field name="name">Update CMS Page</field>
+            <field name="path">/api/v1/cms/pages/{id}</field>
+            <field name="method">PUT</field>
+            <field name="module_name">thedevkitchen_cms</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">CMS Pages</field>
+            <field name="summary">Update CMS page metadata, content, or status</field>
+            <field name="description">Partial update of a CMS page. Any combination of fields may be sent. Include `status` to trigger a state machine transition.
+
+**Required Roles:** owner, director, manager
+
+**Path Parameters:**
+- `id` (integer): Page ID
+
+**State Machine Transitions:**
+- `draft` → `pending_review`, `published`
+- `pending_review` → `published`, `draft`
+- `published` → `archived`
+- `archived` → `draft`
+
+**Error Responses:**
+- **400 Bad Request**: Invalid JSON
+- **401 Unauthorized**: Missing or invalid JWT
+- **403 Forbidden**: Insufficient role (agent or lower)
+- **404 Not Found**: Page not found for this company
+- **422 Unprocessable Entity**: Invalid transition, content too large, invalid JSON schema
+</field>
+            <field name="request_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "UpdatePageRequest",
+  "properties": {
+    "name": {"type": "string"},
+    "slug": {"type": "string"},
+    "title": {"type": "string"},
+    "meta_description": {"type": "string"},
+    "status": {"type": "string", "enum": ["draft", "pending_review", "published", "archived"]},
+    "content": {"type": "string", "description": "Puck JSON (≤512KB)"},
+    "og_title": {"type": "string"},
+    "og_description": {"type": "string"},
+    "og_image_id": {"type": "integer"},
+    "structured_data": {"type": "string"}
+  }
+}
+]]></field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_cms_pages_delete" model="thedevkitchen.api.endpoint">
+            <field name="name">Delete CMS Page</field>
+            <field name="path">/api/v1/cms/pages/{id}</field>
+            <field name="method">DELETE</field>
+            <field name="module_name">thedevkitchen_cms</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">CMS Pages</field>
+            <field name="summary">Soft-delete a CMS page (sets active=False)</field>
+            <field name="description">Sets `active=False` on the page (soft delete). The page remains in the database but is hidden from API list responses.
+
+**Required Roles:** owner, director, manager
+
+**Path Parameters:**
+- `id` (integer): Page ID
+
+**Error Responses:**
+- **401 Unauthorized**: Missing or invalid JWT
+- **403 Forbidden**: Insufficient role
+- **404 Not Found**: Page not found for this company
+</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_cms_pages_duplicate" model="thedevkitchen.api.endpoint">
+            <field name="name">Duplicate CMS Page</field>
+            <field name="path">/api/v1/cms/pages/{id}/duplicate</field>
+            <field name="method">POST</field>
+            <field name="module_name">thedevkitchen_cms</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">CMS Pages</field>
+            <field name="summary">Duplicate a CMS page with a unique slug</field>
+            <field name="description">Creates a copy of the page with a new unique slug (`{original-slug}-copy`, `-copy-2`, etc.). The duplicate always starts in `draft` status.
+
+**Required Roles:** owner, director, manager
+
+**Path Parameters:**
+- `id` (integer): Source page ID
+
+**Error Responses:**
+- **401 Unauthorized**: Missing or invalid JWT
+- **403 Forbidden**: Insufficient role
+- **404 Not Found**: Source page not found for this company
+</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <!-- ======================================================== -->
+        <!-- CMS MEDIA (5 endpoints)                                  -->
+        <!-- ======================================================== -->
+
+        <record id="api_endpoint_cms_media_upload" model="thedevkitchen.api.endpoint">
+            <field name="name">Upload CMS Media</field>
+            <field name="path">/api/v1/cms/media/upload</field>
+            <field name="method">POST</field>
+            <field name="module_name">thedevkitchen_cms</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">CMS Media</field>
+            <field name="summary">Upload a media file (image, video, or document)</field>
+            <field name="description">Uploads a binary file using `multipart/form-data`. MIME type is validated by magic bytes (not extension). File is stored in `ir.attachment` and a `cms.media` record is created.
+
+**Required Roles:** owner, director, manager
+
+**Content-Type:** `multipart/form-data`
+**Form Field:** `file` — the binary file
+
+**Supported MIME Types:**
+- **Images:** `image/jpeg`, `image/png`, `image/gif`, `image/webp` (max 10MB)
+- **Videos:** `video/mp4`, `video/webm` (max 100MB)
+- **Documents:** `application/pdf`, `text/plain` (max 20MB)
+
+**Error Responses:**
+- **400 Bad Request**: No file in request
+- **401 Unauthorized**: Missing or invalid JWT
+- **403 Forbidden**: Insufficient role
+- **413 Payload Too Large**: File exceeds size limit
+- **415 Unsupported Media Type**: MIME type not in whitelist or magic-bytes mismatch
+- **422 Unprocessable Entity**: MIME mismatch between claimed and detected
+</field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "MediaResponse",
+  "properties": {
+    "id": {"type": "integer"},
+    "name": {"type": "string", "example": "photo.jpg"},
+    "mime_type": {"type": "string", "example": "image/jpeg"},
+    "media_type": {"type": "string", "enum": ["image", "video", "document"]},
+    "file_size": {"type": "integer", "example": 204800},
+    "url": {"type": "string", "example": "http://localhost:8069/web/content/55/photo.jpg"},
+    "company_id": {"type": "integer"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "updated_at": {"type": "string", "format": "date-time"}
+  }
+}
+]]></field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_cms_media_list" model="thedevkitchen.api.endpoint">
+            <field name="name">List CMS Media</field>
+            <field name="path">/api/v1/cms/media</field>
+            <field name="method">GET</field>
+            <field name="module_name">thedevkitchen_cms</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">CMS Media</field>
+            <field name="summary">List all media files for the authenticated company</field>
+            <field name="description">Returns metadata for all media files scoped to the authenticated company.
+
+**Required Roles:** owner, director, manager, agent
+
+**Query Parameters:**
+- `media_type` (string, optional): Filter by type (`image`, `video`, `document`)
+- `limit` (int, optional): Default 50
+- `offset` (int, optional): Default 0
+
+**Error Responses:**
+- **401 Unauthorized**: Missing or invalid JWT
+- **403 Forbidden**: Insufficient permissions
+</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_cms_media_get" model="thedevkitchen.api.endpoint">
+            <field name="name">Get CMS Media Metadata</field>
+            <field name="path">/api/v1/cms/media/{id}</field>
+            <field name="method">GET</field>
+            <field name="module_name">thedevkitchen_cms</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">CMS Media</field>
+            <field name="summary">Get metadata for a single media file</field>
+            <field name="description">Returns JSON metadata for a media file. Does NOT return binary content — use `/file` endpoint for the actual file.
+
+**Required Roles:** owner, director, manager, agent
+
+**Path Parameters:**
+- `id` (integer): Media ID
+
+**Error Responses:**
+- **401 Unauthorized**: Missing or invalid JWT
+- **404 Not Found**: Media not found for this company
+</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_cms_media_file" model="thedevkitchen.api.endpoint">
+            <field name="name">Get CMS Media File</field>
+            <field name="path">/api/v1/cms/media/{id}/file</field>
+            <field name="method">GET</field>
+            <field name="module_name">thedevkitchen_cms</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">CMS Media</field>
+            <field name="summary">Download binary media file content</field>
+            <field name="description">Returns the raw binary file with the correct `Content-Type` header from the stored MIME type.
+
+**Required Roles:** owner, director, manager, agent
+
+**Path Parameters:**
+- `id` (integer): Media ID
+
+**Error Responses:**
+- **401 Unauthorized**: Missing or invalid JWT
+- **404 Not Found**: Media not found for this company or attachment missing
+</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_cms_media_delete" model="thedevkitchen.api.endpoint">
+            <field name="name">Delete CMS Media</field>
+            <field name="path">/api/v1/cms/media/{id}</field>
+            <field name="method">DELETE</field>
+            <field name="module_name">thedevkitchen_cms</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">CMS Media</field>
+            <field name="summary">Hard-delete a media file and its ir.attachment</field>
+            <field name="description">Permanently deletes the `cms.media` record AND the associated `ir.attachment` from the filestore. This is a hard delete (ADR-015 exception — media has no audit trail requirement).
+
+**Required Roles:** owner, director, manager
+
+**Path Parameters:**
+- `id` (integer): Media ID
+
+**Error Responses:**
+- **401 Unauthorized**: Missing or invalid JWT
+- **403 Forbidden**: Insufficient role
+- **404 Not Found**: Media not found for this company
+</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <!-- ======================================================== -->
+        <!-- PUBLIC ROUTE (1 endpoint)                                -->
+        <!-- ======================================================== -->
+
+        <record id="api_endpoint_cms_public_page" model="thedevkitchen.api.endpoint">
+            <field name="name">Get Public CMS Page</field>
+            <field name="path">/api/v1/public/cms/{company_slug}/pages/{page_slug}</field>
+            <field name="method">GET</field>
+            <field name="module_name">thedevkitchen_cms</field>
+            <field name="protected" eval="False"/>
+            <field name="tags">CMS Public</field>
+            <field name="summary">Fetch a published CMS page by company slug and page slug</field>
+            <field name="description">Public endpoint returning a published, active CMS page. No session or company authentication required — company is resolved from `company_slug` in the URL.
+
+**Authentication:** JWT only (no session, no company header)
+
+**Path Parameters:**
+- `company_slug` (string): Unique slug configured in CMS Settings
+- `page_slug` (string): Page slug
+
+**Returns:** Page data including content, SEO fields, and default OG values from company settings.
+
+**Excluded Fields:** `status`, `active`, `company_id`, `custom_js`, `custom_css`, `create_date`, `write_date`
+
+**Error Responses:**
+- **404 Not Found**: Company slug not found, page not found, or page is not published/active
+</field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "PublicPageResponse",
+  "properties": {
+    "id": {"type": "integer"},
+    "name": {"type": "string"},
+    "slug": {"type": "string"},
+    "title": {"type": "string"},
+    "meta_description": {"type": "string"},
+    "og_title": {"type": "string"},
+    "og_description": {"type": "string"},
+    "content": {"type": "string"},
+    "published_at": {"type": "string", "format": "date-time"},
+    "og_default_title": {"type": "string"},
+    "og_default_description": {"type": "string"}
+  }
+}
+]]></field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <!-- ======================================================== -->
+        <!-- CMS TEMPLATES (5 endpoints)                              -->
+        <!-- ======================================================== -->
+
+        <record id="api_endpoint_cms_templates_create" model="thedevkitchen.api.endpoint">
+            <field name="name">Create CMS Template</field>
+            <field name="path">/api/v1/cms/templates</field>
+            <field name="method">POST</field>
+            <field name="module_name">thedevkitchen_cms</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">CMS Templates</field>
+            <field name="summary">Create a new CMS template</field>
+            <field name="description">Creates a reusable page template. Templates are used to pre-fill page content during page creation.
+
+**Required Roles:** owner, director, manager (agents cannot access templates)
+
+**Error Responses:**
+- **400 Bad Request**: Invalid JSON
+- **401 Unauthorized**: Missing or invalid JWT
+- **403 Forbidden**: Insufficient role
+- **409 Conflict**: Template name already exists for this company
+- **422 Unprocessable Entity**: Validation error
+</field>
+            <field name="request_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "CreateTemplateRequest",
+  "required": ["name", "category"],
+  "properties": {
+    "name": {"type": "string", "example": "Property Listing Template"},
+    "category": {"type": "string", "enum": ["landing", "property", "about"]},
+    "content": {"type": "string", "description": "Puck JSON content"},
+    "active": {"type": "boolean", "default": true}
+  }
+}
+]]></field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_cms_templates_list" model="thedevkitchen.api.endpoint">
+            <field name="name">List CMS Templates</field>
+            <field name="path">/api/v1/cms/templates</field>
+            <field name="method">GET</field>
+            <field name="module_name">thedevkitchen_cms</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">CMS Templates</field>
+            <field name="summary">List all CMS templates for the company</field>
+            <field name="description">Returns all active templates for the authenticated company. Content is NOT included — fetch individual template for content.
+
+**Required Roles:** owner, director, manager (agents get 403)
+
+**Error Responses:**
+- **401 Unauthorized**: Missing or invalid JWT
+- **403 Forbidden**: Agent role or lower
+</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_cms_templates_get" model="thedevkitchen.api.endpoint">
+            <field name="name">Get CMS Template</field>
+            <field name="path">/api/v1/cms/templates/{id}</field>
+            <field name="method">GET</field>
+            <field name="module_name">thedevkitchen_cms</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">CMS Templates</field>
+            <field name="summary">Get a single CMS template including its content</field>
+            <field name="description">Returns full template data including Puck JSON content.
+
+**Required Roles:** owner, director, manager
+
+**Path Parameters:**
+- `id` (integer): Template ID
+
+**Error Responses:**
+- **401 Unauthorized**: Missing or invalid JWT
+- **403 Forbidden**: Insufficient role
+- **404 Not Found**: Template not found for this company
+</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_cms_templates_update" model="thedevkitchen.api.endpoint">
+            <field name="name">Update CMS Template</field>
+            <field name="path">/api/v1/cms/templates/{id}</field>
+            <field name="method">PUT</field>
+            <field name="module_name">thedevkitchen_cms</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">CMS Templates</field>
+            <field name="summary">Update CMS template name, category, or content</field>
+            <field name="description">Partial update of a template. Only fields present in the body are updated.
+
+**Required Roles:** owner, director, manager
+
+**Path Parameters:**
+- `id` (integer): Template ID
+
+**Error Responses:**
+- **400 Bad Request**: Invalid JSON
+- **401 Unauthorized**: Missing or invalid JWT
+- **403 Forbidden**: Insufficient role
+- **404 Not Found**: Template not found for this company
+- **422 Unprocessable Entity**: Validation error
+</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_cms_templates_delete" model="thedevkitchen.api.endpoint">
+            <field name="name">Delete CMS Template</field>
+            <field name="path">/api/v1/cms/templates/{id}</field>
+            <field name="method">DELETE</field>
+            <field name="module_name">thedevkitchen_cms</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">CMS Templates</field>
+            <field name="summary">Soft-delete a CMS template (sets active=False)</field>
+            <field name="description">Soft-deletes the template by setting `active=False`. The template remains in the database.
+
+**Required Roles:** owner, director, manager
+
+**Path Parameters:**
+- `id` (integer): Template ID
+
+**Error Responses:**
+- **401 Unauthorized**: Missing or invalid JWT
+- **403 Forbidden**: Insufficient role
+- **404 Not Found**: Template not found for this company
+</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <!-- ======================================================== -->
+        <!-- CMS SETTINGS (2 endpoints)                               -->
+        <!-- ======================================================== -->
+
+        <record id="api_endpoint_cms_settings_get" model="thedevkitchen.api.endpoint">
+            <field name="name">Get CMS Settings</field>
+            <field name="path">/api/v1/cms/settings</field>
+            <field name="method">GET</field>
+            <field name="module_name">thedevkitchen_cms</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">CMS Settings</field>
+            <field name="summary">Get or auto-create CMS settings for the company</field>
+            <field name="description">Returns the singleton CMS settings for the company. Auto-creates the singleton if it does not yet exist. The `custom_js` field is **only included for owner role**.
+
+**Required Roles:** owner (full), director, manager (custom_js excluded)
+
+**Error Responses:**
+- **401 Unauthorized**: Missing or invalid JWT
+- **403 Forbidden**: Agent or lower role
+</field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "CmsSettingsResponse",
+  "properties": {
+    "id": {"type": "integer"},
+    "company_slug": {"type": "string", "example": "minha-agencia"},
+    "og_default_title": {"type": "string"},
+    "og_default_description": {"type": "string"},
+    "custom_css": {"type": "string"},
+    "custom_js": {"type": "string", "description": "Only included for owner role"},
+    "custom_js_last_modified_by": {"type": "integer"},
+    "custom_js_last_modified_at": {"type": "string", "format": "date-time"},
+    "company_id": {"type": "integer"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "updated_at": {"type": "string", "format": "date-time"}
+  }
+}
+]]></field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_cms_settings_update" model="thedevkitchen.api.endpoint">
+            <field name="name">Update CMS Settings</field>
+            <field name="path">/api/v1/cms/settings</field>
+            <field name="method">PUT</field>
+            <field name="module_name">thedevkitchen_cms</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">CMS Settings</field>
+            <field name="summary">Update CMS settings for the company</field>
+            <field name="description">Partial update of CMS settings. CSS injection in `custom_css` is blocked at service layer. `custom_js` is restricted to owner role.
+
+**Required Roles:** owner (full access), director, manager (custom_js restricted)
+
+**CSS Injection Detection:** The following patterns are blocked in `custom_css`:
+- `expression(...)` — IE CSS expression
+- `behavior:` — IE behavior property
+- `url(javascript:...)` — JavaScript URI in CSS
+- `@import` — CSS import directive
+- `-moz-binding` — Mozilla binding
+
+**Error Responses:**
+- **400 Bad Request**: Invalid JSON
+- **401 Unauthorized**: Missing or invalid JWT
+- **403 Forbidden**: Non-owner attempting to set `custom_js`
+- **409 Conflict**: `company_slug` already in use by another company
+- **422 Unprocessable Entity**: CSS injection detected, company_slug format invalid
+</field>
+            <field name="request_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "UpdateSettingsRequest",
+  "properties": {
+    "company_slug": {"type": "string", "example": "minha-agencia", "pattern": "^[a-z0-9][a-z0-9-]*$"},
+    "og_default_title": {"type": "string"},
+    "og_default_description": {"type": "string"},
+    "custom_css": {"type": "string", "description": "Max 64KB. CSS injection patterns are blocked."},
+    "custom_js": {"type": "string", "description": "Owner only. Audit fields are auto-filled."}
+  }
+}
+]]></field>
+            <field name="active" eval="True"/>
+        </record>
+
+    </data>
+</odoo>

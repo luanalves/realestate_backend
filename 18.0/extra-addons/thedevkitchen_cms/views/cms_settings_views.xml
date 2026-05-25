@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- ===================== CMS SETTINGS: FORM VIEW ===================== -->
+        <record id="view_cms_settings_form" model="ir.ui.view">
+            <field name="name">thedevkitchen.cms.settings.form</field>
+            <field name="model">thedevkitchen.cms.settings</field>
+            <field name="arch" type="xml">
+                <form string="CMS Settings">
+                    <sheet>
+                        <group string="General">
+                            <field name="company_slug"
+                                   placeholder="minha-agencia"
+                                   help="URL slug used in the public CMS route: /api/v1/public/cms/{company_slug}/pages/{page_slug}"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group string="Default SEO (Open Graph)">
+                            <field name="og_default_title"/>
+                            <field name="og_default_description"/>
+                        </group>
+                        <group string="Custom CSS">
+                            <field name="custom_css" nolabel="1" widget="text"
+                                   placeholder="/* Custom CSS for public pages */"/>
+                        </group>
+                        <group string="Advanced Code (Owner Only)"
+                              groups="quicksol_estate.group_real_estate_owner,base.group_system">
+                            <field name="custom_js" nolabel="1" widget="text"
+                                   placeholder="// Custom JavaScript — only editable by owner"/>
+                            <group>
+                                <field name="custom_js_last_modified_by" readonly="1"/>
+                                <field name="custom_js_last_modified_at" readonly="1"/>
+                            </group>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- ===================== CMS SETTINGS: ACTION ===================== -->
+        <record id="action_cms_settings" model="ir.actions.act_window">
+            <field name="name">CMS Settings</field>
+            <field name="res_model">thedevkitchen.cms.settings</field>
+            <field name="view_mode">form</field>
+            <field name="target">inline</field>
+        </record>
+
+    </data>
+</odoo>

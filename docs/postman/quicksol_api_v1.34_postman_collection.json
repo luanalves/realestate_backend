@@ -2,8 +2,8 @@
   "info": {
     "_postman_id": "230fc724-58d9-4676-bda0-968408b03b9e",
     "name": "Quicksol Real Estate API",
-    "description": "Complete API collection for QuickSol Real Estate Management System.\n\n## Features\n- Multi-tenancy with company isolation\n- RBAC: 10 security profiles (tenant + property_owner)\n- Profile Unification (Feature 010)\n- User Onboarding & Password Management (Feature 009)\n- Properties, Agents, Leads management\n- Commission tracking and performance\n- Owner & Company management\n- Complete Assignment CRUD\n\n## Authentication Flow\n1. **Get OAuth Token**: POST /api/v1/auth/token\n2. **User Login**: POST /api/v1/users/login (returns session_id)\n3. **Use Both**: Authorization header + X-Openerp-Session-Id header (GET) or session_id in body (POST type=json)\n4. **Set tenant context**: `X-Company-ID` header on authenticated multi-tenant endpoints\n\n## Headers\n- `Authorization: Bearer {{access_token}}`\n- `X-Openerp-Session-Id: {{session_id}}` (REQUIRED for GET)\n- `X-Company-ID: {{company_id}}` (REQUIRED for invite/resend-invite)\n- `User-Agent: {{user_agent}}`\n- `Content-Type: application/json`\n\n## Important Notes (ADR-016)\n- ⚠️ **POST/PUT/PATCH**: `session_id` goes in **body JSON** (not header)\n- ⚠️ **GET requests**: `session_id` goes in **header** `X-Openerp-Session-Id`\n- ⚠️ **No JSON-RPC**: Business endpoints send JSON directly in body\n- ✅ **Variables**: Use {{...}} for all authentication values\n- ✅ **Test Scripts**: OAuth and Login endpoints auto-save tokens\n\n## ⚠️ Known Limitations\n- None currently\n\n## Changelog v1.31\n- **FGTS**: Property create/update examples now send a single `fgts` object with `accepts_fgts`, `used_fgts`, `last_usage_date`, and `usage_notes`.\n- **FGTS**: Property responses document a single `fgts` object with computed eligibility fields.\n- **ADR-016**: Collection version bumped for updated property endpoint examples.\n\n## Changelog v1.30\n- **UPDATE**: `property_situation` is now a selectable property field.\n- **OPTIONS**: GET /api/v1/properties/options now returns `property_situation` options: Não Informado, Desocupado, Ocupado, Reservado, Em construção, Lançamento, Novo.\n- **DOCS**: Property create/update examples now use valid `property_situation` values.\n- **SWAGGER**: Aligned with generated OpenAPI after quicksol_estate module upgrade.\n- **OWNER**: Property responses expose `owner` from the `owner_id` relationship; legacy owner contact scalar fields were removed from property payloads.\n\n## Changelog v1.20\n- **SECURITY**: `set-password` and `reset-password` — token format validation added: malformed token (not 32 hex chars) → 400 before DB lookup\n- **SECURITY**: Cross-type token abuse blocked: `reset` token rejected in `set-password` → 404; `invite` token rejected in `reset-password` → 404 (no state leak)\n- **SECURITY**: `generate_token()` now auto-invalidates all previous pending tokens of same type (last-token-wins, race condition fix)\n- **DOCS**: Updated Set Password and Reset Password descriptions with new security rules\n- **TESTS**: E2E test `test_us9_s2_set_password.sh` added (9 scenarios: T28-1 to T28-9)\n\n## Changelog v1.19\n- **BREAKING**: Removed legacy invite flows - only unified profile flow remains\n- **REMOVED**: \"Invite User (Standard Profile)\" - replaced by unified flow\n- **REMOVED**: \"Invite User (Tenant Profile)\" - replaced by unified flow\n- **REFACTOR**: Simplified invite_user() endpoint - removed dual record logic\n- **PERFORMANCE**: Query optimization (browse+exists → search, -1 query)\n- **COMPLIANCE**: ADR-001 - removed redundant validations from controller\n- **API**: Response no longer includes extension_record, tenant_id, property_owner_id fields\n- **FLOW**: Single workflow: 1) POST /api/v1/profiles → 2) POST /api/v1/users/invite with profile_id\n- Profile is the single source of truth (Feature 010 fully implemented)\n\n## Changelog v1.18\n- **NEW**: Unified profile flow for invite endpoint (Feature 010 integration)\n- **SIMPLIFIED**: Single \"Invite User\" request works for all 10 profile types\n- **REMOVED**: Separate Standard/Tenant profile requests (consolidated)\n- All user data (name, email, document, phone, birthdate) extracted from profile\n- Company context loaded from profile.company_id (no X-Company-ID needed)\n\n## Changelog v1.17\n- **BREAKING**: Profile type 'portal' renamed to 'tenant' (semantic clarity)\n- **NEW**: Added 'property_owner' as 10th profile type (external level)\n- Updated authorization matrix: Agent can invite property_owner + tenant (not owner)\n- Updated all profile enums: 10 types total\n- Profile types now: Admin (3), Operational (5), External (2)\n\n## Changelog v1.16\n- Minor documentation improvements\n\n## Changelog v1.15\n- **BREAKING**: POST /api/v1/profiles - Changed `profile_type` (string) → `profile_type_id` (integer FK)\n- **PERFORMANCE**: Removed unnecessary ProfileType lookup, API now receives FK directly\n- **BEST PRACTICE**: Follows KB-09 database best practices (direct FK reference)\n- **WORKFLOW**: 1) GET /api/v1/profile-types → get ID, 2) POST /api/v1/profiles with profile_type_id\n- Updated OpenAPI specs: profile_type_id as integer in all schemas\n\n## Changelog v1.14\n- **FIX**: POST /api/v1/users/invite - Added correct flow with profile_id (Feature 010 integration)\n- **DOCS**: Clarified POST /api/v1/profiles - profile_type is string that relates to thedevkitchen.profile.type via code\n- **FLOW**: Recommended usage: 1) POST /api/v1/profiles → 2) POST /api/v1/users/invite with profile_id\n- Removed duplicate user data entry between profile creation and invite\n\n## Changelog v1.13\n- **FIX**: ADR-016 compliance - moved session_id from header to body JSON for all POST/PUT/PATCH endpoints\n- **FIX**: Removed X-Openerp-Session-Id header from POST/PUT/PATCH (header only for GET/DELETE)\n- Session placement rules enforced: GET/DELETE → header, POST/PUT/PATCH → body\n\n## Changelog v1.12\n- **NEW**: Profile Unification (Feature 010) - ADR-024\n- POST /api/v1/profiles - Create unified profile (10 RBAC types)\n- GET /api/v1/profiles - List profiles with pagination and filters\n- GET /api/v1/profiles/{id} - Get profile detail\n- PUT /api/v1/profiles/{id} - Update profile (immutable fields enforced)\n- DELETE /api/v1/profiles/{id} - Soft delete profile\n- GET /api/v1/profile-types - List available profile types\n- Compound unique constraint: (document, company_id, profile_type_id)\n- RBAC Authorization Matrix: Owner (10), Manager (5), Agent (2)\n- Agent auto-creates extension (611 LOC business logic preserved)\n- Multi-tenancy: Same document allowed across companies\n- Integration with Feature 009: invite references profile_id\n- **DOCS**: Updated Owner API OpenAPI spec with GET/PUT/DELETE endpoints (not yet implemented)\n\n## Changelog v1.11\n- Added `X-Company-ID` header to authenticated onboarding requests (`invite`, `resend-invite`)\n- Clarified active-company scope for multitenancy\n\n## Changelog v1.10\n- **NEW**: User Onboarding & Password Management (Feature 009)\n- POST /api/v1/users/invite - Invite users with RBAC authorization matrix\n- POST /api/v1/users/{id}/resend-invite - Resend invitation email\n- POST /api/v1/auth/set-password - Set password from invite token\n- POST /api/v1/auth/forgot-password - Request password reset\n- POST /api/v1/auth/reset-password - Reset password with token\n- Tenant dual record creation: res.users + real.estate.tenant\n- Token security: UUID v4 → SHA-256 hashing\n- Anti-enumeration pattern on forgot-password\n\n## Previous Versions\n- v1.9: Properties endpoint with company_ids parameter and assignment scope hardening\n- v1.8: Properties endpoint with company_ids parameter\n- v1.7: Create Owner with CPF validation (validate_docbr)\n- v1.6: Assignment CRUD endpoints with pagination and filters\n- v1.5: Fixed ADR-016 compliance, Master Data endpoints\n- v1.4: Integrated Company & Owner Management (Feature 007)\n- v1.3: Complete API coverage (50+ endpoints)\n\n## Changelog v1.23\n- **NEW**: Added `created_from` / `created_to` date range filter to GET /api/v1/leads (period filter)\n- **DOCS**: Updated List Leads query params with all supported filters: active, property_type_id, last_activity_before, created_from, created_to\n- **DOCS**: Updated List Leads description with full filter reference table and usage examples\n\nv1.22: Fix /me endpoint - use Cookie: session_id (confirmed working). session_id from POST /api/v1/users/login response.\n\n## Changelog v1.24\n- **NEW**: Property Proposals (Feature 013) - 10 endpoints\n- POST /api/v1/proposals - Create proposal (draft state)\n- GET /api/v1/proposals - List proposals with filters\n- GET /api/v1/proposals/stats - Proposal statistics by state\n- GET /api/v1/proposals/{id} - Get proposal detail\n- PUT /api/v1/proposals/{id} - Update proposal (draft only)\n- DELETE /api/v1/proposals/{id} - Cancel proposal\n- POST /api/v1/proposals/{id}/send - Send proposal (draft → sent)\n- POST /api/v1/proposals/{id}/accept - Accept proposal (sent → accepted)\n- POST /api/v1/proposals/{id}/reject - Reject proposal (sent → rejected)\n- POST /api/v1/proposals/{id}/counter - Counter proposal (sent → countered + new draft)\n- GET /api/v1/proposals/{id}/queue - Queue position (FIFO)\n- POST /api/v1/proposals/{id}/attachments - Upload attachment (multipart)\n- **ADR-016**: GET/DELETE use X-Openerp-Session-Id header; POST/PUT use session_id in body\n- **TEST SCRIPT**: Create Proposal auto-saves proposal_id to environment\n\n## Changelog v1.25\n- **NEW Feature 015 — Service Pipeline (Atendimentos)**: Pasta `22. Service Pipeline`\n  - `22a. Services`: POST /services, GET /services, GET /services/summary, GET /services/{id}, PUT /services/{id}, PATCH /services/{id}/stage (×3 cenários), PATCH /services/{id}/reassign, DELETE /services/{id}\n  - `22b. Service Tags`: GET, POST, PUT, DELETE /service-tags\n  - `22c. Service Sources`: GET, POST, PUT, DELETE /service-sources\n- **NEW variables**: `service_id`, `service_tag_id`, `service_source_id`\n- **ADR-016**: GET usa X-Openerp-Session-Id header; POST/PUT/PATCH envia session_id no body\n- **TEST SCRIPTS**: Create Service auto-salva `service_id`; Create Tag → `service_tag_id`; Create Source → `service_source_id`\n\n## Changelog v1.26\n- **UPDATE Feature 016 - Property Mapping Fields**: Properties requests and response documentation now include the Mapping_Property fields marked as missing.\n- **DOCS**: Added owner contact, source, tags, key control, publication, commission, utility, documentation, image metadata, and file metadata fields to property examples.\n- **ADR-016**: Properties examples keep GET session validation in X-Openerp-Session-Id and POST/PUT session validation in the JSON body.\n\n## Changelog v1.27\n- **NEW Feature 016 - Property Options**: Added GET /api/v1/properties/options to expose selectable property field options for API clients.\n- **DOCS**: Documented source_medium, zoning, property_status, condition, activity_notification, sign_type, multi-value fields, and related master-data endpoints.\n- **ADR-016**: GET request uses X-Openerp-Session-Id header for session validation.\n\n## Changelog v1.28\n- **NEW**: Pasta \"23. Property Attachments (Feature 017)\" — 4 endpoints REST sobre ir.attachment\n  - POST /api/v1/properties/{id}/attachments — upload imagem ou documento (multipart/form-data)\n  - GET  /api/v1/properties/{id}/attachments — lista paginada com filtro por tipo\n  - GET  /api/v1/properties/{id}/attachments/{aid}/download — download binário direto\n  - DELETE /api/v1/properties/{id}/attachments/{aid} — exclusão (Owner/Manager somente)\n- **NEW**: Variável `attachment_id` adicionada\n- **RBAC**: Agentes bloqueados de upload e delete (403)\n- **MIME**: Validação via magic bytes (não extensão do arquivo)\n- **ADR-016**: Sessão via X-Openerp-Session-Id header em todos os endpoints GET/DELETE\n\n## Changelog v1.29\n- **FIX**: Feature 017 (Property Attachments) — added response examples for all 8 requests\n- **NEW**: POST Upload — auto-save `attachment_id` via test script\n- **NEW**: Added missing error scenarios: POST 400 (missing/invalid attachment_type), POST 422 (limit exceeded)\n- **FIX**: `links` key (not `_links`), response shape `data.{items, pagination}` (not flat array)\n- **FIX**: Removed `download_url` top-level field (use `links.download` from each item)\n- **DOCS**: RBAC: upload/delete restricted to Owner, Manager, Admin (Agent read-only)\n\n## Changelog v1.33\n- **NEW**: Added authenticated GET /api/v1/me/capabilities under User Management.\n- **AUTH**: Endpoint uses {{access_token}}, {{session_id}} via X-Openerp-Session-Id, and {{company_id}} via X-Company-ID for multi-tenant context.\n- **DOCS**: Collection version bumped to 1.33 for Feature 020 coverage.\n\n## Changelog v1.32\n- **NEW**: Pasta \"24. Goals & Results (Feature 019)\" com 5 endpoints\n  - POST /api/v1/goals — Criar meta\n  - GET /api/v1/goals — Listar metas (com filtros)\n  - PUT /api/v1/goals/{goal_id} — Atualizar meta\n  - DELETE /api/v1/goals/{goal_id} — Arquivar meta (soft-delete)\n  - GET /api/v1/goals/report — Relatório consolidado de metas vs. resultados\n- **NEW**: Variável `goal_id`",
-    "version": "1.33",
+    "description": "Complete API collection for QuickSol Real Estate Management System.\n\n## Features\n- Multi-tenancy with company isolation\n- RBAC: 10 security profiles (tenant + property_owner)\n- Profile Unification (Feature 010)\n- User Onboarding & Password Management (Feature 009)\n- Properties, Agents, Leads management\n- Commission tracking and performance\n- Owner & Company management\n- Complete Assignment CRUD\n\n## Authentication Flow\n1. **Get OAuth Token**: POST /api/v1/auth/token\n2. **User Login**: POST /api/v1/users/login (returns session_id)\n3. **Use Both**: Authorization header + X-Openerp-Session-Id header (GET) or session_id in body (POST type=json)\n4. **Set tenant context**: `X-Company-ID` header on authenticated multi-tenant endpoints\n\n## Headers\n- `Authorization: Bearer {{access_token}}`\n- `X-Openerp-Session-Id: {{session_id}}` (REQUIRED for GET)\n- `X-Company-ID: {{company_id}}` (REQUIRED for invite/resend-invite)\n- `User-Agent: {{user_agent}}`\n- `Content-Type: application/json`\n\n## Important Notes (ADR-016)\n- ⚠️ **POST/PUT/PATCH**: `session_id` goes in **body JSON** (not header)\n- ⚠️ **GET requests**: `session_id` goes in **header** `X-Openerp-Session-Id`\n- ⚠️ **No JSON-RPC**: Business endpoints send JSON directly in body\n- ✅ **Variables**: Use {{...}} for all authentication values\n- ✅ **Test Scripts**: OAuth and Login endpoints auto-save tokens\n\n## ⚠️ Known Limitations\n- None currently\n\n## Changelog v1.31\n- **FGTS**: Property create/update examples now send a single `fgts` object with `accepts_fgts`, `used_fgts`, `last_usage_date`, and `usage_notes`.\n- **FGTS**: Property responses document a single `fgts` object with computed eligibility fields.\n- **ADR-016**: Collection version bumped for updated property endpoint examples.\n\n## Changelog v1.30\n- **UPDATE**: `property_situation` is now a selectable property field.\n- **OPTIONS**: GET /api/v1/properties/options now returns `property_situation` options: Não Informado, Desocupado, Ocupado, Reservado, Em construção, Lançamento, Novo.\n- **DOCS**: Property create/update examples now use valid `property_situation` values.\n- **SWAGGER**: Aligned with generated OpenAPI after quicksol_estate module upgrade.\n- **OWNER**: Property responses expose `owner` from the `owner_id` relationship; legacy owner contact scalar fields were removed from property payloads.\n\n## Changelog v1.20\n- **SECURITY**: `set-password` and `reset-password` — token format validation added: malformed token (not 32 hex chars) → 400 before DB lookup\n- **SECURITY**: Cross-type token abuse blocked: `reset` token rejected in `set-password` → 404; `invite` token rejected in `reset-password` → 404 (no state leak)\n- **SECURITY**: `generate_token()` now auto-invalidates all previous pending tokens of same type (last-token-wins, race condition fix)\n- **DOCS**: Updated Set Password and Reset Password descriptions with new security rules\n- **TESTS**: E2E test `test_us9_s2_set_password.sh` added (9 scenarios: T28-1 to T28-9)\n\n## Changelog v1.19\n- **BREAKING**: Removed legacy invite flows - only unified profile flow remains\n- **REMOVED**: \"Invite User (Standard Profile)\" - replaced by unified flow\n- **REMOVED**: \"Invite User (Tenant Profile)\" - replaced by unified flow\n- **REFACTOR**: Simplified invite_user() endpoint - removed dual record logic\n- **PERFORMANCE**: Query optimization (browse+exists → search, -1 query)\n- **COMPLIANCE**: ADR-001 - removed redundant validations from controller\n- **API**: Response no longer includes extension_record, tenant_id, property_owner_id fields\n- **FLOW**: Single workflow: 1) POST /api/v1/profiles → 2) POST /api/v1/users/invite with profile_id\n- Profile is the single source of truth (Feature 010 fully implemented)\n\n## Changelog v1.18\n- **NEW**: Unified profile flow for invite endpoint (Feature 010 integration)\n- **SIMPLIFIED**: Single \"Invite User\" request works for all 10 profile types\n- **REMOVED**: Separate Standard/Tenant profile requests (consolidated)\n- All user data (name, email, document, phone, birthdate) extracted from profile\n- Company context loaded from profile.company_id (no X-Company-ID needed)\n\n## Changelog v1.17\n- **BREAKING**: Profile type 'portal' renamed to 'tenant' (semantic clarity)\n- **NEW**: Added 'property_owner' as 10th profile type (external level)\n- Updated authorization matrix: Agent can invite property_owner + tenant (not owner)\n- Updated all profile enums: 10 types total\n- Profile types now: Admin (3), Operational (5), External (2)\n\n## Changelog v1.16\n- Minor documentation improvements\n\n## Changelog v1.15\n- **BREAKING**: POST /api/v1/profiles - Changed `profile_type` (string) → `profile_type_id` (integer FK)\n- **PERFORMANCE**: Removed unnecessary ProfileType lookup, API now receives FK directly\n- **BEST PRACTICE**: Follows KB-09 database best practices (direct FK reference)\n- **WORKFLOW**: 1) GET /api/v1/profile-types → get ID, 2) POST /api/v1/profiles with profile_type_id\n- Updated OpenAPI specs: profile_type_id as integer in all schemas\n\n## Changelog v1.14\n- **FIX**: POST /api/v1/users/invite - Added correct flow with profile_id (Feature 010 integration)\n- **DOCS**: Clarified POST /api/v1/profiles - profile_type is string that relates to thedevkitchen.profile.type via code\n- **FLOW**: Recommended usage: 1) POST /api/v1/profiles → 2) POST /api/v1/users/invite with profile_id\n- Removed duplicate user data entry between profile creation and invite\n\n## Changelog v1.13\n- **FIX**: ADR-016 compliance - moved session_id from header to body JSON for all POST/PUT/PATCH endpoints\n- **FIX**: Removed X-Openerp-Session-Id header from POST/PUT/PATCH (header only for GET/DELETE)\n- Session placement rules enforced: GET/DELETE → header, POST/PUT/PATCH → body\n\n## Changelog v1.12\n- **NEW**: Profile Unification (Feature 010) - ADR-024\n- POST /api/v1/profiles - Create unified profile (10 RBAC types)\n- GET /api/v1/profiles - List profiles with pagination and filters\n- GET /api/v1/profiles/{id} - Get profile detail\n- PUT /api/v1/profiles/{id} - Update profile (immutable fields enforced)\n- DELETE /api/v1/profiles/{id} - Soft delete profile\n- GET /api/v1/profile-types - List available profile types\n- Compound unique constraint: (document, company_id, profile_type_id)\n- RBAC Authorization Matrix: Owner (10), Manager (5), Agent (2)\n- Agent auto-creates extension (611 LOC business logic preserved)\n- Multi-tenancy: Same document allowed across companies\n- Integration with Feature 009: invite references profile_id\n- **DOCS**: Updated Owner API OpenAPI spec with GET/PUT/DELETE endpoints (not yet implemented)\n\n## Changelog v1.11\n- Added `X-Company-ID` header to authenticated onboarding requests (`invite`, `resend-invite`)\n- Clarified active-company scope for multitenancy\n\n## Changelog v1.10\n- **NEW**: User Onboarding & Password Management (Feature 009)\n- POST /api/v1/users/invite - Invite users with RBAC authorization matrix\n- POST /api/v1/users/{id}/resend-invite - Resend invitation email\n- POST /api/v1/auth/set-password - Set password from invite token\n- POST /api/v1/auth/forgot-password - Request password reset\n- POST /api/v1/auth/reset-password - Reset password with token\n- Tenant dual record creation: res.users + real.estate.tenant\n- Token security: UUID v4 → SHA-256 hashing\n- Anti-enumeration pattern on forgot-password\n\n## Previous Versions\n- v1.9: Properties endpoint with company_ids parameter and assignment scope hardening\n- v1.8: Properties endpoint with company_ids parameter\n- v1.7: Create Owner with CPF validation (validate_docbr)\n- v1.6: Assignment CRUD endpoints with pagination and filters\n- v1.5: Fixed ADR-016 compliance, Master Data endpoints\n- v1.4: Integrated Company & Owner Management (Feature 007)\n- v1.3: Complete API coverage (50+ endpoints)\n\n## Changelog v1.23\n- **NEW**: Added `created_from` / `created_to` date range filter to GET /api/v1/leads (period filter)\n- **DOCS**: Updated List Leads query params with all supported filters: active, property_type_id, last_activity_before, created_from, created_to\n- **DOCS**: Updated List Leads description with full filter reference table and usage examples\n\nv1.22: Fix /me endpoint - use Cookie: session_id (confirmed working). session_id from POST /api/v1/users/login response.\n\n## Changelog v1.24\n- **NEW**: Property Proposals (Feature 013) - 10 endpoints\n- POST /api/v1/proposals - Create proposal (draft state)\n- GET /api/v1/proposals - List proposals with filters\n- GET /api/v1/proposals/stats - Proposal statistics by state\n- GET /api/v1/proposals/{id} - Get proposal detail\n- PUT /api/v1/proposals/{id} - Update proposal (draft only)\n- DELETE /api/v1/proposals/{id} - Cancel proposal\n- POST /api/v1/proposals/{id}/send - Send proposal (draft → sent)\n- POST /api/v1/proposals/{id}/accept - Accept proposal (sent → accepted)\n- POST /api/v1/proposals/{id}/reject - Reject proposal (sent → rejected)\n- POST /api/v1/proposals/{id}/counter - Counter proposal (sent → countered + new draft)\n- GET /api/v1/proposals/{id}/queue - Queue position (FIFO)\n- POST /api/v1/proposals/{id}/attachments - Upload attachment (multipart)\n- **ADR-016**: GET/DELETE use X-Openerp-Session-Id header; POST/PUT use session_id in body\n- **TEST SCRIPT**: Create Proposal auto-saves proposal_id to environment\n\n## Changelog v1.25\n- **NEW Feature 015 — Service Pipeline (Atendimentos)**: Pasta `22. Service Pipeline`\n  - `22a. Services`: POST /services, GET /services, GET /services/summary, GET /services/{id}, PUT /services/{id}, PATCH /services/{id}/stage (×3 cenários), PATCH /services/{id}/reassign, DELETE /services/{id}\n  - `22b. Service Tags`: GET, POST, PUT, DELETE /service-tags\n  - `22c. Service Sources`: GET, POST, PUT, DELETE /service-sources\n- **NEW variables**: `service_id`, `service_tag_id`, `service_source_id`\n- **ADR-016**: GET usa X-Openerp-Session-Id header; POST/PUT/PATCH envia session_id no body\n- **TEST SCRIPTS**: Create Service auto-salva `service_id`; Create Tag → `service_tag_id`; Create Source → `service_source_id`\n\n## Changelog v1.26\n- **UPDATE Feature 016 - Property Mapping Fields**: Properties requests and response documentation now include the Mapping_Property fields marked as missing.\n- **DOCS**: Added owner contact, source, tags, key control, publication, commission, utility, documentation, image metadata, and file metadata fields to property examples.\n- **ADR-016**: Properties examples keep GET session validation in X-Openerp-Session-Id and POST/PUT session validation in the JSON body.\n\n## Changelog v1.27\n- **NEW Feature 016 - Property Options**: Added GET /api/v1/properties/options to expose selectable property field options for API clients.\n- **DOCS**: Documented source_medium, zoning, property_status, condition, activity_notification, sign_type, multi-value fields, and related master-data endpoints.\n- **ADR-016**: GET request uses X-Openerp-Session-Id header for session validation.\n\n## Changelog v1.28\n- **NEW**: Pasta \"23. Property Attachments (Feature 017)\" — 4 endpoints REST sobre ir.attachment\n  - POST /api/v1/properties/{id}/attachments — upload imagem ou documento (multipart/form-data)\n  - GET  /api/v1/properties/{id}/attachments — lista paginada com filtro por tipo\n  - GET  /api/v1/properties/{id}/attachments/{aid}/download — download binário direto\n  - DELETE /api/v1/properties/{id}/attachments/{aid} — exclusão (Owner/Manager somente)\n- **NEW**: Variável `attachment_id` adicionada\n- **RBAC**: Agentes bloqueados de upload e delete (403)\n- **MIME**: Validação via magic bytes (não extensão do arquivo)\n- **ADR-016**: Sessão via X-Openerp-Session-Id header em todos os endpoints GET/DELETE\n\n## Changelog v1.29\n- **FIX**: Feature 017 (Property Attachments) — added response examples for all 8 requests\n- **NEW**: POST Upload — auto-save `attachment_id` via test script\n- **NEW**: Added missing error scenarios: POST 400 (missing/invalid attachment_type), POST 422 (limit exceeded)\n- **FIX**: `links` key (not `_links`), response shape `data.{items, pagination}` (not flat array)\n- **FIX**: Removed `download_url` top-level field (use `links.download` from each item)\n- **DOCS**: RBAC: upload/delete restricted to Owner, Manager, Admin (Agent read-only)\n\n## Changelog v1.33\n- **NEW**: Added authenticated GET /api/v1/me/capabilities under User Management.\n- **AUTH**: Endpoint uses {{access_token}}, {{session_id}} via X-Openerp-Session-Id, and {{company_id}} via X-Company-ID for multi-tenant context.\n- **DOCS**: Collection version bumped to 1.33 for Feature 020 coverage.\n\n## Changelog v1.32\n- **NEW**: Pasta \"24. Goals & Results (Feature 019)\" com 5 endpoints\n  - POST /api/v1/goals — Criar meta\n  - GET /api/v1/goals — Listar metas (com filtros)\n  - PUT /api/v1/goals/{goal_id} — Atualizar meta\n  - DELETE /api/v1/goals/{goal_id} — Arquivar meta (soft-delete)\n  - GET /api/v1/goals/report — Relatório consolidado de metas vs. resultados\n- **NEW**: Variável `goal_id`\n\n## Changelog v1.34\n- **NEW**: Folder 25 — CMS Domain (Feature 021)\n  - 6 Pages endpoints (CRUD + state machine + duplicate)\n  - 5 Media endpoints (upload multipart, list, get, download, delete)\n  - 5 Template endpoints (CRUD)\n  - 2 Settings endpoints (singleton + CSS injection protection)\n  - 1 Public route (no auth, frontend delivery)\n  - New variables: cms_page_id, cms_template_id, cms_media_id, cms_company_slug, cms_page_slug",
+    "version": "1.34",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -7471,6 +7471,995 @@
           "response": []
         }
       ]
+    },
+    {
+      "name": "25. CMS Domain (Feature 021)",
+      "description": "Headless CMS endpoints for page management, media library, templates, settings, and public page delivery.\n\nAll private endpoints require 3 headers: Authorization (Bearer), X-Openerp-Session-Id, X-Company-Id.\n\nThe public route requires no authentication.",
+      "item": [
+        {
+          "name": "Pages",
+          "item": [
+            {
+              "name": "Create Page",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}",
+                    "description": "OAuth 2.0 Bearer token"
+                  },
+                  {
+                    "key": "User-Agent",
+                    "value": "{{user_agent}}",
+                    "description": "Required for session fingerprint validation"
+                  },
+                  {
+                    "key": "X-Openerp-Session-Id",
+                    "value": "{{session_id}}",
+                    "description": "Session ID (REQUIRED)"
+                  },
+                  {
+                    "key": "X-Company-Id",
+                    "value": "{{company_id}}",
+                    "description": "Company ID for multi-tenancy isolation"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/cms/pages",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "cms",
+                    "pages"
+                  ]
+                },
+                "description": "**Authentication:** Bearer Token + Session ID + Company ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n\nCreates a new CMS page (status=draft). Roles: owner, director, manager.\n\n- `slug` must be unique per company\n- `template_id` copies content from template\n- Returns 409 if slug already exists",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Home Page\",\n  \"slug\": \"home\",\n  \"title\": \"Home \\u2014 My Agency\",\n  \"meta_description\": \"Best properties in town\"\n}"
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const r = pm.response.json();",
+                      "if (r && r.id) { pm.environment.set('cms_page_id', r.id); console.log('✅ cms_page_id saved:', r.id); }"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "List Pages",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}",
+                    "description": "OAuth 2.0 Bearer token"
+                  },
+                  {
+                    "key": "User-Agent",
+                    "value": "{{user_agent}}",
+                    "description": "Required for session fingerprint validation"
+                  },
+                  {
+                    "key": "X-Openerp-Session-Id",
+                    "value": "{{session_id}}",
+                    "description": "Session ID (REQUIRED)"
+                  },
+                  {
+                    "key": "X-Company-Id",
+                    "value": "{{company_id}}",
+                    "description": "Company ID for multi-tenancy isolation"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/cms/pages?status=&limit=50&offset=0",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "cms",
+                    "pages"
+                  ],
+                  "query": [
+                    {
+                      "key": "status",
+                      "value": ""
+                    },
+                    {
+                      "key": "limit",
+                      "value": "50"
+                    },
+                    {
+                      "key": "offset",
+                      "value": "0"
+                    }
+                  ]
+                },
+                "description": "**Authentication:** Bearer Token + Session ID + Company ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n\nList all pages (no content field). Roles: all.\n\nQuery: `status`, `limit`, `offset`"
+              },
+              "response": []
+            },
+            {
+              "name": "Get Page",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}",
+                    "description": "OAuth 2.0 Bearer token"
+                  },
+                  {
+                    "key": "User-Agent",
+                    "value": "{{user_agent}}",
+                    "description": "Required for session fingerprint validation"
+                  },
+                  {
+                    "key": "X-Openerp-Session-Id",
+                    "value": "{{session_id}}",
+                    "description": "Session ID (REQUIRED)"
+                  },
+                  {
+                    "key": "X-Company-Id",
+                    "value": "{{company_id}}",
+                    "description": "Company ID for multi-tenancy isolation"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/cms/pages/{{cms_page_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "cms",
+                    "pages",
+                    "{{cms_page_id}}"
+                  ]
+                },
+                "description": "**Authentication:** Bearer Token + Session ID + Company ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n\nGet page by ID including Puck JSON content. Roles: all."
+              },
+              "response": []
+            },
+            {
+              "name": "Update Page",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}",
+                    "description": "OAuth 2.0 Bearer token"
+                  },
+                  {
+                    "key": "User-Agent",
+                    "value": "{{user_agent}}",
+                    "description": "Required for session fingerprint validation"
+                  },
+                  {
+                    "key": "X-Openerp-Session-Id",
+                    "value": "{{session_id}}",
+                    "description": "Session ID (REQUIRED)"
+                  },
+                  {
+                    "key": "X-Company-Id",
+                    "value": "{{company_id}}",
+                    "description": "Company ID for multi-tenancy isolation"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/cms/pages/{{cms_page_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "cms",
+                    "pages",
+                    "{{cms_page_id}}"
+                  ]
+                },
+                "description": "**Authentication:** Bearer Token + Session ID + Company ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n\nPartial update. Include `status` for state machine transition.\n\nTransitions: draft→pending_review→published→archived→draft\n- Returns 422 on invalid transition",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"Updated Title\",\n  \"status\": \"pending_review\"\n}"
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Duplicate Page",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}",
+                    "description": "OAuth 2.0 Bearer token"
+                  },
+                  {
+                    "key": "User-Agent",
+                    "value": "{{user_agent}}",
+                    "description": "Required for session fingerprint validation"
+                  },
+                  {
+                    "key": "X-Openerp-Session-Id",
+                    "value": "{{session_id}}",
+                    "description": "Session ID (REQUIRED)"
+                  },
+                  {
+                    "key": "X-Company-Id",
+                    "value": "{{company_id}}",
+                    "description": "Company ID for multi-tenancy isolation"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/cms/pages/{{cms_page_id}}/duplicate",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "cms",
+                    "pages",
+                    "{{cms_page_id}}",
+                    "duplicate"
+                  ]
+                },
+                "description": "**Authentication:** Bearer Token + Session ID + Company ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n\nClones the page with a new slug ({slug}-copy). Always starts in draft. Roles: owner, director, manager."
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Page (Soft)",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}",
+                    "description": "OAuth 2.0 Bearer token"
+                  },
+                  {
+                    "key": "User-Agent",
+                    "value": "{{user_agent}}",
+                    "description": "Required for session fingerprint validation"
+                  },
+                  {
+                    "key": "X-Openerp-Session-Id",
+                    "value": "{{session_id}}",
+                    "description": "Session ID (REQUIRED)"
+                  },
+                  {
+                    "key": "X-Company-Id",
+                    "value": "{{company_id}}",
+                    "description": "Company ID for multi-tenancy isolation"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/cms/pages/{{cms_page_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "cms",
+                    "pages",
+                    "{{cms_page_id}}"
+                  ]
+                },
+                "description": "**Authentication:** Bearer Token + Session ID + Company ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n\nSoft-delete: sets active=False. Page remains in DB. Roles: owner, director, manager."
+              },
+              "response": []
+            }
+          ],
+          "description": "CRUD + state machine + duplicate. Status flow: draft → pending_review → published → archived → draft"
+        },
+        {
+          "name": "Media Library",
+          "item": [
+            {
+              "name": "Upload Media (multipart)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  },
+                  {
+                    "key": "User-Agent",
+                    "value": "{{user_agent}}"
+                  },
+                  {
+                    "key": "X-Openerp-Session-Id",
+                    "value": "{{session_id}}"
+                  },
+                  {
+                    "key": "X-Company-Id",
+                    "value": "{{company_id}}"
+                  }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": "/path/to/image.jpg"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/v1/cms/media/upload",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "cms",
+                    "media",
+                    "upload"
+                  ]
+                },
+                "description": "**Authentication:** Bearer Token + Session ID + Company ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n\nUpload binary via multipart/form-data. Field: `file`.\n\nMIME validated by magic bytes (not extension).\nSupported: image/jpeg, image/png, image/gif, image/webp, video/mp4, video/webm, application/pdf, text/plain\n\n- 413 if file too large\n- 415 if MIME not in whitelist or magic-bytes mismatch"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const r = pm.response.json();",
+                      "if (r && r.id) { pm.environment.set('cms_media_id', r.id); console.log('✅ cms_media_id saved:', r.id); }"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "List Media",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}",
+                    "description": "OAuth 2.0 Bearer token"
+                  },
+                  {
+                    "key": "User-Agent",
+                    "value": "{{user_agent}}",
+                    "description": "Required for session fingerprint validation"
+                  },
+                  {
+                    "key": "X-Openerp-Session-Id",
+                    "value": "{{session_id}}",
+                    "description": "Session ID (REQUIRED)"
+                  },
+                  {
+                    "key": "X-Company-Id",
+                    "value": "{{company_id}}",
+                    "description": "Company ID for multi-tenancy isolation"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/cms/media?media_type=&limit=50&offset=0",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "cms",
+                    "media"
+                  ],
+                  "query": [
+                    {
+                      "key": "media_type",
+                      "value": ""
+                    },
+                    {
+                      "key": "limit",
+                      "value": "50"
+                    },
+                    {
+                      "key": "offset",
+                      "value": "0"
+                    }
+                  ]
+                },
+                "description": "**Authentication:** Bearer Token + Session ID + Company ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n\nList all media metadata for the company. Roles: all.\n\nQuery: `media_type` (image/video/document), `limit`, `offset`"
+              },
+              "response": []
+            },
+            {
+              "name": "Get Media Metadata",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}",
+                    "description": "OAuth 2.0 Bearer token"
+                  },
+                  {
+                    "key": "User-Agent",
+                    "value": "{{user_agent}}",
+                    "description": "Required for session fingerprint validation"
+                  },
+                  {
+                    "key": "X-Openerp-Session-Id",
+                    "value": "{{session_id}}",
+                    "description": "Session ID (REQUIRED)"
+                  },
+                  {
+                    "key": "X-Company-Id",
+                    "value": "{{company_id}}",
+                    "description": "Company ID for multi-tenancy isolation"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/cms/media/{{cms_media_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "cms",
+                    "media",
+                    "{{cms_media_id}}"
+                  ]
+                },
+                "description": "**Authentication:** Bearer Token + Session ID + Company ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n\nGet JSON metadata for a single media file (no binary). Roles: all."
+              },
+              "response": []
+            },
+            {
+              "name": "Download Media File",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}",
+                    "description": "OAuth 2.0 Bearer token"
+                  },
+                  {
+                    "key": "User-Agent",
+                    "value": "{{user_agent}}",
+                    "description": "Required for session fingerprint validation"
+                  },
+                  {
+                    "key": "X-Openerp-Session-Id",
+                    "value": "{{session_id}}",
+                    "description": "Session ID (REQUIRED)"
+                  },
+                  {
+                    "key": "X-Company-Id",
+                    "value": "{{company_id}}",
+                    "description": "Company ID for multi-tenancy isolation"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/cms/media/{{cms_media_id}}/file",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "cms",
+                    "media",
+                    "{{cms_media_id}}",
+                    "file"
+                  ]
+                },
+                "description": "**Authentication:** Bearer Token + Session ID + Company ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n\nReturns raw binary with Content-Type header. Roles: all."
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Media (Hard)",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}",
+                    "description": "OAuth 2.0 Bearer token"
+                  },
+                  {
+                    "key": "User-Agent",
+                    "value": "{{user_agent}}",
+                    "description": "Required for session fingerprint validation"
+                  },
+                  {
+                    "key": "X-Openerp-Session-Id",
+                    "value": "{{session_id}}",
+                    "description": "Session ID (REQUIRED)"
+                  },
+                  {
+                    "key": "X-Company-Id",
+                    "value": "{{company_id}}",
+                    "description": "Company ID for multi-tenancy isolation"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/cms/media/{{cms_media_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "cms",
+                    "media",
+                    "{{cms_media_id}}"
+                  ]
+                },
+                "description": "**Authentication:** Bearer Token + Session ID + Company ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n\nHard-delete media AND ir.attachment from filestore (ADR-015 exception). Roles: owner, director, manager."
+              },
+              "response": []
+            }
+          ],
+          "description": "Upload (multipart/form-data with magic-bytes validation), list, get, download binary, delete."
+        },
+        {
+          "name": "Templates",
+          "item": [
+            {
+              "name": "Create Template",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}",
+                    "description": "OAuth 2.0 Bearer token"
+                  },
+                  {
+                    "key": "User-Agent",
+                    "value": "{{user_agent}}",
+                    "description": "Required for session fingerprint validation"
+                  },
+                  {
+                    "key": "X-Openerp-Session-Id",
+                    "value": "{{session_id}}",
+                    "description": "Session ID (REQUIRED)"
+                  },
+                  {
+                    "key": "X-Company-Id",
+                    "value": "{{company_id}}",
+                    "description": "Company ID for multi-tenancy isolation"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/cms/templates",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "cms",
+                    "templates"
+                  ]
+                },
+                "description": "**Authentication:** Bearer Token + Session ID + Company ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n\nCreates reusable content template. Roles: owner, director, manager (agents get 403).\n- 409 if name already exists for this company",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Property Listing Template\",\n  \"category\": \"landing\",\n  \"content\": \"{}\"\n}"
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const r = pm.response.json();",
+                      "if (r && r.id) { pm.environment.set('cms_template_id', r.id); console.log('✅ cms_template_id saved:', r.id); }"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "List Templates",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}",
+                    "description": "OAuth 2.0 Bearer token"
+                  },
+                  {
+                    "key": "User-Agent",
+                    "value": "{{user_agent}}",
+                    "description": "Required for session fingerprint validation"
+                  },
+                  {
+                    "key": "X-Openerp-Session-Id",
+                    "value": "{{session_id}}",
+                    "description": "Session ID (REQUIRED)"
+                  },
+                  {
+                    "key": "X-Company-Id",
+                    "value": "{{company_id}}",
+                    "description": "Company ID for multi-tenancy isolation"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/cms/templates",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "cms",
+                    "templates"
+                  ]
+                },
+                "description": "**Authentication:** Bearer Token + Session ID + Company ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n\nList all templates (no content). Roles: owner, director, manager."
+              },
+              "response": []
+            },
+            {
+              "name": "Get Template",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}",
+                    "description": "OAuth 2.0 Bearer token"
+                  },
+                  {
+                    "key": "User-Agent",
+                    "value": "{{user_agent}}",
+                    "description": "Required for session fingerprint validation"
+                  },
+                  {
+                    "key": "X-Openerp-Session-Id",
+                    "value": "{{session_id}}",
+                    "description": "Session ID (REQUIRED)"
+                  },
+                  {
+                    "key": "X-Company-Id",
+                    "value": "{{company_id}}",
+                    "description": "Company ID for multi-tenancy isolation"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/cms/templates/{{cms_template_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "cms",
+                    "templates",
+                    "{{cms_template_id}}"
+                  ]
+                },
+                "description": "**Authentication:** Bearer Token + Session ID + Company ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n\nGet template with full content. Roles: owner, director, manager."
+              },
+              "response": []
+            },
+            {
+              "name": "Update Template",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}",
+                    "description": "OAuth 2.0 Bearer token"
+                  },
+                  {
+                    "key": "User-Agent",
+                    "value": "{{user_agent}}",
+                    "description": "Required for session fingerprint validation"
+                  },
+                  {
+                    "key": "X-Openerp-Session-Id",
+                    "value": "{{session_id}}",
+                    "description": "Session ID (REQUIRED)"
+                  },
+                  {
+                    "key": "X-Company-Id",
+                    "value": "{{company_id}}",
+                    "description": "Company ID for multi-tenancy isolation"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/cms/templates/{{cms_template_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "cms",
+                    "templates",
+                    "{{cms_template_id}}"
+                  ]
+                },
+                "description": "**Authentication:** Bearer Token + Session ID + Company ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n\nPartial update. Roles: owner, director, manager.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Updated Template Name\",\n  \"category\": \"about\"\n}"
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Template (Soft)",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}",
+                    "description": "OAuth 2.0 Bearer token"
+                  },
+                  {
+                    "key": "User-Agent",
+                    "value": "{{user_agent}}",
+                    "description": "Required for session fingerprint validation"
+                  },
+                  {
+                    "key": "X-Openerp-Session-Id",
+                    "value": "{{session_id}}",
+                    "description": "Session ID (REQUIRED)"
+                  },
+                  {
+                    "key": "X-Company-Id",
+                    "value": "{{company_id}}",
+                    "description": "Company ID for multi-tenancy isolation"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/cms/templates/{{cms_template_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "cms",
+                    "templates",
+                    "{{cms_template_id}}"
+                  ]
+                },
+                "description": "**Authentication:** Bearer Token + Session ID + Company ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n\nSoft-delete: sets active=False. Roles: owner, director, manager."
+              },
+              "response": []
+            }
+          ],
+          "description": "Reusable page content templates. Owner/director/manager only."
+        },
+        {
+          "name": "Settings",
+          "item": [
+            {
+              "name": "Get Settings",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}",
+                    "description": "OAuth 2.0 Bearer token"
+                  },
+                  {
+                    "key": "User-Agent",
+                    "value": "{{user_agent}}",
+                    "description": "Required for session fingerprint validation"
+                  },
+                  {
+                    "key": "X-Openerp-Session-Id",
+                    "value": "{{session_id}}",
+                    "description": "Session ID (REQUIRED)"
+                  },
+                  {
+                    "key": "X-Company-Id",
+                    "value": "{{company_id}}",
+                    "description": "Company ID for multi-tenancy isolation"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/cms/settings",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "cms",
+                    "settings"
+                  ]
+                },
+                "description": "**Authentication:** Bearer Token + Session ID + Company ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n\nReturns singleton settings (auto-created if missing). `custom_js` only included for owner role.\nRoles: owner (full), director, manager (custom_js excluded), agent (custom_js excluded)."
+              },
+              "response": []
+            },
+            {
+              "name": "Update Settings",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}",
+                    "description": "OAuth 2.0 Bearer token"
+                  },
+                  {
+                    "key": "User-Agent",
+                    "value": "{{user_agent}}",
+                    "description": "Required for session fingerprint validation"
+                  },
+                  {
+                    "key": "X-Openerp-Session-Id",
+                    "value": "{{session_id}}",
+                    "description": "Session ID (REQUIRED)"
+                  },
+                  {
+                    "key": "X-Company-Id",
+                    "value": "{{company_id}}",
+                    "description": "Company ID for multi-tenancy isolation"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/cms/settings",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "cms",
+                    "settings"
+                  ]
+                },
+                "description": "**Authentication:** Bearer Token + Session ID + Company ID required\n**Multi-tenancy:** Company isolation active (@require_company)\n\nPartial update. CSS injection in `custom_css` is blocked.\n`custom_js` restricted to owner (403 for others).\n`company_slug` returns 409 if already in use by another company.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"company_slug\": \"minha-agencia\",\n  \"og_default_title\": \"My Agency\",\n  \"custom_css\": \"body { font-family: sans-serif; }\"\n}"
+                }
+              },
+              "response": []
+            }
+          ],
+          "description": "Company singleton. CSS injection protection. custom_js audit trail."
+        },
+        {
+          "name": "Public Route",
+          "item": [
+            {
+              "name": "Get Public Page",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/public/cms/{{cms_company_slug}}/pages/{{cms_page_slug}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "public",
+                    "cms",
+                    "{{cms_company_slug}}",
+                    "pages",
+                    "{{cms_page_slug}}"
+                  ]
+                },
+                "description": "**Authentication:** NONE required (public endpoint)\n\nReturns a published, active page by company slug and page slug. Company is resolved from URL — no session needed.\n\n- 404 if company_slug unknown, page not found, not published, or archived"
+              },
+              "response": []
+            }
+          ],
+          "description": "Unauthenticated endpoint for frontend delivery."
+        }
+      ]
     }
   ],
   "variable": [
@@ -7603,6 +8592,31 @@
     },
     {
       "key": "goal_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "cms_page_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "cms_template_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "cms_media_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "cms_company_slug",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "cms_page_slug",
       "value": "",
       "type": "string"
     }

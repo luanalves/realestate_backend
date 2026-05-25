@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- ===================== CMS PAGE: LIST VIEW ===================== -->
+        <record id="view_cms_page_list" model="ir.ui.view">
+            <field name="name">thedevkitchen.cms.page.list</field>
+            <field name="model">thedevkitchen.cms.page</field>
+            <field name="arch" type="xml">
+                <list string="CMS Pages" decoration-info="status == 'draft'"
+                      decoration-warning="status == 'pending_review'"
+                      decoration-success="status == 'published'"
+                      decoration-muted="status == 'archived'">
+                    <field name="name"/>
+                    <field name="slug"/>
+                    <field name="status"/>
+                    <field name="title" optional="show"/>
+                    <field name="company_id" groups="base.group_multi_company"/>
+                    <field name="create_date" string="Created At" optional="show"/>
+                    <field name="write_date" string="Updated At" optional="show"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- ===================== CMS PAGE: SEARCH VIEW ===================== -->
+        <record id="view_cms_page_search" model="ir.ui.view">
+            <field name="name">thedevkitchen.cms.page.search</field>
+            <field name="model">thedevkitchen.cms.page</field>
+            <field name="arch" type="xml">
+                <search string="Search Pages">
+                    <field name="name"/>
+                    <field name="slug"/>
+                    <filter name="draft" string="Draft" domain="[('status','=','draft')]"/>
+                    <filter name="pending_review" string="Pending Review" domain="[('status','=','pending_review')]"/>
+                    <filter name="published" string="Published" domain="[('status','=','published')]"/>
+                    <filter name="archived" string="Archived" domain="[('status','=','archived')]"/>
+                    <separator/>
+                    <filter name="active" string="Active" domain="[('active','=',True)]"/>
+                    <filter name="inactive" string="Archived (Soft)" domain="[('active','=',False)]"/>
+                    <group expand="0" string="Group By">
+                        <filter name="group_status" string="Status" context="{'group_by': 'status'}"/>
+                        <filter name="group_company" string="Company" context="{'group_by': 'company_id'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- ===================== CMS PAGE: FORM VIEW ===================== -->
+        <record id="view_cms_page_form" model="ir.ui.view">
+            <field name="name">thedevkitchen.cms.page.form</field>
+            <field name="model">thedevkitchen.cms.page</field>
+            <field name="arch" type="xml">
+                <form string="CMS Page">
+                    <header>
+                        <button name="action_submit_review" string="Submit for Review"
+                                type="object" class="btn-primary"
+                                groups="quicksol_estate.group_real_estate_owner,quicksol_estate.group_real_estate_director,quicksol_estate.group_real_estate_manager"
+                                invisible="status != 'draft'"/>
+                        <button name="action_publish" string="Publish"
+                                type="object" class="btn-primary"
+                                groups="quicksol_estate.group_real_estate_owner,quicksol_estate.group_real_estate_director,quicksol_estate.group_real_estate_manager"
+                                invisible="status not in ['draft', 'pending_review']"/>
+                        <button name="action_archive_page" string="Archive"
+                                type="object"
+                                groups="quicksol_estate.group_real_estate_owner,quicksol_estate.group_real_estate_director,quicksol_estate.group_real_estate_manager"
+                                invisible="status == 'archived'"/>
+                        <button name="action_reset_draft" string="Reset to Draft"
+                                type="object"
+                                groups="quicksol_estate.group_real_estate_owner,quicksol_estate.group_real_estate_director,quicksol_estate.group_real_estate_manager"
+                                invisible="status not in ['pending_review', 'archived']"/>
+                        <field name="status" widget="statusbar"
+                               statusbar_visible="draft,pending_review,published,archived"/>
+                    </header>
+                    <sheet>
+                        <div class="oe_title">
+                            <h1>
+                                <field name="name" placeholder="Page Name"/>
+                            </h1>
+                        </div>
+                        <group>
+                            <group>
+                                <field name="slug"/>
+                                <field name="active"/>
+                                <field name="company_id" groups="base.group_multi_company"/>
+                            </group>
+                            <group>
+                                <field name="published_at" readonly="1"/>
+                            </group>
+                        </group>
+                        <notebook>
+                            <page string="Content" name="content">
+                                <!-- Odoo UI: rich HTML editor for admin editing -->
+                                <field name="html_content" widget="html" nolabel="1"
+                                       placeholder="Write page content here..."/>
+                            </page>
+                            <page string="Puck JSON (API)" name="puck_content">
+                                <!-- API: raw Puck editor JSON payload -->
+                                <field name="content_ids" nolabel="1">
+                                    <list>
+                                        <field name="content" widget="text"/>
+                                    </list>
+                                </field>
+                            </page>
+                            <page string="SEO" name="seo">
+                                <group>
+                                    <group string="Meta Tags">
+                                        <field name="title"/>
+                                        <field name="meta_description"/>
+                                        <field name="canonical_url"/>
+                                        <field name="robots_meta"/>
+                                    </group>
+                                    <group string="Open Graph">
+                                        <field name="og_title"/>
+                                        <field name="og_description"/>
+                                        <field name="og_image_id"/>
+                                    </group>
+                                </group>
+                                <group string="Structured Data (JSON-LD)">
+                                    <field name="structured_data" nolabel="1" widget="text"/>
+                                </group>
+                            </page>
+                        </notebook>
+                    </sheet>
+                    <chatter/>
+                </form>
+            </field>
+        </record>
+
+        <!-- ===================== CMS PAGE: ACTION ===================== -->
+        <record id="action_cms_pages" model="ir.actions.act_window">
+            <field name="name">CMS Pages</field>
+            <field name="res_model">thedevkitchen.cms.page</field>
+            <field name="view_mode">list,form</field>
+            <field name="context">{'search_default_active': 1}</field>
+        </record>
+
+    </data>
+</odoo>

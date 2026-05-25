@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- CMS Page: Company Isolation (global — applies to all users) -->
+        <record id="rule_cms_page_company" model="ir.rule">
+            <field name="name">CMS Page: Company Isolation</field>
+            <field name="model_id" ref="model_thedevkitchen_cms_page"/>
+            <field name="domain_force">[('company_id', 'in', user.company_ids.ids)]</field>
+            <!-- No groups field: global rule applied to ALL users regardless of RBAC role -->
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <!-- CMS Media: Company Isolation (global — applies to all users) -->
+        <record id="rule_cms_media_company" model="ir.rule">
+            <field name="name">CMS Media: Company Isolation</field>
+            <field name="model_id" ref="model_thedevkitchen_cms_media"/>
+            <field name="domain_force">[('company_id', 'in', user.company_ids.ids)]</field>
+            <!-- No groups field: global rule applied to ALL users regardless of RBAC role -->
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <!-- CMS Settings: Company Isolation (global — applies to all users) -->
+        <record id="rule_cms_settings_company" model="ir.rule">
+            <field name="name">CMS Settings: Company Isolation</field>
+            <field name="model_id" ref="model_thedevkitchen_cms_settings"/>
+            <field name="domain_force">[('company_id', 'in', user.company_ids.ids)]</field>
+            <!-- No groups field: global rule applied to ALL users regardless of RBAC role -->
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+    </data>
+</odoo>
