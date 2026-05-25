@@ -30,7 +30,7 @@ stateDiagram-v2
 
 ```mermaid
 flowchart TD
-    A([POST /api/v1/cms/pages]) --> B{@require_jwt\n@require_session\n@require_company}
+    A(["POST /api/v1/cms/pages"]) --> B{"@require_jwt\n@require_session\n@require_company"}
     B -- 401/403 --> ERR1([Error Response])
     B -- OK --> C{Role in\nowner/director/manager?}
     C -- No --> ERR2([403 Forbidden])
@@ -52,7 +52,7 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A([POST /api/v1/cms/media/upload\nmultipart/form-data]) --> B{Auth decorators}
+    A(["POST /api/v1/cms/media/upload\nmultipart/form-data"]) --> B{Auth decorators}
     B -- Fail --> ERR1([401/403])
     B -- OK --> C{Role check\nowner/director/manager?}
     C -- No --> ERR2([403 Forbidden])
@@ -79,7 +79,7 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A([PUT /api/v1/cms/settings\nbody: custom_css]) --> B{Auth decorators}
+    A(["PUT /api/v1/cms/settings\nbody: custom_css"]) --> B{Auth decorators}
     B -- Fail --> ERR1([401/403])
     B -- OK --> C{Role allows\nsettings update?}
     C -- No --> ERR2([403 Forbidden])
@@ -106,7 +106,7 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A([GET /api/v1/public/cms\n/:company_slug/pages/:page_slug]) --> B{@require_jwt\nJWT only — no session}
+    A(["GET /api/v1/public/cms\n/company_slug/pages/page_slug"]) --> B{"@require_jwt\nJWT only — no session"}
     B -- 401 --> ERR1([401 Unauthorized])
     B -- OK --> C[Lookup cms.settings\nby company_slug]
     C --> D{Settings found?}
@@ -126,7 +126,7 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A([POST /api/v1/cms/pages/:id/duplicate]) --> B{Auth + role\nowner/director/manager}
+    A(["POST /api/v1/cms/pages/id/duplicate"]) --> B{Auth + role\nowner/director/manager}
     B -- Fail --> ERR1([401/403])
     B -- OK --> C[Find source page\nby id + company_id]
     C --> D{Found?}
@@ -206,8 +206,8 @@ flowchart TD
     C --> D{Upgrade\nsuccessful?}
     D -- No --> ERR([Check Odoo logs\nFix XML errors])
     D -- Yes --> E[DB: thedevkitchen_api_endpoint\ntable updated]
-    E --> F[swagger_controller.py reads\nDB at /api/v1/openapi.json]
-    F --> G[Visit /api/docs\nVerify 19 CMS endpoints appear]
+    E --> F["swagger_controller.py reads\nDB at /api/v1/openapi.json"]
+    F --> G["Visit /api/docs\nVerify 19 CMS endpoints appear"]
     G --> H{All endpoints\nvisible?}
     H -- No --> I[Check active=True\nCheck module_name\nCheck DB orphans]
     H -- Yes --> J([Swagger validated ✓])
@@ -244,7 +244,7 @@ sequenceDiagram
 
 ```mermaid
 flowchart TD
-    A([PUT /api/v1/cms/settings\nbody: company_slug]) --> B{Auth + role\nowner/director/manager}
+    A(["PUT /api/v1/cms/settings\nbody: company_slug"]) --> B{Auth + role\nowner/director/manager}
     B -- Fail --> ERR1([401/403])
     B -- OK --> C[CmsSettingsService.update_settings]
     C --> D{company_slug\nin request body?}
@@ -263,7 +263,7 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A([GET /api/v1/cms/templates/:id]) --> B{Auth decorators}
+    A(["GET /api/v1/cms/templates/id"]) --> B{Auth decorators}
     B -- Fail --> ERR1([401/403])
     B -- OK --> C["domain = [('id', '=', id),\n('company_id', '=', request.env.company.id)]"]
     C --> D["env['thedevkitchen.cms.template']\n.sudo().search(domain)"]
@@ -322,126 +322,3 @@ flowchart TD
 | `test_us021_rbac_matrix.sh` | 27 | Full permission matrix across all endpoints |
 | `test_us021_multitenancy.sh` | 6 | Page/template isolation, same slug, slug conflict 409 |
 | **Total** | **81** | **7/7 PASS** |
-
----
-
-## 14. Endpoint Sequences per Journey
-
-Cada jornada lista os endpoints chamados **em ordem**, com o número de referência da seção 12.
-
----
-
-### J1 — Autenticação (pré-requisito de todos os fluxos privados)
-
-| # | Endpoint | Finalidade |
-|---|----------|-----------|
-| 1 | `POST /api/v1/auth/token` | Obter JWT (`access_token`) |
-| 2 | `POST /api/v1/users/login` | Criar sessão (`session_id`) |
-
-> Após a autenticação, todos os requests privados enviam:
-> `Authorization: Bearer {token}` + `X-Openerp-Session-Id: {session_id}` + `X-Company-Id: {company_id}`
-
----
-
-### J2 — Criar e publicar uma página (editor)
-
-| Ordem | # | Method | Endpoint | Ação |
-|-------|---|--------|----------|------|
-| 1 | 7 | `POST` | `/api/v1/cms/media/upload` | Upload de imagens / assets necessários |
-| 2 | 1 | `POST` | `/api/v1/cms/pages` | Criar página (status `draft`) |
-| 3 | 4 | `PUT` | `/api/v1/cms/pages/{id}` | Editar conteúdo Puck JSON |
-| 4 | 4 | `PUT` | `/api/v1/cms/pages/{id}` | Submeter para revisão (`status: pending_review`) |
-| 5 | 3 | `GET` | `/api/v1/cms/pages/{id}` | Verificar estado da página |
-| 6 | 4 | `PUT` | `/api/v1/cms/pages/{id}` | Aprovar e publicar (`status: published`) |
-
----
-
-### J3 — Criar página a partir de template
-
-| Ordem | # | Method | Endpoint | Ação |
-|-------|---|--------|----------|------|
-| 1 | 13 | `GET` | `/api/v1/cms/templates` | Listar templates disponíveis |
-| 2 | 14 | `GET` | `/api/v1/cms/templates/{id}` | Visualizar conteúdo do template |
-| 3 | 1 | `POST` | `/api/v1/cms/pages` | Criar página com `template_id` (copia conteúdo) |
-| 4 | 4 | `PUT` | `/api/v1/cms/pages/{id}` | Personalizar conteúdo e metadados |
-| 5 | 3 | `GET` | `/api/v1/cms/pages/{id}` | Verificar resultado final |
-
----
-
-### J4 — Fluxo de aprovação (manager → owner)
-
-| Ordem | # | Method | Endpoint | Ação |
-|-------|---|--------|----------|------|
-| 1 | 1 | `POST` | `/api/v1/cms/pages` | Manager cria rascunho |
-| 2 | 4 | `PUT` | `/api/v1/cms/pages/{id}` | Manager submete: `status: pending_review` |
-| 3 | 2 | `GET` | `/api/v1/cms/pages` | Owner lista páginas em revisão (`?status=pending_review`) |
-| 4 | 3 | `GET` | `/api/v1/cms/pages/{id}` | Owner lê conteúdo completo |
-| 5 | 4 | `PUT` | `/api/v1/cms/pages/{id}` | Owner publica: `status: published` |
-
----
-
-### J5 — Duplicar e adaptar página existente
-
-| Ordem | # | Method | Endpoint | Ação |
-|-------|---|--------|----------|------|
-| 1 | 2 | `GET` | `/api/v1/cms/pages` | Listar páginas publicadas |
-| 2 | 3 | `GET` | `/api/v1/cms/pages/{id}` | Visualizar página original |
-| 3 | 6 | `POST` | `/api/v1/cms/pages/{id}/duplicate` | Duplicar (gera slug único, status `draft`) |
-| 4 | 4 | `PUT` | `/api/v1/cms/pages/{id}` | Editar cópia (novo conteúdo / slug) |
-| 5 | 4 | `PUT` | `/api/v1/cms/pages/{id}` | Publicar cópia |
-
----
-
-### J6 — Gerenciar biblioteca de mídia
-
-| Ordem | # | Method | Endpoint | Ação |
-|-------|---|--------|----------|------|
-| 1 | 7 | `POST` | `/api/v1/cms/media/upload` | Upload do arquivo (valida MIME + tamanho) |
-| 2 | 8 | `GET` | `/api/v1/cms/media` | Listar biblioteca para seleção no editor |
-| 3 | 9 | `GET` | `/api/v1/cms/media/{id}` | Obter metadados (URL, mime_type, file_size) |
-| 4 | 10 | `GET` | `/api/v1/cms/media/{id}/file` | Download / preview do arquivo |
-| 5 | 11 | `DELETE` | `/api/v1/cms/media/{id}` | Remover arquivo desnecessário |
-
----
-
-### J7 — Gerenciar templates
-
-| Ordem | # | Method | Endpoint | Ação |
-|-------|---|--------|----------|------|
-| 1 | 12 | `POST` | `/api/v1/cms/templates` | Criar template com conteúdo base |
-| 2 | 13 | `GET` | `/api/v1/cms/templates` | Listar templates disponíveis |
-| 3 | 14 | `GET` | `/api/v1/cms/templates/{id}` | Inspecionar template específico |
-| 4 | 15 | `PUT` | `/api/v1/cms/templates/{id}` | Atualizar conteúdo do template |
-| 5 | 16 | `DELETE` | `/api/v1/cms/templates/{id}` | Remover template obsoleto |
-
----
-
-### J8 — Configurar site (owner)
-
-| Ordem | # | Method | Endpoint | Ação |
-|-------|---|--------|----------|------|
-| 1 | 17 | `GET` | `/api/v1/cms/settings` | Ler configurações atuais (inclui `custom_js` para owner) |
-| 2 | 18 | `PUT` | `/api/v1/cms/settings` | Atualizar `company_slug`, OG defaults, `custom_css`, `custom_js` |
-| 3 | 17 | `GET` | `/api/v1/cms/settings` | Confirmar alterações salvas |
-
----
-
-### J9 — Leitura pública de página (frontend / SEO)
-
-| Ordem | # | Method | Endpoint | Ação |
-|-------|---|--------|----------|------|
-| 1 | 19 | `GET` | `/api/v1/public/cms/{company_slug}/pages/{page_slug}` | Obter página publicada com OG metadata |
-| 2 | 10 | `GET` | `/api/v1/cms/media/{id}/file` | Carregar assets de mídia referenciados no conteúdo |
-
-> **Auth:** apenas JWT (`Authorization: Bearer {token}`) — sem sessão, sem company header.
-> Retorna 404 para páginas `draft`, `pending_review` ou `archived`.
-
----
-
-### J10 — Arquivar / desativar página
-
-| Ordem | # | Method | Endpoint | Ação |
-|-------|---|--------|----------|------|
-| 1 | 2 | `GET` | `/api/v1/cms/pages` | Localizar página a ser arquivada |
-| 2 | 4 | `PUT` | `/api/v1/cms/pages/{id}` | Mudar status para `archived` |
-| 3 | 5 | `DELETE` | `/api/v1/cms/pages/{id}` | Soft-delete se não for mais necessária (`active=False`) |
