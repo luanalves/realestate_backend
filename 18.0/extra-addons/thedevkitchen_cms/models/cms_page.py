@@ -132,3 +132,24 @@ class CmsPage(models.Model):
                 raise ValidationError(
                     "The Open Graph image must belong to the same company as the page."
                 )
+
+    # ==================== STATUS TRANSITIONS ====================
+
+    def action_submit_review(self):
+        for rec in self:
+            rec.status = "pending_review"
+
+    def action_publish(self):
+        for rec in self:
+            rec.write({
+                "status": "published",
+                "published_at": fields.Datetime.now(),
+            })
+
+    def action_archive_page(self):
+        for rec in self:
+            rec.status = "archived"
+
+    def action_reset_draft(self):
+        for rec in self:
+            rec.status = "draft"
