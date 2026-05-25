@@ -5,7 +5,8 @@
  *
  * Pre-conditions:
  *   - Odoo running, thedevkitchen_cms installed
- *   - owner@seed.com.br (password seed123) exists and is in group_real_estate_user
+ *   - admin user (base.group_system) has CMS access by default
+ *   - owner@seed.com.br also works after security CSV fix (group_real_estate_owner added)
  *
  * URL routing in Odoo 18 (legacy hash-based format — the correct stable pattern):
  *   /web#action=<module>.<action_xml_id>&model=<model>&view_type=<type>
