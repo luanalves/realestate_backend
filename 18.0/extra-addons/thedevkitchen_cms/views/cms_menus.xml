@@ -7,7 +7,7 @@
             id="menu_cms_root"
             name="CMS"
             sequence="90"
-            groups="quicksol_estate.group_real_estate_user"
+            groups="quicksol_estate.group_real_estate_user,quicksol_estate.group_real_estate_owner,quicksol_estate.group_real_estate_manager,quicksol_estate.group_real_estate_agent,quicksol_estate.group_real_estate_director,quicksol_estate.group_real_estate_financial,quicksol_estate.group_real_estate_receptionist"
         />
 
         <!-- ===================== SUBMENUS ===================== -->
