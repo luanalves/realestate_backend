@@ -2,6 +2,7 @@
 import logging
 from odoo import http
 from odoo.http import request, Response
+from odoo.addons.quicksol_estate.services.role_resolver import resolve_role
 from odoo.addons.thedevkitchen_apigateway.middleware import (
     require_jwt,
     require_session,
@@ -32,8 +33,8 @@ class CmsMediaController(http.Controller):
     @require_session
     @require_company
     def upload_media(self, **kwargs):
-        company_id = request.session.get("company_id") or request.env.company.id
-        role = request.session.get("role", "")
+        company_id = request.env.company.id
+        role = resolve_role(request.env.user) or ""
 
         if role not in ("owner", "director", "manager"):
             return _cms_error(403, "forbidden", "Insufficient permissions to upload media")
@@ -96,8 +97,8 @@ class CmsMediaController(http.Controller):
     @require_session
     @require_company
     def list_media(self, **kwargs):
-        company_id = request.session.get("company_id") or request.env.company.id
-        role = request.session.get("role", "")
+        company_id = request.env.company.id
+        role = resolve_role(request.env.user) or ""
 
         if role not in ("owner", "director", "manager", "agent"):
             return _cms_error(403, "forbidden", "Insufficient permissions")
@@ -135,8 +136,8 @@ class CmsMediaController(http.Controller):
     @require_session
     @require_company
     def get_media(self, media_id, **kwargs):
-        company_id = request.session.get("company_id") or request.env.company.id
-        role = request.session.get("role", "")
+        company_id = request.env.company.id
+        role = resolve_role(request.env.user) or ""
 
         if role not in ("owner", "director", "manager", "agent"):
             return _cms_error(403, "forbidden", "Insufficient permissions")
@@ -167,8 +168,8 @@ class CmsMediaController(http.Controller):
     @require_session
     @require_company
     def get_media_file(self, media_id, **kwargs):
-        company_id = request.session.get("company_id") or request.env.company.id
-        role = request.session.get("role", "")
+        company_id = request.env.company.id
+        role = resolve_role(request.env.user) or ""
 
         if role not in ("owner", "director", "manager", "agent"):
             return _cms_error(403, "forbidden", "Insufficient permissions")
@@ -209,8 +210,8 @@ class CmsMediaController(http.Controller):
     @require_session
     @require_company
     def delete_media(self, media_id, **kwargs):
-        company_id = request.session.get("company_id") or request.env.company.id
-        role = request.session.get("role", "")
+        company_id = request.env.company.id
+        role = resolve_role(request.env.user) or ""
 
         if role not in ("owner", "director", "manager"):
             return _cms_error(403, "forbidden", "Insufficient permissions to delete media")

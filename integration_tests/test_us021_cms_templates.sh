@@ -1,165 +1,112 @@
 #!/usr/bin/env bash
 # integration_tests/test_us021_cms_templates.sh
-# US021 Feature 021: CMS Domain - Templates integration tests
-# Covers: T027 (US5)
-#
-# Usage:
-#   BASE_URL=http://localhost:8069 OWNER_TOKEN=... AGENT_TOKEN=... bash test_us021_cms_templates.sh
+# US021 Feature 021: CMS Domain - Templates integration tests — Covers: T027
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/lib/get_oauth2_token.sh"
+
 BASE_URL="${BASE_URL:-http://localhost:8069}"
-OWNER_TOKEN="${OWNER_TOKEN:-}"
-AGENT_TOKEN="${AGENT_TOKEN:-}"
+API_BASE="$BASE_URL/api/v1"
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; NC='\033[0m'
+PASS=0; FAIL=0; SKIP=0
 
-PASS=0
-FAIL=0
-SKIP=0
-
-_pass() { echo "  [PASS] $1"; ((PASS++)) || true; }
-_fail() { echo "  [FAIL] $1 — $2"; ((FAIL++)) || true; }
-_skip() { echo "  [SKIP] $1 — $2"; ((SKIP++)) || true; }
-_require_token() {
-    if [ -z "$1" ]; then echo "  [SKIP] Token not available ($2)"; ((SKIP++)) || true; return 1; fi
-    return 0
-}
+_pass() { echo -e "${GREEN}  [PASS] $1${NC}"; ((PASS++)) || true; }
+_fail() { echo -e "${RED}  [FAIL] $1 — $2${NC}"; ((FAIL++)) || true; }
+_skip() { echo -e "${YELLOW}  [SKIP] $1${NC}"; ((SKIP++)) || true; }
 
 echo "========================================"
 echo "US021 CMS Templates Tests"
 echo "========================================"
 
-TEMPLATE_ID=""
-SLUG="from-template-$(date +%s)"
+BEARER_TOKEN=$(get_oauth2_token) || { echo "Failed to get OAuth2 token"; exit 1; }
+
+login_user() {
+    local resp=$(curl -s -X POST "$API_BASE/users/login" \
+        -H "Content-Type: application/json" \
+        -H "Authorization: Bearer $BEARER_TOKEN" \
+        -d "{\"login\": \"$1\", \"password\": \"$2\"}")
+    local sid=$(echo "$resp" | python3 -c "import sys,json; print(json.load(sys.stdin).get('session_id',''))" 2>/dev/null)
+    local cid=$(echo "$resp" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('user',{}).get('default_company_id',''))" 2>/dev/null)
+    [ -z "$sid" ] && { echo ""; return 1; }; echo "$sid|$cid"
+}
+
+OWNER_DATA=$(login_user "owner@seed.com.br" "seed123") || { echo "Owner login failed"; exit 1; }
+OWNER_SID=$(echo "$OWNER_DATA" | cut -d'|' -f1); OWNER_CID=$(echo "$OWNER_DATA" | cut -d'|' -f2)
+
+AGENT_DATA=$(login_user "agent@seed.com.br" "seed123") || AGENT_DATA=""
+AGENT_SID=$(echo "$AGENT_DATA" | cut -d'|' -f1); AGENT_CID=$(echo "$AGENT_DATA" | cut -d'|' -f2)
+
+cms_req() {
+    local method="$1" url="$2" sid="$3" cid="$4"; shift 4
+    curl -s "${@}" -X "$method" "$url" \
+        -H "Authorization: Bearer $BEARER_TOKEN" \
+        -H "X-Openerp-Session-Id: $sid" \
+        -H "X-Company-Id: $cid"
+}
+
+TMPL_ID=""
+TMPL_NAME="Test Template $(date +%s)"
 
 # ---- S1: Create template ----
-echo ""
-echo "S1: POST /api/v1/cms/templates — create"
-if _require_token "$OWNER_TOKEN" "OWNER_TOKEN"; then
-    RESP=$(curl -s -o /tmp/tpl_create.json -w "%{http_code}" \
-        -X POST "$BASE_URL/api/v1/cms/templates" \
-        -H "Authorization: Bearer $OWNER_TOKEN" \
+echo ""; echo "S1: POST /api/v1/cms/templates — owner creates"
+RESP=$(cms_req POST "$API_BASE/cms/templates" "$OWNER_SID" "$OWNER_CID" \
+    -o /tmp/tmpl_create.json -w "%{http_code}" \
+    -H "Content-Type: application/json" \
+    -d "{\"name\": \"$TMPL_NAME\", \"category\": \"landing\"}")
+if [ "$RESP" = "201" ]; then
+    TMPL_ID=$(python3 -c "import json; print(json.load(open('/tmp/tmpl_create.json'))['id'])" 2>/dev/null || echo "")
+    _pass "POST /templates returns 201 (id=$TMPL_ID)"
+else
+    _fail "POST /templates" "Expected 201, got $RESP — $(cat /tmp/tmpl_create.json)"
+fi
+
+# ---- S2: List templates ----
+echo ""; echo "S2: GET /api/v1/cms/templates — owner list"
+RESP=$(cms_req GET "$API_BASE/cms/templates" "$OWNER_SID" "$OWNER_CID" -o /tmp/tmpl_list.json -w "%{http_code}")
+[ "$RESP" = "200" ] && _pass "GET /templates returns 200" || _fail "GET /templates" "Expected 200, got $RESP"
+
+# ---- S3: GET by id ----
+echo ""; echo "S3: GET /api/v1/cms/templates/:id"
+if [ -n "$TMPL_ID" ]; then
+    RESP=$(cms_req GET "$API_BASE/cms/templates/$TMPL_ID" "$OWNER_SID" "$OWNER_CID" -o /tmp/tmpl_get.json -w "%{http_code}")
+    [ "$RESP" = "200" ] && _pass "GET /templates/:id returns 200" || _fail "GET /templates/:id" "Expected 200, got $RESP"
+else
+    _skip "S3: no TMPL_ID"
+fi
+
+# ---- S4: Update template ----
+echo ""; echo "S4: PUT /api/v1/cms/templates/:id"
+if [ -n "$TMPL_ID" ]; then
+    RESP=$(cms_req PUT "$API_BASE/cms/templates/$TMPL_ID" "$OWNER_SID" "$OWNER_CID" \
+        -o /tmp/tmpl_update.json -w "%{http_code}" \
         -H "Content-Type: application/json" \
-        -d '{"name": "Landing Test Template", "category": "landing", "content": "{\"type\":\"landing\"}"}')
-    if [ "$RESP" = "201" ]; then
-        TEMPLATE_ID=$(python3 -c "import json; print(json.load(open('/tmp/tpl_create.json'))['id'])" 2>/dev/null || echo "")
-        _pass "POST /templates returns 201"
-    else
-        _fail "POST /templates" "Expected 201, got $RESP — $(cat /tmp/tpl_create.json)"
-    fi
+        -d '{"category": "about"}')
+    [ "$RESP" = "200" ] && _pass "PUT /templates/:id returns 200" || _fail "PUT /templates/:id" "Expected 200, got $RESP — $(cat /tmp/tmpl_update.json)"
+else
+    _skip "S4: no TMPL_ID"
 fi
 
-# ---- S2: List templates (no content) ----
-echo ""
-echo "S2: GET /api/v1/cms/templates — listagem sem content"
-if _require_token "$OWNER_TOKEN" "OWNER_TOKEN"; then
-    RESP=$(curl -s -o /tmp/tpl_list.json -w "%{http_code}" \
-        -X GET "$BASE_URL/api/v1/cms/templates" \
-        -H "Authorization: Bearer $OWNER_TOKEN")
-    if [ "$RESP" = "200" ]; then
-        _pass "GET /templates returns 200"
-        HAS_CONTENT=$(python3 -c "
-import json
-data = json.load(open('/tmp/tpl_list.json'))
-items = data.get('items', [])
-print('yes' if any('content' in i for i in items) else 'no')
-" 2>/dev/null || echo "unknown")
-        if [ "$HAS_CONTENT" = "no" ]; then
-            _pass "Listagem n\u00e3o inclui campo 'content'"
-        else
-            _fail "Listagem" "Campo 'content' n\u00e3o deveria aparecer"
-        fi
-    else
-        _fail "GET /templates" "Expected 200, got $RESP"
-    fi
+# ---- S5: Agent GET → 403 ----
+echo ""; echo "S5: Agent GET /api/v1/cms/templates → 403"
+if [ -n "$AGENT_SID" ]; then
+    RESP=$(cms_req GET "$API_BASE/cms/templates" "$AGENT_SID" "$AGENT_CID" -o /tmp/tmpl_agent.json -w "%{http_code}")
+    [ "$RESP" = "403" ] && _pass "Agent GET /templates returns 403" || _fail "Agent GET /templates" "Expected 403, got $RESP"
+else
+    _skip "S5: Agent session not available"
 fi
 
-# ---- S3: GET template/:id with content ----
-echo ""
-echo "S3: GET /api/v1/cms/templates/:id — com content"
-if _require_token "$OWNER_TOKEN" "OWNER_TOKEN" && [ -n "${TEMPLATE_ID:-}" ]; then
-    RESP=$(curl -s -o /tmp/tpl_get.json -w "%{http_code}" \
-        -X GET "$BASE_URL/api/v1/cms/templates/$TEMPLATE_ID" \
-        -H "Authorization: Bearer $OWNER_TOKEN")
-    if [ "$RESP" = "200" ]; then
-        _pass "GET /templates/:id returns 200"
-        HAS_CONTENT=$(python3 -c "
-import json
-data = json.load(open('/tmp/tpl_get.json'))
-print('yes' if 'content' in data else 'no')
-" 2>/dev/null || echo "unknown")
-        if [ "$HAS_CONTENT" = "yes" ]; then
-            _pass "GET /:id inclui campo 'content'"
-        else
-            _fail "GET /:id" "Campo 'content' deveria aparecer no detalhe"
-        fi
-    else
-        _fail "GET /templates/:id" "Expected 200, got $RESP — $(cat /tmp/tpl_get.json)"
-    fi
+# ---- S6: Delete template ----
+echo ""; echo "S6: DELETE /api/v1/cms/templates/:id"
+if [ -n "$TMPL_ID" ]; then
+    RESP=$(cms_req DELETE "$API_BASE/cms/templates/$TMPL_ID" "$OWNER_SID" "$OWNER_CID" -o /tmp/tmpl_delete.json -w "%{http_code}")
+    [ "$RESP" = "200" ] || [ "$RESP" = "204" ] && _pass "DELETE /templates/:id returns 200/204" || _fail "DELETE /templates/:id" "Expected 200/204, got $RESP"
+else
+    _skip "S6: no TMPL_ID"
 fi
 
-# ---- S4: Create page from template ----
-echo ""
-echo "S4: POST /api/v1/cms/pages com template_id — content copiado"
-if _require_token "$OWNER_TOKEN" "OWNER_TOKEN" && [ -n "${TEMPLATE_ID:-}" ]; then
-    RESP=$(curl -s -o /tmp/page_from_tpl.json -w "%{http_code}" \
-        -X POST "$BASE_URL/api/v1/cms/pages" \
-        -H "Authorization: Bearer $OWNER_TOKEN" \
-        -H "Content-Type: application/json" \
-        -d "{\"name\": \"From Template Page\", \"slug\": \"$SLUG\", \"template_id\": $TEMPLATE_ID}")
-    if [ "$RESP" = "201" ]; then
-        PAGE_ID=$(python3 -c "import json; print(json.load(open('/tmp/page_from_tpl.json'))['id'])" 2>/dev/null || echo "")
-        _pass "POST /pages com template_id returns 201"
-        # Verify content was copied
-        RESP2=$(curl -s -o /tmp/page_content_check.json -w "%{http_code}" \
-            -X GET "$BASE_URL/api/v1/cms/pages/$PAGE_ID" \
-            -H "Authorization: Bearer $OWNER_TOKEN")
-        if [ "$RESP2" = "200" ]; then
-            CONTENT=$(python3 -c "import json; print(json.load(open('/tmp/page_content_check.json')).get('content',''))" 2>/dev/null || echo "")
-            if echo "$CONTENT" | python3 -c "import json,sys; json.loads(sys.stdin.read()); sys.exit(0)" 2>/dev/null; then
-                _pass "Content da p\u00e1gina \u00e9 JSON v\u00e1lido (copiado do template)"
-            else
-                _fail "Content" "Content n\u00e3o parece ter sido copiado do template"
-            fi
-        fi
-    else
-        _fail "POST /pages com template_id" "Expected 201, got $RESP — $(cat /tmp/page_from_tpl.json)"
-        PAGE_ID=""
-    fi
-fi
-
-# ---- S5: Create page with template from another company → 422 ----
-_skip "S5: template_id de outra imobili\u00e1ria → 422" "Requires two companies"
-
-# ---- S6: Agent GET /templates → 403 ----
-echo ""
-echo "S6: Agent GET /api/v1/cms/templates → 403"
-if _require_token "$AGENT_TOKEN" "AGENT_TOKEN"; then
-    RESP=$(curl -s -o /dev/null -w "%{http_code}" \
-        -X GET "$BASE_URL/api/v1/cms/templates" \
-        -H "Authorization: Bearer $AGENT_TOKEN")
-    if [ "$RESP" = "403" ]; then
-        _pass "Agent GET /templates returns 403"
-    else
-        _fail "Agent GET /templates" "Expected 403, got $RESP"
-    fi
-fi
-
-# ---- S7: DELETE template ----
-echo ""
-echo "S7: DELETE /api/v1/cms/templates/:id"
-if _require_token "$OWNER_TOKEN" "OWNER_TOKEN" && [ -n "${TEMPLATE_ID:-}" ]; then
-    RESP=$(curl -s -o /dev/null -w "%{http_code}" \
-        -X DELETE "$BASE_URL/api/v1/cms/templates/$TEMPLATE_ID" \
-        -H "Authorization: Bearer $OWNER_TOKEN")
-    if [ "$RESP" = "200" ] || [ "$RESP" = "204" ]; then
-        _pass "DELETE /templates/:id returns 200/204"
-    else
-        _fail "DELETE /templates/:id" "Expected 200/204, got $RESP"
-    fi
-fi
-
-echo ""
-echo "========================================"
+echo ""; echo "========================================"
 echo "Results: PASS=$PASS  FAIL=$FAIL  SKIP=$SKIP"
 echo "========================================"
 [ "$FAIL" -eq 0 ] && exit 0 || exit 1

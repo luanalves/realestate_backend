@@ -3,6 +3,7 @@ import json
 import logging
 from odoo import http
 from odoo.http import request, Response
+from odoo.addons.quicksol_estate.services.role_resolver import resolve_role
 from odoo.exceptions import ValidationError
 from odoo.addons.thedevkitchen_apigateway.middleware import (
     require_jwt,
@@ -38,8 +39,8 @@ class CmsPageController(http.Controller):
         except (ValueError, UnicodeDecodeError):
             return _cms_error(400, "validation_error", "Invalid JSON in request body")
 
-        company_id = request.session.get("company_id") or request.env.company.id
-        role = request.session.get("role", "")
+        company_id = request.env.company.id
+        role = resolve_role(request.env.user) or ""
 
         # RBAC: only owner/director/manager may create pages
         if role not in ("owner", "director", "manager"):
@@ -79,8 +80,8 @@ class CmsPageController(http.Controller):
     @require_session
     @require_company
     def list_pages(self, **kwargs):
-        company_id = request.session.get("company_id") or request.env.company.id
-        role = request.session.get("role", "")
+        company_id = request.env.company.id
+        role = resolve_role(request.env.user) or ""
 
         if role not in ("owner", "director", "manager", "agent"):
             return _cms_error(403, "forbidden", "Insufficient permissions")
@@ -119,8 +120,8 @@ class CmsPageController(http.Controller):
     @require_session
     @require_company
     def get_page(self, page_id, **kwargs):
-        company_id = request.session.get("company_id") or request.env.company.id
-        role = request.session.get("role", "")
+        company_id = request.env.company.id
+        role = resolve_role(request.env.user) or ""
 
         if role not in ("owner", "director", "manager", "agent"):
             return _cms_error(403, "forbidden", "Insufficient permissions")
@@ -153,8 +154,8 @@ class CmsPageController(http.Controller):
         except (ValueError, UnicodeDecodeError):
             return _cms_error(400, "validation_error", "Invalid JSON in request body")
 
-        company_id = request.session.get("company_id") or request.env.company.id
-        role = request.session.get("role", "")
+        company_id = request.env.company.id
+        role = resolve_role(request.env.user) or ""
 
         if role not in ("owner", "director", "manager"):
             return _cms_error(403, "forbidden", "Insufficient permissions to update CMS pages")
@@ -206,8 +207,8 @@ class CmsPageController(http.Controller):
     @require_session
     @require_company
     def delete_page(self, page_id, **kwargs):
-        company_id = request.session.get("company_id") or request.env.company.id
-        role = request.session.get("role", "")
+        company_id = request.env.company.id
+        role = resolve_role(request.env.user) or ""
 
         if role not in ("owner", "director", "manager"):
             return _cms_error(403, "forbidden", "Insufficient permissions to delete CMS pages")
@@ -239,8 +240,8 @@ class CmsPageController(http.Controller):
     @require_session
     @require_company
     def duplicate_page(self, page_id, **kwargs):
-        company_id = request.session.get("company_id") or request.env.company.id
-        role = request.session.get("role", "")
+        company_id = request.env.company.id
+        role = resolve_role(request.env.user) or ""
 
         if role not in ("owner", "director", "manager"):
             return _cms_error(403, "forbidden", "Insufficient permissions")

@@ -7,6 +7,12 @@ import json
 import unittest
 from unittest.mock import MagicMock, patch, PropertyMock
 
+try:
+    from odoo.exceptions import ValidationError
+except (ImportError, ModuleNotFoundError, AttributeError):
+    class ValidationError(Exception):  # noqa: N818
+        pass
+
 
 class TestCmsPageValidations(unittest.TestCase):
     """Test @api.constrains validators on thedevkitchen.cms.page"""
@@ -52,10 +58,9 @@ class TestCmsPageValidations(unittest.TestCase):
 
     def test_invalid_json_structured_data_raises(self):
         """Non-JSON string in structured_data should raise ValidationError."""
-        from odoo.exceptions import ValidationError as OdooValidationError
         # Simulate the constraint logic
         invalid_value = "not-a-json"
-        with self.assertRaises((ValueError, OdooValidationError)):
+        with self.assertRaises((ValueError, ValidationError)):
             parsed = json.loads(invalid_value)
 
     def test_empty_structured_data_allowed(self):
@@ -80,8 +85,6 @@ class TestCmsPageValidations(unittest.TestCase):
 
     def test_og_image_different_company_raises(self):
         """og_image_id from a different company must raise ValidationError."""
-        from odoo.exceptions import ValidationError as OdooValidationError
-
         company_a = MagicMock()
         company_a.id = 1
         company_b = MagicMock()
@@ -94,8 +97,8 @@ class TestCmsPageValidations(unittest.TestCase):
 
         # Simulate constraint
         if og_image.company_id and og_image.company_id != page_company:
-            with self.assertRaises(OdooValidationError):
-                raise OdooValidationError(
+            with self.assertRaises(ValidationError):
+                raise ValidationError(
                     "The Open Graph image must belong to the same company as the page."
                 )
 

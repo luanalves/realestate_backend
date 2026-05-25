@@ -56,7 +56,7 @@ import importlib, pathlib, sys as _sys
 
 def _load(rel_path):
     """Load a module from an absolute path without Odoo's module finder."""
-    base = pathlib.Path(__file__).parents[3]  # extra-addons/thedevkitchen_cms
+    base = pathlib.Path(__file__).parents[2]  # thedevkitchen_cms root
     full = base / rel_path
     spec = importlib.util.spec_from_file_location(rel_path.replace("/", "."), full)
     mod = importlib.util.module_from_spec(spec)
