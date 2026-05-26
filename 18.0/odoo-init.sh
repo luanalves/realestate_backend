@@ -31,7 +31,7 @@ _PASS="${POSTGRES_PASSWORD:-odoo}"
 _DB="${DB_NAME:-realestate}"
 
 # Modules to install/upgrade (comma-separated; dependency order matters)
-MODULES="${ODOO_INIT_MODULES:-quicksol_estate,thedevkitchen_branding,thedevkitchen_apigateway,thedevkitchen_user_onboarding,thedevkitchen_cms}"
+MODULES="${ODOO_INIT_MODULES:-auditlog,thedevkitchen_branding,thedevkitchen_observability,thedevkitchen_apigateway,thedevkitchen_user_onboarding,quicksol_estate,thedevkitchen_estate_credit_check,thedevkitchen_estate_goals,thedevkitchen_cms}"
 
 # ---------------------------------------------------------------------------
 # 1. Wait for PostgreSQL
