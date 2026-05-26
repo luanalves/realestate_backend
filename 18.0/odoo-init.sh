@@ -90,9 +90,28 @@ if [ -z "$_has_odoo" ]; then
     log_ok "Modules installed: $MODULES"
 
 # ---------------------------------------------------------------------------
-# 3b. EXISTING DB — upgrade modules (picks up code/data changes on redeploy)
+# 3b. EXISTING DB — install new modules first, then upgrade existing ones
+#
+# --update only upgrades already-installed modules; it silently skips any
+# module whose state is 'uninstalled'. New modules added to ODOO_INIT_MODULES
+# after the first deploy must be detected and installed via --init first.
 # ---------------------------------------------------------------------------
 else
+    # Detect which modules from the list are not yet installed in the DB
+    _MODULES_CSV=$(echo "$MODULES" | tr ',' "','")
+    _UNINSTALLED=$(PGPASSWORD="$_PASS" psql \
+        -h "$_HOST" -p "$_PORT" -U "$_USER" -d "$_DB" \
+        -tAc "SELECT string_agg(name, ',') FROM ir_module_module
+              WHERE name IN ('$_MODULES_CSV')
+              AND state NOT IN ('installed','to upgrade','to remove')" \
+        2>/dev/null || echo "")
+
+    if [ -n "$_UNINSTALLED" ]; then
+        log "New modules detected (state=uninstalled) — installing first: $_UNINSTALLED"
+        odoo "${_ODOO_BASE_ARGS[@]}" --init="$_UNINSTALLED"
+        log_ok "New modules installed: $_UNINSTALLED"
+    fi
+
     log "Existing database — upgrading modules: $MODULES"
     odoo "${_ODOO_BASE_ARGS[@]}" --update="$MODULES"
     log_ok "Modules upgraded: $MODULES"
