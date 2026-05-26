@@ -10,11 +10,25 @@ Se o módulo não estiver nessa lista, o `odoo-init` não irá instalá-lo — o
 
 ## Onde configurar
 
-**Arquivo:** `18.0/docker-compose-production.yml`
+**São obrigatórias alterações em DOIS arquivos:**
+
+### 1. `18.0/docker-compose-production.yml`
 
 ```yaml
 ODOO_INIT_MODULES: ${ODOO_INIT_MODULES:-modulo_a,modulo_b,novo_modulo}
 ```
+
+Este é o valor que o Dokploy injeta como variável de ambiente no container `odoo-init`. **É o arquivo que efetivamente controla o deploy em produção.**
+
+### 2. `18.0/odoo-init.sh`
+
+```bash
+MODULES="${ODOO_INIT_MODULES:-modulo_a,modulo_b,novo_modulo}"
+```
+
+Este é o fallback usado quando `ODOO_INIT_MODULES` não está definido como variável de ambiente (ex: execução local ou manual). Deve sempre estar em sincronia com o compose.
+
+> ⚠️ **Erro clássico:** adicionar o módulo apenas no `odoo-init.sh` e esquecer o `docker-compose-production.yml`. O compose tem precedência — se `ODOO_INIT_MODULES` está definido nele, o valor do `.sh` é ignorado em produção.
 
 O `odoo-init.sh` usa essa variável para decidir quais módulos instalar (`-i`) ou atualizar (`--update`) durante o deploy:
 
@@ -29,8 +43,10 @@ Módulos **ausentes** da lista não recebem `--update` → alterações de model
 
 - [ ] Criar o diretório em `18.0/extra-addons/<nome_modulo>/`
 - [ ] Criar `__manifest__.py` com `name`, `version`, `depends`
-- [ ] **Adicionar o nome do módulo em `ODOO_INIT_MODULES`** no `docker-compose-production.yml`
-- [ ] Fazer commit das duas alterações juntas no mesmo PR
+- [ ] **Adicionar o nome do módulo em `ODOO_INIT_MODULES`** no `18.0/docker-compose-production.yml`
+- [ ] **Adicionar o nome do módulo no fallback de `MODULES`** no `18.0/odoo-init.sh`
+- [ ] Respeitar a ordem de dependências: módulos base antes dos que dependem deles
+- [ ] Fazer commit das **três** alterações juntas no mesmo PR (`__manifest__.py`, compose e `.sh`)
 - [ ] Após redeploy, confirmar `state = installed` no banco:
   ```sql
   SELECT name, state, latest_version FROM ir_module_module WHERE name = 'nome_modulo';
@@ -58,11 +74,16 @@ Se `state = uninstalled` → módulo não está em `ODOO_INIT_MODULES`. Adiciona
 
 ## Módulos ativos atualmente (produção)
 
-| Módulo                              | Descrição                              |
-| ----------------------------------- | -------------------------------------- |
-| `quicksol_estate`                   | Core do sistema imobiliário            |
-| `thedevkitchen_branding`            | Customização de marca                  |
-| `thedevkitchen_apigateway`          | Autenticação JWT + OAuth2              |
-| `thedevkitchen_user_onboarding`     | Onboarding de usuários                 |
-| `thedevkitchen_estate_credit_check` | Análise de crédito                     |
-| `thedevkitchen_estate_goals`        | Metas e resultados (adicionado em 019) |
+| Módulo                              | Descrição                                        |
+| ----------------------------------- | ------------------------------------------------ |
+| `auditlog`                          | Auditoria de acessos e alterações (OCA)          |
+| `thedevkitchen_branding`            | Customização de marca                            |
+| `thedevkitchen_observability`       | Tracing distribuído via OpenTelemetry            |
+| `thedevkitchen_apigateway`          | Autenticação JWT + OAuth2                        |
+| `thedevkitchen_user_onboarding`     | Onboarding de usuários                           |
+| `quicksol_estate`                   | Core do sistema imobiliário                      |
+| `thedevkitchen_estate_credit_check` | Análise de crédito                               |
+| `thedevkitchen_estate_goals`        | Metas e resultados (adicionado em 019)           |
+| `thedevkitchen_cms`                 | CMS (adicionado em 021)                          |
+
+> A ordem da tabela acima reflete a ordem de instalação em `ODOO_INIT_MODULES` — módulos base primeiro, dependentes depois.
