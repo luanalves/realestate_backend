@@ -94,13 +94,41 @@ class UserAuthController(http.Controller):
                 raise
 
             try:
-                api_session_record = request.env['thedevkitchen.api.session'].sudo().create({
+                # Determine active real estate company for this session.
+                # Priority: company_id from request body > user.company_id if RE > first RE company.
+                re_companies = user.company_ids.filtered(lambda c: c.is_real_estate)
+                active_company = None
+
+                requested_company_id = data.get('company_id')
+                if requested_company_id:
+                    try:
+                        requested_company_id = int(requested_company_id)
+                        matched = re_companies.filtered(lambda c: c.id == requested_company_id)
+                        if matched:
+                            active_company = matched[0]
+                    except (ValueError, TypeError):
+                        pass
+
+                if not active_company and user.company_id and user.company_id.is_real_estate:
+                    active_company = user.company_id
+
+                if not active_company and re_companies:
+                    active_company = re_companies[0]
+
+                session_vals = {
                     'session_id': session_id,
                     'user_id': user.id,
                     'ip_address': ip_address,
                     'user_agent': user_agent,
-                })
-                
+                }
+                if active_company:
+                    session_vals['company_id'] = active_company.id
+                    # Sync user.company_id to an RE company if it currently points elsewhere
+                    if not user.company_id.is_real_estate:
+                        user.sudo().write({'company_id': active_company.id})
+
+                api_session_record = request.env['thedevkitchen.api.session'].sudo().create(session_vals)
+
             except Exception as create_error:
                 _logger.error(f"Error creating API session: {type(create_error).__name__}: {create_error}", exc_info=True)
                 raise
@@ -121,7 +149,7 @@ class UserAuthController(http.Controller):
                 _logger.error(f"Error generating session token: {token_error}", exc_info=True)
 
             try:
-                user_response = self._build_user_response(user)
+                user_response = self._build_user_response(user, active_company=active_company)
             except Exception as build_error:
                 _logger.error(f"Error building user response: {type(build_error).__name__}: {build_error}", exc_info=True)
                 raise
@@ -330,7 +358,83 @@ class UserAuthController(http.Controller):
                 status=500
             )
 
-    def _build_user_response(self, user):
+    @http.route('/api/v1/users/switch-company', type='http', auth='none', methods=['POST'], csrf=False, cors='*')
+    @require_jwt
+    @require_session
+    @trace_http_request
+    def switch_company(self, **kwargs):
+        """Switch the active company context for the current session.
+
+        Body: { "company_id": <int> }
+
+        The user must have access to the requested company (it must be in their
+        company_ids and must have is_real_estate=True). On success, the session's
+        company_id is updated and future requests will operate under that company.
+        """
+        try:
+            user = request.env.user
+            api_session = request.api_session
+
+            try:
+                data = json.loads(request.httprequest.get_data(as_text=True) or '{}')
+            except (json.JSONDecodeError, ValueError):
+                return request.make_json_response(
+                    {'error': {'status': 400, 'message': 'Invalid JSON body'}},
+                    status=400
+                )
+
+            company_id = data.get('company_id')
+            if not company_id:
+                return request.make_json_response(
+                    {'error': {'status': 400, 'message': 'company_id is required'}},
+                    status=400
+                )
+
+            try:
+                company_id = int(company_id)
+            except (ValueError, TypeError):
+                return request.make_json_response(
+                    {'error': {'status': 400, 'message': 'company_id must be an integer'}},
+                    status=400
+                )
+
+            re_companies = user.company_ids.filtered(lambda c: c.is_real_estate)
+            target = re_companies.filtered(lambda c: c.id == company_id)
+            if not target:
+                return request.make_json_response(
+                    {'error': {'status': 403, 'message': 'Company not accessible for this user'}},
+                    status=403
+                )
+
+            active_company = target[0]
+            api_session.sudo().write({'company_id': active_company.id})
+
+            return request.make_json_response({
+                'active_company_id': active_company.id,
+                'active_company_name': active_company.name,
+                'user': self._build_user_response(user, active_company=active_company),
+            })
+
+        except Exception as e:
+            _logger.error(f"switch_company error: {e}", exc_info=True)
+            return request.make_json_response(
+                {'error': {'status': 500, 'message': 'Internal server error'}},
+                status=500
+            )
+
+    def _build_user_response(self, user, active_company=None):
+        re_companies = user.company_ids.filtered(lambda c: c.is_real_estate)
+
+        if active_company is None:
+            # Resolve active company with same priority as require_company decorator
+            api_session = getattr(request, 'api_session', None)
+            if api_session and api_session.company_id and api_session.company_id in re_companies:
+                active_company = api_session.company_id
+            elif user.company_id and user.company_id.is_real_estate:
+                active_company = user.company_id
+            elif re_companies:
+                active_company = re_companies[0]
+
         return {
             'id': user.id,
             'name': user.name,
@@ -343,8 +447,9 @@ class UserAuthController(http.Controller):
                     'name': c.name,
                     'cnpj': c.cnpj or None
                 }
-                for c in user.company_ids.filtered(lambda c: c.is_real_estate)
+                for c in re_companies
             ],
+            'active_company_id': active_company.id if active_company else None,
             'default_company_id': (
                 user.company_id.id
                 if user.company_id

@@ -309,6 +309,7 @@ def require_company(func):
         if user.has_group('base.group_system'):
             request.company_domain = []
             request.user_company_ids = []  # Admin has access to all companies
+            request.active_company_id = None
             return func(*args, **kwargs)
 
         # Feature 011: Use native company_ids, filter by is_real_estate
@@ -317,12 +318,41 @@ def require_company(func):
             _logger.warning(f'User {user.login} has no real estate companies')
             return _error_response(403, 'no_company', 'User has no company access')
 
+        # Determine active company priority:
+        # 1. X-Company-Id header (per-request override)
+        # 2. Session company (persisted across requests in api_session.company_id)
+        # 3. user.company_id if it is a real estate company
+        # 4. First real estate company (fallback)
+        active_company = None
+
+        x_company_id_header = request.httprequest.headers.get('X-Company-Id')
+        if x_company_id_header:
+            try:
+                x_cid = int(x_company_id_header)
+                matched = re_companies.filtered(lambda c: c.id == x_cid)
+                if not matched:
+                    return _error_response(403, 'invalid_company', 'Company not accessible for this user')
+                active_company = matched[0]
+            except (ValueError, TypeError):
+                return _error_response(400, 'invalid_company_id', 'X-Company-Id header must be an integer')
+
+        if not active_company:
+            api_session = getattr(request, 'api_session', None)
+            if api_session and api_session.company_id and api_session.company_id in re_companies:
+                active_company = api_session.company_id
+
+        if not active_company and user.company_id and user.company_id.is_real_estate:
+            active_company = user.company_id
+
+        if not active_company:
+            active_company = re_companies[0]
+
         request.company_domain = [('company_id', 'in', re_companies.ids)]
         request.user_company_ids = re_companies.ids
+        request.active_company_id = active_company.id
 
-        # Set Odoo company context to user's current company if it's a RE company
-        if user.company_id and user.company_id.is_real_estate:
-            request.update_env(context={'allowed_company_ids': [user.company_id.id]})
+        # Set Odoo company context to the resolved active company
+        request.update_env(context={'allowed_company_ids': [active_company.id]})
 
         return func(*args, **kwargs)
 

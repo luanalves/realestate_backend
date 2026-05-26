@@ -44,3 +44,12 @@ class APISession(models.Model):
         string='Security Token (JWT)',
         help='JWT token for session security and hijacking prevention',
     )
+    company_id = fields.Many2one(
+        'res.company',
+        string='Active Company',
+        ondelete='set null',
+        index=True,
+        help='The real estate company context for this session. '
+             'Set automatically at login from the user\'s first real estate company. '
+             'Updated via POST /api/v1/users/switch-company.',
+    )
