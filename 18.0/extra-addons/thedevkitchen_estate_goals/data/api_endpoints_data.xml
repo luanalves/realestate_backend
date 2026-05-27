@@ -31,25 +31,43 @@
 **Optional Fields:**
 - `target_vgv`: VGV target (float, only for captacao/propostas/fechamento)
 
-**Response (201 Created):**
-```json
-{
-  "id": 1,
-  "user_id": 5,
-  "year": 2026,
-  "month": 5,
-  "metric_type": "captacao",
-  "operation_type": "sale",
-  "target_count": 10,
-  "target_vgv": 500000.00
-}
-```
-
 **Error Responses:**
 - **400 Bad Request**: Missing required fields or invalid values
 - **403 Forbidden**: Caller lacks permission (not Owner/Director/Manager)
 - **409 Conflict**: Duplicate goal for same user/period/metric/operation
 - **422 Unprocessable Entity**: Validation error (VGV on non-VGV metric, etc.)</field>
+            <field name="request_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "CreateGoalRequest",
+  "required": ["user_id", "year", "month", "metric_type", "operation_type", "target_count"],
+  "properties": {
+    "user_id":        {"type": "integer", "example": 5},
+    "year":           {"type": "integer", "minimum": 2000, "example": 2026},
+    "month":          {"type": "integer", "minimum": 1, "maximum": 12, "example": 5},
+    "metric_type":    {"type": "string",  "enum": ["captacao", "novos_clientes", "visitas", "propostas", "fechamento"], "example": "captacao"},
+    "operation_type": {"type": "string",  "enum": ["all", "sale", "rent"], "example": "sale"},
+    "target_count":   {"type": "integer", "minimum": 0, "example": 10},
+    "target_vgv":     {"type": "number",  "example": 500000.00}
+  }
+}
+]]></field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "CreateGoalResponse",
+  "properties": {
+    "id":             {"type": "integer", "example": 1},
+    "user_id":        {"type": "integer", "example": 5},
+    "year":           {"type": "integer", "example": 2026},
+    "month":          {"type": "integer", "example": 5},
+    "metric_type":    {"type": "string",  "example": "captacao"},
+    "operation_type": {"type": "string",  "example": "sale"},
+    "target_count":   {"type": "integer", "example": 10},
+    "target_vgv":     {"type": "number",  "example": 500000.00}
+  }
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 
@@ -76,19 +94,31 @@
 - `target_count`: New target count ≥ 0 (integer)
 - `target_vgv`: New VGV target (float)
 
-**Response (200 OK):**
-```json
-{
-  "id": 1,
-  "target_count": 12,
-  "target_vgv": 600000.00
-}
-```
-
 **Error Responses:**
 - **403 Forbidden**: Caller lacks permission
 - **404 Not Found**: Goal not found or inactive
 - **422 Unprocessable Entity**: Validation error</field>
+            <field name="request_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "UpdateGoalRequest",
+  "properties": {
+    "target_count": {"type": "integer", "minimum": 0, "example": 12},
+    "target_vgv":   {"type": "number",  "example": 600000.00}
+  }
+}
+]]></field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "UpdateGoalResponse",
+  "properties": {
+    "id":           {"type": "integer", "example": 1},
+    "target_count": {"type": "integer", "example": 12},
+    "target_vgv":   {"type": "number",  "example": 600000.00}
+  }
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 
@@ -111,18 +141,20 @@
 **URL Path Parameter:**
 - `id`: Goal ID (integer)
 
-**Response (200 OK):**
-```json
-{
-  "id": 42,
-  "active": false,
-  "message": "Goal archived successfully"
-}
-```
-
 **Error Responses:**
 - **403 Forbidden**: Caller lacks permission
 - **404 Not Found**: Goal not found or already inactive</field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "DeleteGoalResponse",
+  "properties": {
+    "id":      {"type": "integer", "example": 42},
+    "active":  {"type": "boolean", "example": false},
+    "message": {"type": "string",  "example": "Goal archived successfully"}
+  }
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 
@@ -149,27 +181,33 @@
 - `metric_type`: Filter by metric
 - `operation_type`: Filter by operation type
 
-**Response (200 OK):**
-```json
-{
-  "count": 2,
-  "results": [
-    {
-      "id": 1,
-      "user_id": 5,
-      "year": 2026,
-      "month": 5,
-      "metric_type": "captacao",
-      "operation_type": "sale",
-      "target_count": 10,
-      "target_vgv": 500000.00
-    }
-  ]
-}
-```
-
 **Error Responses:**
 - **403 Forbidden**: Caller is Receptionist/Prospector, or Agent requesting another user's goals</field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "ListGoalsResponse",
+  "properties": {
+    "count": {"type": "integer", "example": 2},
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id":             {"type": "integer", "example": 1},
+          "user_id":        {"type": "integer", "example": 5},
+          "year":           {"type": "integer", "example": 2026},
+          "month":          {"type": "integer", "example": 5},
+          "metric_type":    {"type": "string",  "example": "captacao"},
+          "operation_type": {"type": "string",  "example": "sale"},
+          "target_count":   {"type": "integer", "example": 10},
+          "target_vgv":     {"type": "number",  "example": 500000.00}
+        }
+      }
+    }
+  }
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 
@@ -205,12 +243,53 @@
 
 **Hard limit:** Maximum 200 users; returns 422 if exceeded.
 
-**Response (200 OK):** Per-user rows with per-metric meta_count, conquista, completion_pct, plus totals.
-
 **Error Responses:**
 - **400 Bad Request**: Invalid date range or format; date range exceeds 366 days
 - **403 Forbidden**: Agent requesting another user; Receptionist/Prospector calling
 - **422 Unprocessable Entity**: User count exceeds 200; missing required period params</field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "GoalsReportResponse",
+  "properties": {
+    "period": {
+      "type": "object",
+      "properties": {
+        "mode":      {"type": "string", "enum": ["single_month", "accumulated"], "example": "single_month"},
+        "year":      {"type": "integer", "example": 2026},
+        "month":     {"type": "integer", "example": 5},
+        "date_from": {"type": "string",  "format": "date", "example": "2026-05-01"},
+        "date_to":   {"type": "string",  "format": "date", "example": "2026-05-31"}
+      }
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "user_id":   {"type": "integer", "example": 5},
+          "user_name": {"type": "string",  "example": "João Silva"},
+          "metrics": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "metric_type":      {"type": "string",  "example": "captacao"},
+                "operation_type":   {"type": "string",  "example": "sale"},
+                "target_count":     {"type": "integer", "example": 10},
+                "target_vgv":       {"type": "number",  "example": 500000.00},
+                "meta_count":       {"type": "integer", "example": 10},
+                "conquista":        {"type": "integer", "example": 7},
+                "completion_pct":   {"type": "number",  "example": 70.0}
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 

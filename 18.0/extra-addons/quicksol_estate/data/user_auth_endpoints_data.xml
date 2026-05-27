@@ -21,34 +21,43 @@
 **Optional Fields:**
 - `db`: Database name (defaults to current database)
 
-**Request Example:**
-```json
-{
-  "login": "admin",
-  "password": "admin"
-}
-```
-
-**Response Format (200 OK):**
-```json
-{
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "token_type": "Bearer",
-  "expires_in": 3600,
-  "user": {
-    "id": 2,
-    "name": "Admin User",
-    "email": "admin@example.com",
-    "companies": [{"id": 1, "name": "My Company"}],
-    "default_company_id": 1
-  }
-}
-```
-
 **Error Responses:**
 - **400 Bad Request**: Missing login or password
 - **401 Unauthorized**: Invalid credentials
 - **500 Internal Server Error**: Server error</field>
+            <field name="request_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "LoginRequest",
+  "required": ["login", "password"],
+  "properties": {
+    "login":    {"type": "string", "example": "admin"},
+    "password": {"type": "string", "example": "admin"},
+    "db":       {"type": "string", "example": "realestate"}
+  }
+}
+]]></field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "LoginResponse",
+  "properties": {
+    "access_token": {"type": "string",  "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."},
+    "token_type":   {"type": "string",  "example": "Bearer"},
+    "expires_in":   {"type": "integer", "example": 3600},
+    "user": {
+      "type": "object",
+      "properties": {
+        "id":                 {"type": "integer", "example": 2},
+        "name":               {"type": "string",  "example": "Admin User"},
+        "email":              {"type": "string",  "example": "admin@example.com"},
+        "companies":          {"type": "array",   "items": {"type": "object", "properties": {"id": {"type": "integer"}, "name": {"type": "string"}}}},
+        "default_company_id": {"type": "integer", "example": 1}
+      }
+    }
+  }
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 
@@ -65,22 +74,18 @@
 **Authentication:**
 Requires Bearer token in Authorization header.
 
-**Request Example:**
-```bash
-curl -X POST 'http://localhost:8069/api/v1/users/logout' \
-  -H 'Authorization: Bearer YOUR_ACCESS_TOKEN'
-```
-
-**Response Format (200 OK):**
-```json
-{
-  "message": "Logged out successfully"
-}
-```
-
 **Error Responses:**
 - **401 Unauthorized**: Invalid or missing token
 - **500 Internal Server Error**: Server error</field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "LogoutResponse",
+  "properties": {
+    "message": {"type": "string", "example": "Logged out successfully"}
+  }
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 
@@ -101,48 +106,15 @@ Requires Bearer token in `Authorization` header.
 Send the `session_id` returned by `POST /api/v1/users/login` as a `Cookie` header.
 Do NOT use the browser/Odoo native session cookie.
 
-**Request Example:**
-```bash
-curl 'https://api.torque-backoffice.thedevkitchen.com.br/api/v1/me' \
-  -H 'Authorization: Bearer YOUR_ACCESS_TOKEN' \
-  -H 'Cookie: session_id=YOUR_SESSION_ID'
-```
-
-**Response Format (200 OK):**
-```json
-{
-  "user": {
-    "id": 2,
-    "name": "John Doe",
-    "email": "john@example.com",
-    "login": "john",
-    "phone": "1133334444",
-    "mobile": "11999998888",
-    "role": "manager",
-    "companies": [
-      {
-        "id": 1,
-        "name": "Real Estate Company",
-        "cnpj": "12.345.678/0001-99",
-        "email": "company@example.com",
-        "phone": "1133334444",
-        "website": "https://example.com"
-      }
-    ],
-    "default_company_id": 1,
-    "is_admin": false,
-    "active": true
-  }
-}
-```
-
 **Role values:** `owner`, `director`, `manager`, `agent`, `prospector`, `receptionist`, `financial`, `legal`, `property_owner`, `tenant`, or `null` for system administrators.
 
 **Error Responses:**
 - **401 Unauthorized**: Invalid or missing token/session
 - **500 Internal Server Error**: Server error</field>
-            <field name="response_schema">{
+            <field name="response_schema"><![CDATA[
+{
   "type": "object",
+  "title": "GetMeResponse",
   "properties": {
     "user": {
       "type": "object",
@@ -153,7 +125,7 @@ curl 'https://api.torque-backoffice.thedevkitchen.com.br/api/v1/me' \
         "login":              {"type": "string",  "example": "john"},
         "phone":              {"type": "string",  "example": "1133334444"},
         "mobile":             {"type": "string",  "example": "11999998888"},
-        "role":               {"type": "string",  "nullable": true, "enum": ["owner", "director", "manager", "agent", "prospector", "receptionist", "financial", "legal", "property_owner", "tenant", null], "example": "manager"},
+        "role":               {"type": "string",  "nullable": true, "example": "manager"},
         "companies": {
           "type": "array",
           "items": {
@@ -174,50 +146,68 @@ curl 'https://api.torque-backoffice.thedevkitchen.com.br/api/v1/me' \
       }
     }
   }
-}</field>
+}
+]]></field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="api_endpoint_users_update_profile" model="thedevkitchen.api.endpoint">
+            <field name="name">Update User Profile</field>
+            <field name="path">/api/v1/me</field>
+            <field name="method">PATCH</field>
+            <field name="module_name">quicksol_estate</field>
+            <field name="protected" eval="True"/>
+            <field name="tags">User Authentication</field>
+            <field name="summary">Update current user profile</field>
             <field name="description">Partially update logged-in user profile (email, phone, mobile). Requires Bearer token. Only own profile can be updated.
 
 **Authentication:**
 Requires Bearer token in Authorization header.
 
 **Optional Fields (at least one required):**
-- `email`: User email - must be unique (string)
+- `email`: User email — must be unique (string)
 - `phone`: User phone number (string)
 - `mobile`: User mobile number (string)
-
-**Request Example:**
-```json
-{
-  "email": "newemail@example.com",
-  "phone": "1144445555",
-  "mobile": "11988887777"
-}
-```
-
-**Response Format (200 OK):**
-```json
-{
-  "user": {
-    "id": 2,
-    "name": "John Doe",
-    "email": "newemail@example.com",
-    "phone": "1144445555",
-    "mobile": "11988887777",
-    "companies": [{"id": 1, "name": "Real Estate Company"}],
-    "default_company_id": 1
-  },
-  "message": "Profile updated successfully"
-}
-```
 
 **Error Responses:**
 - **400 Bad Request**: No fields provided or invalid data
 - **401 Unauthorized**: Invalid or missing token
 - **409 Conflict**: Email already in use by another user
 - **500 Internal Server Error**: Server error</field>
+            <field name="request_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "UpdateProfileRequest",
+  "properties": {
+    "email":  {"type": "string", "format": "email", "example": "newemail@example.com"},
+    "phone":  {"type": "string", "example": "1144445555"},
+    "mobile": {"type": "string", "example": "11988887777"}
+  }
+}
+]]></field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "UpdateProfileResponse",
+  "properties": {
+    "user": {
+      "type": "object",
+      "properties": {
+        "id":                 {"type": "integer", "example": 2},
+        "name":               {"type": "string",  "example": "John Doe"},
+        "email":              {"type": "string",  "example": "newemail@example.com"},
+        "phone":              {"type": "string",  "example": "1144445555"},
+        "mobile":             {"type": "string",  "example": "11988887777"},
+        "companies":          {"type": "array",   "items": {"type": "object"}},
+        "default_company_id": {"type": "integer", "example": 1}
+      }
+    },
+    "message": {"type": "string", "example": "Profile updated successfully"}
+  }
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
-
         <record id="api_endpoint_users_change_password" model="thedevkitchen.api.endpoint">
             <field name="name">Change User Password</field>
             <field name="path">/api/v1/users/change-password</field>
@@ -236,22 +226,6 @@ Requires Bearer token in Authorization header.
 - `new_password`: New password - min 8 characters (string)
 - `confirm_password`: Confirm new password - must match new_password (string)
 
-**Request Example:**
-```json
-{
-  "current_password": "OldPass123!",
-  "new_password": "NewPass123!",
-  "confirm_password": "NewPass123!"
-}
-```
-
-**Response Format (200 OK):**
-```json
-{
-  "message": "Password changed successfully"
-}
-```
-
 **Error Responses:**
 - **400 Bad Request**: Missing fields, passwords don't match, or new password too short (&lt;8 characters)
 - **401 Unauthorized**: Current password incorrect or invalid token
@@ -261,6 +235,27 @@ Requires Bearer token in Authorization header.
 - Minimum 8 characters
 - Must match confirmation
 - Current password must be correct</field>
+            <field name="request_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "ChangePasswordRequest",
+  "required": ["current_password", "new_password", "confirm_password"],
+  "properties": {
+    "current_password": {"type": "string", "example": "OldPass123!"},
+    "new_password":     {"type": "string", "minLength": 8, "example": "NewPass123!"},
+    "confirm_password": {"type": "string", "minLength": 8, "example": "NewPass123!"}
+  }
+}
+]]></field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "ChangePasswordResponse",
+  "properties": {
+    "message": {"type": "string", "example": "Password changed successfully"}
+  }
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 

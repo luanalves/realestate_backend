@@ -23,32 +23,6 @@
 - `client_id`: OAuth client ID from your application (string)
 - `client_secret`: OAuth client secret from your application (string)
 
-**Request Example (JSON):**
-```json
-{
-  "grant_type": "client_credentials",
-  "client_id": "your_client_id_here",
-  "client_secret": "your_client_secret_here"
-}
-```
-
-**Request Example (Form):**
-```bash
-curl -X POST 'http://localhost:8069/api/v1/auth/token' \
-  -H 'Content-Type: application/x-www-form-urlencoded' \
-  -d 'grant_type=client_credentials&amp;client_id=YOUR_CLIENT&amp;client_secret=YOUR_SECRET'
-```
-
-**Response Format (200 OK):**
-```json
-{
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "token_type": "Bearer",
-  "expires_in": 3600,
-  "refresh_token": "def502004a8f1b..."
-}
-```
-
 **How to Use:**
 1. Go to Odoo Settings → API Gateway → OAuth Applications
 2. Create new application (Save to get client_id and client_secret)
@@ -58,6 +32,30 @@ curl -X POST 'http://localhost:8069/api/v1/auth/token' \
 **Error Responses:**
 - **400 Bad Request**: Invalid grant_type, missing fields, or invalid credentials
 - **500 Internal Server Error**: Server error</field>
+            <field name="request_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "TokenRequest",
+  "required": ["grant_type", "client_id", "client_secret"],
+  "properties": {
+    "grant_type":    {"type": "string", "enum": ["client_credentials"], "example": "client_credentials"},
+    "client_id":     {"type": "string", "example": "your_client_id_here"},
+    "client_secret": {"type": "string", "example": "your_client_secret_here"}
+  }
+}
+]]></field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "TokenResponse",
+  "properties": {
+    "access_token":  {"type": "string", "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."},
+    "token_type":    {"type": "string", "example": "Bearer"},
+    "expires_in":    {"type": "integer", "example": 3600},
+    "refresh_token": {"type": "string", "example": "def502004a8f1b..."}
+  }
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 
@@ -82,32 +80,6 @@ curl -X POST 'http://localhost:8069/api/v1/auth/token' \
 - `grant_type`: Defaults to "refresh_token" if not provided (string)
 - `client_id`: OAuth client ID for validation (string)
 
-**Request Example (JSON):**
-```json
-{
-  "refresh_token": "def502004a8f1b...",
-  "grant_type": "refresh_token",
-  "client_id": "your_client_id_here"
-}
-```
-
-**Request Example (Form):**
-```bash
-curl -X POST 'http://localhost:8069/api/v1/auth/refresh' \
-  -H 'Content-Type: application/x-www-form-urlencoded' \
-  -d 'refresh_token=YOUR_REFRESH_TOKEN'
-```
-
-**Response Format (200 OK):**
-```json
-{
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "token_type": "Bearer",
-  "expires_in": 3600,
-  "refresh_token": "def502004a8f1b..."
-}
-```
-
 **Usage:**
 - When access_token expires (after 3600 seconds), use this endpoint
 - Provide the refresh_token received from /api/v1/auth/token
@@ -117,6 +89,30 @@ curl -X POST 'http://localhost:8069/api/v1/auth/refresh' \
 - **400 Bad Request**: Missing refresh_token or invalid format
 - **401 Unauthorized**: Invalid or expired refresh_token
 - **500 Internal Server Error**: Server error</field>
+            <field name="request_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "RefreshTokenRequest",
+  "required": ["refresh_token"],
+  "properties": {
+    "refresh_token": {"type": "string", "example": "def502004a8f1b..."},
+    "grant_type":    {"type": "string", "enum": ["refresh_token"], "example": "refresh_token"},
+    "client_id":     {"type": "string", "example": "your_client_id_here"}
+  }
+}
+]]></field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "TokenResponse",
+  "properties": {
+    "access_token":  {"type": "string", "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."},
+    "token_type":    {"type": "string", "example": "Bearer"},
+    "expires_in":    {"type": "integer", "example": 3600},
+    "refresh_token": {"type": "string", "example": "def502004a8f1b..."}
+  }
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 
@@ -140,28 +136,6 @@ curl -X POST 'http://localhost:8069/api/v1/auth/refresh' \
 **Optional Fields:**
 - `token_type_hint`: Type of token ("access_token" or "refresh_token")
 
-**Request Example (JSON):**
-```json
-{
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "token_type_hint": "access_token"
-}
-```
-
-**Request Example (Form):**
-```bash
-curl -X POST 'http://localhost:8069/api/v1/auth/revoke' \
-  -H 'Content-Type: application/x-www-form-urlencoded' \
-  -d 'token=YOUR_TOKEN&amp;token_type_hint=access_token'
-```
-
-**Response Format (200 OK):**
-```json
-{
-  "message": "Token revoked successfully"
-}
-```
-
 **Usage:**
 - Call this endpoint when user logs out
 - Token becomes invalid immediately
@@ -171,6 +145,26 @@ curl -X POST 'http://localhost:8069/api/v1/auth/revoke' \
 **Error Responses:**
 - **400 Bad Request**: Missing token parameter
 - **200 OK**: Always returns 200 even if token is already invalid (OAuth 2.0 spec)</field>
+            <field name="request_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "RevokeTokenRequest",
+  "required": ["token"],
+  "properties": {
+    "token":           {"type": "string", "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."},
+    "token_type_hint": {"type": "string", "enum": ["access_token", "refresh_token"], "example": "access_token"}
+  }
+}
+]]></field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "RevokeTokenResponse",
+  "properties": {
+    "message": {"type": "string", "example": "Token revoked successfully"}
+  }
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 
