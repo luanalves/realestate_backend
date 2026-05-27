@@ -4606,20 +4606,25 @@ Returns: Agent object with id, name, cpf, email, creci, company_id, company_name
 - `max_value` (float): Maximum transaction value to apply rule (default: 999999999.99)
 - `valid_until` (string): Expiration date in ISO format (optional)
 
-**Example Request Body:**
-```json
-{
-  "transaction_type": "sale",
-  "structure_type": "percentage",
-  "valid_from": "2026-02-14",
-  "percentage": 5.0,
-  "min_value": 100000,
-  "max_value": 500000
-}
-```
-
 **RBAC:** Only Manager, Owner, or Admin can create commission rules.
 **Multi-tenancy:** Rule is automatically linked to agent's company.</field>
+            <field name="request_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "CreateCommissionRuleRequest",
+  "required": ["transaction_type", "structure_type", "valid_from"],
+  "properties": {
+    "transaction_type": {"type": "string", "enum": ["sale", "rent"], "example": "sale"},
+    "structure_type":   {"type": "string", "enum": ["percentage", "fixed", "tiered"], "example": "percentage"},
+    "valid_from":       {"type": "string", "format": "date", "example": "2026-02-14"},
+    "percentage":       {"type": "number", "default": 0.0, "example": 5.0},
+    "fixed_amount":     {"type": "number", "default": 0.0},
+    "min_value":        {"type": "number", "default": 0.0, "example": 100000},
+    "max_value":        {"type": "number", "default": 999999999.99, "example": 500000},
+    "valid_until":      {"type": "string", "format": "date", "nullable": true}
+  }
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 
@@ -4666,18 +4671,23 @@ Returns: Agent object with id, name, cpf, email, creci, company_id, company_name
 **Optional Fields:**
 - transaction_reference (string): External reference (contract ID, etc)
 - transaction_date (string): Date in YYYY-MM-DD format (defaults to today)
-- preview_only (boolean): Calculate without persisting
-
-**Example Body:**
-```json
+- preview_only (boolean): Calculate without persisting</field>
+            <field name="request_schema"><![CDATA[
 {
-  "agent_id": 1,
-  "company_id": 63,
-  "transaction_type": "sale",
-  "transaction_amount": 850000.00,
-  "transaction_reference": "VENDA-2024-001"
+  "type": "object",
+  "title": "CreateCommissionTransactionRequest",
+  "required": ["agent_id", "company_id", "transaction_type", "transaction_amount"],
+  "properties": {
+    "agent_id":              {"type": "integer", "example": 1},
+    "company_id":            {"type": "integer", "example": 63},
+    "transaction_type":      {"type": "string",  "enum": ["sale", "rental"], "example": "sale"},
+    "transaction_amount":    {"type": "number",  "exclusiveMinimum": 0, "example": 850000.00},
+    "transaction_reference": {"type": "string",  "example": "VENDA-2024-001"},
+    "transaction_date":      {"type": "string",  "format": "date"},
+    "preview_only":          {"type": "boolean", "default": false}
+  }
 }
-```</field>
+]]></field>
             <field name="active" eval="True"/>
         </record>
 
@@ -4715,23 +4725,29 @@ Returns: Agent object with id, name, cpf, email, creci, company_id, company_name
 - end_date (string): End date filter YYYY-MM-DD
 
 **Example:**
-`GET /api/v1/agents/ranking?company_id=63&amp;metric=total_sales&amp;limit=10`
-
-**Response (200):**
-```json
+`GET /api/v1/agents/ranking?company_id=63&amp;metric=total_sales&amp;limit=10`</field>
+            <field name="response_schema"><![CDATA[
 {
-  "success": true,
-  "data": [
-    {
-      "rank": 1,
-      "agent_id": 20,
-      "agent_name": "João Silva",
-      "total_sales": 1500000.00,
-      "total_commissions": 75000.00
+  "type": "object",
+  "title": "AgentsRankingResponse",
+  "properties": {
+    "success": {"type": "boolean", "example": true},
+    "data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "rank":              {"type": "integer", "example": 1},
+          "agent_id":         {"type": "integer", "example": 20},
+          "agent_name":       {"type": "string",  "example": "Jo\u00e3o Silva"},
+          "total_sales":      {"type": "number",  "example": 1500000.00},
+          "total_commissions":{"type": "number",  "example": 75000.00}
+        }
+      }
     }
-  ]
+  }
 }
-```</field>
+]]></field>
             <field name="active" eval="True"/>
         </record>
 
@@ -4803,18 +4819,31 @@ GET /api/v1/leads?state=qualified&budget_min=300000&budget_max=500000]]></field>
 - max_area (number): Maximum area m²
 - property_interest (integer): Property of interest ID
 - first_contact_date (string): YYYY-MM-DD
-- expected_closing_date (string): YYYY-MM-DD
-
-**Example Body:**
-```json
+- expected_closing_date (string): YYYY-MM-DD</field>
+            <field name="request_schema"><![CDATA[
 {
-  "name": "João Silva - Apartamento Centro",
-  "phone": "+55 11 98765-4321",
-  "email": "joao@example.com",
-  "budget_min": 300000,
-  "budget_max": 500000
+  "type": "object",
+  "title": "CreateLeadRequest",
+  "required": ["name"],
+  "properties": {
+    "name":                   {"type": "string",  "maxLength": 100, "example": "Jo\u00e3o Silva - Apartamento Centro"},
+    "phone":                  {"type": "string",  "example": "+55 11 98765-4321"},
+    "email":                  {"type": "string",  "format": "email", "example": "joao@example.com"},
+    "partner_id":             {"type": "integer"},
+    "state":                  {"type": "string",  "enum": ["new", "contacted", "qualified", "won", "lost"], "default": "new"},
+    "budget_min":             {"type": "number",  "example": 300000},
+    "budget_max":             {"type": "number",  "example": 500000},
+    "property_type_interest": {"type": "integer"},
+    "location_preference":    {"type": "string"},
+    "bedrooms_needed":        {"type": "integer"},
+    "min_area":               {"type": "number"},
+    "max_area":               {"type": "number"},
+    "property_interest":      {"type": "integer"},
+    "first_contact_date":     {"type": "string",  "format": "date"},
+    "expected_closing_date":  {"type": "string",  "format": "date"}
+  }
 }
-```</field>
+]]></field>
             <field name="active" eval="True"/>
         </record>
 
@@ -4871,28 +4900,36 @@ GET /api/v1/leads?state=qualified&budget_min=300000&budget_max=500000]]></field>
             <field name="description">Convert a qualified lead to a sale.
 
 **Required Fields:**
-- property_id (integer): Property ID to link to sale
-
-**Example Body:**
-```json
+- property_id (integer): Property ID to link to sale</field>
+            <field name="request_schema"><![CDATA[
 {
-  "property_id": 123
-}
-```
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "lead_id": 1,
-    "lead_state": "won",
-    "sale_id": 45,
-    "property_id": 123,
-    "message": "Lead converted successfully"
+  "type": "object",
+  "title": "ConvertLeadRequest",
+  "required": ["property_id"],
+  "properties": {
+    "property_id": {"type": "integer", "example": 123}
   }
 }
-```</field>
+]]></field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "ConvertLeadResponse",
+  "properties": {
+    "success": {"type": "boolean", "example": true},
+    "data": {
+      "type": "object",
+      "properties": {
+        "lead_id":    {"type": "integer", "example": 1},
+        "lead_state": {"type": "string",  "example": "won"},
+        "sale_id":    {"type": "integer", "example": 45},
+        "property_id":{"type": "integer", "example": 123},
+        "message":    {"type": "string",  "example": "Lead converted successfully"}
+      }
+    }
+  }
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 
@@ -6041,38 +6078,43 @@ Returns: Owner object with id, name, email, cpf, phone, mobile, company_count, c
 - `Authorization: Bearer {access_token}`
 - `X-Session-Id: {session_id}`
 
-**Request Body:**
-```json
-{
-  "property_id": 1,
-  "agent_id": 2,
-  "proposal_type": "sale",
-  "proposal_value": 450000.00,
-  "client_name": "João da Silva",
-  "client_document": "123.456.789-09",
-  "client_email": "joao@email.com",
-  "client_phone": "+55 11 99999-9999",
-  "valid_until": "2026-05-30",
-  "description": "Interested in quick closing."
-}
-```
-
-**Response (201 Created):**
-```json
-{
-  "id": 10,
-  "proposal_code": "PRP00010",
-  "state": "draft",
-  "property_id": 1,
-  "proposal_value": 450000.00
-}
-```
-
 **Error Responses:**
 - 400: Validation error (missing required field, invalid document, etc.)
 - 401: Invalid or missing JWT token
 - 403: Access denied
 - 409: Concurrent creation conflict (pessimistic lock)</field>
+            <field name="request_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "CreateProposalRequest",
+  "required": ["property_id", "proposal_type", "proposal_value", "client_name", "client_document"],
+  "properties": {
+    "property_id":      {"type": "integer", "example": 1},
+    "agent_id":         {"type": "integer", "example": 2},
+    "proposal_type":    {"type": "string",  "enum": ["sale", "rent"], "example": "sale"},
+    "proposal_value":   {"type": "number",  "exclusiveMinimum": 0, "example": 450000.00},
+    "client_name":      {"type": "string",  "example": "Jo\u00e3o da Silva"},
+    "client_document":  {"type": "string",  "example": "123.456.789-09"},
+    "client_email":     {"type": "string",  "format": "email", "example": "joao@email.com"},
+    "client_phone":     {"type": "string",  "example": "+55 11 99999-9999"},
+    "valid_until":      {"type": "string",  "format": "date", "example": "2026-05-30"},
+    "description":      {"type": "string",  "example": "Interested in quick closing."}
+  }
+}
+]]></field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "CreateProposalResponse",
+  "properties": {
+    "id":             {"type": "integer", "example": 10},
+    "proposal_code": {"type": "string",  "example": "PRP00010"},
+    "state":         {"type": "string",  "enum": ["draft", "queued"], "example": "draft"},
+    "property_id":   {"type": "integer", "example": 1},
+    "proposal_value":{"type": "number",  "example": 450000.00}
+  }
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 
@@ -6101,18 +6143,38 @@ Returns: Owner object with id, name, email, cpf, phone, mobile, company_count, c
 - `page` (int, optional): Page number. Default: 1
 - `page_size` (int, optional): Items per page. Default: 50, max: 100
 
-**Response (200 OK):**
-```json
-{
-  "data": [{"id": 1, "proposal_code": "PRP00001", "state": "sent", ...}],
-  "_meta": {"total": 8, "page": 1, "page_size": 50, "pages": 1},
-  "_links": {"first": "...", "prev": null, "next": null, "last": "..."}
-}
-```
-
 **Error Responses:**
 - 401: Invalid or missing JWT token
 - 403: Access denied</field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "ListProposalsResponse",
+  "properties": {
+    "data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id":            {"type": "integer", "example": 1},
+          "proposal_code": {"type": "string",  "example": "PRP00001"},
+          "state":         {"type": "string",  "example": "sent"}
+        }
+      }
+    },
+    "_meta": {
+      "type": "object",
+      "properties": {
+        "total":     {"type": "integer", "example": 8},
+        "page":      {"type": "integer", "example": 1},
+        "page_size": {"type": "integer", "example": 50},
+        "pages":     {"type": "integer", "example": 1}
+      }
+    },
+    "_links": {"type": "object"}
+  }
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 
@@ -6130,20 +6192,31 @@ Returns: Owner object with id, name, email, cpf, phone, mobile, company_count, c
 - `Authorization: Bearer {access_token}`
 - `X-Session-Id: {session_id}`
 
-**Response (200 OK):**
-```json
-{
-  "total": 8,
-  "by_state": {
-    "draft": 1, "queued": 1, "sent": 1, "negotiation": 1,
-    "accepted": 1, "rejected": 1, "expired": 1, "cancelled": 1
-  }
-}
-```
-
 **Error Responses:**
 - 401: Invalid or missing JWT token
 - 403: Access denied</field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "ProposalStatsResponse",
+  "properties": {
+    "total": {"type": "integer", "example": 8},
+    "by_state": {
+      "type": "object",
+      "properties": {
+        "draft":       {"type": "integer", "example": 1},
+        "queued":      {"type": "integer", "example": 1},
+        "sent":        {"type": "integer", "example": 1},
+        "negotiation": {"type": "integer", "example": 1},
+        "accepted":    {"type": "integer", "example": 1},
+        "rejected":    {"type": "integer", "example": 1},
+        "expired":     {"type": "integer", "example": 1},
+        "cancelled":   {"type": "integer", "example": 1}
+      }
+    }
+  }
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 
@@ -6164,24 +6237,26 @@ Returns: Owner object with id, name, email, cpf, phone, mobile, company_count, c
 **Path Parameters:**
 - `proposal_id` (int, required): Proposal ID
 
-**Response (200 OK):**
-```json
-{
-  "id": 1,
-  "proposal_code": "PRP00001",
-  "state": "sent",
-  "property_id": 1,
-  "partner_id": 5,
-  "agent_id": 2,
-  "proposal_value": 450000.00,
-  "chain": [],
-  "attachments": []
-}
-```
-
 **Error Responses:**
 - 401: Invalid or missing JWT token
 - 404: Proposal not found or belongs to another company</field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "GetProposalResponse",
+  "properties": {
+    "id":             {"type": "integer", "example": 1},
+    "proposal_code": {"type": "string",  "example": "PRP00001"},
+    "state":         {"type": "string",  "example": "sent"},
+    "property_id":   {"type": "integer", "example": 1},
+    "partner_id":    {"type": "integer", "example": 5},
+    "agent_id":      {"type": "integer", "example": 2},
+    "proposal_value":{"type": "number",  "example": 450000.00},
+    "chain":         {"type": "array",   "items": {"type": "object"}},
+    "attachments":   {"type": "array",   "items": {"type": "object"}}
+  }
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 
@@ -6202,22 +6277,24 @@ Returns: Owner object with id, name, email, cpf, phone, mobile, company_count, c
 **Path Parameters:**
 - `proposal_id` (int, required): Proposal ID
 
-**Request Body (all fields optional):**
-```json
-{
-  "proposal_value": 480000.00,
-  "description": "Updated notes",
-  "valid_until": "2026-06-15",
-  "agent_id": 3
-}
-```
-
 **Error Responses:**
 - 400: Validation error
 - 401: Invalid or missing JWT token
 - 403: Insufficient permissions to reassign agent
 - 404: Proposal not found
 - 409: Proposal is in a terminal state</field>
+            <field name="request_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "UpdateProposalRequest",
+  "properties": {
+    "proposal_value": {"type": "number", "exclusiveMinimum": 0, "example": 480000.00},
+    "description":   {"type": "string", "example": "Updated notes"},
+    "valid_until":   {"type": "string", "format": "date", "example": "2026-06-15"},
+    "agent_id":      {"type": "integer", "example": 3}
+  }
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 
@@ -6238,19 +6315,22 @@ Returns: Owner object with id, name, email, cpf, phone, mobile, company_count, c
 **Path Parameters:**
 - `proposal_id` (int, required): Proposal ID
 
-**Request Body:**
-```json
-{
-  "cancellation_reason": "Client withdrew interest."
-}
-```
-
 **Error Responses:**
 - 400: Missing cancellation_reason
 - 401: Invalid or missing JWT token
 - 403: Only managers/owners can cancel
 - 404: Proposal not found
 - 409: Proposal already in terminal state</field>
+            <field name="request_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "CancelProposalRequest",
+  "required": ["cancellation_reason"],
+  "properties": {
+    "cancellation_reason": {"type": "string", "example": "Client withdrew interest."}
+  }
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 
@@ -6324,18 +6404,21 @@ Returns: Owner object with id, name, email, cpf, phone, mobile, company_count, c
 **Path Parameters:**
 - `proposal_id` (int, required): Proposal ID
 
-**Request Body:**
-```json
-{
-  "rejection_reason": "Offer value below minimum acceptable."
-}
-```
-
 **Error Responses:**
 - 400: Missing rejection_reason
 - 401: Invalid or missing JWT token
 - 404: Proposal not found
 - 422: Invalid state transition</field>
+            <field name="request_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "RejectProposalRequest",
+  "required": ["rejection_reason"],
+  "properties": {
+    "rejection_reason": {"type": "string", "example": "Offer value below minimum acceptable."}
+  }
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 
@@ -6356,15 +6439,6 @@ Returns: Owner object with id, name, email, cpf, phone, mobile, company_count, c
 **Path Parameters:**
 - `proposal_id` (int, required): Parent proposal ID
 
-**Request Body:**
-```json
-{
-  "proposal_value": 460000.00,
-  "description": "Counter with adjusted price.",
-  "valid_until": "2026-06-01"
-}
-```
-
 **Response (201 Created):** Full proposal object with chain.
 
 **Error Responses:**
@@ -6372,6 +6446,18 @@ Returns: Owner object with id, name, email, cpf, phone, mobile, company_count, c
 - 401: Invalid or missing JWT token
 - 404: Parent proposal not found
 - 422: Same value as parent, or invalid state</field>
+            <field name="request_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "CounterProposalRequest",
+  "required": ["proposal_value"],
+  "properties": {
+    "proposal_value": {"type": "number", "exclusiveMinimum": 0, "example": 460000.00},
+    "description":   {"type": "string", "example": "Counter with adjusted price."},
+    "valid_until":   {"type": "string", "format": "date", "example": "2026-06-01"}
+  }
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 
@@ -6392,20 +6478,37 @@ Returns: Owner object with id, name, email, cpf, phone, mobile, company_count, c
 **Path Parameters:**
 - `proposal_id` (int, required): Any proposal ID on the target property
 
-**Response (200 OK):**
-```json
-{
-  "property_id": 1,
-  "active_proposal": {"id": 1, "proposal_code": "PRP00001", "state": "sent"},
-  "queue": [
-    {"id": 2, "proposal_code": "PRP00002", "state": "queued"}
-  ]
-}
-```
-
 **Error Responses:**
 - 401: Invalid or missing JWT token
 - 404: Proposal not found</field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "ProposalQueueResponse",
+  "properties": {
+    "property_id": {"type": "integer", "example": 1},
+    "active_proposal": {
+      "type": "object",
+      "properties": {
+        "id":            {"type": "integer", "example": 1},
+        "proposal_code": {"type": "string",  "example": "PRP00001"},
+        "state":         {"type": "string",  "example": "sent"}
+      }
+    },
+    "queue": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id":            {"type": "integer", "example": 2},
+          "proposal_code": {"type": "string",  "example": "PRP00002"},
+          "state":         {"type": "string",  "example": "queued"}
+        }
+      }
+    }
+  }
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 
@@ -6431,22 +6534,24 @@ Returns: Owner object with id, name, email, cpf, phone, mobile, company_count, c
 - `file` (file, required): The file to upload
 - `description` (string, optional): Description of the attachment
 
-**Response (201 Created):**
-```json
-{
-  "id": 42,
-  "name": "proposta_assinada.pdf",
-  "mimetype": "application/pdf",
-  "size": 204800,
-  "download_url": "/web/content/42?download=true"
-}
-```
-
 **Error Responses:**
 - 400: No file provided or unsupported file type
 - 401: Invalid or missing JWT token
 - 404: Proposal not found
 - 413: File exceeds 10 MB limit</field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "UploadProposalAttachmentResponse",
+  "properties": {
+    "id":           {"type": "integer", "example": 42},
+    "name":         {"type": "string",  "example": "proposta_assinada.pdf"},
+    "mimetype":     {"type": "string",  "example": "application/pdf"},
+    "size":         {"type": "integer", "example": 204800},
+    "download_url": {"type": "string",  "example": "/web/content/42?download=true"}
+  }
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 
