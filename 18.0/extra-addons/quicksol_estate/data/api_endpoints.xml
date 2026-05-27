@@ -4190,32 +4190,6 @@ Use this endpoint to get available property type IDs before creating a property.
 - `country_id` (optional): Filter states by country ID (integer)
   - Example: `?country_id=31` returns only Brazilian states
 
-**Response Format:**
-```json
-[
-  {
-    "id": 1,
-    "name": "Acre",
-    "code": "AC",
-    "country": {
-      "id": 31,
-      "name": "Brazil",
-      "code": "BR"
-    }
-  },
-  {
-    "id": 25,
-    "name": "São Paulo",
-    "code": "SP",
-    "country": {
-      "id": 31,
-      "name": "Brazil",
-      "code": "BR"
-    }
-  }
-]
-```
-
 **Available States:**
 All 27 Brazilian states are pre-loaded:
 - Acre (AC), Alagoas (AL), Amapá (AP), Amazonas (AM), Bahia (BA)
@@ -4227,20 +4201,31 @@ All 27 Brazilian states are pre-loaded:
 - Roraima (RR), Santa Catarina (SC), São Paulo (SP), Sergipe (SE)
 - Tocantins (TO)
 
-**Testing Examples:**
-```bash
-# List all states
-curl 'http://localhost:8069/api/v1/states' \
-  -H 'Authorization: Bearer [your_token]'
-
-# Filter by Brazil (country_id=31)
-curl 'http://localhost:8069/api/v1/states?country_id=31' \
-  -H 'Authorization: Bearer [your_token]'
-```
-
 **Error Responses:**
 - **401 Unauthorized**: Invalid or missing JWT token
 - **500 Internal Server Error**: Server error</field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "array",
+  "title": "ListStatesResponse",
+  "items": {
+    "type": "object",
+    "properties": {
+      "id":   {"type": "integer", "example": 25},
+      "name": {"type": "string",  "example": "S\u00e3o Paulo"},
+      "code": {"type": "string",  "example": "SP"},
+      "country": {
+        "type": "object",
+        "properties": {
+          "id":   {"type": "integer", "example": 31},
+          "name": {"type": "string",  "example": "Brazil"},
+          "code": {"type": "string",  "example": "BR"}
+        }
+      }
+    }
+  }
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 
@@ -4257,37 +4242,6 @@ curl 'http://localhost:8069/api/v1/states?country_id=31' \
 **Access Control:**
 - All authenticated users can access this endpoint
 
-**Response Format:**
-```json
-[
-  {
-    "id": 1,
-    "name": "Urbano",
-    "code": "urban"
-  },
-  {
-    "id": 2,
-    "name": "Suburbano",
-    "code": "suburban"
-  },
-  {
-    "id": 3,
-    "name": "Rural",
-    "code": "rural"
-  },
-  {
-    "id": 4,
-    "name": "Praia",
-    "code": "beach"
-  },
-  {
-    "id": 5,
-    "name": "Montanha",
-    "code": "mountain"
-  }
-]
-```
-
 **Available Location Types:**
 - **Urbano** (urban): Urban areas
 - **Suburbano** (suburban): Suburban areas
@@ -4296,26 +4250,25 @@ curl 'http://localhost:8069/api/v1/states?country_id=31' \
 - **Montanha** (mountain): Mountain/highland areas
 
 **Usage in Property Creation:**
-Use the `location_type_id` field when creating or updating properties:
-```json
-{
-  "name": "Casa na Praia",
-  "property_type_id": 2,
-  "area": 150,
-  "location_type_id": 4,
-  ...
-}
-```
-
-**Testing Example:**
-```bash
-curl 'http://localhost:8069/api/v1/location-types' \
-  -H 'Authorization: Bearer [your_token]'
-```
+Use the `location_type_id` field when creating or updating properties.
 
 **Error Responses:**
 - **401 Unauthorized**: Invalid or missing JWT token
 - **500 Internal Server Error**: Server error</field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "array",
+  "title": "ListLocationTypesResponse",
+  "items": {
+    "type": "object",
+    "properties": {
+      "id":   {"type": "integer", "example": 4},
+      "name": {"type": "string",  "example": "Praia"},
+      "code": {"type": "string",  "example": "beach"}
+    }
+  }
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 
@@ -4351,34 +4304,40 @@ curl 'http://localhost:8069/api/v1/location-types' \
 - Multi-tenancy: User can only access agents from companies they belong to
 - Admin users can access agents from any company
 
-**Response Format (200 OK):**
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": 1,
-      "name": "Agent Name",
-      "email": "agent@company.com",
-      "cpf": "123.456.789-01",
-      "creci": "CRECI-SP 12345",
-      "company_id": 1,
-      "company_name": "Company Name",
-      "_links": { "self": "/api/v1/agents/1", "properties": "/api/v1/agents/1/properties" }
-    }
-  ],
-  "count": 10,
-  "total": 50,
-  "limit": 20,
-  "offset": 0,
-  "_links": { "self": "/api/v1/agents?company_ids=1&amp;limit=20&amp;offset=0", "next": "..." }
-}
-```
-
 **Error Responses:**
 - 400: company_ids parameter is required
 - 400: Invalid company_ids format
 - 403: Access denied to company IDs (user doesn't have access)</field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "ListAgentsResponse",
+  "properties": {
+    "success": {"type": "boolean", "example": true},
+    "data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id":           {"type": "integer", "example": 1},
+          "name":         {"type": "string",  "example": "Agent Name"},
+          "email":        {"type": "string",  "example": "agent@company.com"},
+          "cpf":          {"type": "string",  "example": "123.456.789-01"},
+          "creci":        {"type": "string",  "example": "CRECI-SP 12345"},
+          "company_id":   {"type": "integer", "example": 1},
+          "company_name": {"type": "string",  "example": "Company Name"},
+          "_links":       {"type": "object"}
+        }
+      }
+    },
+    "count":  {"type": "integer", "example": 10},
+    "total":  {"type": "integer", "example": 50},
+    "limit":  {"type": "integer", "example": 20},
+    "offset": {"type": "integer", "example": 0},
+    "_links": {"type": "object"}
+  }
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 
@@ -5329,37 +5288,43 @@ Returns: Owner object with id, name, email, cpf, phone, mobile, company_count, c
 - `status` (string, optional): Filter by status (draft, active, terminated, expired)
 - `is_active` (string, optional): Filter by archived status ("true" or "false")
 
-**Response Format (200 OK):**
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": 5,
-      "name": "LEASE/2026/0005",
-      "property_id": 2,
-      "property_name": "Apartamento Centro",
-      "tenant_id": 10,
-      "tenant_name": "Maria Santos",
-      "start_date": "2026-01-01",
-      "end_date": "2027-01-01",
-      "rent_amount": 2500.00,
-      "status": "active",
-      "active": true,
-      "_links": { "self": "/api/v1/leases/5" }
-    }
-  ],
-  "count": 1,
-  "total": 20,
-  "page": 1,
-  "page_size": 20
-}
-```
-
 **Error Responses:**
 - 400: Invalid pagination parameters or filter values
 - 401: Invalid or missing JWT token
 - 403: Access denied to companies</field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "ListLeasesResponse",
+  "properties": {
+    "success": {"type": "boolean", "example": true},
+    "data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id":            {"type": "integer", "example": 5},
+          "name":          {"type": "string",  "example": "LEASE/2026/0005"},
+          "property_id":   {"type": "integer", "example": 2},
+          "property_name": {"type": "string",  "example": "Apartamento Centro"},
+          "tenant_id":     {"type": "integer", "example": 10},
+          "tenant_name":   {"type": "string",  "example": "Maria Santos"},
+          "start_date":    {"type": "string",  "format": "date", "example": "2026-01-01"},
+          "end_date":      {"type": "string",  "format": "date", "example": "2027-01-01"},
+          "rent_amount":   {"type": "number",  "example": 2500.00},
+          "status":        {"type": "string",  "example": "active"},
+          "active":        {"type": "boolean", "example": true},
+          "_links":        {"type": "object"}
+        }
+      }
+    },
+    "count":     {"type": "integer", "example": 1},
+    "total":     {"type": "integer", "example": 20},
+    "page":      {"type": "integer", "example": 1},
+    "page_size": {"type": "integer", "example": 20}
+  }
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 
@@ -5393,43 +5358,51 @@ Returns: Owner object with id, name, email, cpf, phone, mobile, company_count, c
 **Optional Fields:**
 - `status` (string): Initial status — "draft" (default) or "active"
 
-**Request Example:**
-```json
-{
-  "property_id": 2,
-  "tenant_id": 10,
-  "start_date": "2026-02-01",
-  "end_date": "2027-02-01",
-  "rent_amount": 3000.00,
-  "status": "draft"
-}
-```
-
-**Response Format (201 Created):**
-```json
-{
-  "success": true,
-  "message": "Lease created successfully",
-  "data": {
-    "id": 12,
-    "name": "LEASE/2026/0012",
-    "property_id": 2,
-    "tenant_id": 10,
-    "start_date": "2026-02-01",
-    "end_date": "2027-02-01",
-    "rent_amount": 3000.00,
-    "status": "draft",
-    "active": true,
-    "_links": { "self": "/api/v1/leases/12" }
-  }
-}
-```
-
 **Error Responses:**
 - 400: Validation failed (missing fields, end_date before start_date, property already has active lease)
 - 401: Invalid or missing JWT token
 - 403: Access denied
 - 404: Property or Tenant not found</field>
+            <field name="request_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "CreateLeaseRequest",
+  "required": ["property_id", "tenant_id", "start_date", "end_date", "rent_amount"],
+  "properties": {
+    "property_id":  {"type": "integer", "example": 2},
+    "tenant_id":    {"type": "integer", "example": 10},
+    "start_date":   {"type": "string",  "format": "date", "example": "2026-02-01"},
+    "end_date":     {"type": "string",  "format": "date", "example": "2027-02-01"},
+    "rent_amount":  {"type": "number",  "exclusiveMinimum": 0, "example": 3000.00},
+    "status":       {"type": "string",  "enum": ["draft", "active"], "example": "draft"}
+  }
+}
+]]></field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "CreateLeaseResponse",
+  "properties": {
+    "success": {"type": "boolean", "example": true},
+    "message": {"type": "string",  "example": "Lease created successfully"},
+    "data": {
+      "type": "object",
+      "properties": {
+        "id":          {"type": "integer", "example": 12},
+        "name":        {"type": "string",  "example": "LEASE/2026/0012"},
+        "property_id": {"type": "integer", "example": 2},
+        "tenant_id":   {"type": "integer", "example": 10},
+        "start_date":  {"type": "string",  "format": "date", "example": "2026-02-01"},
+        "end_date":    {"type": "string",  "format": "date", "example": "2027-02-01"},
+        "rent_amount": {"type": "number",  "example": 3000.00},
+        "status":      {"type": "string",  "example": "draft"},
+        "active":      {"type": "boolean", "example": true},
+        "_links":      {"type": "object"}
+      }
+    }
+  }
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 
@@ -5451,44 +5424,35 @@ Returns: Owner object with id, name, email, cpf, phone, mobile, company_count, c
 **Path Parameters:**
 - `lease_id` (integer): Lease ID
 
-**Response Format (200 OK):**
-```json
-{
-  "success": true,
-  "data": {
-    "id": 5,
-    "name": "LEASE/2026/0005",
-    "property": { "id": 2, "name": "Apartamento Centro" },
-    "tenant": { "id": 10, "name": "Maria Santos" },
-    "start_date": "2026-01-01",
-    "end_date": "2027-01-01",
-    "rent_amount": 2500.00,
-    "status": "active",
-    "active": true,
-    "renewal_history": [
-      {
-        "id": 1,
-        "previous_end_date": "2026-06-30",
-        "new_end_date": "2027-01-01",
-        "previous_rent": 2200.00,
-        "new_rent": 2500.00,
-        "reason": "Annual renewal",
-        "renewal_date": "2026-06-15T10:00:00Z"
-      }
-    ],
-    "_links": {
-      "self": "/api/v1/leases/5",
-      "renew": "/api/v1/leases/5/renew",
-      "terminate": "/api/v1/leases/5/terminate"
-    }
-  }
-}
-```
-
 **Error Responses:**
 - 401: Invalid or missing JWT token
 - 403: Access denied
 - 404: Lease not found</field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "GetLeaseResponse",
+  "properties": {
+    "success": {"type": "boolean", "example": true},
+    "data": {
+      "type": "object",
+      "properties": {
+        "id":          {"type": "integer", "example": 5},
+        "name":        {"type": "string",  "example": "LEASE/2026/0005"},
+        "property":    {"type": "object",  "properties": {"id": {"type": "integer", "example": 2}, "name": {"type": "string", "example": "Apartamento Centro"}}},
+        "tenant":      {"type": "object",  "properties": {"id": {"type": "integer", "example": 10}, "name": {"type": "string", "example": "Maria Santos"}}},
+        "start_date":  {"type": "string",  "format": "date", "example": "2026-01-01"},
+        "end_date":    {"type": "string",  "format": "date", "example": "2027-01-01"},
+        "rent_amount": {"type": "number",  "example": 2500.00},
+        "status":      {"type": "string",  "example": "active"},
+        "active":      {"type": "boolean", "example": true},
+        "renewal_history": {"type": "array", "items": {"type": "object"}},
+        "_links":      {"type": "object"}
+      }
+    }
+  }
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 
@@ -5516,33 +5480,42 @@ Returns: Owner object with id, name, email, cpf, phone, mobile, company_count, c
 - `rent_amount` (number): Monthly rent (> 0)
 - `status` (string): Status — only valid forward transitions allowed
 
-**Request Example:**
-```json
-{
-  "rent_amount": 2800.00,
-  "status": "active"
-}
-```
-
-**Response Format (200 OK):**
-```json
-{
-  "success": true,
-  "message": "Lease updated successfully",
-  "data": {
-    "id": 12,
-    "rent_amount": 2800.00,
-    "status": "active",
-    "_links": { "self": "/api/v1/leases/12" }
-  }
-}
-```
-
 **Error Responses:**
 - 400: Validation failed, invalid state transition, or end_date before start_date
 - 401: Invalid or missing JWT token
 - 403: Access denied
 - 404: Lease not found</field>
+            <field name="request_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "UpdateLeaseRequest",
+  "properties": {
+    "start_date":  {"type": "string", "format": "date", "example": "2026-01-01"},
+    "end_date":    {"type": "string", "format": "date", "example": "2027-01-01"},
+    "rent_amount": {"type": "number", "exclusiveMinimum": 0, "example": 2800.00},
+    "status":      {"type": "string", "enum": ["draft", "active", "terminated", "expired"], "example": "active"}
+  }
+}
+]]></field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "UpdateLeaseResponse",
+  "properties": {
+    "success": {"type": "boolean", "example": true},
+    "message": {"type": "string",  "example": "Lease updated successfully"},
+    "data": {
+      "type": "object",
+      "properties": {
+        "id":          {"type": "integer", "example": 12},
+        "rent_amount": {"type": "number",  "example": 2800.00},
+        "status":      {"type": "string",  "example": "active"},
+        "_links":      {"type": "object"}
+      }
+    }
+  }
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 
@@ -5562,22 +5535,27 @@ Returns: Owner object with id, name, email, cpf, phone, mobile, company_count, c
 **Path Parameters:**
 - `lease_id` (integer): Lease ID
 
-**Response Format (200 OK):**
-```json
-{
-  "success": true,
-  "message": "Lease archived successfully",
-  "data": {
-    "id": 12,
-    "active": false
-  }
-}
-```
-
 **Error Responses:**
 - 401: Invalid or missing JWT token
 - 403: Access denied
 - 404: Lease not found</field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "DeleteLeaseResponse",
+  "properties": {
+    "success": {"type": "boolean", "example": true},
+    "message": {"type": "string",  "example": "Lease archived successfully"},
+    "data": {
+      "type": "object",
+      "properties": {
+        "id":     {"type": "integer", "example": 12},
+        "active": {"type": "boolean", "example": false}
+      }
+    }
+  }
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 
@@ -5610,35 +5588,43 @@ Returns: Owner object with id, name, email, cpf, phone, mobile, company_count, c
 - `new_rent_amount` (number): New monthly rent (> 0)
 - `reason` (string): Reason for renewal
 
-**Request Example:**
-```json
-{
-  "new_end_date": "2028-01-01",
-  "new_rent_amount": 2800.00,
-  "reason": "Annual renewal with adjustment"
-}
-```
-
-**Response Format (200 OK):**
-```json
-{
-  "success": true,
-  "message": "Lease renewed successfully",
-  "data": {
-    "id": 5,
-    "end_date": "2028-01-01",
-    "rent_amount": 2800.00,
-    "status": "active",
-    "_links": { "self": "/api/v1/leases/5" }
-  }
-}
-```
-
 **Error Responses:**
 - 400: Lease not active, new_end_date before current end_date, or validation error
 - 401: Invalid or missing JWT token
 - 403: Access denied
 - 404: Lease not found</field>
+            <field name="request_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "RenewLeaseRequest",
+  "required": ["new_end_date"],
+  "properties": {
+    "new_end_date":      {"type": "string", "format": "date", "example": "2028-01-01"},
+    "new_rent_amount":   {"type": "number", "exclusiveMinimum": 0, "example": 2800.00},
+    "reason":            {"type": "string", "example": "Annual renewal with adjustment"}
+  }
+}
+]]></field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "RenewLeaseResponse",
+  "properties": {
+    "success":     {"type": "boolean", "example": true},
+    "message":     {"type": "string",  "example": "Lease renewed successfully"},
+    "data": {
+      "type": "object",
+      "properties": {
+        "id":          {"type": "integer", "example": 5},
+        "end_date":    {"type": "string",  "format": "date", "example": "2028-01-01"},
+        "rent_amount": {"type": "number",  "example": 2800.00},
+        "status":      {"type": "string",  "example": "active"},
+        "_links":      {"type": "object"}
+      }
+    }
+  }
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 
@@ -5670,34 +5656,42 @@ Returns: Owner object with id, name, email, cpf, phone, mobile, company_count, c
 - `reason` (string): Reason for termination
 - `penalty_amount` (number): Penalty amount (>= 0, informational only)
 
-**Request Example:**
-```json
-{
-  "termination_date": "2026-09-30",
-  "reason": "Early termination by tenant",
-  "penalty_amount": 5000.00
-}
-```
-
-**Response Format (200 OK):**
-```json
-{
-  "success": true,
-  "message": "Lease terminated successfully",
-  "data": {
-    "id": 5,
-    "status": "terminated",
-    "termination_date": "2026-09-30",
-    "_links": { "self": "/api/v1/leases/5" }
-  }
-}
-```
-
 **Error Responses:**
 - 400: Lease not active or validation error
 - 401: Invalid or missing JWT token
 - 403: Access denied
 - 404: Lease not found</field>
+            <field name="request_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "TerminateLeaseRequest",
+  "required": ["termination_date"],
+  "properties": {
+    "termination_date": {"type": "string", "format": "date", "example": "2026-09-30"},
+    "reason":           {"type": "string", "example": "Early termination by tenant"},
+    "penalty_amount":   {"type": "number", "minimum": 0, "example": 5000.00}
+  }
+}
+]]></field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "TerminateLeaseResponse",
+  "properties": {
+    "success": {"type": "boolean", "example": true},
+    "message": {"type": "string",  "example": "Lease terminated successfully"},
+    "data": {
+      "type": "object",
+      "properties": {
+        "id":               {"type": "integer", "example": 5},
+        "status":           {"type": "string",  "example": "terminated"},
+        "termination_date": {"type": "string",  "format": "date", "example": "2026-09-30"},
+        "_links":           {"type": "object"}
+      }
+    }
+  }
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 
@@ -5730,34 +5724,40 @@ Returns: Owner object with id, name, email, cpf, phone, mobile, company_count, c
 - `max_price` (number, optional): Maximum sale price
 - `is_active` (string, optional): Filter by archived status ("true" or "false")
 
-**Response Format (200 OK):**
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": 1,
-      "property_id": 2,
-      "property_name": "Apartamento Centro",
-      "buyer_name": "Carlos Souza",
-      "sale_date": "2026-02-10",
-      "sale_price": 450000.00,
-      "status": "completed",
-      "agent": { "id": 3, "name": "João Agent" },
-      "_links": { "self": "/api/v1/sales/1" }
-    }
-  ],
-  "count": 1,
-  "total": 8,
-  "page": 1,
-  "page_size": 20
-}
-```
-
 **Error Responses:**
 - 400: Invalid pagination or filter parameters
 - 401: Invalid or missing JWT token
 - 403: Access denied to companies</field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "ListSalesResponse",
+  "properties": {
+    "success": {"type": "boolean", "example": true},
+    "data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id":            {"type": "integer", "example": 1},
+          "property_id":   {"type": "integer", "example": 2},
+          "property_name": {"type": "string",  "example": "Apartamento Centro"},
+          "buyer_name":    {"type": "string",  "example": "Carlos Souza"},
+          "sale_date":     {"type": "string",  "format": "date", "example": "2026-02-10"},
+          "sale_price":    {"type": "number",  "example": 450000.00},
+          "status":        {"type": "string",  "example": "completed"},
+          "agent":         {"type": "object",  "properties": {"id": {"type": "integer"}, "name": {"type": "string"}}},
+          "_links":        {"type": "object"}
+        }
+      }
+    },
+    "count":     {"type": "integer", "example": 1},
+    "total":     {"type": "integer", "example": 8},
+    "page":      {"type": "integer", "example": 1},
+    "page_size": {"type": "integer", "example": 20}
+  }
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 
@@ -5796,42 +5796,51 @@ Returns: Owner object with id, name, email, cpf, phone, mobile, company_count, c
 - `agent_id` (integer): Responsible agent ID
 - `lead_id` (integer): Originating lead ID
 
-**Request Example:**
-```json
-{
-  "property_id": 2,
-  "company_id": 63,
-  "buyer_name": "Carlos Souza",
-  "sale_date": "2026-02-10",
-  "sale_price": 450000.00,
-  "buyer_phone": "(11) 99888-7766",
-  "buyer_email": "carlos@example.com",
-  "agent_id": 3
-}
-```
-
-**Response Format (201 Created):**
-```json
-{
-  "success": true,
-  "message": "Sale created successfully",
-  "data": {
-    "id": 8,
-    "property_id": 2,
-    "buyer_name": "Carlos Souza",
-    "sale_date": "2026-02-10",
-    "sale_price": 450000.00,
-    "status": "completed",
-    "_links": { "self": "/api/v1/sales/8" }
-  }
-}
-```
-
 **Error Responses:**
 - 400: Validation failed (missing fields, invalid email, negative price)
 - 401: Invalid or missing JWT token
 - 403: Access denied to specified company
 - 404: Property, Company, or Agent not found</field>
+            <field name="request_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "CreateSaleRequest",
+  "required": ["property_id", "company_id", "buyer_name", "sale_date", "sale_price"],
+  "properties": {
+    "property_id":  {"type": "integer", "example": 2},
+    "company_id":   {"type": "integer", "example": 63},
+    "buyer_name":   {"type": "string",  "example": "Carlos Souza"},
+    "sale_date":    {"type": "string",  "format": "date", "example": "2026-02-10"},
+    "sale_price":   {"type": "number",  "exclusiveMinimum": 0, "example": 450000.00},
+    "buyer_phone":  {"type": "string",  "example": "(11) 99888-7766"},
+    "buyer_email":  {"type": "string",  "format": "email", "example": "carlos@example.com"},
+    "agent_id":     {"type": "integer", "example": 3},
+    "lead_id":      {"type": "integer", "example": 7}
+  }
+}
+]]></field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "CreateSaleResponse",
+  "properties": {
+    "success": {"type": "boolean", "example": true},
+    "message": {"type": "string",  "example": "Sale created successfully"},
+    "data": {
+      "type": "object",
+      "properties": {
+        "id":          {"type": "integer", "example": 8},
+        "property_id": {"type": "integer", "example": 2},
+        "buyer_name":  {"type": "string",  "example": "Carlos Souza"},
+        "sale_date":   {"type": "string",  "format": "date", "example": "2026-02-10"},
+        "sale_price":  {"type": "number",  "example": 450000.00},
+        "status":      {"type": "string",  "example": "completed"},
+        "_links":      {"type": "object"}
+      }
+    }
+  }
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 
@@ -5853,34 +5862,36 @@ Returns: Owner object with id, name, email, cpf, phone, mobile, company_count, c
 **Path Parameters:**
 - `sale_id` (integer): Sale ID
 
-**Response Format (200 OK):**
-```json
-{
-  "success": true,
-  "data": {
-    "id": 8,
-    "property": { "id": 2, "name": "Apartamento Centro" },
-    "buyer_name": "Carlos Souza",
-    "buyer_phone": "(11) 99888-7766",
-    "buyer_email": "carlos@example.com",
-    "sale_date": "2026-02-10",
-    "sale_price": 450000.00,
-    "status": "completed",
-    "agent": { "id": 3, "name": "João Agent" },
-    "lead": null,
-    "company": { "id": 63, "name": "Imobiliária Exemplo" },
-    "_links": {
-      "self": "/api/v1/sales/8",
-      "cancel": "/api/v1/sales/8/cancel"
-    }
-  }
-}
-```
-
 **Error Responses:**
 - 401: Invalid or missing JWT token
 - 403: Access denied
 - 404: Sale not found</field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "GetSaleResponse",
+  "properties": {
+    "success": {"type": "boolean", "example": true},
+    "data": {
+      "type": "object",
+      "properties": {
+        "id":           {"type": "integer", "example": 8},
+        "property":     {"type": "object",  "properties": {"id": {"type": "integer", "example": 2}, "name": {"type": "string", "example": "Apartamento Centro"}}},
+        "buyer_name":   {"type": "string",  "example": "Carlos Souza"},
+        "buyer_phone":  {"type": "string",  "example": "(11) 99888-7766"},
+        "buyer_email":  {"type": "string",  "example": "carlos@example.com"},
+        "sale_date":    {"type": "string",  "format": "date", "example": "2026-02-10"},
+        "sale_price":   {"type": "number",  "example": 450000.00},
+        "status":       {"type": "string",  "example": "completed"},
+        "agent":        {"type": "object",  "nullable": true, "properties": {"id": {"type": "integer"}, "name": {"type": "string"}}},
+        "lead":         {"type": "object",  "nullable": true},
+        "company":      {"type": "object",  "properties": {"id": {"type": "integer", "example": 63}, "name": {"type": "string", "example": "Imobili\u00e1ria Exemplo"}}},
+        "_links":       {"type": "object"}
+      }
+    }
+  }
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 
@@ -5909,33 +5920,43 @@ Returns: Owner object with id, name, email, cpf, phone, mobile, company_count, c
 - `sale_date` (string): Sale date (YYYY-MM-DD)
 - `sale_price` (number): Sale price (> 0)
 
-**Request Example:**
-```json
-{
-  "sale_price": 460000.00,
-  "buyer_email": "carlos.new@example.com"
-}
-```
-
-**Response Format (200 OK):**
-```json
-{
-  "success": true,
-  "message": "Sale updated successfully",
-  "data": {
-    "id": 8,
-    "sale_price": 460000.00,
-    "buyer_email": "carlos.new@example.com",
-    "_links": { "self": "/api/v1/sales/8" }
-  }
-}
-```
-
 **Error Responses:**
 - 400: Validation failed or sale is cancelled
 - 401: Invalid or missing JWT token
 - 403: Access denied
 - 404: Sale not found</field>
+            <field name="request_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "UpdateSaleRequest",
+  "properties": {
+    "buyer_name":  {"type": "string", "example": "Carlos Souza"},
+    "buyer_phone": {"type": "string", "example": "(11) 99888-7766"},
+    "buyer_email": {"type": "string", "format": "email", "example": "carlos.new@example.com"},
+    "sale_date":   {"type": "string", "format": "date", "example": "2026-02-10"},
+    "sale_price":  {"type": "number", "exclusiveMinimum": 0, "example": 460000.00}
+  }
+}
+]]></field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "UpdateSaleResponse",
+  "properties": {
+    "success": {"type": "boolean", "example": true},
+    "message": {"type": "string",  "example": "Sale updated successfully"},
+    "data": {
+      "type": "object",
+      "properties": {
+        "id":          {"type": "integer", "example": 8},
+        "sale_price":  {"type": "number",  "example": 460000.00},
+        "buyer_email": {"type": "string",  "example": "carlos.new@example.com"},
+        "_links":      {"type": "object"}
+      }
+    }
+  }
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 
@@ -5963,33 +5984,41 @@ Returns: Owner object with id, name, email, cpf, phone, mobile, company_count, c
 **Required Fields:**
 - `reason` (string): Reason for cancellation
 
-**Request Example:**
-```json
-{
-  "reason": "Buyer withdrew from deal"
-}
-```
-
-**Response Format (200 OK):**
-```json
-{
-  "success": true,
-  "message": "Sale cancelled successfully",
-  "data": {
-    "id": 8,
-    "status": "cancelled",
-    "cancellation_date": "2026-02-15",
-    "cancellation_reason": "Buyer withdrew from deal",
-    "_links": { "self": "/api/v1/sales/8" }
-  }
-}
-```
-
 **Error Responses:**
 - 400: Sale already cancelled, missing reason, or validation error
 - 401: Invalid or missing JWT token
 - 403: Access denied
 - 404: Sale not found</field>
+            <field name="request_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "CancelSaleRequest",
+  "required": ["reason"],
+  "properties": {
+    "reason": {"type": "string", "example": "Buyer withdrew from deal"}
+  }
+}
+]]></field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "CancelSaleResponse",
+  "properties": {
+    "success": {"type": "boolean", "example": true},
+    "message": {"type": "string",  "example": "Sale cancelled successfully"},
+    "data": {
+      "type": "object",
+      "properties": {
+        "id":                  {"type": "integer", "example": 8},
+        "status":              {"type": "string",  "example": "cancelled"},
+        "cancellation_date":   {"type": "string",  "format": "date", "example": "2026-02-15"},
+        "cancellation_reason": {"type": "string",  "example": "Buyer withdrew from deal"},
+        "_links":              {"type": "object"}
+      }
+    }
+  }
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 
