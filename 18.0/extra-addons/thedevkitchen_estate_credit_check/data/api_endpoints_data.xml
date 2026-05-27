@@ -20,10 +20,10 @@ Transitions proposal state from sent/negotiation → credit_check_pending.
 Creates a new CreditCheck record with result=pending.
 
 **Authorization**: Owner, Manager, or Agent (own proposals only).
-**Auth Headers**: Authorization: Bearer {jwt_token} | X-Openerp-Session-Id | X-Company-Id
+**Auth Headers**: `Authorization: Bearer {jwt_token}` | `X-Openerp-Session-Id` | `X-Company-Id`
 
-**Required fields:**
-- insurer_name (string, max 255 chars)
+**Required Fields:**
+- `insurer_name` (string, max 255 chars)
 
 **Invariant**: Only one pending check per proposal (partial unique index, ADR-027).
 
@@ -32,30 +32,44 @@ Creates a new CreditCheck record with result=pending.
 - 403: agent does not own proposal
 - 404: proposal not found
 - 409: pending check already exists
-- 422: sale proposal (credit check only for lease)
-
-**Request:**
-```json
-{"insurer_name": "Tokio Marine"}
-```
-
-**Response (201):**
-```json
+- 422: sale proposal (credit check only for lease)</field>
+            <field name="request_schema"><![CDATA[
 {
-  "status": "success",
-  "data": {
-    "id": 42,
-    "proposal_id": 15,
-    "insurer_name": "Tokio Marine",
-    "result": "pending",
-    "requested_at": "2026-04-29T14:30:00Z",
-    "_links": {
-      "self": {"href": "/api/v1/proposals/15/credit-checks/42"},
-      "proposal": {"href": "/api/v1/proposals/15"}
+  "type": "object",
+  "title": "InitiateCreditCheckRequest",
+  "required": ["insurer_name"],
+  "properties": {
+    "insurer_name": {"type": "string", "maxLength": 255, "example": "Tokio Marine"}
+  }
+}
+]]></field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "InitiateCreditCheckResponse",
+  "properties": {
+    "status": {"type": "string", "example": "success"},
+    "data": {
+      "type": "object",
+      "properties": {
+        "id":            {"type": "integer", "example": 42},
+        "proposal_id":   {"type": "integer", "example": 15},
+        "insurer_name":  {"type": "string",  "example": "Tokio Marine"},
+        "result":        {"type": "string",  "example": "pending"},
+        "requested_at":  {"type": "string",  "format": "date-time", "example": "2026-04-29T14:30:00Z"},
+        "_links": {
+          "type": "object",
+          "properties": {
+            "self":     {"type": "object", "properties": {"href": {"type": "string", "example": "/api/v1/proposals/15/credit-checks/42"}}},
+            "proposal": {"type": "object", "properties": {"href": {"type": "string", "example": "/api/v1/proposals/15"}}}
+          }
+        }
+      }
     }
   }
 }
-```</field>
+]]></field>
+            <field name="active" eval="True"/>
         </record>
 
         <record id="api_endpoint_credit_check_register" model="thedevkitchen.api.endpoint">
@@ -74,26 +88,49 @@ Creates a new CreditCheck record with result=pending.
 
 **Authorization**: Owner, Manager, or Agent (own proposals only).
 
-**Required fields:**
-- result (approved | rejected | cancelled)
+**Required Fields:**
+- `result` (`approved` | `rejected` | `cancelled`)
 
-**Conditional fields:**
-- rejection_reason (required when result=rejected)
-- check_date (optional, must not be future)
+**Conditional Fields:**
+- `rejection_reason` (required when result=`rejected`)
+- `check_date` (optional, must not be future)
 
 **Errors:**
 - 400: missing result or rejection_reason
 - 404: check or proposal not found
-- 409: check already resolved (immutable)
-
-**Request:**
-```json
+- 409: check already resolved (immutable)</field>
+            <field name="request_schema"><![CDATA[
 {
-  "result": "rejected",
-  "rejection_reason": "Renda insuficiente para o valor solicitado.",
-  "check_date": "2026-04-29"
+  "type": "object",
+  "title": "RegisterCreditCheckRequest",
+  "required": ["result"],
+  "properties": {
+    "result":           {"type": "string", "enum": ["approved", "rejected", "cancelled"], "example": "rejected"},
+    "rejection_reason": {"type": "string", "example": "Renda insuficiente para o valor solicitado."},
+    "check_date":       {"type": "string", "format": "date", "example": "2026-04-29"}
+  }
 }
-```</field>
+]]></field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "RegisterCreditCheckResponse",
+  "properties": {
+    "status": {"type": "string", "example": "success"},
+    "data": {
+      "type": "object",
+      "properties": {
+        "id":               {"type": "integer", "example": 42},
+        "proposal_id":      {"type": "integer", "example": 15},
+        "result":           {"type": "string",  "example": "rejected"},
+        "rejection_reason": {"type": "string",  "example": "Renda insuficiente para o valor solicitado."},
+        "check_date":       {"type": "string",  "format": "date", "example": "2026-04-29"}
+      }
+    }
+  }
+}
+]]></field>
+            <field name="active" eval="True"/>
         </record>
 
         <record id="api_endpoint_credit_check_list" model="thedevkitchen.api.endpoint">
@@ -108,23 +145,40 @@ Creates a new CreditCheck record with result=pending.
 
 **Authorization**: Owner, Manager, or Agent (own proposals only).
 
-**Query params:**
-- result (filter: pending | approved | rejected | cancelled)
-- limit (max 100, default 100)
-- offset (default 0)
-
-**Response (200):**
-```json
+**Query Parameters:**
+- `result` (optional): Filter by result — `pending` | `approved` | `rejected` | `cancelled`
+- `limit` (integer, max 100, default 100)
+- `offset` (integer, default 0)</field>
+            <field name="response_schema"><![CDATA[
 {
-  "status": "success",
-  "data": {
-    "items": [...],
-    "limit": 100,
-    "offset": 0,
-    "_links": {"self": {"href": "/api/v1/proposals/15/credit-checks"}}
+  "type": "object",
+  "title": "CreditCheckListResponse",
+  "properties": {
+    "status": {"type": "string", "example": "success"},
+    "data": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id":            {"type": "integer", "example": 42},
+              "insurer_name":  {"type": "string",  "example": "Tokio Marine"},
+              "result":        {"type": "string",  "example": "pending"},
+              "requested_at":  {"type": "string",  "format": "date-time", "example": "2026-04-29T14:30:00Z"}
+            }
+          }
+        },
+        "limit":  {"type": "integer", "example": 100},
+        "offset": {"type": "integer", "example": 0},
+        "_links": {"type": "object"}
+      }
+    }
   }
 }
-```</field>
+]]></field>
+            <field name="active" eval="True"/>
         </record>
 
         <record id="api_endpoint_credit_history" model="thedevkitchen.api.endpoint">
@@ -144,24 +198,50 @@ Creates a new CreditCheck record with result=pending.
 
 **Performance**: &lt; 300ms for up to 1,000 checks per company (SC-004).
 
-**Query params:**
-- limit (max 100, default 100)
-- offset (default 0)
-
-**Response (200):**
-```json
+**Query Parameters:**
+- `limit` (integer, max 100, default 100)
+- `offset` (integer, default 0)</field>
+            <field name="response_schema"><![CDATA[
 {
-  "status": "success",
-  "data": {
-    "partner_id": 7,
-    "summary": {"total": 3, "approved": 1, "rejected": 2, "pending": 0, "cancelled": 0},
-    "items": [...],
-    "limit": 100,
-    "offset": 0,
-    "_links": {"self": {"href": "/api/v1/clients/7/credit-history"}}
+  "type": "object",
+  "title": "CreditHistoryResponse",
+  "properties": {
+    "status": {"type": "string", "example": "success"},
+    "data": {
+      "type": "object",
+      "properties": {
+        "partner_id": {"type": "integer", "example": 7},
+        "summary": {
+          "type": "object",
+          "properties": {
+            "total":     {"type": "integer", "example": 3},
+            "approved":  {"type": "integer", "example": 1},
+            "rejected":  {"type": "integer", "example": 2},
+            "pending":   {"type": "integer", "example": 0},
+            "cancelled": {"type": "integer", "example": 0}
+          }
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id":           {"type": "integer", "example": 42},
+              "proposal_id":  {"type": "integer", "example": 15},
+              "insurer_name": {"type": "string",  "example": "Tokio Marine"},
+              "result":       {"type": "string",  "example": "approved"},
+              "requested_at": {"type": "string",  "format": "date-time", "example": "2026-04-29T14:30:00Z"}
+            }
+          }
+        },
+        "limit":  {"type": "integer", "example": 100},
+        "offset": {"type": "integer", "example": 0}
+      }
+    }
   }
 }
-```</field>
+]]></field>
+            <field name="active" eval="True"/>
         </record>
 
     </data>
