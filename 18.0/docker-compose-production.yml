@@ -219,11 +219,13 @@ services:
       - odoo-net
       - dokploy-network
     restart: unless-stopped
+    init: true
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "ping"]
-      interval: 10s
-      timeout: 5s
+      interval: 30s
+      timeout: 20s
       retries: 5
+      start_period: 60s
 
   # ===========================================================================
   # CELERY WORKERS
