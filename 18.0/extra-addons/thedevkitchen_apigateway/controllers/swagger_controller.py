@@ -1,9 +1,22 @@
 # -*- coding: utf-8 -*-
 import json
+import os
 from odoo import http
 from odoo.http import request
-from odoo.tools.misc import file_open
 from odoo.addons.thedevkitchen_observability.services.tracer import trace_http_request
+
+_SWAGGER_HTML = None
+
+def _load_swagger_html():
+    global _SWAGGER_HTML
+    if _SWAGGER_HTML is None:
+        static_path = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            'static', 'src', 'swagger.html'
+        )
+        with open(static_path, 'r', encoding='utf-8') as f:
+            _SWAGGER_HTML = f.read()
+    return _SWAGGER_HTML
 
 
 class SwaggerController(http.Controller):
@@ -11,8 +24,7 @@ class SwaggerController(http.Controller):
     @trace_http_request
     def swagger_ui(self, **kwargs):
         """Serve Swagger UI"""
-        with file_open('thedevkitchen_apigateway/static/src/swagger.html', 'r', filter_ext=('.html',)) as f:
-            content = f.read()
+        content = _load_swagger_html()
         return request.make_response(content, headers=[('Content-Type', 'text/html')])
 
     @http.route('/api/v1/openapi.json', type='http', auth='none', methods=['GET'], csrf=False)
