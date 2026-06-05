@@ -147,6 +147,18 @@ users are explicitly above this model — they must not be shoehorned into a com
   data — see [Knowledge Base KB-013](../../knowledge_base/13-saas-admin-module-checklist.md).
 - The `ir.rule` table gains 18 additional rows. No measurable performance impact (Odoo evaluates
   all rules per query anyway; OR-union short-circuits on first match for the admin).
+- **Timing side-channel (accepted risk — CHK024)**: The admin block path executes `has_group()`
+  after `session.authenticate()`, adding ~1–5 ms overhead compared to the bad-credential path.
+  The dominant latency on both paths is `session.authenticate()` (full DB round-trip with
+  password hash verification); the marginal difference is not reliably measurable under normal
+  network jitter. **Mitigation**: Kong API Gateway applies rate limiting and connection throttling
+  to all login endpoint traffic (existing gateway policy), preventing timing-based enumeration
+  at scale. No application-level timing equalization is added (doing so would require constant
+  artificial delays, degrading all login performance for negligible security gain given Kong coverage).
+- **Guard ordering**: The `has_group('base.group_system')` check is placed **before** the
+  `user.active` check in the controller. This is intentional — if the active check came first,
+  an inactive System Admin would receive `403 "User inactive"` instead of `401`, revealing that
+  the account exists with valid credentials (anti-enumeration violation, ADR-008).
 
 ---
 

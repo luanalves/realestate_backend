@@ -67,25 +67,30 @@ class UserAuthController(http.Controller):
             # Após autenticação bem-sucedida, busca o usuário com sudo
             # (usuário já autenticado, sudo é seguro aqui para ler dados do próprio usuário)
             user = request.env['res.users'].sudo().browse(uid)
-            
-            if not user.active:
-                _logger.warning(f"User inactive: {email}")
-                AuditLogger.log_failed_login(ip_address, email, 'User inactive')
-                return request.make_json_response(
-                    {'error': {'status': 403, 'message': 'User inactive'}},
-                    status=403
-                )
 
             # Feature 022 / ADR-029: Block SaaS Admin from REST API.
-            # System Admins must use the Odoo web interface (Principle VI).
-            # 401 (not 403): anti-enumeration — response must be indistinguishable
-            # from an invalid-credential failure (ADR-008).
+            # MUST be checked BEFORE user.active — if active check came first, an inactive admin
+            # would receive 403 "User inactive" instead of 401, revealing that the credentials
+            # are valid (anti-enumeration violation, ADR-008).
+            # System Admins must use the Odoo web interface only (Principle VI).
+            # Timing note (CHK024): both the bad-credential path and this path share the
+            # session.authenticate() round-trip as the dominant latency; the extra has_group()
+            # query adds ~1–5 ms marginal overhead. Timing normalization is delegated to Kong
+            # (rate limiting + connection throttling) per ADR-029 §Assumptions.
             if user.has_group('base.group_system'):
                 _logger.warning(f"Admin login attempt via API blocked: {email}")
                 AuditLogger.log_failed_login(ip_address, email, 'Admin API login blocked')
                 return request.make_json_response(
                     {'error': {'status': 401, 'message': 'Invalid credentials'}},
                     status=401
+                )
+
+            if not user.active:
+                _logger.warning(f"User inactive: {email}")
+                AuditLogger.log_failed_login(ip_address, email, 'User inactive')
+                return request.make_json_response(
+                    {'error': {'status': 403, 'message': 'User inactive'}},
+                    status=403
                 )
 
 
