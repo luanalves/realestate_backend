@@ -126,7 +126,7 @@ A System Admin attempting to authenticate via the application's REST API login e
 
 ### Measurable Outcomes
 
-- **SC-001**: 100% of real estate record types (exactly 18 entity types as listed in `data-model.md`) are visible to the System Admin across all tenant companies without any access error or empty list caused by company filtering.
+- **SC-001**: 100% of real estate record types (exactly 20 entity types as listed in `data-model.md`, across 5 modules) are visible to the System Admin across all tenant companies without any access error or empty list caused by company filtering. Note: entities from modules not yet installed on a given environment are exempt until those modules are installed.
 - **SC-002**: System Admin can successfully create, edit, and delete records belonging to companies other than their own in the Odoo web interface in a single operation (no extra steps).
 - **SC-003**: All navigation menus within the Real Estate module are visible and functional for the System Admin — zero menus hidden due to business role group restrictions.
 - **SC-004**: 100% of REST API login attempts by System Admin users are rejected with HTTP 401 and a generic error message — no System Admin session tokens are issued via the API under any circumstances, and the response is indistinguishable from an invalid-credential failure.

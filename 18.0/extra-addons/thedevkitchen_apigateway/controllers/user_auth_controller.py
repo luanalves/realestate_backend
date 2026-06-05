@@ -76,6 +76,18 @@ class UserAuthController(http.Controller):
                     status=403
                 )
 
+            # Feature 022 / ADR-029: Block SaaS Admin from REST API.
+            # System Admins must use the Odoo web interface (Principle VI).
+            # 401 (not 403): anti-enumeration — response must be indistinguishable
+            # from an invalid-credential failure (ADR-008).
+            if user.has_group('base.group_system'):
+                _logger.warning(f"Admin login attempt via API blocked: {email}")
+                AuditLogger.log_failed_login(ip_address, email, 'Admin API login blocked')
+                return request.make_json_response(
+                    {'error': {'status': 401, 'message': 'Invalid credentials'}},
+                    status=401
+                )
+
 
             # Invalidar sessões antigas do usuário
             try:

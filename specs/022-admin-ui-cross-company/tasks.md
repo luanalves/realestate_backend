@@ -15,7 +15,7 @@
 
 **Purpose**: Confirm the working environment before any source changes
 
-- [ ] T001 Verify Docker services running (`docker compose up -d` from `18.0/`) and confirm `022-admin-ui-cross-company` branch is active
+- [X] - [X] T001 Verify Docker services running (`docker compose up -d` from `18.0/`) and confirm `022-admin-ui-cross-company` branch is active
 
 ---
 
@@ -25,8 +25,8 @@
 
 ⚠️ **These tasks are prerequisites for any reviewer verifying the XML pattern; they are NOT blockers for parallel XML authoring if the pattern in `data-model.md` is used directly.**
 
-- [ ] T002 [P] Create ADR that formalises the `base.group_system` channel separation convention and cross-module checklist obligation in `docs/adr/ADR-029-saas-admin-channel-separation.md`
-- [ ] T003 [P] Create developer checklist for new modules (always include System Admin record rule override) in `knowledge_base/13-saas-admin-module-checklist.md`
+- [X] - [X] T002 [P] Create ADR that formalises the `base.group_system` channel separation convention and cross-module checklist obligation in `docs/adr/ADR-029-saas-admin-channel-separation.md`
+- [X] - [X] T003 [P] Create developer checklist for new modules (always include System Admin record rule override) in `knowledge_base/13-saas-admin-module-checklist.md`
 
 **Checkpoint**: Pattern documented — US1 XML tasks can proceed
 
@@ -40,15 +40,15 @@
 
 ### Implementation for User Story 1
 
-- [ ] T004 [P] [US1] Append new `<data noupdate="0">` block to `18.0/extra-addons/quicksol_estate/security/record_rules.xml` with admin override rules for 9 models: `real.estate.property`, `real.estate.agent`, `real.estate.lease`, `real.estate.sale`, `real.estate.agent.property.assignment`, `real.estate.commission.rule`, `real.estate.commission.transaction`, `real.estate.lease.renewal.history`, `thedevkitchen.estate.profile` — use canonical pattern from `data-model.md`
-- [ ] T005 [P] [US1] Append admin override rule for `real.estate.proposal` inside the existing `<data>` block of `18.0/extra-addons/quicksol_estate/security/proposal_record_rules.xml` (noupdate="0" — append directly)
-- [ ] T006 [P] [US1] Append admin override rules for `real.estate.service`, `real.estate.service.tag`, `real.estate.service.source`, `thedevkitchen.service.settings` inside the existing `<data>` block of `18.0/extra-addons/quicksol_estate/security/service_record_rules.xml` (noupdate="0" — append directly)
-- [ ] T007 [P] [US1] Append new `<data noupdate="0">` block to `18.0/extra-addons/thedevkitchen_cms/security/cms_record_rules.xml` with admin override rules for `thedevkitchen.cms.page`, `thedevkitchen.cms.media`, `thedevkitchen.cms.settings`
-- [ ] T008 [P] [US1] Append admin override rule for `thedevkitchen.estate.goal` inside the existing `<data>` block of `18.0/extra-addons/thedevkitchen_estate_goals/security/record_rules.xml` (noupdate="0" — append directly)
-- [ ] T009 [P] [US1] Append new `<data noupdate="0">` block to `18.0/extra-addons/thedevkitchen_estate_credit_check/security/record_rules.xml` with admin override rule for `thedevkitchen.estate.credit.check`
-- [ ] T010 [P] [US1] Append new `<data noupdate="0">` block to `18.0/extra-addons/thedevkitchen_user_onboarding/security/record_rules.xml` with admin override rule for `thedevkitchen.password.token`
-- [ ] T011 [US1] Upgrade affected modules (`quicksol_estate`, `thedevkitchen_cms`, `thedevkitchen_estate_goals`, `thedevkitchen_estate_credit_check`, `thedevkitchen_user_onboarding`) via Docker and verify Properties list shows all tenant companies' records in Odoo UI — confirms SC-001 and SC-007
-- [ ] T012 [US1] Create Cypress E2E test for cross-company read visibility (SC-001, AC-1 to AC-3) in `cypress/e2e/views/admin_cross_company.cy.js` — cover Properties, Leases, Agents, CMS Pages, Goals, Proposals
+- [X] T004 [P] [US1] Append new `<data noupdate="0">` block to `18.0/extra-addons/quicksol_estate/security/record_rules.xml` with admin override rules for 9 models: `real.estate.property`, `real.estate.agent`, `real.estate.lease`, `real.estate.sale`, `real.estate.agent.property.assignment`, `real.estate.commission.rule`, `real.estate.commission.transaction`, `real.estate.lease.renewal.history`, `thedevkitchen.estate.profile` — use canonical pattern from `data-model.md`
+- [X] T005 [P] [US1] Append admin override rule for `real.estate.proposal` inside the existing `<data>` block of `18.0/extra-addons/quicksol_estate/security/proposal_record_rules.xml` (noupdate="0" — append directly)
+- [X] T006 [P] [US1] Append admin override rules for `real.estate.service`, `real.estate.service.tag`, `real.estate.service.source`, `thedevkitchen.service.settings` inside the existing `<data>` block of `18.0/extra-addons/quicksol_estate/security/service_record_rules.xml` (noupdate="0" — append directly)
+- [X] T007 [P] [US1] Append new `<data noupdate="0">` block to `18.0/extra-addons/thedevkitchen_cms/security/cms_record_rules.xml` with admin override rules for `thedevkitchen.cms.page`, `thedevkitchen.cms.media`, `thedevkitchen.cms.settings`
+- [X] T008 [P] [US1] Append admin override rule for `thedevkitchen.estate.goal` inside the existing `<data>` block of `18.0/extra-addons/thedevkitchen_estate_goals/security/record_rules.xml` (noupdate="0" — append directly)
+- [X] T009 [P] [US1] Append new `<data noupdate="0">` block to `18.0/extra-addons/thedevkitchen_estate_credit_check/security/record_rules.xml` with admin override rule for `thedevkitchen.estate.credit.check`
+- [X] T010 [P] [US1] Append new `<data noupdate="0">` block to `18.0/extra-addons/thedevkitchen_user_onboarding/security/record_rules.xml` with admin override rule for `thedevkitchen.password.token`
+- [X] T011 [US1] Upgrade affected modules (`quicksol_estate`, `thedevkitchen_cms`, `thedevkitchen_estate_goals`, `thedevkitchen_estate_credit_check`, `thedevkitchen_user_onboarding`) via Docker and verify Properties list shows all tenant companies' records in Odoo UI — confirms SC-001 and SC-007
+- [X] T012 [US1] Create Cypress E2E test for cross-company read visibility (SC-001, AC-1 to AC-3) in `cypress/e2e/views/admin_cross_company.cy.js` — cover Properties, Leases, Agents, CMS Pages, Goals, Proposals
 
 **Checkpoint**: System Admin can see all records across all companies in the Odoo UI — US1 delivers independently
 
@@ -62,8 +62,8 @@
 
 ### Implementation for User Story 4
 
-- [ ] T013 [US4] Inject `has_group('base.group_system')` guard in `18.0/extra-addons/thedevkitchen_apigateway/controllers/user_auth_controller.py` — place after `if not user.active` check, before session creation; call `AuditLogger.log_failed_login(ip_address, email, 'Admin API login blocked')` and return HTTP 401 `{"error": {"status": 401, "message": "Invalid credentials"}}` (see `contracts/login-block.md` for exact insertion point and response shape)
-- [ ] T014 [US4] Create integration test `integration_tests/test_admin_api_block.sh` — verify HTTP 401 for admin credentials, generic response body (no token/session_id), audit log entry presence, and HTTP 200 for a valid business-user login (SC-004, SC-005)
+- [X] T013 [US4] Inject `has_group('base.group_system')` guard in `18.0/extra-addons/thedevkitchen_apigateway/controllers/user_auth_controller.py` — place after `if not user.active` check, before session creation; call `AuditLogger.log_failed_login(ip_address, email, 'Admin API login blocked')` and return HTTP 401 `{"error": {"status": 401, "message": "Invalid credentials"}}` (see `contracts/login-block.md` for exact insertion point and response shape)
+- [X] T014 [US4] Create integration test `integration_tests/test_admin_api_block.sh` — verify HTTP 401 for admin credentials, generic response body (no token/session_id), audit log entry presence, and HTTP 200 for a valid business-user login (SC-004, SC-005)
 
 **Checkpoint**: System Admin cannot authenticate via REST API; business users unaffected — US4 delivers independently
 
@@ -79,7 +79,7 @@
 
 ### Implementation for User Story 2
 
-- [ ] T015 [US2] Extend `cypress/e2e/views/admin_cross_company.cy.js` with write access scenarios: edit a record from a foreign company and save (SC-002 AC-1), create a new record for a foreign company (SC-002 AC-2), delete a record from a foreign company (SC-002 AC-3)
+- [X] T015 [US2] Extend `cypress/e2e/views/admin_cross_company.cy.js` with write access scenarios: edit a record from a foreign company and save (SC-002 AC-1), create a new record for a foreign company (SC-002 AC-2), delete a record from a foreign company (SC-002 AC-3)
 
 **Checkpoint**: System Admin write access confirmed across all companies — US2 delivers independently
 
@@ -93,8 +93,8 @@
 
 ### Implementation for User Story 3
 
-- [ ] T016 [US3] Add `base.group_system` to the `groups` attribute of `menu_real_estate_lead` in `18.0/extra-addons/quicksol_estate/views/real_estate_menus.xml` — existing line: `groups="quicksol_estate.group_real_estate_agent,quicksol_estate.group_real_estate_manager"` → append `,base.group_system`
-- [ ] T017 [US3] Extend `cypress/e2e/views/admin_cross_company.cy.js` with menu visibility scenarios: all sub-menus visible including Leads (SC-003 AC-1), Leads page loads with all-company records (SC-003 AC-2)
+- [X] T016 [US3] Add `base.group_system` to the `groups` attribute of `menu_real_estate_lead` in `18.0/extra-addons/quicksol_estate/views/real_estate_menus.xml` — existing line: `groups="quicksol_estate.group_real_estate_agent,quicksol_estate.group_real_estate_manager"` → append `,base.group_system`
+- [X] T017 [US3] Extend `cypress/e2e/views/admin_cross_company.cy.js` with menu visibility scenarios: all sub-menus visible including Leads (SC-003 AC-1), Leads page loads with all-company records (SC-003 AC-2)
 
 **Checkpoint**: All navigation menus visible to System Admin — US3 delivers independently
 
@@ -104,10 +104,10 @@
 
 **Purpose**: Integration test for FR-007 convention verification, full end-to-end validation, and final test run.
 
-- [ ] T018 [P] Create integration test `integration_tests/test_admin_invite_block.sh` — verify that attempting to use the REST API invite endpoint to invite a `base.group_system` user is rejected by Feature 009's authorization matrix (FR-007 — no new guard code, existing matrix enforces this)
-- [ ] T019 Run full quickstart.md validation: upgrade all affected modules, verify UI cross-company access, verify API 401 block, run all three test files (Cypress + `test_admin_api_block.sh` + `test_admin_invite_block.sh`) per `specs/022-admin-ui-cross-company/quickstart.md`
-- [ ] T020 Confirm SC-001 through SC-007 all pass: cross-company visibility (SC-001), write access (SC-002), menu visibility (SC-003), API block 401 (SC-004), audit log (SC-005), business-user isolation unchanged (SC-006), no manual DB intervention needed (SC-007)
-- [ ] T021 [P] Create integration test `integration_tests/test_business_user_isolation.sh` — log in as a business-role user (e.g., Owner of Company A), assert that records belonging exclusively to Company B are absent from all list responses (SC-006); assert record count is identical before and after deploying this feature (zero cross-company leakage)
+- [X] T018 [P] Create integration test `integration_tests/test_admin_invite_block.sh` — verify that attempting to use the REST API invite endpoint to invite a `base.group_system` user is rejected by Feature 009's authorization matrix (FR-007 — no new guard code, existing matrix enforces this)
+- [X] T019 Run full quickstart.md validation: upgrade all affected modules, verify UI cross-company access, verify API 401 block, run all three test files (Cypress + `test_admin_api_block.sh` + `test_admin_invite_block.sh`) per `specs/022-admin-ui-cross-company/quickstart.md`
+- [X] T020 Confirm SC-001 through SC-007 all pass: cross-company visibility (SC-001), write access (SC-002), menu visibility (SC-003), API block 401 (SC-004), audit log (SC-005), business-user isolation unchanged (SC-006), no manual DB intervention needed (SC-007)
+- [X] T021 [P] Create integration test `integration_tests/test_business_user_isolation.sh` — log in as a business-role user (e.g., Owner of Company A), assert that records belonging exclusively to Company B are absent from all list responses (SC-006); assert record count is identical before and after deploying this feature (zero cross-company leakage)
 
 ---
 

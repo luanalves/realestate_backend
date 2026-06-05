@@ -649,4 +649,75 @@
         </record>
         
     </data>
+
+    <!-- Feature 022 / ADR-029: SaaS Admin cross-company overrides (applied on every upgrade) -->
+    <data noupdate="0">
+
+        <!-- ADR-008 §3: Admin accesses via administrative interface -->
+        <!-- ADR-019: SaaS Admin operates above business role hierarchy -->
+
+        <record id="rule_admin_all_properties" model="ir.rule">
+            <field name="name">System Admin: All Properties (Cross-Company)</field>
+            <field name="model_id" ref="model_real_estate_property"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('base.group_system'))]"/>
+        </record>
+
+        <record id="rule_admin_all_agents" model="ir.rule">
+            <field name="name">System Admin: All Agents (Cross-Company)</field>
+            <field name="model_id" ref="model_real_estate_agent"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('base.group_system'))]"/>
+        </record>
+
+        <record id="rule_admin_all_leases" model="ir.rule">
+            <field name="name">System Admin: All Leases (Cross-Company)</field>
+            <field name="model_id" ref="model_real_estate_lease"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('base.group_system'))]"/>
+        </record>
+
+        <record id="rule_admin_all_sales" model="ir.rule">
+            <field name="name">System Admin: All Sales (Cross-Company)</field>
+            <field name="model_id" ref="model_real_estate_sale"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('base.group_system'))]"/>
+        </record>
+
+        <record id="rule_admin_all_assignments" model="ir.rule">
+            <field name="name">System Admin: All Agent-Property Assignments (Cross-Company)</field>
+            <field name="model_id" ref="model_real_estate_agent_property_assignment"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('base.group_system'))]"/>
+        </record>
+
+        <record id="rule_admin_all_commission_rules" model="ir.rule">
+            <field name="name">System Admin: All Commission Rules (Cross-Company)</field>
+            <field name="model_id" ref="model_real_estate_commission_rule"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('base.group_system'))]"/>
+        </record>
+
+        <record id="rule_admin_all_commission_transactions" model="ir.rule">
+            <field name="name">System Admin: All Commission Transactions (Cross-Company)</field>
+            <field name="model_id" ref="model_real_estate_commission_transaction"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('base.group_system'))]"/>
+        </record>
+
+        <record id="rule_admin_all_lease_renewal_history" model="ir.rule">
+            <field name="name">System Admin: All Lease Renewal History (Cross-Company)</field>
+            <field name="model_id" ref="model_real_estate_lease_renewal_history"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('base.group_system'))]"/>
+        </record>
+
+        <record id="rule_admin_all_profiles" model="ir.rule">
+            <field name="name">System Admin: All Estate Profiles (Cross-Company)</field>
+            <field name="model_id" ref="model_thedevkitchen_estate_profile"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('base.group_system'))]"/>
+        </record>
+
+    </data>
 </odoo>
