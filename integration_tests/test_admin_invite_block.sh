@@ -2,33 +2,32 @@
 # =============================================================================
 # test_admin_invite_block.sh — Feature 022 / ADR-029 / FR-007
 # =============================================================================
-# Verifies that the REST API invite endpoint CANNOT be used to invite a user
-# with the base.group_system profile. This is enforced by Feature 009's
-# authorization matrix — no new guard code was added for Feature 022.
+# Verifica que o endpoint de convite da REST API NÃO aceita convidar um usuário
+# com perfil base.group_system. Isso é garantido pela matriz de autorização da
+# Feature 009 — sem novo código de guard na Feature 022.
 #
-# FR-007: Admin cannot be invited via API (satisfied by Feature 009)
-# Reference: specs/022-admin-ui-cross-company/spec.md §FR-007
+# FR-007: Admin não pode ser convidado via API (satisfeito pela Feature 009)
 #
-# Prerequisites:
-#   - Odoo running at BASE_URL (default: http://localhost:8069)
-#   - A valid business Owner token available (OWNER_TOKEN env var)
-#   - OWNER_SESSION_ID set (for @require_session)
-#   - OWNER_COMPANY_ID set
-#
-# Usage:
-#   OWNER_TOKEN=... OWNER_SESSION_ID=... OWNER_COMPANY_ID=... \
-#     ./integration_tests/test_admin_invite_block.sh
+# Fluxo: client_credentials → JWT → login como Owner → POST /api/v1/users/invite
+# Credenciais lidas de 18.0/.env automaticamente.
 # =============================================================================
 
 set -euo pipefail
 
-BASE_URL="${BASE_URL:-http://localhost:8069}"
-OWNER_TOKEN="${OWNER_TOKEN:-}"
-OWNER_SESSION_ID="${OWNER_SESSION_ID:-}"
-OWNER_COMPANY_ID="${OWNER_COMPANY_ID:-1}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+[ -f "${SCRIPT_DIR}/../18.0/.env" ] && source "${SCRIPT_DIR}/../18.0/.env" || true
+
+BASE_URL="${BASE_URL:-${ODOO_BASE_URL:-http://localhost:8069}}"
+OAUTH_CLIENT_ID="${OAUTH_CLIENT_ID:?'OAUTH_CLIENT_ID não encontrado — verifique 18.0/.env'}"
+OAUTH_CLIENT_SECRET="${OAUTH_CLIENT_SECRET:?'OAUTH_CLIENT_SECRET não encontrado — verifique 18.0/.env'}"
+OWNER_EMAIL="${OWNER_EMAIL:-${TEST_USER_OWNER:-}}"
+OWNER_PASSWORD="${OWNER_PASSWORD:-${TEST_PASSWORD_OWNER:-}}"
+COMPANY_ID="${TEST_COMPANY_ID:-1}"
 
 PASS=0
 FAIL=0
+APP_JWT=""
+OWNER_SESSION=""
 
 # --- helpers ------------------------------------------------------------------
 
@@ -38,105 +37,102 @@ yellow() { printf "\033[0;33m%s\033[0m\n" "$*"; }
 
 assert_eq() {
     local label="$1" expected="$2" actual="$3"
-    if [[ "$actual" == "$expected" ]]; then
-        green "  ✓ $label"
-        PASS=$((PASS + 1))
-    else
-        red "  ✗ $label"
-        red "    Expected: $expected"
-        red "    Actual  : $actual"
-        FAIL=$((FAIL + 1))
-    fi
+    if [[ "$actual" == "$expected" ]]; then green "  ✓ $label"; PASS=$((PASS+1))
+    else red "  ✗ $label  (esperado='$expected'  atual='$actual')"; FAIL=$((FAIL+1)); fi
 }
-
 assert_contains() {
     local label="$1" needle="$2" haystack="$3"
-    if echo "$haystack" | grep -q "$needle"; then
-        green "  ✓ $label"
-        PASS=$((PASS + 1))
-    else
-        red "  ✗ $label"
-        red "    Expected to contain: $needle"
-        red "    Actual body        : $(echo "$haystack" | head -3)"
-        FAIL=$((FAIL + 1))
-    fi
+    if echo "$haystack" | grep -q "$needle"; then green "  ✓ $label"; PASS=$((PASS+1))
+    else red "  ✗ $label  (esperava '$needle' na resposta)"; FAIL=$((FAIL+1)); fi
 }
 
 check_prerequisites() {
-    if [[ -z "$OWNER_TOKEN" || -z "$OWNER_SESSION_ID" ]]; then
+    if [[ -z "$OWNER_EMAIL" || -z "$OWNER_PASSWORD" ]]; then
         yellow ""
-        yellow "⚠ OWNER_TOKEN or OWNER_SESSION_ID not set."
-        yellow "  This test requires an authenticated Owner session."
-        yellow ""
-        yellow "  To obtain credentials:"
-        yellow "    POST ${BASE_URL}/api/v1/users/login with Owner credentials"
-        yellow "    Set OWNER_TOKEN=<jwt_token> OWNER_SESSION_ID=<session_id>"
-        yellow ""
-        yellow "  Skipping FR-007 invite test."
+        yellow "⚠ TEST_USER_OWNER ou TEST_PASSWORD_OWNER não definidos no .env"
+        yellow "  Este teste requer um usuário Owner autenticado para chamar /api/v1/users/invite."
+        yellow "  Ignorando teste."
         exit 0
     fi
 }
 
-# --- test functions -----------------------------------------------------------
+# --- autenticação -------------------------------------------------------------
 
-test_admin_profile_not_invitable() {
-    echo ""
-    yellow "=== Test 1: Attempting to invite base.group_system user is rejected (FR-007) ==="
-
-    # Attempt to invite with profile that maps to base.group_system
-    # The authorization matrix in Feature 009 restricts invitable profiles.
-    # base.group_system is not in any invitable profile enum.
-    # We test with a profile_type that would require admin (using a crafted request).
-    HTTP_STATUS=$(curl -s -o /tmp/invite_admin_response.json -w "%{http_code}" \
-        -X POST "${BASE_URL}/api/v1/users/invite" \
+get_app_jwt() {
+    APP_JWT=$(curl -s -X POST "${BASE_URL}/api/v1/auth/token" \
         -H "Content-Type: application/json" \
-        -H "Authorization: Bearer ${OWNER_TOKEN}" \
-        -H "X-Openerp-Session-Id: ${OWNER_SESSION_ID}" \
-        -d "{
-            \"email\": \"fake_admin_invite_$(date +%s)@example.com\",
-            \"name\": \"Fake Admin\",
-            \"profile_type\": \"system_admin\",
-            \"company_id\": ${OWNER_COMPANY_ID}
-        }" \
-        2>/dev/null)
+        -d "{\"grant_type\":\"client_credentials\",\"client_id\":\"${OAUTH_CLIENT_ID}\",\"client_secret\":\"${OAUTH_CLIENT_SECRET}\"}" \
+        2>/dev/null \
+        | python3 -c "import sys,json; print(json.load(sys.stdin).get('access_token',''))" 2>/dev/null || echo "")
 
-    RESPONSE_BODY=$(cat /tmp/invite_admin_response.json 2>/dev/null || echo "")
-
-    # Any status != 200 is a block (400 or 403 expected from Feature 009 matrix)
-    assert_eq "Invite with system_admin profile is rejected (not 200)" \
-        "1" "$([ "$HTTP_STATUS" != "200" ] && echo 1 || echo 0)"
-    assert_contains "Response contains 'error'" '"error"' "$RESPONSE_BODY"
+    if [[ -z "$APP_JWT" ]]; then
+        red "  ✗ Falha ao obter JWT de aplicação."
+        exit 1
+    fi
+    green "  ✓ JWT de aplicação obtido"
 }
 
-test_valid_profile_still_works() {
-    echo ""
-    yellow "=== Test 2: Inviting a valid profile (e.g. agent) still succeeds (regression guard) ==="
+login_owner() {
+    OWNER_SESSION=$(curl -s -X POST "${BASE_URL}/api/v1/users/login" \
+        -H "Content-Type: application/json" \
+        -H "Authorization: Bearer ${APP_JWT}" \
+        -d "{\"email\":\"${OWNER_EMAIL}\",\"password\":\"${OWNER_PASSWORD}\"}" \
+        2>/dev/null \
+        | python3 -c "import sys,json; print(json.load(sys.stdin).get('session_id',''))" 2>/dev/null || echo "")
 
-    # Only verify the endpoint accepts valid profile types (not blocked)
-    # We use a non-existent email to avoid creating test data, expecting validation error,
-    # NOT an authorization matrix rejection.
-    HTTP_STATUS=$(curl -s -o /tmp/invite_agent_response.json -w "%{http_code}" \
+    if [[ -z "$OWNER_SESSION" ]]; then
+        red "  ✗ Login do Owner falhou. Verifique TEST_USER_OWNER e TEST_PASSWORD_OWNER no .env."
+        exit 1
+    fi
+    green "  ✓ Owner autenticado (session_id obtido)"
+}
+
+# --- testes ------------------------------------------------------------------
+
+test_admin_nao_convidavel() {
+    echo ""
+    yellow "=== Teste 1: Convidar perfil system_admin é rejeitado (FR-007) ==="
+
+    HTTP_STATUS=$(curl -s -o /tmp/f022_inv.json -w "%{http_code}" \
         -X POST "${BASE_URL}/api/v1/users/invite" \
         -H "Content-Type: application/json" \
-        -H "Authorization: Bearer ${OWNER_TOKEN}" \
-        -H "X-Openerp-Session-Id: ${OWNER_SESSION_ID}" \
+        -H "Authorization: Bearer ${APP_JWT}" \
+        -H "X-Openerp-Session-Id: ${OWNER_SESSION}" \
         -d "{
-            \"email\": \"test_agent_$(date +%s)@test-feature022.invalid\",
-            \"name\": \"Test Agent Feature 022\",
+            \"email\": \"fake_admin_$(date +%s)@f022test.invalid\",
+            \"name\": \"Fake Admin Feature022\",
+            \"profile_type\": \"system_admin\",
+            \"company_id\": ${COMPANY_ID}
+        }" 2>/dev/null)
+    BODY=$(cat /tmp/f022_inv.json 2>/dev/null || echo "")
+
+    assert_eq       "Perfil system_admin é rejeitado (não 200)" "1" \
+        "$([ "$HTTP_STATUS" != "200" ] && echo 1 || echo 0)"
+    assert_contains "Resposta contém 'error'"  '"error"' "$BODY"
+    echo "    HTTP status recebido: ${HTTP_STATUS}"
+}
+
+test_agente_ainda_convidavel() {
+    echo ""
+    yellow "=== Teste 2: Convidar perfil 'agent' ainda funciona (regressão FR-007) ==="
+
+    HTTP_STATUS=$(curl -s -o /tmp/f022_inv_agent.json -w "%{http_code}" \
+        -X POST "${BASE_URL}/api/v1/users/invite" \
+        -H "Content-Type: application/json" \
+        -H "Authorization: Bearer ${APP_JWT}" \
+        -H "X-Openerp-Session-Id: ${OWNER_SESSION}" \
+        -d "{
+            \"email\": \"test_agent_f022_$(date +%s)@f022test.invalid\",
+            \"name\": \"Test Agent Feature022\",
             \"profile_type\": \"agent\",
-            \"company_id\": ${OWNER_COMPANY_ID}
-        }" \
-        2>/dev/null)
+            \"company_id\": ${COMPANY_ID}
+        }" 2>/dev/null)
 
-    RESPONSE_BODY=$(cat /tmp/invite_agent_response.json 2>/dev/null || echo "")
-
-    # Status should be 200 (created) or 400 (validation error for invalid domain email).
-    # It must NOT be 403 (authorization matrix blocking the agent profile itself).
-    assert_eq "Agent profile invite does NOT return 403 (not blocked by matrix)" \
-        "1" "$([ "$HTTP_STATUS" != "403" ] && echo 1 || echo 0)"
-
-    # Cleanup: if a user was created, it's safe to leave (test email domain is .invalid)
-    echo "    Response status: ${HTTP_STATUS}"
+    # Deve ser 200 (criado) ou 400 (validação — ex: domínio .invalid).
+    # NÃO deve ser 403 (que indicaria que a matriz de auth bloqueou o perfil 'agent').
+    assert_eq "Perfil 'agent' NÃO retorna 403 (não bloqueado pela matriz)" "1" \
+        "$([ "$HTTP_STATUS" != "403" ] && echo 1 || echo 0)"
+    echo "    HTTP status recebido: ${HTTP_STATUS}"
 }
 
 # --- summary ------------------------------------------------------------------
@@ -147,23 +143,24 @@ print_summary() {
     echo " Feature 022 — FR-007 Invite Block      "
     echo "========================================"
     green " PASS: $PASS"
-    if [[ $FAIL -gt 0 ]]; then
-        red " FAIL: $FAIL"
-    else
-        echo " FAIL: $FAIL"
-    fi
+    [[ $FAIL -gt 0 ]] && red " FAIL: $FAIL" || echo " FAIL: $FAIL"
     echo "========================================"
-    if [[ $FAIL -gt 0 ]]; then
-        exit 1
-    fi
+    [[ $FAIL -gt 0 ]] && exit 1 || exit 0
 }
 
-# --- main ---------------------------------------------------------------------
+# --- main --------------------------------------------------------------------
 
 echo "Feature 022 — FR-007: Admin Invite Block Integration Tests"
-echo "Base URL: ${BASE_URL}"
+echo "Base URL : ${BASE_URL}"
+echo "Owner    : ${OWNER_EMAIL}"
 
 check_prerequisites
-test_admin_profile_not_invitable
-test_valid_profile_still_works
+
+echo ""
+yellow "=== Step 0: Autenticação ==="
+get_app_jwt
+login_owner
+
+test_admin_nao_convidavel
+test_agente_ainda_convidavel
 print_summary

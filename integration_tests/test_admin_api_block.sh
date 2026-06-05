@@ -2,37 +2,40 @@
 # =============================================================================
 # test_admin_api_block.sh — Feature 022 / ADR-029
 # =============================================================================
-# Verifies that the REST API login endpoint blocks System Admin users with
-# HTTP 401 (anti-enumeration).
+# Verifica que o endpoint de login da REST API bloqueia usuários do grupo
+# base.group_system com HTTP 401 (anti-enumeração) e cria entrada no audit log.
 #
-# Authentication layers:
-#   Layer 1 — @require_jwt (JWT middleware): Blocks requests without Bearer.
-#             Returns {"error": "unauthorized", ...} — admin cannot login.
-#   Layer 2 — Controller guard (new code in Feature 022): With a valid OAuth2
-#             JWT, checks has_group('base.group_system') and returns
-#             {"error": {"status": 401, "message": "Invalid credentials"}}.
-#             Also creates audit log entry.
+# SC-004: 100% das tentativas de login Admin via REST API retornam 401
+# SC-005: Cada tentativa bloqueada gera entrada no log de segurança
 #
-# Layer 1 runs always. Layer 2 requires APP_JWT_TOKEN.
+# Fluxo de autenticação (direto no Odoo, sem Kong):
+#   1. POST /api/v1/auth/token  (client_credentials) → JWT de aplicação
+#   2. POST /api/v1/users/login (com Bearer JWT)      → bloqueado com 401
 #
-# Usage:
-#   ./integration_tests/test_admin_api_block.sh
-#   APP_JWT_TOKEN=<jwt> BUSINESS_EMAIL=o@c.com BUSINESS_PASSWORD=s \
-#     ./integration_tests/test_admin_api_block.sh
+# Credenciais lidas de 18.0/.env automaticamente.
 # =============================================================================
 
 set -euo pipefail
 
-BASE_URL="${BASE_URL:-http://localhost:8069}"
-ADMIN_EMAIL="${ADMIN_EMAIL:-admin}"
-ADMIN_PASSWORD="${ADMIN_PASSWORD:-admin}"
-BUSINESS_EMAIL="${BUSINESS_EMAIL:-}"
-BUSINESS_PASSWORD="${BUSINESS_PASSWORD:-}"
-APP_JWT_TOKEN="${APP_JWT_TOKEN:-}"
-COMPOSE_FILE_DIR="${COMPOSE_FILE_DIR:-$(dirname "$0")/../18.0}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+[ -f "${SCRIPT_DIR}/../18.0/.env" ] && source "${SCRIPT_DIR}/../18.0/.env" || true
+
+BASE_URL="${BASE_URL:-${ODOO_BASE_URL:-http://localhost:8069}}"
+ADMIN_EMAIL="${ADMIN_EMAIL:-${TEST_USER_ADMIN:-admin}}"
+ADMIN_PASSWORD="${ADMIN_PASSWORD:-${TEST_PASSWORD_ADMIN:-admin}}"
+BUSINESS_EMAIL="${BUSINESS_EMAIL:-${TEST_USER_OWNER:-}}"
+BUSINESS_PASSWORD="${BUSINESS_PASSWORD:-${TEST_PASSWORD_OWNER:-}}"
+OAUTH_CLIENT_ID="${OAUTH_CLIENT_ID:?'OAUTH_CLIENT_ID não encontrado — verifique 18.0/.env'}"
+OAUTH_CLIENT_SECRET="${OAUTH_CLIENT_SECRET:?'OAUTH_CLIENT_SECRET não encontrado — verifique 18.0/.env'}"
+COMPOSE_FILE_DIR="${COMPOSE_FILE_DIR:-${SCRIPT_DIR}/../18.0}"
+POSTGRES_DB="${POSTGRES_DB:-realestate}"
+POSTGRES_USER="${POSTGRES_USER:-odoo}"
 
 PASS=0
 FAIL=0
+APP_JWT=""
+
+# --- helpers ------------------------------------------------------------------
 
 green()  { printf "\033[0;32m%s\033[0m\n" "$*"; }
 red()    { printf "\033[0;31m%s\033[0m\n" "$*"; }
@@ -41,106 +44,128 @@ yellow() { printf "\033[0;33m%s\033[0m\n" "$*"; }
 assert_eq() {
     local label="$1" expected="$2" actual="$3"
     if [[ "$actual" == "$expected" ]]; then green "  ✓ $label"; PASS=$((PASS+1))
-    else red "  ✗ $label (expected='$expected' actual='$actual')"; FAIL=$((FAIL+1)); fi
+    else red "  ✗ $label  (esperado='$expected'  atual='$actual')"; FAIL=$((FAIL+1)); fi
 }
 assert_contains() {
     local label="$1" needle="$2" haystack="$3"
     if echo "$haystack" | grep -q "$needle"; then green "  ✓ $label"; PASS=$((PASS+1))
-    else red "  ✗ $label (expected '$needle' in response)"; FAIL=$((FAIL+1)); fi
+    else red "  ✗ $label  (esperava '$needle' na resposta)"; FAIL=$((FAIL+1)); fi
 }
 assert_not_contains() {
     local label="$1" needle="$2" haystack="$3"
     if ! echo "$haystack" | grep -q "$needle"; then green "  ✓ $label"; PASS=$((PASS+1))
-    else red "  ✗ $label (unexpected '$needle' found in response)"; FAIL=$((FAIL+1)); fi
+    else red "  ✗ $label  ('$needle' não deveria estar na resposta)"; FAIL=$((FAIL+1)); fi
 }
 
-# Layer 1 tests ---------------------------------------------------------------
+# --- step 0: obter JWT de aplicação via client_credentials -------------------
 
-test_layer1_blocked() {
+get_app_jwt() {
     echo ""
-    yellow "=== [Layer 1] Admin login without OAuth JWT → 401 (SC-004) ==="
-    HTTP_STATUS=$(curl -s -o /tmp/f022_l1.json -w "%{http_code}" \
+    yellow "=== Step 0: Obter JWT de aplicação (client_credentials → /api/v1/auth/token) ==="
+
+    APP_JWT=$(curl -s -X POST "${BASE_URL}/api/v1/auth/token" \
+        -H "Content-Type: application/json" \
+        -d "{\"grant_type\":\"client_credentials\",\"client_id\":\"${OAUTH_CLIENT_ID}\",\"client_secret\":\"${OAUTH_CLIENT_SECRET}\"}" \
+        2>/dev/null \
+        | python3 -c "import sys,json; print(json.load(sys.stdin).get('access_token',''))" 2>/dev/null || echo "")
+
+    if [[ -z "$APP_JWT" ]]; then
+        red "  ✗ Falha ao obter JWT de aplicação. Verifique OAUTH_CLIENT_ID/SECRET e se o Odoo está rodando."
+        exit 1
+    fi
+    green "  ✓ JWT de aplicação obtido"
+}
+
+# --- testes ------------------------------------------------------------------
+
+test_admin_bloqueado() {
+    echo ""
+    yellow "=== Teste 1: Login do Admin via REST API → 401 (SC-004) ==="
+
+    HTTP_STATUS=$(curl -s -o /tmp/f022_t1.json -w "%{http_code}" \
         -X POST "${BASE_URL}/api/v1/users/login" \
         -H "Content-Type: application/json" \
+        -H "Authorization: Bearer ${APP_JWT}" \
         -d "{\"email\":\"${ADMIN_EMAIL}\",\"password\":\"${ADMIN_PASSWORD}\"}" 2>/dev/null)
-    BODY=$(cat /tmp/f022_l1.json 2>/dev/null || echo "")
-    assert_eq    "HTTP 401"                          "401" "$HTTP_STATUS"
-    assert_contains "Response contains error key"   '"error"' "$BODY"
-    assert_not_contains "No session_id leaked"      '"session_id"' "$BODY"
-    assert_not_contains "No token leaked"           '"token"' "$BODY"
+    BODY=$(cat /tmp/f022_t1.json 2>/dev/null || echo "")
+
+    assert_eq       "HTTP 401"                                 "401"               "$HTTP_STATUS"
+    assert_contains "Resposta contém chave 'error'"            '"error"'           "$BODY"
+    assert_contains "Mensagem é 'Invalid credentials' (anti-enumeração)" '"Invalid credentials"' "$BODY"
+    assert_not_contains "Sem 'session_id' na resposta"         '"session_id"'      "$BODY"
+    assert_not_contains "Sem 'token' na resposta"              '"token"'           "$BODY"
+    assert_not_contains "Sem 'Admin' na resposta (anti-enum)"  '"Admin'            "$BODY"
 }
 
-test_layer1_anti_enum() {
+test_anti_enumeracao() {
     echo ""
-    yellow "=== [Layer 1] Admin block indistinguishable from bad credentials ==="
+    yellow "=== Teste 2: Resposta idêntica à de credenciais inválidas (anti-enumeração) ==="
+
     ADM_STATUS=$(curl -s -o /tmp/f022_adm.json -w "%{http_code}" \
         -X POST "${BASE_URL}/api/v1/users/login" \
         -H "Content-Type: application/json" \
+        -H "Authorization: Bearer ${APP_JWT}" \
         -d "{\"email\":\"${ADMIN_EMAIL}\",\"password\":\"${ADMIN_PASSWORD}\"}" 2>/dev/null)
+
     BAD_STATUS=$(curl -s -o /tmp/f022_bad.json -w "%{http_code}" \
         -X POST "${BASE_URL}/api/v1/users/login" \
         -H "Content-Type: application/json" \
-        -d '{"email":"no-such-user@example.com","password":"wrongpassword"}' 2>/dev/null)
+        -H "Authorization: Bearer ${APP_JWT}" \
+        -d '{"email":"usuario-inexistente-f022@example.com","password":"senhaErrada123"}' 2>/dev/null)
+
     ADM_BODY=$(cat /tmp/f022_adm.json 2>/dev/null || echo "")
     BAD_BODY=$(cat /tmp/f022_bad.json 2>/dev/null || echo "")
-    assert_eq "HTTP status is identical (anti-enumeration)" "$BAD_STATUS" "$ADM_STATUS"
-    assert_eq "Response body is identical (anti-enumeration)" "$BAD_BODY" "$ADM_BODY"
+
+    assert_eq "HTTP status idêntico (anti-enumeração)" "$BAD_STATUS" "$ADM_STATUS"
+    assert_eq "Body idêntico (anti-enumeração)"        "$BAD_BODY"   "$ADM_BODY"
 }
 
-# Layer 2 tests (controller guard, requires APP_JWT_TOKEN) ---------------------
-
-test_layer2_controller_guard() {
+test_audit_log() {
     echo ""
-    yellow "=== [Layer 2] Controller guard — has_group('base.group_system') check ==="
-    if [[ -z "$APP_JWT_TOKEN" ]]; then
-        yellow "  ⚠ Skipped: set APP_JWT_TOKEN=<oauth2_jwt> to run Layer 2 tests."
-        return
-    fi
-    HTTP_STATUS=$(curl -s -o /tmp/f022_l2.json -w "%{http_code}" \
-        -X POST "${BASE_URL}/api/v1/users/login" \
-        -H "Content-Type: application/json" \
-        -H "Authorization: Bearer ${APP_JWT_TOKEN}" \
-        -d "{\"email\":\"${ADMIN_EMAIL}\",\"password\":\"${ADMIN_PASSWORD}\"}" 2>/dev/null)
-    BODY=$(cat /tmp/f022_l2.json 2>/dev/null || echo "")
-    assert_eq    "HTTP 401 from controller guard"               "401" "$HTTP_STATUS"
-    assert_contains "Response contains 'Invalid credentials'"  '"Invalid credentials"' "$BODY"
-    assert_not_contains "No session_id leaked"                 '"session_id"' "$BODY"
-}
+    yellow "=== Teste 3: Tentativa bloqueada gera entrada no audit log (SC-005) ==="
 
-test_layer2_audit_log() {
-    echo ""
-    yellow "=== [Layer 2] Blocked admin login creates audit log entry (SC-005) ==="
-    if [[ -z "$APP_JWT_TOKEN" ]]; then
-        yellow "  ⚠ Skipped: APP_JWT_TOKEN not set."; return; fi
     BEFORE_TS=$(date -u +"%Y-%m-%d %H:%M:%S")
+
     curl -s -o /dev/null \
         -X POST "${BASE_URL}/api/v1/users/login" \
         -H "Content-Type: application/json" \
-        -H "Authorization: Bearer ${APP_JWT_TOKEN}" \
+        -H "Authorization: Bearer ${APP_JWT}" \
         -d "{\"email\":\"${ADMIN_EMAIL}\",\"password\":\"${ADMIN_PASSWORD}\"}" 2>/dev/null
+
     CNT=$(docker compose -f "${COMPOSE_FILE_DIR}/docker-compose.yml" exec -T db \
-        psql -U odoo -d realestate -t -c \
-        "SELECT COUNT(*) FROM thedevkitchen_failed_login_log
-         WHERE login_email='${ADMIN_EMAIL}'
-           AND reason LIKE '%Admin API login blocked%'
-           AND failed_at>='${BEFORE_TS}';" 2>/dev/null | tr -d ' \n' || echo "0")
-    assert_eq "Audit log entry created" "1" "$([ "${CNT:-0}" -ge 1 ] && echo 1 || echo 0)"
+        psql -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -t -c \
+        "SELECT COUNT(*) FROM ir_logging
+         WHERE name='auth.login.failed'
+           AND message LIKE '%${ADMIN_EMAIL}%'
+           AND message LIKE '%Admin API login blocked%'
+           AND create_date>='${BEFORE_TS}';" 2>/dev/null | tr -d ' \n' || echo "0")
+
+    assert_eq "Audit log contém entrada para login Admin bloqueado" "1" \
+        "$([ "${CNT:-0}" -ge 1 ] 2>/dev/null && echo 1 || echo 0)"
 }
 
-test_layer2_business_ok() {
+test_usuario_negocio_nao_afetado() {
     echo ""
-    yellow "=== [Layer 2] Business user login unaffected (regression guard) ==="
-    if [[ -z "$APP_JWT_TOKEN" || -z "$BUSINESS_EMAIL" ]]; then
-        yellow "  ⚠ Skipped: APP_JWT_TOKEN + BUSINESS_EMAIL + BUSINESS_PASSWORD required."; return; fi
+    yellow "=== Teste 4: Login de usuário de negócio funciona normalmente (regressão) ==="
+
+    if [[ -z "$BUSINESS_EMAIL" || -z "$BUSINESS_PASSWORD" ]]; then
+        yellow "  ⚠ Ignorado: BUSINESS_EMAIL/BUSINESS_PASSWORD não definidos."
+        yellow "    Defina TEST_USER_OWNER e TEST_PASSWORD_OWNER no .env para rodar este teste."
+        return
+    fi
+
     HTTP_STATUS=$(curl -s -o /tmp/f022_biz.json -w "%{http_code}" \
         -X POST "${BASE_URL}/api/v1/users/login" \
         -H "Content-Type: application/json" \
-        -H "Authorization: Bearer ${APP_JWT_TOKEN}" \
+        -H "Authorization: Bearer ${APP_JWT}" \
         -d "{\"email\":\"${BUSINESS_EMAIL}\",\"password\":\"${BUSINESS_PASSWORD}\"}" 2>/dev/null)
     BODY=$(cat /tmp/f022_biz.json 2>/dev/null || echo "")
-    assert_eq    "Business user HTTP 200"                  "200" "$HTTP_STATUS"
-    assert_contains "Business user gets session_id"        '"session_id"' "$BODY"
+
+    assert_eq       "Usuário de negócio retorna HTTP 200" "200"          "$HTTP_STATUS"
+    assert_contains "Resposta contém session_id"          '"session_id"' "$BODY"
 }
+
+# --- summary ------------------------------------------------------------------
 
 print_summary() {
     echo ""
@@ -149,19 +174,20 @@ print_summary() {
     echo "========================================"
     green " PASS: $PASS"
     [[ $FAIL -gt 0 ]] && red " FAIL: $FAIL" || echo " FAIL: $FAIL"
-    [[ -z "$APP_JWT_TOKEN" ]] && yellow " NOTE: Layer 2 tests skipped (APP_JWT_TOKEN not set)."
     echo "========================================"
     [[ $FAIL -gt 0 ]] && exit 1 || exit 0
 }
 
+# --- main --------------------------------------------------------------------
+
 echo "Feature 022 — Admin API Block Integration Tests"
 echo "Base URL : ${BASE_URL}"
 echo "Admin    : ${ADMIN_EMAIL}"
-echo "Layer 2  : $([ -n "$APP_JWT_TOKEN" ] && echo 'ENABLED (APP_JWT_TOKEN set)' || echo 'SKIPPED (APP_JWT_TOKEN not set)')"
+echo "Negócio  : ${BUSINESS_EMAIL:-'(não definido — teste 4 será ignorado)'}"
 
-test_layer1_blocked
-test_layer1_anti_enum
-test_layer2_controller_guard
-test_layer2_audit_log
-test_layer2_business_ok
+get_app_jwt
+test_admin_bloqueado
+test_anti_enumeracao
+test_audit_log
+test_usuario_negocio_nao_afetado
 print_summary
