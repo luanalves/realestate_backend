@@ -17,8 +17,15 @@
  */
 
 const BASE_URL   = Cypress.env('ODOO_BASE_URL') || 'http://localhost:8069';
-const ADMIN_USER = Cypress.env('ODOO_USERNAME')  || 'admin';
-const ADMIN_PASS = Cypress.env('ODOO_PASSWORD')  || 'admin';
+const ADMIN_USER = Cypress.env('ODOO_USERNAME');
+const ADMIN_PASS = Cypress.env('ODOO_PASSWORD');
+
+if (!ADMIN_USER || !ADMIN_PASS) {
+    throw new Error(
+        'ODOO_USERNAME e ODOO_PASSWORD são obrigatórios. ' +
+        'Defina TEST_USER_ADMIN e TEST_PASSWORD_ADMIN em 18.0/.env.',
+    );
+}
 
 // ----- URL constants (hash-based routing, Odoo 18) -------------------------
 const URL_PROPERTIES = '/web#action=quicksol_estate.action_property&model=real.estate.property&view_type=list';
