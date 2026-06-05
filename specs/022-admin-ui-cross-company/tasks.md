@@ -15,7 +15,7 @@
 
 **Purpose**: Confirm the working environment before any source changes
 
-- [X] - [X] T001 Verify Docker services running (`docker compose up -d` from `18.0/`) and confirm `022-admin-ui-cross-company` branch is active
+- [X] T001 Verify Docker services running (`docker compose up -d` from `18.0/`) and confirm `022-admin-ui-cross-company` branch is active
 
 ---
 
@@ -25,8 +25,8 @@
 
 ⚠️ **These tasks are prerequisites for any reviewer verifying the XML pattern; they are NOT blockers for parallel XML authoring if the pattern in `data-model.md` is used directly.**
 
-- [X] - [X] T002 [P] Create ADR that formalises the `base.group_system` channel separation convention and cross-module checklist obligation in `docs/adr/ADR-029-saas-admin-channel-separation.md`
-- [X] - [X] T003 [P] Create developer checklist for new modules (always include System Admin record rule override) in `knowledge_base/13-saas-admin-module-checklist.md`
+- [X] T002 [P] Create ADR that formalises the `base.group_system` channel separation convention and cross-module checklist obligation in `docs/adr/ADR-029-saas-admin-channel-separation.md`
+- [X] T003 [P] Create developer checklist for new modules (always include System Admin record rule override) in `knowledge_base/13-saas-admin-module-checklist.md`
 
 **Checkpoint**: Pattern documented — US1 XML tasks can proceed
 
