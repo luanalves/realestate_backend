@@ -33,6 +33,9 @@ Auto-generated from all feature plans. Last updated: 2026-01-15
 - No new PostgreSQL tables; `ROLE_RULES` lives in code; resolved context comes from `res.users` + `res.company` already in memory from authenticated reques (020-rbac-capabilities-api)
 - Python 3.11 / Odoo 18.0 + `thedevkitchen_apigateway` (decorators @require_jwt/@require_session/@require_company), `thedevkitchen_observability` (eventos), `python-magic` (MIME validation), `ir.attachment` (storage binário) (021-cms-domain)
 - PostgreSQL (6 tabelas: page, page_content, template, template_content, media, settings); Redis (sessões/cache via infraestrutura existente — sem configuração nova) (021-cms-domain)
+- Python 3.11 (controller guard); XML data files (Odoo 18.0 record rules + menus) + Odoo 18.0 ORM (ir.rule), `base.group_system` (Odoo core), `thedevkitchen_apigateway.services.audit_logger.AuditLogger` (022-admin-ui-cross-company)
+- PostgreSQL — record rules stored in `ir.rule` table, applied at query-filter level. No schema changes. (022-admin-ui-cross-company)
+- Python 3.11 (controller guard); XML data files (Odoo 18.0 record rules + menus) + Odoo 18.0 ORM (ir.rule), `base.group_system` (Odoo core), `thedevkitchen_apigateway.services.audit_logger.AuditLogger`, Kong API Gateway (rate limiting — existing, no changes) (022-admin-ui-cross-company)
 
 - Python 3.11 (Odoo 18.0) + Odoo 18.0, PyJWT, Redis 7-alpine, PostgreSQL 16 (001-bearer-token-validation)
 
@@ -53,9 +56,9 @@ cd src [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECHNOLO
 Python 3.11 (Odoo 18.0): Follow standard conventions
 
 ## Recent Changes
+- 022-admin-ui-cross-company: Added Python 3.11 (controller guard); XML data files (Odoo 18.0 record rules + menus) + Odoo 18.0 ORM (ir.rule), `base.group_system` (Odoo core), `thedevkitchen_apigateway.services.audit_logger.AuditLogger`, Kong API Gateway (rate limiting — existing, no changes)
+- 022-admin-ui-cross-company: Added Python 3.11 (controller guard); XML data files (Odoo 18.0 record rules + menus) + Odoo 18.0 ORM (ir.rule), `base.group_system` (Odoo core), `thedevkitchen_apigateway.services.audit_logger.AuditLogger`
 - 021-cms-domain: Added Python 3.11 / Odoo 18.0 + `thedevkitchen_apigateway` (decorators @require_jwt/@require_session/@require_company), `thedevkitchen_observability` (eventos), `python-magic` (MIME validation), `ir.attachment` (storage binário)
-- 020-rbac-capabilities-api: Added Python 3.11, Odoo 18.0
-- 019-goals-and-results: Added Python 3.11 / Odoo 18.0 + Odoo ORM (`mail.tracking.value` for stage history, `mail.thread` mixin), `thedevkitchen_apigateway` (triple auth), `quicksol_estate` (domain models)
 
 
 <!-- MANUAL ADDITIONS START -->
