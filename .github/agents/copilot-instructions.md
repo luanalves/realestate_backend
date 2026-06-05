@@ -57,7 +57,6 @@ Python 3.11 (Odoo 18.0): Follow standard conventions
 
 ## Recent Changes
 - 022-admin-ui-cross-company: Added Python 3.11 (controller guard); XML data files (Odoo 18.0 record rules + menus) + Odoo 18.0 ORM (ir.rule), `base.group_system` (Odoo core), `thedevkitchen_apigateway.services.audit_logger.AuditLogger`, Kong API Gateway (rate limiting — existing, no changes)
-- 022-admin-ui-cross-company: Added Python 3.11 (controller guard); XML data files (Odoo 18.0 record rules + menus) + Odoo 18.0 ORM (ir.rule), `base.group_system` (Odoo core), `thedevkitchen_apigateway.services.audit_logger.AuditLogger`
 - 021-cms-domain: Added Python 3.11 / Odoo 18.0 + `thedevkitchen_apigateway` (decorators @require_jwt/@require_session/@require_company), `thedevkitchen_observability` (eventos), `python-magic` (MIME validation), `ir.attachment` (storage binário)
 
 

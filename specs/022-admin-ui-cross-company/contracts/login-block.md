@@ -112,18 +112,21 @@ Not affected. Business users (`Owner`, `Manager`, `Agent`, etc.) continue to aut
 ```bash
 # Must return 401
 HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$BASE_URL/api/v1/users/login" \
+  -H "Authorization: Bearer <app_jwt>" \
   -H "Content-Type: application/json" \
   -d '{"email": "admin@example.com", "password": "correct_password"}')
 [ "$HTTP_STATUS" = "401" ]
 
 # Must NOT return a session_id or access_token
 BODY=$(curl -s -X POST "$BASE_URL/api/v1/users/login" \
+  -H "Authorization: Bearer <app_jwt>" \
   -H "Content-Type: application/json" \
   -d '{"email": "admin@example.com", "password": "correct_password"}')
 echo "$BODY" | jq -e '.session_id // .access_token // .data' | grep -q null
 
 # Business user must still authenticate normally
 HTTP_STATUS_BIZ=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$BASE_URL/api/v1/users/login" \
+  -H "Authorization: Bearer <app_jwt>" \
   -H "Content-Type: application/json" \
   -d '{"email": "owner@tenant.com", "password": "correct_password"}')
 [ "$HTTP_STATUS_BIZ" = "200" ]

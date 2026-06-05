@@ -705,12 +705,14 @@ For tag entities where some tags must be immutable and drive business rules:
 - **Problem**: Standard multi-tenancy record rules that correctly isolate business users also block `base.group_system` (System Admin) from accessing all tenant data in the Odoo Web UI
 - **Solution**: Complementary `[(1,'=',1)]` record rules assigned to `base.group_system` — one per blocked model — override company-filtered rules via Odoo's OR-union rule evaluation
 - **Models Covered**: `real.estate.property`, `real.estate.agent`, `real.estate.lease`, `real.estate.sale`, `real.estate.proposal`, `real.estate.service`, CMS page/media/settings, `thedevkitchen.estate.goal`, credit check, commission rule/transaction, lease renewal history, `thedevkitchen.estate.profile`, password token
-- **API Block**: Login controller rejects `base.group_system` with HTTP 403 + audit log entry before issuing any session token (credentials valid, channel forbidden)
+- **API Block**: Login controller rejects `base.group_system` with HTTP 401 + audit log entry before issuing any session token (credentials valid, channel forbidden; anti-enumeration)
 - **Menu Visibility**: `base.group_system` added to previously role-restricted menus (e.g., `menu_real_estate_lead`)
 - **noupdate Handling**: New admin override rules placed in `noupdate="0"` blocks even when the target file uses `noupdate="1"`, ensuring apply-on-upgrade without disrupting existing rules
 - **No new models**: Feature is purely security/record-rule configuration + one controller guard
-- **Testing**: E2E (Cypress) for cross-company visibility in Odoo UI; integration test for API login block (HTTP 403)
+- **Testing**: E2E (Cypress) for cross-company visibility in Odoo UI; integration test for API login block (HTTP 401)
 - **Location**: Security XML files across `quicksol_estate/`, `thedevkitchen_cms/`, `thedevkitchen_estate_goals/`, `thedevkitchen_estate_credit_check/`, `thedevkitchen_user_onboarding/`; controller guard in `thedevkitchen_apigateway/controllers/user_auth_controller.py`
+- **ADRs**: ADR-008 (multi-tenancy), ADR-009 (headless auth), ADR-011 (security decorators), ADR-019 (RBAC profiles)
+- **Spec**: `specs/022-admin-ui-cross-company/spec.md`
 - **ADRs**: ADR-008 (multi-tenancy), ADR-009 (headless auth), ADR-011 (security decorators), ADR-019 (RBAC profiles)
 - **Spec**: `specs/022-admin-ui-cross-company/spec.md`
 
