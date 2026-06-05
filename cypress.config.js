@@ -40,6 +40,10 @@ module.exports = {
       OAUTH_CLIENT_ID:      envVars.OAUTH_CLIENT_ID,
       OAUTH_CLIENT_SECRET:  envVars.OAUTH_CLIENT_SECRET,
     },
+    video: true,
+    videoCompression: 32,
+    screenshotOnRunFailure: true,
+    trashAssetsBeforeRuns: false,
     setupNodeEvents(on, config) {
       // env is already injected above from 18.0/.env
       return config;
