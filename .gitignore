@@ -37,6 +37,7 @@ npm-debug.log*
 cypress/videos/
 cypress/screenshots/
 cypress/downloads/
+cypress.env.json
 18.0/cypress/screenshots/
 18.0/cypress/videos/
 18.0/cypress/downloads/

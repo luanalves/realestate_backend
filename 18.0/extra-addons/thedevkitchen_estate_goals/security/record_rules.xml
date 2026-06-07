@@ -26,5 +26,13 @@
             <field name="perm_unlink" eval="False"/>
         </record>
 
+        <!-- Feature 022 / ADR-029: SaaS Admin cross-company override -->
+        <record id="rule_estate_goal_admin_all" model="ir.rule">
+            <field name="name">System Admin: All Estate Goals (Cross-Company)</field>
+            <field name="model_id" ref="model_thedevkitchen_estate_goal"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('base.group_system'))]"/>
+        </record>
+
     </data>
 </odoo>

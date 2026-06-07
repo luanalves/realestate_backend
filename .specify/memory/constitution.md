@@ -9,6 +9,55 @@ Para garantir unicidade, integridade e reutilização de validação de document
 
 Essas funções devem ser usadas em todos os endpoints e modelos que aceitam documentos fiscais, garantindo padronização e governança de dados.
 <!--
+Sync Impact Report - Constitution v1.8.0
+========================================
+
+Version Change: 1.7.0 → 1.8.0
+Change Type: MINOR (new SaaS Admin channel separation patterns + Feature 022 reference implementation)
+Date: 2026-06-03
+
+Sections Modified:
+- Principle IV (Multi-Tenancy): Added SaaS Admin exception clause for base.group_system
+- Principle VI (Headless Architecture): Clarified System Admin = Odoo Web only, explicitly blocked from REST API
+- Forbidden Patterns: Added REST API authentication by base.group_system as a forbidden pattern
+
+Sections Added:
+- Security Requirements → SaaS Admin Channel Separation Patterns (Feature 022)
+- Reference Implementations → Feature 022 — Admin UI Cross-Company Access
+
+Removed Sections:
+- (none)
+
+Patterns Documented (new in this version):
+1. Cross-Company Record Rule Override: domain_force=[(1,'=',1)] + groups=[(4, ref('base.group_system'))]
+   grants SaaS Admin unrestricted cross-company visibility while preserving business-profile isolation.
+2. Admin API Login Block: Explicit group check in login controller rejects base.group_system with
+   HTTP 401 + audit log. Returns 401 (not 403/404) — response identical to bad-credential failure
+   (anti-enumeration: channel rejection must not reveal admin credential validity).
+3. noupdate="1" Compatibility: New admin override rules go in a separate noupdate="0" block within the
+   same XML file to ensure they apply on --update without disturbing existing noupdate rules.
+4. Developer Checklist Convention: Every new module introducing record rules with company isolation MUST
+   include a SaaS Admin cross-company override rule (to be added to the new-module KB checklist).
+
+Templates Requiring Updates:
+✅ constitution.md — Updated (this file)
+✅ plan-template.md — No update required (Constitution Check section is generic)
+✅ spec-template.md — No update required (no admin-specific mandatory sections needed)
+✅ tasks-template.md — No update required (task structure is generic)
+
+Footer Version Bug Fixed:
+Previous footer incorrectly showed v1.6.0 (was not updated in v1.7.0 amendment). Fixed to v1.8.0.
+
+Follow-up TODOs:
+- Add "SaaS Admin record rule override" to new-module developer checklist in knowledge_base/
+
+Previous Amendments:
+- 2026-05-08 (v1.7.0 Feature 017 binary upload patterns)
+- 2026-05-03 (v1.6.0 Feature 015 service pipeline patterns)
+- 2026-02-16 (v1.3.0 Feature 009 security patterns)
+- 2026-02-08 (v1.2.0 Feature 007 reference implementation)
+-->
+<!--
 Sync Impact Report - Constitution v1.7.0
 ========================================
 
@@ -219,8 +268,9 @@ Complete data isolation per real estate company (ADR-008):
 - Creation/update operations validate company ownership
 - Record Rules enforce isolation in Odoo Web UI
 - No cross-company data leakage (tested via isolation tests)
+- **SaaS Admin Exception**: `base.group_system` users (System Admins) operate exclusively via Odoo Web UI and intentionally bypass company isolation to manage all tenant data. This exception applies ONLY to the Odoo web interface — REST API isolation remains absolute for every user, including System Admins.
 
-**Rationale**: Brazilian real estate agencies compete directly. Data leakage between companies would violate confidentiality and business trust.
+**Rationale**: Brazilian real estate agencies compete directly. Data leakage between companies would violate confidentiality and business trust. The SaaS Admin exception is explicitly scoped to the administrative web interface only, preserving API-level isolation unconditionally.
 
 ### V. ADR Governance
 All architectural decisions documented as ADRs in `docs/adr/`:
@@ -238,9 +288,11 @@ Platform employs dual-interface design:
   - Better SEO for property listings
   - Modern UX/UI tailored for real estate workflows
   - Access via OAuth 2.0 REST APIs only (no direct Odoo Web access)
-- **Platform Managers**: Odoo Web interface for system administration
+- **Platform Managers (System Admin)**: Odoo Web interface for system administration **only**
   - Backend management, configuration, database administration
-  - Direct Odoo Web UI access for operational oversight
+  - Direct Odoo Web UI access for operational oversight across all tenant companies
+  - MUST NOT authenticate via REST API — `base.group_system` is explicitly blocked at the login endpoint
+  - Created and managed exclusively through the Odoo web interface (never via API invite flow)
 
 **Why Odoo Framework**: Robust ORM, built-in multi-company support, security framework, proven scalability
 
@@ -285,6 +337,7 @@ Eventos não-críticos processados via **RabbitMQ + Celery** (3 workers especial
 - Single decorator (`@require_jwt` alone without `@require_session`)
 - Hardcoded credentials or secrets in code
 - Exposing user existence in public endpoints (anti-enumeration violation)
+- REST API authentication by `base.group_system` users — System Admins MUST use Odoo web interface only; return HTTP 401 (not 403/404) when blocked — response MUST be identical to a bad-credential failure (anti-enumeration: channel rejection MUST NOT reveal admin credential validity)
 
 ### Token-Based Authentication Patterns (Feature 009)
 For invite links, password reset tokens, or similar one-time-use tokens:
@@ -465,6 +518,63 @@ def _invalidate_user_sessions(self, user):
 
 **Rationale**: Session invalidation prevents session hijacking after password change. Attacker with stolen session token loses access. User receives security notification. Audit log enables forensic analysis.
 
+### SaaS Admin Channel Separation Patterns (Feature 022)
+The SaaS Admin (`base.group_system`) is a platform-level role above all business profiles. It operates
+exclusively through the Odoo web interface — never through the REST API. All patterns below enforce this
+channel boundary.
+
+#### Cross-Company Record Rule Override
+For every Odoo model that has multi-tenancy record rules blocking the SaaS Admin, add a complementary
+rule with `domain_force=[(1,'=',1)]` assigned to `base.group_system`:
+
+```xml
+<!-- ADR-008 §3: Admin accesses via administrative interface -->
+<!-- ADR-019: SaaS Admin operates above business role hierarchy -->
+<record id="rule_admin_all_{entity}" model="ir.rule">
+    <field name="name">System Admin: All {Entity} (Cross-Company)</field>
+    <field name="model_id" ref="model_{module}_{entity}"/>
+    <field name="domain_force">[(1, '=', 1)]</field>
+    <field name="groups" eval="[(4, ref('base.group_system'))]"/>
+</record>
+```
+
+**Why this works (Odoo native)**: When a user belongs to multiple groups that each have record rules for
+the same model, Odoo combines them with OR (union). The `[(1,'=',1)]` rule for `base.group_system`
+therefore overrides any company-filtered rules the admin inherits from `base.group_user`.
+
+**noupdate="1" compatibility**: When the target file contains `noupdate="1"` blocks, place the new admin
+rules in a **separate** `<data noupdate="0">` block within the same XML file. This ensures the rules are
+applied on `--update` without disturbing existing noupdate rules.
+
+**Developer checklist**: Every new module that introduces record rules with company isolation MUST include
+a corresponding SaaS Admin cross-company override rule. Omitting it locks the System Admin out of new
+data silently.
+
+#### Admin API Login Block
+In the REST API login controller, check for `base.group_system` AFTER validating credentials and BEFORE
+issuing a session token:
+
+```python
+# Block SaaS Admin from REST API (ADR-009: API is for headless apps only)
+if user.has_group('base.group_system'):
+    _logger.warning(f"Admin login attempt via API blocked: {email}")
+    AuditLogger.log_failed_login(ip_address, email, 'Admin API login blocked')
+    return request.make_json_response(
+        {'error': {'status': 401, 'message': 'Invalid credentials'}},
+        status=401
+    )
+```
+
+**Why 401 not 403**: Anti-enumeration principle (ADR-008) — the response for a blocked admin login MUST
+be indistinguishable from an invalid-credential failure. Returning 403 would reveal that the admin
+credentials are valid, enabling credential enumeration. HTTP 401 with a generic `'Invalid credentials'`
+body preserves the same security envelope as a wrong-password attempt.
+
+**Rationale**: System Admins bypass multi-tenancy controls by design. If they could authenticate via the
+REST API they would expose all tenant data through a headless API intended for company-scoped users.
+Channel separation (Odoo Web UI ↔ REST API) is the enforcement boundary. Audit logging captures all
+blocked attempts for forensic review (ADR-008 §4).
+
 ## Architectural Patterns
 
 ### Pipeline State Machine Pattern (Feature 015)
@@ -591,7 +701,22 @@ For tag entities where some tags must be immutable and drive business rules:
 - **Location**: `18.0/extra-addons/quicksol_estate/controllers/property_attachments_controller.py`
 - **Postman**: folder "23. Property Attachments (Feature 017)" in `docs/postman/quicksol_api_v1.28_postman_collection.json`
 
-Use Feature 007 for standard CRUD patterns with HATEOAS. Use Feature 009 for security-sensitive flows requiring token-based authentication, anti-enumeration, and session management. Use Feature 013 for FSM-driven domain entities with concurrent access control, FIFO queues, and async notifications. Use Feature 015 for kanban-style pipeline domains with stage gates, conditional uniqueness, system tags, and aggregation endpoints. Use Feature 017 for binary file upload/download patterns with magic bytes validation, per-type quantity limits, and FR6.9-compliant error envelopes.
+**Feature 022 — Admin UI Cross-Company Access** (SaaS Admin Channel Separation Template):
+- **Problem**: Standard multi-tenancy record rules that correctly isolate business users also block `base.group_system` (System Admin) from accessing all tenant data in the Odoo Web UI
+- **Solution**: Complementary `[(1,'=',1)]` record rules assigned to `base.group_system` — one per blocked model — override company-filtered rules via Odoo's OR-union rule evaluation
+- **Models Covered**: `real.estate.property`, `real.estate.agent`, `real.estate.lease`, `real.estate.sale`, `real.estate.proposal`, `real.estate.service`, CMS page/media/settings, `thedevkitchen.estate.goal`, credit check, commission rule/transaction, lease renewal history, `thedevkitchen.estate.profile`, password token
+- **API Block**: Login controller rejects `base.group_system` with HTTP 401 + audit log entry before issuing any session token (credentials valid, channel forbidden; anti-enumeration)
+- **Menu Visibility**: `base.group_system` added to previously role-restricted menus (e.g., `menu_real_estate_lead`)
+- **noupdate Handling**: New admin override rules placed in `noupdate="0"` blocks even when the target file uses `noupdate="1"`, ensuring apply-on-upgrade without disrupting existing rules
+- **No new models**: Feature is purely security/record-rule configuration + one controller guard
+- **Testing**: E2E (Cypress) for cross-company visibility in Odoo UI; integration test for API login block (HTTP 401)
+- **Location**: Security XML files across `quicksol_estate/`, `thedevkitchen_cms/`, `thedevkitchen_estate_goals/`, `thedevkitchen_estate_credit_check/`, `thedevkitchen_user_onboarding/`; controller guard in `thedevkitchen_apigateway/controllers/user_auth_controller.py`
+- **ADRs**: ADR-008 (multi-tenancy), ADR-009 (headless auth), ADR-011 (security decorators), ADR-019 (RBAC profiles)
+- **Spec**: `specs/022-admin-ui-cross-company/spec.md`
+- **ADRs**: ADR-008 (multi-tenancy), ADR-009 (headless auth), ADR-011 (security decorators), ADR-019 (RBAC profiles)
+- **Spec**: `specs/022-admin-ui-cross-company/spec.md`
+
+Use Feature 007 for standard CRUD patterns with HATEOAS. Use Feature 009 for security-sensitive flows requiring token-based authentication, anti-enumeration, and session management. Use Feature 013 for FSM-driven domain entities with concurrent access control, FIFO queues, and async notifications. Use Feature 015 for kanban-style pipeline domains with stage gates, conditional uniqueness, system tags, and aggregation endpoints. Use Feature 017 for binary file upload/download patterns with magic bytes validation, per-type quantity limits, and FR6.9-compliant error envelopes. Use Feature 022 for SaaS Admin cross-company access patterns (record rule overrides, API login block, noupdate compatibility).
 
 ### Required Tests per Feature
 - **Unit**: Services, helpers, serializers, decorators
@@ -674,4 +799,4 @@ Para criação de testes, **DEVEM ser utilizados** os prompts e agents especiali
 - Constitution provides strategic direction; copilot-instructions provides tactical rules
 - Conflicts resolved in favor of constitution (strategic supersedes tactical)
 
-**Version**: 1.6.0 | **Ratified**: 2026-01-03 | **Last Amended**: 2026-05-03
+**Version**: 1.8.0 | **Ratified**: 2026-01-03 | **Last Amended**: 2026-06-03

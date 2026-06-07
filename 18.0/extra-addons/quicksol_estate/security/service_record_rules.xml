@@ -128,5 +128,34 @@
             <field name="perm_unlink" eval="True"/>
         </record>
 
+        <!-- Feature 022 / ADR-029: SaaS Admin cross-company overrides -->
+        <record id="rule_service_admin_all" model="ir.rule">
+            <field name="name">System Admin: All Services (Cross-Company)</field>
+            <field name="model_id" ref="model_real_estate_service"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('base.group_system'))]"/>
+        </record>
+
+        <record id="rule_service_tag_admin_all" model="ir.rule">
+            <field name="name">System Admin: All Service Tags (Cross-Company)</field>
+            <field name="model_id" ref="model_real_estate_service_tag"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('base.group_system'))]"/>
+        </record>
+
+        <record id="rule_service_source_admin_all" model="ir.rule">
+            <field name="name">System Admin: All Service Sources (Cross-Company)</field>
+            <field name="model_id" ref="model_real_estate_service_source"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('base.group_system'))]"/>
+        </record>
+
+        <record id="rule_service_settings_admin_all" model="ir.rule">
+            <field name="name">System Admin: All Service Settings (Cross-Company)</field>
+            <field name="model_id" ref="model_thedevkitchen_service_settings"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('base.group_system'))]"/>
+        </record>
+
     </data>
 </odoo>
