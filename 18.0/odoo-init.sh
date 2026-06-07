@@ -77,8 +77,8 @@ export HTTP_PROXY="http://127.0.0.1:1/"
 export HTTPS_PROXY="http://127.0.0.1:1/"
 # Keep internal services reachable (DB/Redis/RabbitMQ use their own protocols,
 # but keep localhost and container names in no_proxy for safety)
-export no_proxy="localhost,127.0.0.1,db,redis,rabbitmq,mailhog"
-export NO_PROXY="localhost,127.0.0.1,db,redis,rabbitmq,mailhog"
+export no_proxy="localhost,127.0.0.1,db,redis,rabbitmq,mailhog_realestate"
+export NO_PROXY="localhost,127.0.0.1,db,redis,rabbitmq,mailhog_realestate"
 log "External HTTP blocked during init (proxy → 127.0.0.1:1) to prevent IAP hang"
 
 # ---------------------------------------------------------------------------
