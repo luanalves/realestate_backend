@@ -1,8 +1,16 @@
 # -*- coding: utf-8 -*-
 
+import logging
 from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError, UserError
 import json
+
+_logger = logging.getLogger(__name__)
+
+try:
+    from odoo.addons.thedevkitchen_apigateway.services.redis_client import RedisClient
+except ImportError:
+    RedisClient = None
 
 
 class RealEstateCommissionTransaction(models.Model):
@@ -308,6 +316,14 @@ class RealEstateCommissionTransaction(models.Model):
         transaction = super().create(vals)
         # Commission transaction creation is automatically tracked by mail.thread
         # via tracking=True on relevant fields (agent_id, commission_amount, etc.)
+
+        # Invalidate performance cache for the agent (T023: US3)
+        if RedisClient and transaction.agent_id:
+            try:
+                RedisClient.delete_pattern(f'performance:agent:{transaction.agent_id.id}:*')
+                _logger.info('[CACHE] performance invalidated for agent=%d after new commission', transaction.agent_id.id)
+            except Exception as exc:
+                _logger.warning('[CACHE] performance invalidation failed on commission create: %s', exc)
 
         return transaction
 

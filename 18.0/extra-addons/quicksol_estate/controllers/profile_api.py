@@ -610,6 +610,23 @@ class ProfileApiController(http.Controller):
                         _logger.info(
                             f"Deactivated user {user_record.id} linked to profile {profile.id}"
                         )
+                        # Proactive session invalidation (T017: US2)
+                        # APISession.write({'is_active': False}) triggers the Redis override
+                        try:
+                            APISession = request.env['thedevkitchen.api.session']
+                            active_sessions = APISession.sudo().search([
+                                ('user_id', '=', user_record.id),
+                                ('is_active', '=', True),
+                            ])
+                            if active_sessions:
+                                active_sessions.write({'is_active': False})
+                                _logger.info(
+                                    '[CACHE] invalidated %d session(s) for user %d',
+                                    len(active_sessions),
+                                    user_record.id,
+                                )
+                        except Exception as exc:
+                            _logger.warning('[CACHE] session invalidation during profile delete failed: %s', exc)
 
             return success_response(
                 {

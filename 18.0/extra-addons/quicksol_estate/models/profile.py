@@ -1,8 +1,16 @@
 # -*- coding: utf-8 -*-
 
+import logging
 from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError
 from ..utils import validators
+
+_logger = logging.getLogger(__name__)
+
+try:
+    from odoo.addons.thedevkitchen_apigateway.services.redis_client import RedisClient
+except ImportError:
+    RedisClient = None
 
 
 class Profile(models.Model):
@@ -156,9 +164,20 @@ class Profile(models.Model):
     # ===== Methods =====
     @api.model
     def write(self, vals):
-        """Override write to update updated_at timestamp."""
+        """Override write to update updated_at timestamp and invalidate Redis cache on type change."""
         vals["updated_at"] = fields.Datetime.now()
-        return super(Profile, self).write(vals)
+        result = super(Profile, self).write(vals)
+
+        # Invalidate performance cache when profile_type changes (T018: US2)
+        if RedisClient and 'profile_type_id' in vals:
+            for record in self:
+                try:
+                    RedisClient.delete_pattern(f'performance:agent:{record.id}:*')
+                    _logger.info('[CACHE] performance cache invalidated for profile %d', record.id)
+                except Exception as exc:
+                    _logger.warning('[CACHE] performance cache invalidation failed: %s', exc)
+
+        return result
 
     @api.model
     def create(self, vals):
