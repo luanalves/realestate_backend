@@ -36,6 +36,8 @@ Auto-generated from all feature plans. Last updated: 2026-01-15
 - Python 3.11 (controller guard); XML data files (Odoo 18.0 record rules + menus) + Odoo 18.0 ORM (ir.rule), `base.group_system` (Odoo core), `thedevkitchen_apigateway.services.audit_logger.AuditLogger` (022-admin-ui-cross-company)
 - PostgreSQL — record rules stored in `ir.rule` table, applied at query-filter level. No schema changes. (022-admin-ui-cross-company)
 - Python 3.11 (controller guard); XML data files (Odoo 18.0 record rules + menus) + Odoo 18.0 ORM (ir.rule), `base.group_system` (Odoo core), `thedevkitchen_apigateway.services.audit_logger.AuditLogger`, Kong API Gateway (rate limiting — existing, no changes) (022-admin-ui-cross-company)
+- Python 3.11 / Odoo 18.0 + `redis-py` (já disponível), `thedevkitchen_apigateway`, `quicksol_estate` (023-redis-session-cache)
+- PostgreSQL (source of truth), Redis DB index 1 (cache — AOF persistência, 256MB LRU) (023-redis-session-cache)
 
 - Python 3.11 (Odoo 18.0) + Odoo 18.0, PyJWT, Redis 7-alpine, PostgreSQL 16 (001-bearer-token-validation)
 
@@ -56,6 +58,7 @@ cd src [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECHNOLO
 Python 3.11 (Odoo 18.0): Follow standard conventions
 
 ## Recent Changes
+- 023-redis-session-cache: Added Python 3.11 / Odoo 18.0 + `redis-py` (já disponível), `thedevkitchen_apigateway`, `quicksol_estate`
 - 022-admin-ui-cross-company: Added Python 3.11 (controller guard); XML data files (Odoo 18.0 record rules + menus) + Odoo 18.0 ORM (ir.rule), `base.group_system` (Odoo core), `thedevkitchen_apigateway.services.audit_logger.AuditLogger`, Kong API Gateway (rate limiting — existing, no changes)
 - 021-cms-domain: Added Python 3.11 / Odoo 18.0 + `thedevkitchen_apigateway` (decorators @require_jwt/@require_session/@require_company), `thedevkitchen_observability` (eventos), `python-magic` (MIME validation), `ir.attachment` (storage binário)
 
