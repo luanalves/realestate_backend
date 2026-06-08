@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import jwt
 import json
+import time
+import hashlib
 import logging
 import functools
 from datetime import datetime
@@ -8,6 +10,11 @@ from odoo import http, fields
 from odoo.http import request
 
 _logger = logging.getLogger(__name__)
+
+try:
+    from .services.redis_client import RedisClient
+except ImportError:
+    RedisClient = None
 
 
 def require_jwt(func):
@@ -23,7 +30,30 @@ def require_jwt(func):
             return _error_response(401, 'invalid_token', 'Authorization header must be "Bearer <token>"')
         
         token = parts[1]
-        
+
+        # --- Redis cache HIT path ---
+        if RedisClient:
+            cache_key = RedisClient.jwt_key(token)
+            cached = RedisClient.get_json(cache_key)
+            if cached:
+                if cached.get('revoked'):
+                    _logger.warning('[CACHE] jwt HIT revoked token_id=%s', cached.get('id'))
+                    return _error_response(401, 'token_revoked', 'Token has been revoked')
+                if cached.get('expires_at_ts', 0) <= time.time():
+                    _logger.warning('[CACHE] jwt HIT expired token_id=%s', cached.get('id'))
+                    return _error_response(401, 'token_expired', 'Token has expired')
+                if cached.get('token_type') != 'Bearer':
+                    return _error_response(401, 'invalid_token', 'Token type must be Bearer')
+                # Lazy ORM records — zero SELECT
+                Token = request.env['thedevkitchen.oauth.token'].sudo()
+                App = request.env['thedevkitchen.oauth.application'].sudo()
+                request.jwt_token = Token.browse(cached['id'])
+                request.jwt_application = App.browse(cached['application_id'])
+                _logger.info('[CACHE] jwt HIT token_id=%s', cached.get('id'))
+                return func(*args, **kwargs)
+            _logger.warning('[CACHE] jwt MISS key=%s', cache_key[:20])
+
+        # --- Database path (MISS or Redis unavailable) ---
         Token = request.env['thedevkitchen.oauth.token'].sudo()
         token_record = Token.search([('access_token', '=', token)], limit=1)
         
@@ -41,7 +71,21 @@ def require_jwt(func):
         
         request.jwt_token = token_record
         request.jwt_application = token_record.application_id
-        
+
+        # --- Populate Redis cache on MISS ---
+        if RedisClient and token_record.expires_at:
+            ttl = max(0, int(token_record.expires_at.timestamp() - time.time()))
+            if ttl > 0:
+                _cache_key = RedisClient.jwt_key(token)
+                RedisClient.set_json(_cache_key, {
+                    'id': token_record.id,
+                    'application_id': token_record.application_id.id,
+                    'token_type': token_record.token_type,
+                    'expires_at_ts': token_record.expires_at.timestamp(),
+                    'scope': token_record.scope or '',
+                    'revoked': False,
+                }, ttl)
+
         return func(*args, **kwargs)
     
     return wrapper
