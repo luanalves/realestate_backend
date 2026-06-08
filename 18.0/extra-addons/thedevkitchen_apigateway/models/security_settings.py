@@ -32,6 +32,24 @@ class SecuritySettings(models.Model):
         default=True,
         help='Include browser language in fingerprint.'
     )
+
+    session_cache_ttl_seconds = fields.Integer(
+        string='Session Cache TTL (seconds)',
+        default=300,
+        help='How long session data is cached in Redis. 0 = disabled (always query database).'
+    )
+
+    session_inactivity_days = fields.Integer(
+        string='Session Inactivity Timeout (days)',
+        default=7,
+        help='Sessions inactive for this many days are marked expired by the cleanup cron.'
+    )
+
+    performance_cache_ttl_seconds = fields.Integer(
+        string='Performance Metrics Cache TTL (seconds)',
+        default=300,
+        help='How long agent performance metrics are cached in Redis. 0 = disabled.'
+    )
     
     @api.model
     def get_settings(self):
