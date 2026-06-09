@@ -15,16 +15,34 @@ import sys
 import unittest
 from pathlib import Path
 
-# Add parent directory to Python path to allow imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+# -----------------------------------------------------------------------
+# Extend odoo.addons namespace so we can import quicksol_estate modules
+# without a running Odoo server or database.
+# -----------------------------------------------------------------------
+import odoo.addons
+_addons_root = str(Path(__file__).parent.parent.parent.parent)  # /mnt/extra-addons
+if _addons_root not in odoo.addons.__path__:
+    odoo.addons.__path__.insert(0, _addons_root)
+
+# Files that use odoo.tests.TransactionCase and require the full Odoo runner
+_ODOO_RUNNER_ONLY = {
+    'test_agent_unit.py',
+    'test_utils_unit.py',
+}
 
 
 def run_tests():
-    """Discover and run all unit tests"""
-    # Discover tests in current directory
+    """Discover and run all pure unit tests (unittest.TestCase only)"""
     loader = unittest.TestLoader()
     start_dir = Path(__file__).parent
-    suite = loader.discover(str(start_dir), pattern="test_*_unit.py")
+
+    # Discover only pure unit test files; skip TransactionCase-based files
+    suite = unittest.TestSuite()
+    for test_file in sorted(start_dir.glob("test_*_unit.py")):
+        if test_file.name in _ODOO_RUNNER_ONLY:
+            continue
+        sub = loader.discover(str(start_dir), pattern=test_file.name)
+        suite.addTests(sub)
 
     # Run tests with TextTestRunner
     verbosity = 2 if "-v" in sys.argv else 1
