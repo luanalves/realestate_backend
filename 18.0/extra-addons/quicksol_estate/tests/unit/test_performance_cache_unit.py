@@ -5,7 +5,15 @@ Tests run with mocked Redis and Odoo env — no database required.
 """
 
 import unittest
+import sys
+from pathlib import Path
 from unittest.mock import patch, MagicMock, call
+
+# Allow standalone execution with python3 <file> by extending odoo.addons namespace.
+import odoo.addons
+_addons_root = str(Path(__file__).parent.parent.parent.parent)
+if _addons_root not in odoo.addons.__path__:
+    odoo.addons.__path__.insert(0, _addons_root)
 
 
 class TestPerformanceServiceCacheHit(unittest.TestCase):
