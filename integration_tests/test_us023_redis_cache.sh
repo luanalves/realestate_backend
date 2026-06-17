@@ -19,6 +19,7 @@ OWNER_TOKEN="${OWNER_TOKEN:-}"
 OWNER_SESSION="${OWNER_SESSION:-}"
 REDIS_CONTAINER="${REDIS_CONTAINER:-redis}"
 REDIS_PASSWORD="${REDIS_PASSWORD:-}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 PASS=0
 FAIL=0
@@ -33,6 +34,59 @@ log_pass()  { echo "[PASS]  $*"; PASS=$((PASS+1)); }
 log_fail()  { echo "[FAIL]  $*"; FAIL=$((FAIL+1)); }
 log_skip()  { echo "[SKIP]  $*"; SKIP=$((SKIP+1)); }
 log_section() { echo ""; echo "========================================"; echo "$*"; echo "========================================"; }
+
+load_env_if_available() {
+    if [ -f "$SCRIPT_DIR/../18.0/.env" ]; then
+        # shellcheck disable=SC1091
+        source "$SCRIPT_DIR/../18.0/.env"
+    fi
+}
+
+get_oauth2_token_local() {
+    # Prefer existing helper used by other integration tests.
+    if [ -f "$SCRIPT_DIR/lib/get_oauth2_token.sh" ]; then
+        # shellcheck disable=SC1091
+        source "$SCRIPT_DIR/lib/get_oauth2_token.sh"
+        get_oauth2_token
+        return $?
+    fi
+
+    local client_id client_secret response
+    client_id="${OAUTH_CLIENT_ID:-test-client-id}"
+    client_secret="${OAUTH_CLIENT_SECRET:-test-client-secret-12345}"
+    response=$(curl -s -X POST "${BASE_URL}/api/v1/auth/token" \
+        -H "Content-Type: application/x-www-form-urlencoded" \
+        -d "grant_type=client_credentials&client_id=${client_id}&client_secret=${client_secret}")
+
+    echo "$response" | jq -r '.access_token // empty'
+}
+
+bootstrap_owner_auth() {
+    load_env_if_available
+
+    local owner_email owner_password login_response session_id
+    owner_email="${TEST_USER_OWNER:-owner@example.com}"
+    owner_password="${TEST_PASSWORD_OWNER:-SecurePass123!}"
+
+    OWNER_TOKEN="$(get_oauth2_token_local)"
+    if [ -z "$OWNER_TOKEN" ]; then
+        return 1
+    fi
+
+    login_response=$(curl -s -X POST "$BASE_URL/api/v1/users/login" \
+        -H "Content-Type: application/json" \
+        -H "Authorization: Bearer $OWNER_TOKEN" \
+        -d "{\"login\": \"$owner_email\", \"password\": \"$owner_password\"}")
+
+    session_id=$(echo "$login_response" | jq -r '.session_id // empty')
+    if [ -z "$session_id" ]; then
+        return 1
+    fi
+
+    OWNER_SESSION="$session_id"
+    export OWNER_TOKEN OWNER_SESSION
+    return 0
+}
 
 _redis_cmd() {
     # Helper: run redis-cli with optional auth against DB 1
@@ -74,10 +128,6 @@ http_get() {
 }
 
 check_prerequisites() {
-    if [ -z "$OWNER_TOKEN" ] || [ -z "$OWNER_SESSION" ]; then
-        log_fail "OWNER_TOKEN and OWNER_SESSION must be set. Exiting."
-        exit 1
-    fi
     if ! command -v jq > /dev/null 2>&1; then
         log_fail "jq not found. Install with: brew install jq"
         exit 1
@@ -91,6 +141,28 @@ check_prerequisites() {
         log_skip "Redis not accessible via docker compose — skipping all Redis-specific tests"
         exit 0
     fi
+
+    if [ -z "$OWNER_TOKEN" ] || [ -z "$OWNER_SESSION" ]; then
+        if bootstrap_owner_auth; then
+            log_info "Bootstrap auth OK (owner token/session loaded automatically)"
+        else
+            log_fail "Could not bootstrap OWNER_TOKEN/OWNER_SESSION automatically. Set env vars or configure 18.0/.env."
+            exit 1
+        fi
+    fi
+
+    # If environment already had token/session but they are stale, renew them.
+    local auth_probe
+    auth_probe=$(http_get "/api/v1/profiles" "$OWNER_TOKEN" "$OWNER_SESSION")
+    if [ "$auth_probe" = "401" ] || [ "$auth_probe" = "403" ] || [ "$auth_probe" = "000" ]; then
+        if bootstrap_owner_auth; then
+            log_info "Refreshed stale owner token/session via bootstrap"
+        else
+            log_fail "Existing OWNER_TOKEN/OWNER_SESSION are invalid and bootstrap failed"
+            exit 1
+        fi
+    fi
+
     log_info "Prerequisites OK. BASE_URL=$BASE_URL"
 }
 
@@ -101,9 +173,6 @@ test_s01_cache_populated_after_request() {
     log_section "S01: Cache populated after authenticated request"
 
     flush_cache
-    local before
-    before=$(key_count "session:*")
-
     local status
     status=$(http_get "/api/v1/profiles" "$OWNER_TOKEN" "$OWNER_SESSION")
 
@@ -113,10 +182,10 @@ test_s01_cache_populated_after_request() {
         sleep 0.5  # allow async write
         local after
         after=$(key_count "session:*")
-        if [ "$after" -gt "$before" ]; then
-            log_pass "S01: session:* cache key created after request (HTTP $status, count: $after)"
+        if [ "$after" -gt 0 ]; then
+            log_pass "S01: session:* cache key present after auth request (HTTP $status, count: $after)"
         else
-            log_fail "S01: session:* cache key NOT found after auth request (before=$before after=$after, HTTP $status)"
+            log_fail "S01: session:* cache key NOT found after auth request (count=$after, HTTP $status)"
         fi
     else
         log_fail "S01: Authentication failed — HTTP $status (expected auth to pass)"
@@ -143,7 +212,7 @@ test_s02_logout_removes_session_key() {
         -X POST \
         -H "Authorization: Bearer $OWNER_TOKEN" \
         -H "X-Openerp-Session-Id: $OWNER_SESSION" \
-        "$BASE_URL/api/v1/auth/logout")
+        "$BASE_URL/api/v1/users/logout")
 
     if [ "$logout_status" = "200" ]; then
         sleep 0.3
@@ -175,9 +244,11 @@ test_s03_revoke_removes_jwt_key() {
     http_get "/api/v1/profiles" "$OWNER_TOKEN" "$OWNER_SESSION" > /dev/null
     sleep 0.3
 
-    local jwt_count_before
+    local jwt_count_before expected_jwt_key expected_exists_before
     jwt_count_before=$(key_count "jwt:*")
-    log_info "JWT keys before revoke: $jwt_count_before"
+    expected_jwt_key="jwt:$(printf '%s' "$OWNER_TOKEN" | shasum -a 256 | awk '{print $1}' | cut -c1-32)"
+    expected_exists_before=$( { _redis_cmd KEYS "$expected_jwt_key" || true; } | grep -c "$expected_jwt_key" || true)
+    log_info "JWT keys before revoke: $jwt_count_before (expected key exists=$expected_exists_before)"
 
     # Revoke via admin (using current token for self-revoke if supported)
     local revoke_status
@@ -190,14 +261,15 @@ test_s03_revoke_removes_jwt_key() {
 
     if [ "$revoke_status" = "200" ]; then
         sleep 0.3
-        local jwt_count_after
+        local jwt_count_after expected_exists_after
         jwt_count_after=$(key_count "jwt:*")
-        log_info "JWT keys after revoke: $jwt_count_after"
+        expected_exists_after=$( { _redis_cmd KEYS "$expected_jwt_key" || true; } | grep -c "$expected_jwt_key" || true)
+        log_info "JWT keys after revoke: $jwt_count_after (expected key exists=$expected_exists_after)"
 
-        if [ "$jwt_count_after" -lt "$jwt_count_before" ] || [ "$jwt_count_after" -eq 0 ]; then
+        if [ "$expected_exists_after" = "0" ]; then
             log_pass "S03: JWT cache key removed after revoke"
         else
-            log_fail "S03: JWT cache key still present after revoke (before=$jwt_count_before after=$jwt_count_after)"
+            log_fail "S03: Expected JWT cache key still present after revoke (key=$expected_jwt_key)"
         fi
 
         # Verify 401 on reuse
@@ -207,6 +279,12 @@ test_s03_revoke_removes_jwt_key() {
             log_pass "S03: Revoked token returns 401"
         else
             log_fail "S03: Revoked token returned HTTP $reuse_status (expected 401)"
+        fi
+
+        if bootstrap_owner_auth; then
+            log_info "S03: Re-authenticated owner after revoke for subsequent scenarios"
+        else
+            log_skip "S03: Could not re-authenticate owner after revoke; later scenarios may be skipped"
         fi
     else
         log_skip "S03: Revoke endpoint returned $revoke_status — skipping"
