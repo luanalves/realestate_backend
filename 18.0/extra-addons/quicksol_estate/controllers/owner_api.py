@@ -106,9 +106,9 @@ class OwnerApiController(http.Controller):
                     (6, 0, [owner_group.id])
                 ],  # Assign group_real_estate_owner
                 "company_id": default_company.id,
-                "company_ids": [
-                    (6, 0, [default_company.id])
-                ],  # FR-009: Start with default company
+                # company_ids intentionally not set: owner starts with no real estate company.
+                # The owner creates their imobiliária in /onboarding/empresa after first login.
+                # The backend auto-links the company when POST /api/v1/companies is called.
             }
 
             # Optional fields
@@ -128,7 +128,7 @@ class OwnerApiController(http.Controller):
                 "cpf": new_owner.cpf,
                 "phone": new_owner.phone,
                 "mobile": new_owner.mobile,
-                "company_count": len(new_owner.company_ids),
+                "company_count": 0,
                 "companies": [],
             }
 
