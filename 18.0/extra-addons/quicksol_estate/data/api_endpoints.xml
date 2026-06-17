@@ -5080,17 +5080,93 @@ GET /api/v1/leads?state=qualified&budget_min=300000&budget_max=500000]]></field>
             <field name="summary">Create a new property owner</field>
             <field name="description">Creates a new property owner account (Self-Registration).
 
-Required fields:
-- name (string): Full name of the owner
-- email (string): Email address (unique, used for login)
-- password (string): Password (minimum 8 characters)
-- cpf (string): Brazilian CPF document (unique, format: 123.456.789-01 or 12345678901)
+**Required Headers:**
+- `Authorization: Bearer {access_token}`
 
-Optional fields:
-- phone (string): Phone number
-- mobile (string): Mobile number
+**Validation Rules:**
+- `email`: Must be a valid email format and unique in the system
+- `password`: Minimum 8 characters
+- `cpf`: Brazilian CPF (format: 123.456.789-01 or 12345678901), unique in the system
 
-Returns: Owner object with id, name, email, cpf, phone, mobile, company_count, companies.</field>
+**Error Responses:**
+- **400 Bad Request**: Missing required fields, invalid email/CPF format, or password too short
+- **401 Unauthorized**: Missing or invalid JWT token
+- **409 Conflict**: Email or CPF already registered</field>
+            <field name="request_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "OwnerCreate",
+  "required": ["name", "email", "password", "cpf"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "example": "João Silva",
+      "description": "Full name of the owner"
+    },
+    "email": {
+      "type": "string",
+      "format": "email",
+      "example": "joao.silva@email.com",
+      "description": "Email address used for login (must be unique)"
+    },
+    "password": {
+      "type": "string",
+      "minLength": 8,
+      "example": "senhaSegura123",
+      "description": "Password (minimum 8 characters)"
+    },
+    "cpf": {
+      "type": "string",
+      "example": "123.456.789-01",
+      "description": "Brazilian CPF document (must be unique, format: 123.456.789-01 or 12345678901)"
+    },
+    "phone": {
+      "type": "string",
+      "example": "+55 11 3000-0000",
+      "description": "Phone number (optional)"
+    },
+    "mobile": {
+      "type": "string",
+      "example": "+55 11 99999-0000",
+      "description": "Mobile number (optional)"
+    }
+  }
+}
+]]></field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "OwnerResponse",
+  "properties": {
+    "success": {"type": "boolean", "example": true},
+    "message": {"type": "string", "example": "Owner created successfully"},
+    "data": {
+      "type": "object",
+      "title": "OwnerData",
+      "properties": {
+        "id": {"type": "integer", "example": 42},
+        "name": {"type": "string", "example": "João Silva"},
+        "email": {"type": "string", "example": "joao.silva@email.com"},
+        "cpf": {"type": "string", "example": "123.456.789-01"},
+        "phone": {"type": "string", "example": "+55 11 3000-0000"},
+        "mobile": {"type": "string", "example": "+55 11 99999-0000"},
+        "company_count": {"type": "integer", "example": 1},
+        "companies": {
+          "type": "array",
+          "items": {"type": "object"}
+        }
+      }
+    },
+    "_links": {
+      "type": "object",
+      "properties": {
+        "self": {"type": "string", "example": "/api/v1/owners/42"},
+        "companies": {"type": "string", "example": "/api/v1/owners/42/companies"}
+      }
+    }
+  }
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 
@@ -5102,7 +5178,74 @@ Returns: Owner object with id, name, email, cpf, phone, mobile, company_count, c
             <field name="protected" eval="True"/>
             <field name="tags">Owners</field>
             <field name="summary">Link owner to company</field>
-            <field name="description">Associates an owner with a real estate company.</field>
+            <field name="description">Associates an owner with a real estate company.
+
+**Required Headers:**
+- `Authorization: Bearer {access_token}`
+- `X-Session-Id: {session_id}`
+
+**Path Parameters:**
+- `id` (integer): Owner user ID
+
+**RBAC:** Authenticated user must be an Owner of the target company (or system admin).
+
+**Error Responses:**
+- **400 Bad Request**: Missing `company_id` field
+- **401 Unauthorized**: Missing or invalid JWT token
+- **403 Forbidden**: User does not have access to the target company
+- **404 Not Found**: Owner or company not found
+- **409 Conflict**: Owner already linked to the specified company</field>
+            <field name="request_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "OwnerLinkCompany",
+  "required": ["company_id"],
+  "properties": {
+    "company_id": {
+      "type": "integer",
+      "example": 5,
+      "description": "ID of the real estate company to link the owner to"
+    }
+  }
+}
+]]></field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "OwnerCompanyLinkResponse",
+  "properties": {
+    "success": {"type": "boolean", "example": true},
+    "message": {"type": "string", "example": "Owner linked to company 'Imobiliária XYZ' successfully"},
+    "data": {
+      "type": "object",
+      "title": "OwnerWithCompanies",
+      "properties": {
+        "id": {"type": "integer", "example": 42},
+        "name": {"type": "string", "example": "João Silva"},
+        "email": {"type": "string", "example": "joao.silva@email.com"},
+        "company_count": {"type": "integer", "example": 2},
+        "companies": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {"type": "integer", "example": 5},
+              "name": {"type": "string", "example": "Imobiliária XYZ"}
+            }
+          }
+        }
+      }
+    },
+    "_links": {
+      "type": "object",
+      "properties": {
+        "self": {"type": "string", "example": "/api/v1/owners/42"},
+        "companies": {"type": "string", "example": "/api/v1/owners/42/companies"}
+      }
+    }
+  }
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 
@@ -5114,7 +5257,61 @@ Returns: Owner object with id, name, email, cpf, phone, mobile, company_count, c
             <field name="protected" eval="True"/>
             <field name="tags">Owners</field>
             <field name="summary">Unlink owner from company</field>
-            <field name="description">Removes association between an owner and a company.</field>
+            <field name="description">Removes association between an owner and a company.
+
+**Required Headers:**
+- `Authorization: Bearer {access_token}`
+- `X-Session-Id: {session_id}`
+
+**Path Parameters:**
+- `id` (integer): Owner user ID
+- `cid` (integer): Company ID to unlink
+
+**Business Rules:**
+- Cannot unlink the last active owner of a company (Last Owner Protection)
+- Authenticated user must be an Owner of the target company (or system admin)
+
+**Error Responses:**
+- **400 Bad Request**: Owner is the last active owner of the company
+- **401 Unauthorized**: Missing or invalid JWT token
+- **403 Forbidden**: User does not have access to the target company
+- **404 Not Found**: Owner, company, or owner-company link not found</field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "OwnerCompanyUnlinkResponse",
+  "properties": {
+    "success": {"type": "boolean", "example": true},
+    "message": {"type": "string", "example": "Owner unlinked from company 'Imobiliária XYZ' successfully"},
+    "data": {
+      "type": "object",
+      "title": "OwnerWithCompanies",
+      "properties": {
+        "id": {"type": "integer", "example": 42},
+        "name": {"type": "string", "example": "João Silva"},
+        "email": {"type": "string", "example": "joao.silva@email.com"},
+        "company_count": {"type": "integer", "example": 1},
+        "companies": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {"type": "integer", "example": 3},
+              "name": {"type": "string", "example": "Imobiliária ABC"}
+            }
+          }
+        }
+      }
+    },
+    "_links": {
+      "type": "object",
+      "properties": {
+        "self": {"type": "string", "example": "/api/v1/owners/42"}
+      }
+    }
+  }
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 
