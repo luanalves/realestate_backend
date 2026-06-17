@@ -3,7 +3,10 @@
 import unittest
 from datetime import date
 
-from .base_company_test import BaseCompanyTest
+try:
+    from base_company_test import BaseCompanyTest
+except ImportError:
+    from .base_company_test import BaseCompanyTest
 
 
 class TestCompanyUnit(BaseCompanyTest):

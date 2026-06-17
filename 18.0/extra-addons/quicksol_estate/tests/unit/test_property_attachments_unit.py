@@ -459,7 +459,7 @@ class TestUploadReadsIrConfigParam(unittest.TestCase):
 
 
 class TestAgentCannotDelete(unittest.TestCase):
-    """_is_agent_only returns True for pure Agent, False for Manager/Owner/Admin."""
+    """_can_upload_or_delete returns False for pure Agent, True for Manager/Owner/Admin."""
 
     def _make_user(self, groups):
         user = MagicMock()
@@ -468,7 +468,7 @@ class TestAgentCannotDelete(unittest.TestCase):
 
     def test_pure_agent_is_agent_only(self):
         user = self._make_user({"quicksol_estate.group_real_estate_agent"})
-        self.assertTrue(ctrl._is_agent_only(user))
+        self.assertFalse(ctrl._can_upload_or_delete(user))
 
     def test_manager_is_not_agent_only(self):
         user = self._make_user(
@@ -477,7 +477,7 @@ class TestAgentCannotDelete(unittest.TestCase):
                 "quicksol_estate.group_real_estate_manager",
             }
         )
-        self.assertFalse(ctrl._is_agent_only(user))
+        self.assertTrue(ctrl._can_upload_or_delete(user))
 
     def test_owner_is_not_agent_only(self):
         user = self._make_user(
@@ -486,15 +486,15 @@ class TestAgentCannotDelete(unittest.TestCase):
                 "quicksol_estate.group_real_estate_owner",
             }
         )
-        self.assertFalse(ctrl._is_agent_only(user))
+        self.assertTrue(ctrl._can_upload_or_delete(user))
 
     def test_admin_is_not_agent_only(self):
         user = self._make_user({"base.group_system"})
-        self.assertFalse(ctrl._is_agent_only(user))
+        self.assertTrue(ctrl._can_upload_or_delete(user))
 
     def test_user_without_any_group_is_not_agent_only(self):
         user = self._make_user(set())
-        self.assertFalse(ctrl._is_agent_only(user))
+        self.assertFalse(ctrl._can_upload_or_delete(user))
 
 
 # ---------------------------------------------------------------------------
@@ -640,7 +640,7 @@ class TestQuantityLimitConstants(unittest.TestCase):
         with patch.object(ctrl, "request", create=True) as mock_req:
             mock_req.env = mock_env
             result = ctrl._get_max_images_per_property()
-        mock_param.get_param.assert_called_once_with(ctrl.CONFIG_PARAM_MAX_IMAGES)
+        mock_param.get_param.assert_called_once_with(ctrl.CONFIG_PARAM_MAX_IMAGES, default=50)
         self.assertEqual(result, 30)
 
     def test_get_max_documents_reads_config_param(self):
@@ -648,7 +648,7 @@ class TestQuantityLimitConstants(unittest.TestCase):
         with patch.object(ctrl, "request", create=True) as mock_req:
             mock_req.env = mock_env
             result = ctrl._get_max_documents_per_property()
-        mock_param.get_param.assert_called_once_with(ctrl.CONFIG_PARAM_MAX_DOCUMENTS)
+        mock_param.get_param.assert_called_once_with(ctrl.CONFIG_PARAM_MAX_DOCUMENTS, default=20)
         self.assertEqual(result, 15)
 
 

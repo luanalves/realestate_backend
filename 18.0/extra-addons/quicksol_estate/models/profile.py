@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
 
+import logging
 from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError
 from ..utils import validators
+
+_logger = logging.getLogger(__name__)
 
 
 class Profile(models.Model):
@@ -156,9 +159,39 @@ class Profile(models.Model):
     # ===== Methods =====
     @api.model
     def write(self, vals):
-        """Override write to update updated_at timestamp."""
+        """Override write to update updated_at timestamp and invalidate Redis cache on type change."""
         vals["updated_at"] = fields.Datetime.now()
-        return super(Profile, self).write(vals)
+        result = super(Profile, self).write(vals)
+
+        # Deactivate active sessions when profile_type changes so permission
+        # changes take effect immediately (US2). Redis eviction happens
+        # cascadically via APISession.write({'is_active': False}) override.
+        if 'profile_type_id' in vals:
+            for record in self:
+                try:
+                    if not record.partner_id:
+                        continue
+                    users = self.env['res.users'].sudo().search([
+                        ('partner_id', '=', record.partner_id.id)
+                    ])
+                    for user in users:
+                        sessions = self.env['thedevkitchen.api.session'].sudo().search([
+                            ('user_id', '=', user.id),
+                            ('is_active', '=', True),
+                        ])
+                        if sessions:
+                            sessions.write({'is_active': False})
+                            _logger.info(
+                                '[CACHE] sessions deactivated for profile=%d user=%d on type change',
+                                record.id, user.id
+                            )
+                except Exception as exc:
+                    _logger.warning(
+                        '[CACHE] session invalidation failed for profile=%d: %s',
+                        record.id, exc
+                    )
+
+        return result
 
     @api.model
     def create(self, vals):

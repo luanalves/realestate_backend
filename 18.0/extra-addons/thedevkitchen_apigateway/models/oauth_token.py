@@ -1,6 +1,14 @@
 import secrets
+import logging
 from datetime import datetime, timedelta
 from odoo import models, fields, api
+
+_logger = logging.getLogger(__name__)
+
+try:
+    from ..services.redis_client import RedisClient
+except ImportError:
+    RedisClient = None
 
 
 class OAuthToken(models.Model):
@@ -83,13 +91,21 @@ class OAuthToken(models.Model):
             record.is_expired = record.expires_at < now if record.expires_at else False
 
     def action_revoke(self):
-        """Revoke the token"""
+        """Revoke the token and invalidate Redis cache."""
         for record in self:
             record.write({
                 'active': False,
                 'revoked': True,
                 'revoked_at': fields.Datetime.now(),
             })
+            # Invalidate JWT cache entry
+            if RedisClient and record.access_token:
+                try:
+                    key = RedisClient.jwt_key(record.access_token)
+                    RedisClient.delete(key)
+                    _logger.info('[CACHE] jwt invalidated token_id=%s', record.id)
+                except Exception as exc:
+                    _logger.warning('[CACHE] jwt invalidation failed: %s', exc)
         return True
 
     @api.model

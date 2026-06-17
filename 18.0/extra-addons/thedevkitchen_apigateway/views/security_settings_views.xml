@@ -19,6 +19,13 @@
                             <field name="use_user_agent"/>
                             <field name="use_accept_language"/>
                         </group>
+                        <group string="Cache &amp; Session Configuration">
+                            <field name="session_cache_ttl_seconds"
+                                   help="0 = session cache disabled (every request queries the database)"/>
+                            <field name="session_inactivity_days"/>
+                            <field name="performance_cache_ttl_seconds"
+                                   help="0 = performance metrics cache disabled"/>
+                        </group>
                     </group>
                     
                     <div class="oe_chatter">

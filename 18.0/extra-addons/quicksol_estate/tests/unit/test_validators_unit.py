@@ -56,8 +56,8 @@ class TestIsCpf(unittest.TestCase):
 
     def test_valid_cpf(self):
         """Valid CPF passes checksum"""
-        # CPF: 191.000.000-01 (valid checksum)
-        self.assertTrue(is_cpf("19100000001"))
+        # CPF: 191.000.000-00 (valid checksum — last digit is 0, not 1)
+        self.assertTrue(is_cpf("19100000000"))
 
     def test_invalid_checksum(self):
         """Invalid CPF checksum fails"""
@@ -111,7 +111,7 @@ class TestValidateDocument(unittest.TestCase):
     def test_dispatch_to_cpf(self):
         """11 digits → dispatch to is_cpf"""
         # Valid CPF
-        self.assertTrue(validate_document("19100000001"))
+        self.assertTrue(validate_document("19100000000"))
         # Invalid CPF
         self.assertFalse(validate_document("19100000099"))
 

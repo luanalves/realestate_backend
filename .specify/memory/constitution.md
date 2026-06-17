@@ -1,3 +1,38 @@
+<!--
+Sync Impact Report - Constitution v1.9.1
+========================================
+
+Version Change: 1.9.0 → 1.9.1
+Change Type: PATCH (clarifications to Redis cache TTL rules from Feature 023 spec finalization)
+Date: 2026-06-08
+
+Sections Modified:
+- Redis Cache Patterns → JWT Cache Pattern: TTL rule corrected — use full `expires_at - now()` without an
+  arbitrary 1-hour cap. JWT is already bounded by its own expiry; capping at 3600s would cause unnecessary
+  cache misses for long-lived tokens.
+- Redis Cache Patterns → Session Cache Pattern: TTL now references `session_cache_ttl_seconds` field in
+  `thedevkitchen.security.settings` (default 300s) instead of hardcoded "5 minutes". Two new configurable
+  fields added to the security settings pattern: `session_cache_ttl_seconds` and `session_inactivity_days`.
+- Redis Cache Patterns → Session Cache Pattern: `last_activity` trade-off note updated to reference
+  the configurable TTL value.
+
+Removed Sections:
+- (none)
+
+Follow-up TODOs:
+- Add `session_cache_ttl_seconds` (default 300) and `session_inactivity_days` (default 7) fields to
+  `thedevkitchen.security.settings` model and its form view (menu: Technical → API Gateway → Security Settings).
+- `cleanup_expired()` in `session_validator.py` must read `session_inactivity_days` from settings instead
+  of its current hardcoded `days=7`.
+
+Previous Amendments:
+- 2026-06-08 (v1.9.0 Feature 023 Redis cache patterns initial)
+- 2026-06-03 (v1.8.0 Feature 022 SaaS Admin channel separation)
+- 2026-05-08 (v1.7.0 Feature 017 binary upload patterns)
+- 2026-05-03 (v1.6.0 Feature 015 service pipeline patterns)
+- 2026-02-16 (v1.3.0 Feature 009 security patterns)
+- 2026-02-08 (v1.2.0 Feature 007 reference implementation)
+-->
 ## Utilitários de Validação de CPF/CNPJ (Governança de Dados)
 
 Para garantir unicidade, integridade e reutilização de validação de documentos fiscais brasileiros, o backend implementa as seguintes funções utilitárias em `utils/validators.py`:
@@ -312,6 +347,7 @@ Platform employs dual-interface design:
 - Session-based with JWT for user authentication
 - Token lifetime: 24 hours (configurable)
 - Redis-backed session storage (**DB index 1**, AOF persistence)
+- Redis used for **JWT and session lookup cache** (Feature 023) — eliminates 2 SELECTs + 1 UPDATE per authenticated request
 - Rate limiting on authentication endpoints (brute-force protection)
 - Audit logging for all security events
 
@@ -451,7 +487,110 @@ def check_rate_limit(self, identifier, limit_key):
 
 **Rationale**: Rate limiting prevents brute-force and DOS attacks. Redis INCR is atomic and fast. Placeholder pattern enables development without full infrastructure. Fail-open in dev balances security and developer experience.
 
-### Atomic Dual Record Creation (Portal Entities)
+### Redis Cache Patterns for Auth Hot Path (Feature 023)
+
+Every authenticated request passes through `@require_jwt` and `@require_session`. These decorators historically issued 2 SELECTs + 1 UPDATE on PostgreSQL for each request. Feature 023 caches these lookups in Redis, reducing DB load to zero on cache hits while maintaining full security guarantees.
+
+#### RedisClient Singleton
+
+Single module-level class with a `ConnectionPool` (not per-request connections):
+
+```python
+class RedisClient:
+    _pool = None
+
+    @classmethod
+    def _get_connection(cls):
+        # Lazy init — reads redis_host, redis_port, redis_dbindex, redis_pass, enable_redis
+        # from odoo.tools.config; returns None if enable_redis is falsy
+        # Uses redis.ConnectionPool (one pool per Odoo worker process)
+
+    @classmethod
+    def get_json(cls, key: str) -> dict | None:
+        # GET key → json.loads; ANY exception → _logger.warning → return None
+
+    @classmethod
+    def set_json(cls, key: str, data: dict, ttl: int) -> bool:
+        # ttl ≤ 0 → skip (never cache an already-expired value)
+        # SETEX key ttl json.dumps(data); exception → _logger.warning → return False
+
+    @classmethod
+    def delete(cls, *keys: str) -> bool:
+        # DEL key1 key2 ...; exception → return False
+
+    @classmethod
+    def delete_pattern(cls, pattern: str) -> int:
+        # SCAN (not KEYS) + DEL in batches; returns count deleted; exception → return 0
+```
+
+**Absolute rule**: `get_json`, `set_json`, `delete`, `delete_pattern` MUST NOT propagate exceptions. The application functions at 100% correctness without Redis (graceful degradation to PostgreSQL).
+
+**Location**: `thedevkitchen_apigateway/services/redis_client.py`
+
+#### JWT Cache Pattern
+
+Cache key: `jwt:{sha256(raw_access_token).hexdigest()[:32]}`
+
+- **Never use the raw token as a Redis key** — hash prevents key-space enumeration if Redis memory is inspected.
+- **Payload**: `{"id": int, "application_id": int, "token_type": str, "expires_at_ts": float, "scope": str, "revoked": bool}`
+- **TTL**: `max(0, int(expires_at.timestamp() - time.time()))` — derived directly from the token's own expiry. No arbitrary cap: the JWT already defines its own lifetime. A TTL ≤ 0 means the token is already expired; skip caching entirely (`set_json` discards TTL ≤ 0 by contract).
+- **Cache HIT**: validate `expires_at_ts <= time.time()` and `revoked == True` in-memory → reject with 401 without touching DB; set `request.jwt_token = Token.browse(id)` (lazy ORM record, zero SELECT).
+- **Cache MISS**: full `Token.search()` as today → cache populated after validation.
+- **Invalidation**: Override `OAuthToken.action_revoke()` → compute hash → `RedisClient.delete(key)`.
+
+```python
+def action_revoke(self):
+    result = super().action_revoke()
+    try:
+        from ..services.redis_client import RedisClient
+        for record in self:
+            key = f"jwt:{hashlib.sha256(record.access_token.encode()).hexdigest()[:32]}"
+            RedisClient.delete(key)
+    except Exception:
+        pass  # Never block the revoke operation
+    return result
+```
+
+#### Session Cache Pattern
+
+Cache key: `session:{session_id}` (session_id is the Odoo session SID — opaque, 64+ chars, safe as key).
+
+- **Payload includes `security_token`**: The JWT de fingerprint stored in `api_session.security_token` is required by `require_session` for `jwt.decode()`. Including it in cache allows `api_session = browse(id)` to stay lazy — accessing `api_session.security_token` is from-memory (no SELECT by PK).
+- **Odoo 18 field cache injection**: After `browse(id)`, pre-populate the ORM field cache:
+  ```python
+  env.cache.set(api_session, APISession._fields['security_token'], cached['security_token'])
+  env.cache.set(api_session, APISession._fields['is_active'], True)
+  env.cache.set(api_session, APISession._fields['company_id'], cached['company_id'])
+  env.cache.set(user, Users._fields['active'], True)
+  ```
+- **TTL**: Read `session_cache_ttl_seconds` from `thedevkitchen.security.settings.get_settings()` (default 300s). Sessions have no `expires_at` of their own — the configurable TTL controls re-validation frequency. Two fields must be added to `thedevkitchen.security.settings`: `session_cache_ttl_seconds` (Integer, default 300) and `session_inactivity_days` (Integer, default 7, consumed by `SessionValidator.cleanup_expired()`).
+- **`last_activity` trade-off**: On cache HIT, `UPDATE last_activity` is **skipped**. The field is updated only on cache MISS (~every `session_cache_ttl_seconds`). This is an explicit trade-off: `last_activity` is a usage metric, not a security control. Document this decision when implementing.
+- **Invalidation**: Override `APISession.write()` — delete cache key when `is_active` or `company_id` changes:
+
+```python
+def write(self, vals):
+    result = super().write(vals)
+    if 'is_active' in vals or 'company_id' in vals:
+        try:
+            from ..services.redis_client import RedisClient
+            for record in self:
+                RedisClient.delete(f"session:{record.session_id}")
+        except Exception:
+            pass  # Never block the write operation
+    return result
+```
+
+This single override covers: logout, login (invalidates old sessions), switch-company, session cleanup cron, and user deactivation — all without modifying any of those call sites.
+
+#### Cache-Before-Invalidation Deployment Order (MANDATORY)
+
+When deploying Redis cache for any mutable entity:
+
+1. **Deploy invalidation write hooks first** (before any cache population code is active).
+2. **Only then activate cache HIT paths** (the `if cached:` branches).
+3. **Rationale**: If cache population runs before invalidation hooks, a write event (e.g., logout immediately after deploy) fails to evict the new cache entry, creating a stale-data window. Deploying hooks first eliminates this race.
+
+**Rationale for the full pattern**: Eliminating 2 SELECTs + 1 UPDATE per authenticated request reduces DB load proportionally to request volume. At 100 req/s, that is 300 DB operations/s eliminated. Redis latency (~0.3ms) vs PostgreSQL (~5ms) yields a measurable p95 improvement on every endpoint using triple decorators. Graceful fallback ensures Redis downtime does not affect correctness — only performance.
 When creating portal users that require domain entity (e.g., res.users + real.estate.tenant):
 
 ### Atomic Dual Record Creation (Portal Entities)
@@ -716,7 +855,22 @@ For tag entities where some tags must be immutable and drive business rules:
 - **ADRs**: ADR-008 (multi-tenancy), ADR-009 (headless auth), ADR-011 (security decorators), ADR-019 (RBAC profiles)
 - **Spec**: `specs/022-admin-ui-cross-company/spec.md`
 
-Use Feature 007 for standard CRUD patterns with HATEOAS. Use Feature 009 for security-sensitive flows requiring token-based authentication, anti-enumeration, and session management. Use Feature 013 for FSM-driven domain entities with concurrent access control, FIFO queues, and async notifications. Use Feature 015 for kanban-style pipeline domains with stage gates, conditional uniqueness, system tags, and aggregation endpoints. Use Feature 017 for binary file upload/download patterns with magic bytes validation, per-type quantity limits, and FR6.9-compliant error envelopes. Use Feature 022 for SaaS Admin cross-company access patterns (record rule overrides, API login block, noupdate compatibility).
+**Feature 023 — Redis Cache para Sessão e JWT** (Redis Auth Cache + Graceful Degradation Template):
+- **Problem**: Every authenticated request issued 2 SELECTs + 1 UPDATE on PostgreSQL before any business logic (`require_jwt` + `require_session`). Redis was configured but unused for lookup.
+- **Solution**: `RedisClient` singleton with `ConnectionPool`; JWT cached by `jwt:{sha256(token)[:32]}`; session cached by `session:{session_id}` including `security_token`; Odoo 18 ORM field cache pre-injected via `env.cache.set()` for zero-SELECT downstream access.
+- **No contract break**: `request.jwt_token`, `request.jwt_application`, `request.api_session` remain ORM records (`browse(id)` lazy records with field cache pre-populated).
+- **Graceful fallback**: All `RedisClient` methods catch every exception and return `None`/`False`/`0` — the application degrades to full PostgreSQL without any error.
+- **Invalidation hooks**: `OAuthToken.action_revoke()` override deletes JWT cache key; `APISession.write()` override deletes session cache key when `is_active` or `company_id` changes — covers logout, switch-company, login (old sessions), cron cleanup, user deactivation.
+- **Deployment order principle**: Invalidation hooks deployed BEFORE cache population is activated (eliminates stale-data window at deploy time).
+- **Trade-off**: `last_activity` updated only on cache MISS (~every 5 min), not per-request — documented explicitly as metric field, not security control.
+- **Performance stubs resolved**: `performance_service.py` methods `_get_cached_performance`, `_cache_performance`, `invalidate_cache` connected to `RedisClient` (were literal `return None` / `pass` stubs).
+- **Testing**: 12 unit tests (mock-only, T01–T12) + 6 E2E bash scenarios (`test_redis_cache.sh`) with `redis-cli` assertions.
+- **Files modified**: `middleware.py`, `services/session_validator.py`, `models/oauth_token.py`, `models/api_session.py`, `quicksol_estate/services/performance_service.py`
+- **File new**: `thedevkitchen_apigateway/services/redis_client.py`
+- **Spec**: `specs/023-redis-session-cache/spec.md`
+- **Plan**: `specs/023-redis-session-cache/plan.md`
+
+Use Feature 007 for standard CRUD patterns with HATEOAS. Use Feature 009 for security-sensitive flows requiring token-based authentication, anti-enumeration, and session management. Use Feature 013 for FSM-driven domain entities with concurrent access control, FIFO queues, and async notifications. Use Feature 015 for kanban-style pipeline domains with stage gates, conditional uniqueness, system tags, and aggregation endpoints. Use Feature 017 for binary file upload/download patterns with magic bytes validation, per-type quantity limits, and FR6.9-compliant error envelopes. Use Feature 022 for SaaS Admin cross-company access patterns (record rule overrides, API login block, noupdate compatibility). Use Feature 023 for Redis cache patterns on auth hot paths (JWT lookup, session lookup, ORM field cache injection, write hook invalidation, graceful fallback).
 
 ### Required Tests per Feature
 - **Unit**: Services, helpers, serializers, decorators
@@ -799,4 +953,4 @@ Para criação de testes, **DEVEM ser utilizados** os prompts e agents especiali
 - Constitution provides strategic direction; copilot-instructions provides tactical rules
 - Conflicts resolved in favor of constitution (strategic supersedes tactical)
 
-**Version**: 1.8.0 | **Ratified**: 2026-01-03 | **Last Amended**: 2026-06-03
+**Version**: 1.9.0 | **Ratified**: 2026-01-03 | **Last Amended**: 2026-06-08

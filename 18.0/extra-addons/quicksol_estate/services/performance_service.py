@@ -5,13 +5,23 @@ from odoo.exceptions import UserError, ValidationError
 
 _logger = logging.getLogger(__name__)
 
+try:
+    from odoo.addons.thedevkitchen_apigateway.services.redis_client import RedisClient
+except ImportError:
+    RedisClient = None
+
 
 class PerformanceService:
 
     def __init__(self, env):
 
         self.env = env
-        self.cache_ttl = 300  # 5 minutes cache TTL
+        # TTL is read dynamically from SecuritySettings; 300s default
+        try:
+            settings = self.env['thedevkitchen.security.settings'].sudo().get_settings()
+            self.cache_ttl = settings.performance_cache_ttl_seconds if settings else 300
+        except Exception:
+            self.cache_ttl = 300
 
     def get_agent_performance(self, agent_id, date_from=None, date_to=None):
         # Validate agent exists
@@ -26,7 +36,10 @@ class PerformanceService:
                 raise UserError("Access denied: Agent belongs to a different company")
 
         # Check cache first
-        cache_key = f"performance:agent:{agent_id}:{date_from}:{date_to}"
+        if RedisClient:
+            cache_key = RedisClient.performance_key(agent_id, str(date_from), str(date_to))
+        else:
+            cache_key = f"performance:agent:{agent_id}:{date_from}:{date_to}"
         cached_data = self._get_cached_performance(cache_key)
         if cached_data:
             _logger.info(f"Performance cache HIT for agent {agent_id}")
@@ -221,30 +234,33 @@ class PerformanceService:
         }
 
     def _get_cached_performance(self, cache_key):
-
-        try:
-            # Try to get from Redis (configured in odoo.conf with db_index=1)
-            # Note: Redis integration requires odoo-redis module or custom implementation
-            # For now, return None (cache disabled until Redis integration is complete)
+        if not RedisClient:
             return None
-        except Exception as e:
-            _logger.warning(f"Redis cache read error for key {cache_key}: {e}")
+        try:
+            data = RedisClient.get_json(cache_key)
+            if data:
+                _logger.info('[CACHE] performance HIT key=%s', cache_key)
+            else:
+                _logger.warning('[CACHE] performance MISS key=%s', cache_key)
+            return data
+        except Exception as exc:
+            _logger.warning('[CACHE] performance read error key=%s: %s', cache_key, exc)
             return None
 
     def _cache_performance(self, cache_key, performance_data):
-
+        if not RedisClient:
+            return
         try:
-            # Store in Redis with TTL=300s (5 minutes)
-            # Implementation pending Redis integration
-            _logger.debug(f"Performance data cached (stub): {cache_key}")
-        except Exception as e:
-            _logger.warning(f"Redis cache write error for key {cache_key}: {e}")
+            RedisClient.set_json(cache_key, performance_data, self.cache_ttl)
+            _logger.debug('[CACHE] performance stored key=%s ttl=%s', cache_key, self.cache_ttl)
+        except Exception as exc:
+            _logger.warning('[CACHE] performance write error key=%s: %s', cache_key, exc)
 
     def invalidate_cache(self, agent_id):
-
+        if not RedisClient:
+            return
         try:
-            # Delete all cache keys matching pattern "performance:agent:{agent_id}:*"
-            # Implementation pending Redis integration
-            _logger.info(f"Performance cache invalidated for agent {agent_id} (stub)")
-        except Exception as e:
-            _logger.warning(f"Redis cache invalidation error for agent {agent_id}: {e}")
+            deleted = RedisClient.delete_pattern(f'performance:agent:{agent_id}:*')
+            _logger.info('[CACHE] performance invalidated agent=%s keys_deleted=%s', agent_id, deleted)
+        except Exception as exc:
+            _logger.warning('[CACHE] performance invalidation error agent=%s: %s', agent_id, exc)

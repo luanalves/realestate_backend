@@ -1,4 +1,12 @@
 from odoo import models, fields
+import logging
+
+_logger = logging.getLogger(__name__)
+
+try:
+    from ..services.redis_client import RedisClient
+except ImportError:
+    RedisClient = None
 
 
 class APISession(models.Model):
@@ -53,3 +61,17 @@ class APISession(models.Model):
              'Set automatically at login from the user\'s first real estate company. '
              'Updated via POST /api/v1/users/switch-company.',
     )
+
+    def write(self, vals):
+        """Override: invalidate Redis cache when session state or company changes."""
+        result = super().write(vals)
+        if result and RedisClient and ('is_active' in vals or 'company_id' in vals):
+            for record in self:
+                if record.session_id:
+                    try:
+                        key = RedisClient.session_key(record.session_id)
+                        RedisClient.delete(key)
+                        _logger.info('[CACHE] session invalidated session:%s...', record.session_id[:10])
+                    except Exception as exc:
+                        _logger.warning('[CACHE] session invalidation failed: %s', exc)
+        return result
