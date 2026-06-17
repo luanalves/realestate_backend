@@ -168,14 +168,33 @@ class Profile(models.Model):
         vals["updated_at"] = fields.Datetime.now()
         result = super(Profile, self).write(vals)
 
-        # Invalidate performance cache when profile_type changes (T018: US2)
-        if RedisClient and 'profile_type_id' in vals:
+        # Deactivate active sessions when profile_type changes so permission
+        # changes take effect immediately (US2). Redis eviction happens
+        # cascadically via APISession.write({'is_active': False}) override.
+        if 'profile_type_id' in vals:
             for record in self:
                 try:
-                    RedisClient.delete_pattern(f'performance:agent:{record.id}:*')
-                    _logger.info('[CACHE] performance cache invalidated for profile %d', record.id)
+                    if not record.partner_id:
+                        continue
+                    users = self.env['res.users'].sudo().search([
+                        ('partner_id', '=', record.partner_id.id)
+                    ])
+                    for user in users:
+                        sessions = self.env['thedevkitchen.api.session'].sudo().search([
+                            ('user_id', '=', user.id),
+                            ('is_active', '=', True),
+                        ])
+                        if sessions:
+                            sessions.write({'is_active': False})
+                            _logger.info(
+                                '[CACHE] sessions deactivated for profile=%d user=%d on type change',
+                                record.id, user.id
+                            )
                 except Exception as exc:
-                    _logger.warning('[CACHE] performance cache invalidation failed: %s', exc)
+                    _logger.warning(
+                        '[CACHE] session invalidation failed for profile=%d: %s',
+                        record.id, exc
+                    )
 
         return result
 

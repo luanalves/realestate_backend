@@ -320,8 +320,8 @@ class RealEstateCommissionTransaction(models.Model):
         # Invalidate performance cache for the agent (T023: US3)
         if RedisClient and transaction.agent_id:
             try:
-                RedisClient.delete_pattern(f'performance:agent:{transaction.agent_id.id}:*')
-                _logger.info('[CACHE] performance invalidated for agent=%d after new commission', transaction.agent_id.id)
+                deleted = RedisClient.delete_pattern(f'performance:agent:{transaction.agent_id.id}:*')
+                _logger.info('[CACHE] performance invalidated for agent=%d keys_deleted=%s after new commission', transaction.agent_id.id, deleted)
             except Exception as exc:
                 _logger.warning('[CACHE] performance invalidation failed on commission create: %s', exc)
 

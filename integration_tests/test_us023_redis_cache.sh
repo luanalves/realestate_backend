@@ -100,7 +100,13 @@ _redis_cmd() {
 }
 
 flush_cache() {
-    _redis_cmd FLUSHDB > /dev/null && echo "flushed" || echo "flush_failed"
+    # Delete only this feature's key prefixes — never FLUSHDB (would wipe Odoo sessions)
+    for prefix in 'session:*' 'jwt:*' 'performance:*'; do
+        _redis_cmd KEYS "$prefix" 2>/dev/null | grep -v '^$' | while IFS= read -r key; do
+            [ -n "$key" ] && _redis_cmd DEL "$key" > /dev/null
+        done
+    done
+    echo "flushed"
 }
 
 key_exists() {

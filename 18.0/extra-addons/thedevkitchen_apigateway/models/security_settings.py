@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import models, fields, api
+from odoo.exceptions import ValidationError
 import logging
 
 _logger = logging.getLogger(__name__)
@@ -58,3 +59,13 @@ class SecuritySettings(models.Model):
             _logger.info('Creating default security settings')
             settings = self.sudo().create({'name': 'Security Configuration'})
         return settings
+
+    @api.constrains('session_cache_ttl_seconds', 'performance_cache_ttl_seconds', 'session_inactivity_days')
+    def _check_ttl_bounds(self):
+        for rec in self:
+            if rec.session_cache_ttl_seconds < 0:
+                raise ValidationError('Session Cache TTL must be >= 0 seconds.')
+            if rec.performance_cache_ttl_seconds < 0:
+                raise ValidationError('Performance Cache TTL must be >= 0 seconds.')
+            if rec.session_inactivity_days < 1:
+                raise ValidationError('Session Inactivity Timeout must be >= 1 day.')

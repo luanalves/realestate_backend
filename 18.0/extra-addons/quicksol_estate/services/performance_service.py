@@ -258,7 +258,7 @@ class PerformanceService:
         if not RedisClient:
             return
         try:
-            RedisClient.delete_pattern(f'performance:agent:{agent_id}:*')
-            _logger.info('[CACHE] performance invalidated agent=%s', agent_id)
+            deleted = RedisClient.delete_pattern(f'performance:agent:{agent_id}:*')
+            _logger.info('[CACHE] performance invalidated agent=%s keys_deleted=%s', agent_id, deleted)
         except Exception as exc:
             _logger.warning('[CACHE] performance invalidation error agent=%s: %s', agent_id, exc)

@@ -36,21 +36,24 @@ def require_jwt(func):
             cache_key = RedisClient.jwt_key(token)
             cached = RedisClient.get_json(cache_key)
             if cached:
-                if cached.get('revoked'):
-                    _logger.warning('[CACHE] jwt HIT revoked token_id=%s', cached.get('id'))
-                    return _error_response(401, 'token_revoked', 'Token has been revoked')
-                if cached.get('expires_at_ts', 0) <= time.time():
-                    _logger.warning('[CACHE] jwt HIT expired token_id=%s', cached.get('id'))
-                    return _error_response(401, 'token_expired', 'Token has expired')
-                if cached.get('token_type') != 'Bearer':
-                    return _error_response(401, 'invalid_token', 'Token type must be Bearer')
-                # Lazy ORM records — zero SELECT
-                Token = request.env['thedevkitchen.oauth.token'].sudo()
-                App = request.env['thedevkitchen.oauth.application'].sudo()
-                request.jwt_token = Token.browse(cached['id'])
-                request.jwt_application = App.browse(cached['application_id'])
-                _logger.info('[CACHE] jwt HIT token_id=%s', cached.get('id'))
-                return func(*args, **kwargs)
+                try:
+                    if cached.get('revoked'):
+                        _logger.warning('[CACHE] jwt HIT revoked token_id=%s', cached.get('id'))
+                        return _error_response(401, 'token_revoked', 'Token has been revoked')
+                    if cached.get('expires_at_ts', 0) <= time.time():
+                        _logger.warning('[CACHE] jwt HIT expired token_id=%s', cached.get('id'))
+                        return _error_response(401, 'token_expired', 'Token has expired')
+                    if cached.get('token_type') != 'Bearer':
+                        return _error_response(401, 'invalid_token', 'Token type must be Bearer')
+                    # Lazy ORM records — zero SELECT
+                    Token = request.env['thedevkitchen.oauth.token'].sudo()
+                    App = request.env['thedevkitchen.oauth.application'].sudo()
+                    request.jwt_token = Token.browse(cached['id'])
+                    request.jwt_application = App.browse(cached['application_id'])
+                    _logger.info('[CACHE] jwt HIT token_id=%s', cached.get('id'))
+                    return func(*args, **kwargs)
+                except (KeyError, TypeError) as exc:
+                    _logger.warning('[CACHE] jwt HIT malformed payload, falling back to DB: %s', exc)
             _logger.warning('[CACHE] jwt MISS key=%s', cache_key[:20])
 
         # --- Database path (MISS or Redis unavailable) ---

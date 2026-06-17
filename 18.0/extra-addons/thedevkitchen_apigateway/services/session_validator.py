@@ -26,27 +26,30 @@ class SessionValidator:
             cache_key = RedisClient.session_key(session_id)
             cached = RedisClient.get_json(cache_key)
             if cached:
-                if not cached.get('is_active'):
-                    _logger.warning('[CACHE] session HIT inactive session:%s...', session_id[:10])
-                    return False, None, None, 'Invalid or expired session'
-                if not cached.get('user_active'):
-                    _logger.warning('[CACHE] session HIT inactive user session:%s...', session_id[:10])
-                    return False, None, None, 'User inactive'
-                # Lazy ORM records — zero SELECT via Odoo 18 field cache injection
-                APISession = env['thedevkitchen.api.session'].sudo()
-                Users = env['res.users'].sudo()
-                api_session = APISession.browse(cached['id'])
-                user = Users.browse(cached['user_id'])
                 try:
-                    env.cache.set(api_session, APISession._fields['security_token'], cached.get('security_token'))
-                    env.cache.set(api_session, APISession._fields['is_active'], True)
-                    if cached.get('company_id') and 'company_id' in APISession._fields:
-                        env.cache.set(api_session, APISession._fields['company_id'], cached.get('company_id'))
-                    env.cache.set(user, Users._fields['active'], True)
-                except Exception:
-                    pass  # Field cache injection is best-effort
-                _logger.info('[CACHE] session HIT session:%s...', session_id[:10])
-                return True, user, api_session, None
+                    if not cached.get('is_active'):
+                        _logger.warning('[CACHE] session HIT inactive session:%s...', session_id[:10])
+                        return False, None, None, 'Invalid or expired session'
+                    if not cached.get('user_active'):
+                        _logger.warning('[CACHE] session HIT inactive user session:%s...', session_id[:10])
+                        return False, None, None, 'User inactive'
+                    # Lazy ORM records — zero SELECT via Odoo 18 field cache injection
+                    APISession = env['thedevkitchen.api.session'].sudo()
+                    Users = env['res.users'].sudo()
+                    api_session = APISession.browse(cached['id'])
+                    user = Users.browse(cached['user_id'])
+                    try:
+                        env.cache.set(api_session, APISession._fields['security_token'], cached.get('security_token'))
+                        env.cache.set(api_session, APISession._fields['is_active'], True)
+                        if cached.get('company_id') and 'company_id' in APISession._fields:
+                            env.cache.set(api_session, APISession._fields['company_id'], cached.get('company_id'))
+                        env.cache.set(user, Users._fields['active'], True)
+                    except Exception:
+                        pass  # Field cache injection is best-effort
+                    _logger.info('[CACHE] session HIT session:%s...', session_id[:10])
+                    return True, user, api_session, None
+                except (KeyError, TypeError) as exc:
+                    _logger.warning('[CACHE] session HIT malformed payload, falling back to DB: %s', exc)
             _logger.warning('[CACHE] session MISS session:%s...', session_id[:10])
 
         # --- Database path (MISS or Redis unavailable) ---

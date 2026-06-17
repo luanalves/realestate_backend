@@ -212,14 +212,12 @@ class TestSecuritySettingsCacheToggle(TransactionCase):
         self.assertEqual(settings.performance_cache_ttl_seconds, 60)
         self.assertEqual(settings.session_inactivity_days, 14)
 
-    @patch('odoo.addons.thedevkitchen_apigateway.services.redis_client.RedisClient.set_json')
-    def test_ttl_zero_session_no_redis_key_created(self, mock_set_json):
-        """session_cache_ttl_seconds=0 → RedisClient.set_json rejects (returns False)"""
-        # The guard in set_json: if ttl <= 0: return False
+    def test_ttl_zero_session_no_redis_key_created(self):
+        """session_cache_ttl_seconds=0 → RedisClient.set_json internal guard returns False"""
+        # Call the real classmethod directly — no mock needed.
+        # The guard `if ttl <= 0: return False` runs before any Redis connection.
         from odoo.addons.thedevkitchen_apigateway.services.redis_client import RedisClient
-        rc = RedisClient()
-        result = rc.set_json('session:test', {'data': 1}, 0)
-        # set_json internal guard should return False without writing
+        result = RedisClient.set_json('session:test', {'data': 1}, ttl=0)
         self.assertFalse(result)
 
     def test_settings_singleton_get_settings(self):
