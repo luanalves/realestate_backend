@@ -21,7 +21,7 @@ Returns HTTP 409 if a provided phone matches multiple distinct partners.
 
 **Required Headers:**
 - `Authorization: Bearer {access_token}`
-- `X-Session-Id: {session_id}`
+- `X-Openerp-Session-Id: {session_id}`
 - `X-Company-ID: {company_id}`
 
 **Request Body (application/json):**

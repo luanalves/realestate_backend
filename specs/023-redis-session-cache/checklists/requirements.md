@@ -31,7 +31,7 @@
 
 ## Notes
 
-- **US1 (cache hit) maps to**: FR-001, FR-002, FR-003, FR-004 + SC-001, SC-002, SC-005
+- **US1 (cache hit) maps to**: FR-001, FR-002, FR-003, FR-004 + SC-001, SC-002
 - **US2 (invalidação) maps to**: FR-005, FR-006, FR-007 + SC-003
 - **US3 (métricas) maps to**: FR-009, FR-010 + SC-004
 - **FR-008 (fallback graceful)** é coberto pelo cenário US1.2 (cache indisponível) e SC-002

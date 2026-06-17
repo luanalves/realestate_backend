@@ -64,7 +64,8 @@ class APISession(models.Model):
 
     def write(self, vals):
         """Override: invalidate Redis cache when session state or company changes."""
-        if RedisClient and ('is_active' in vals or 'company_id' in vals):
+        result = super().write(vals)
+        if result and RedisClient and ('is_active' in vals or 'company_id' in vals):
             for record in self:
                 if record.session_id:
                     try:
@@ -73,4 +74,4 @@ class APISession(models.Model):
                         _logger.info('[CACHE] session invalidated session:%s...', record.session_id[:10])
                     except Exception as exc:
                         _logger.warning('[CACHE] session invalidation failed: %s', exc)
-        return super().write(vals)
+        return result

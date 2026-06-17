@@ -2,7 +2,6 @@
 import jwt
 import json
 import time
-import hashlib
 import logging
 import functools
 from datetime import datetime
@@ -45,11 +44,23 @@ def require_jwt(func):
                         return _error_response(401, 'token_expired', 'Token has expired')
                     if cached.get('token_type') != 'Bearer':
                         return _error_response(401, 'invalid_token', 'Token type must be Bearer')
-                    # Lazy ORM records — zero SELECT
+                    # Pre-populate ORM field cache to avoid DB reads on HIT
                     Token = request.env['thedevkitchen.oauth.token'].sudo()
                     App = request.env['thedevkitchen.oauth.application'].sudo()
                     request.jwt_token = Token.browse(cached['id'])
                     request.jwt_application = App.browse(cached['application_id'])
+                    try:
+                        env = request.env
+                        ts = cached.get('expires_at_ts')
+                        env.cache.set(request.jwt_token, Token._fields['scope'], cached.get('scope', ''))
+                        env.cache.set(request.jwt_token, Token._fields['revoked'], cached.get('revoked', False))
+                        env.cache.set(request.jwt_token, Token._fields['token_type'], cached.get('token_type', 'Bearer'))
+                        if ts and 'expires_at' in Token._fields:
+                            env.cache.set(request.jwt_token, Token._fields['expires_at'], datetime.fromtimestamp(ts))
+                        if 'application_id' in Token._fields:
+                            env.cache.set(request.jwt_token, Token._fields['application_id'], cached['application_id'])
+                    except Exception:
+                        pass  # Field cache injection is best-effort
                     _logger.info('[CACHE] jwt HIT token_id=%s', cached.get('id'))
                     return func(*args, **kwargs)
                 except (KeyError, TypeError) as exc:

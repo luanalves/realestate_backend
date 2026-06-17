@@ -7,11 +7,6 @@ from ..utils import validators
 
 _logger = logging.getLogger(__name__)
 
-try:
-    from odoo.addons.thedevkitchen_apigateway.services.redis_client import RedisClient
-except ImportError:
-    RedisClient = None
-
 
 class Profile(models.Model):
     _name = "thedevkitchen.estate.profile"

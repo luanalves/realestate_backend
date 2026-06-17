@@ -5182,7 +5182,7 @@ GET /api/v1/leads?state=qualified&budget_min=300000&budget_max=500000]]></field>
 
 **Required Headers:**
 - `Authorization: Bearer {access_token}`
-- `X-Session-Id: {session_id}`
+- `X-Openerp-Session-Id: {session_id}`
 
 **Path Parameters:**
 - `id` (integer): Owner user ID
@@ -5261,7 +5261,7 @@ GET /api/v1/leads?state=qualified&budget_min=300000&budget_max=500000]]></field>
 
 **Required Headers:**
 - `Authorization: Bearer {access_token}`
-- `X-Session-Id: {session_id}`
+- `X-Openerp-Session-Id: {session_id}`
 
 **Path Parameters:**
 - `id` (integer): Owner user ID
@@ -6273,7 +6273,7 @@ GET /api/v1/leads?state=qualified&budget_min=300000&budget_max=500000]]></field>
 
 **Required Headers:**
 - `Authorization: Bearer {access_token}`
-- `X-Session-Id: {session_id}`
+- `X-Openerp-Session-Id: {session_id}`
 
 **Error Responses:**
 - 400: Validation error (missing required field, invalid document, etc.)
@@ -6327,7 +6327,7 @@ GET /api/v1/leads?state=qualified&budget_min=300000&budget_max=500000]]></field>
 
 **Required Headers:**
 - `Authorization: Bearer {access_token}`
-- `X-Session-Id: {session_id}`
+- `X-Openerp-Session-Id: {session_id}`
 
 **Query Parameters:**
 - `state` (string, optional): Filter by state (draft, queued, sent, negotiation, accepted, rejected, expired, cancelled)
@@ -6387,7 +6387,7 @@ GET /api/v1/leads?state=qualified&budget_min=300000&budget_max=500000]]></field>
 
 **Required Headers:**
 - `Authorization: Bearer {access_token}`
-- `X-Session-Id: {session_id}`
+- `X-Openerp-Session-Id: {session_id}`
 
 **Error Responses:**
 - 401: Invalid or missing JWT token
@@ -6429,7 +6429,7 @@ GET /api/v1/leads?state=qualified&budget_min=300000&budget_max=500000]]></field>
 
 **Required Headers:**
 - `Authorization: Bearer {access_token}`
-- `X-Session-Id: {session_id}`
+- `X-Openerp-Session-Id: {session_id}`
 
 **Path Parameters:**
 - `proposal_id` (int, required): Proposal ID
@@ -6469,7 +6469,7 @@ GET /api/v1/leads?state=qualified&budget_min=300000&budget_max=500000]]></field>
 
 **Required Headers:**
 - `Authorization: Bearer {access_token}`
-- `X-Session-Id: {session_id}`
+- `X-Openerp-Session-Id: {session_id}`
 
 **Path Parameters:**
 - `proposal_id` (int, required): Proposal ID
@@ -6507,7 +6507,7 @@ GET /api/v1/leads?state=qualified&budget_min=300000&budget_max=500000]]></field>
 
 **Required Headers:**
 - `Authorization: Bearer {access_token}`
-- `X-Session-Id: {session_id}`
+- `X-Openerp-Session-Id: {session_id}`
 
 **Path Parameters:**
 - `proposal_id` (int, required): Proposal ID
@@ -6543,7 +6543,7 @@ GET /api/v1/leads?state=qualified&budget_min=300000&budget_max=500000]]></field>
 
 **Required Headers:**
 - `Authorization: Bearer {access_token}`
-- `X-Session-Id: {session_id}`
+- `X-Openerp-Session-Id: {session_id}`
 
 **Path Parameters:**
 - `proposal_id` (int, required): Proposal ID
@@ -6569,7 +6569,7 @@ GET /api/v1/leads?state=qualified&budget_min=300000&budget_max=500000]]></field>
 
 **Required Headers:**
 - `Authorization: Bearer {access_token}`
-- `X-Session-Id: {session_id}`
+- `X-Openerp-Session-Id: {session_id}`
 
 **Path Parameters:**
 - `proposal_id` (int, required): Proposal ID
@@ -6596,7 +6596,7 @@ GET /api/v1/leads?state=qualified&budget_min=300000&budget_max=500000]]></field>
 
 **Required Headers:**
 - `Authorization: Bearer {access_token}`
-- `X-Session-Id: {session_id}`
+- `X-Openerp-Session-Id: {session_id}`
 
 **Path Parameters:**
 - `proposal_id` (int, required): Proposal ID
@@ -6631,7 +6631,7 @@ GET /api/v1/leads?state=qualified&budget_min=300000&budget_max=500000]]></field>
 
 **Required Headers:**
 - `Authorization: Bearer {access_token}`
-- `X-Session-Id: {session_id}`
+- `X-Openerp-Session-Id: {session_id}`
 
 **Path Parameters:**
 - `proposal_id` (int, required): Parent proposal ID
@@ -6670,7 +6670,7 @@ GET /api/v1/leads?state=qualified&budget_min=300000&budget_max=500000]]></field>
 
 **Required Headers:**
 - `Authorization: Bearer {access_token}`
-- `X-Session-Id: {session_id}`
+- `X-Openerp-Session-Id: {session_id}`
 
 **Path Parameters:**
 - `proposal_id` (int, required): Any proposal ID on the target property
@@ -6721,7 +6721,7 @@ GET /api/v1/leads?state=qualified&budget_min=300000&budget_max=500000]]></field>
 
 **Required Headers:**
 - `Authorization: Bearer {access_token}`
-- `X-Session-Id: {session_id}`
+- `X-Openerp-Session-Id: {session_id}`
 - `Content-Type: multipart/form-data`
 
 **Path Parameters:**
@@ -6766,7 +6766,7 @@ GET /api/v1/leads?state=qualified&budget_min=300000&budget_max=500000]]></field>
 
 **Required Headers:**
 - `Authorization: Bearer {access_token}`
-- `X-Session-Id: {session_id}`
+- `X-Openerp-Session-Id: {session_id}`
 - `Content-Type: multipart/form-data`
 
 **Path Parameters:**
@@ -6897,7 +6897,7 @@ GET /api/v1/leads?state=qualified&budget_min=300000&budget_max=500000]]></field>
 
 **Required Headers:**
 - `Authorization: Bearer {access_token}`
-- `X-Session-Id: {session_id}`
+- `X-Openerp-Session-Id: {session_id}`
 
 **Path Parameters:**
 - `id` (int, required): Property ID
@@ -7021,7 +7021,7 @@ GET /api/v1/leads?state=qualified&budget_min=300000&budget_max=500000]]></field>
 
 **Required Headers:**
 - `Authorization: Bearer {access_token}`
-- `X-Session-Id: {session_id}`
+- `X-Openerp-Session-Id: {session_id}`
 
 **Path Parameters:**
 - `id` (int, required): Property ID
@@ -7051,7 +7051,7 @@ GET /api/v1/leads?state=qualified&budget_min=300000&budget_max=500000]]></field>
 
 **Required Headers:**
 - `Authorization: Bearer {access_token}`
-- `X-Session-Id: {session_id}`
+- `X-Openerp-Session-Id: {session_id}`
 
 **Path Parameters:**
 - `id` (int, required): Property ID

@@ -35,7 +35,7 @@ SESSION=$(curl -s ... | jq -r '.session_id')
 ```bash
 curl -s http://localhost:8069/api/v1/users/me \
   -H "Authorization: Bearer $TOKEN" \
-  -H "X-Session-Id: $SESSION"
+  -H "X-Openerp-Session-Id: $SESSION"
 # Logs: [CACHE] session MISS, [CACHE] jwt MISS
 ```
 
@@ -105,19 +105,21 @@ cd 18.0 && bash ../integration_tests/test_us023_redis_cache.sh
 
 ---
 
-## Testar Fallback (Redis Indisponível)
+## Testar Fallback (Módulo de Cache Indisponível)
+
+> **Atenção:** O Redis é o backend nativo de sessões do Odoo neste setup — parar o
+> container Redis derrubaria as sessões Odoo por completo, não apenas a camada de
+> cache customizada. Para testar o fallback gracioso do módulo, use a variável de
+> ambiente `REDIS_URL=redis://localhost:9999` (porta inexistente) no processo Odoo,
+> ou configure temporariamente `redis_host` para um host inatingível no `odoo.conf`.
 
 ```bash
-# Parar Redis
-docker compose stop redis
-
-# Fazer requisição autenticada — deve retornar 200 (fallback banco)
+# Exemplo: forçar falha de conexão Redis sem parar o container
+# Altere redis_host = redis -> redis_host = redis_test_fail em odoo.conf e reinicie Odoo
+# Em seguida, faça requisição autenticada — deve retornar 200 (fallback banco)
 curl -s http://localhost:8069/api/v1/users/me \
   -H "Authorization: Bearer $TOKEN" \
-  -H "X-Session-Id: $SESSION"
+  -H "X-Openerp-Session-Id: $SESSION"
 # → HTTP 200 (sem 500)
 # Logs: [CACHE] Redis connection failed: ...
-
-# Restaurar Redis
-docker compose start redis
 ```

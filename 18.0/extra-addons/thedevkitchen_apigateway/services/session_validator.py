@@ -33,6 +33,10 @@ class SessionValidator:
                     if not cached.get('user_active'):
                         _logger.warning('[CACHE] session HIT inactive user session:%s...', session_id[:10])
                         return False, None, None, 'User inactive'
+                    # Reject malformed payloads — missing security_token means we'd inject
+                    # None into ORM cache, causing require_session to 401 on a valid session.
+                    if not cached.get('security_token'):
+                        raise KeyError('security_token missing or empty in cached payload')
                     # Lazy ORM records — zero SELECT via Odoo 18 field cache injection
                     APISession = env['thedevkitchen.api.session'].sudo()
                     Users = env['res.users'].sudo()

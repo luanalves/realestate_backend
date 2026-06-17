@@ -240,6 +240,8 @@ class PerformanceService:
             data = RedisClient.get_json(cache_key)
             if data:
                 _logger.info('[CACHE] performance HIT key=%s', cache_key)
+            else:
+                _logger.warning('[CACHE] performance MISS key=%s', cache_key)
             return data
         except Exception as exc:
             _logger.warning('[CACHE] performance read error key=%s: %s', cache_key, exc)
