@@ -61,10 +61,10 @@ Adotar **MailHog** como servidor SMTP para **ambiente de desenvolvimento** com a
 ### Solução Implementada
 
 ```yaml
-# docker-compose.yml
-mailhog:
+# docker-compose.yml (ambiente local)
+mailhog_realestate:
   image: mailhog/mailhog:latest
-  container_name: mailhog
+  container_name: mailhog_realestate
   ports:
     - "1025:1025"  # SMTP server
     - "8025:8025"  # Web UI
@@ -77,7 +77,7 @@ mailhog:
 ```ini
 # Outgoing Mail Server
 Authenticate with: Username
-SMTP Server: mailhog
+SMTP Server: mailhog_realestate
 SMTP Port: 1025
 Connection Security: None
 Username: (empty)
@@ -186,16 +186,16 @@ services:
 
 ```bash
 # 1. Start MailHog
-docker compose up -d mailhog
+docker compose up -d mailhog_realestate
 
 # 2. Verificar status
-docker compose ps mailhog
+docker compose ps mailhog_realestate
 # STATUS: Up (healthy)
 
 # 3. Testar conectividade
 docker compose exec odoo python3 -c "
 import smtplib
-smtp = smtplib.SMTP('mailhog', 1025, timeout=5)
+smtp = smtplib.SMTP('mailhog_realestate', 1025, timeout=5)
 print('✅ MailHog conectado')
 smtp.quit()
 "
@@ -303,3 +303,4 @@ Password: [SMTP Password]
 - **Commit:** `e82c443` - feat: Add MailHog service for email testing in development
 - **Autor:** TheDevKitchen
 - **Contexto:** Feature 009 - User Onboarding & Password Management
+- **2026-06-07:** Container renomeado de `mailhog` → `mailhog_realestate` para evitar conflito de nomes com outros projetos Docker rodando na mesma máquina de desenvolvimento. A alteração aplica-se **somente ao `docker-compose.yml` local** (`18.0/docker-compose.yml`); o `docker-compose-production.yml` não é afetado. O hostname DNS interno (usado pelo Odoo como SMTP Server) passa a ser `mailhog_realestate`.

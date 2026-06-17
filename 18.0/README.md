@@ -73,7 +73,7 @@ docker run -d --name odoo18 --network odoo-net \
 - **Status:** Check with `docker compose ps` or Flower UI
 
 #### MailHog (Email Testing)
-- **SMTP Server:** `mailhog:1025` (for Odoo configuration)
+- **SMTP Server:** `mailhog_realestate:1025` (for Odoo configuration)
 - **Web UI:** [http://localhost:8025](http://localhost:8025)
 - **Purpose:** Captures all emails sent by Odoo without actually sending them
 - **Usage:** Perfect for testing email flows (invites, password reset, notifications)
@@ -83,7 +83,7 @@ docker run -d --name odoo18 --network odoo-net \
 1. Go to: Settings > Technical > Email > Outgoing Mail Servers
 2. Click "New" and fill:
    - **Name:** MailHog Development
-   - **SMTP Server:** mailhog
+   - **SMTP Server:** mailhog_realestate
    - **SMTP Port:** 1025
    - **Connection Security:** None
    - **Username:** (leave empty)

@@ -271,9 +271,9 @@ services:
       timeout: 5s
       retries: 3
 
-  mailhog:
+  mailhog_realestate:
     image: mailhog/mailhog:latest
-    container_name: mailhog
+    container_name: mailhog_realestate
     depends_on:
       mailhog_mongo:
         condition: service_healthy
