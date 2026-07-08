@@ -1328,3 +1328,183 @@ Find item 6 in the "Attention Points" section (`## 12. Attention Points`). Repla
 git add knowledge_base/security.md knowledge_base/api-surface.md CLAUDE.md
 git commit -m "docs(024): correct stale public-endpoint claims for GET /api/v1/leads"
 ```
+
+---
+
+### Task 11: Update the Postman collection (ADR-016 / `postman-collection-manager`)
+
+**Files:**
+- Create: `docs/postman/quicksol_api_v1.35_postman_collection.json`
+- Delete: `docs/postman/quicksol_api_v1.34_postman_collection.json` (per `.github/skills/postman-collection-manager/SKILL.md`: "Delete o arquivo antigo — apenas guarde a última versão")
+- Modify: `docs/postman/README.md`
+
+**Interfaces:** None — documentation/tooling artifact only.
+
+All six affected endpoints (`List Leads`, `Export Leads to CSV`, `Get Lead Statistics`, `List Lead Activities`, `Log Activity on Lead`, `Schedule Activity on Lead`) already exist in `quicksol_api_v1.34_postman_collection.json` under folders `10. Leads - CRUD`, `12. Lead Analytics`, and `13. Lead Activities`. `List Leads`, `Export Leads to CSV`, and `Get Lead Statistics` already document `**Multi-tenancy:** Company isolation active (@require_company)` in their `request.description` (that claim was previously false due to the bug fixed in Tasks 1-3; no text change needed there, it is now accurate). `List Lead Activities`, `Log Activity on Lead`, and `Schedule Activity on Lead` are **missing** that line entirely — confirmed by inspecting the raw JSON — because they were missing `@require_company` before Tasks 4-6. This task adds it.
+
+- [ ] **Step 1: Write and run the version-bump script**
+
+Save as `/private/tmp/claude-501/-opt-homebrew-var-www-realestate-odoo-docker/scratchpad/bump_postman_v1_35.py` (or any scratch path) and run with `python3`:
+
+```python
+import json
+
+SRC = "docs/postman/quicksol_api_v1.34_postman_collection.json"
+DST = "docs/postman/quicksol_api_v1.35_postman_collection.json"
+
+with open(SRC, encoding="utf-8") as f:
+    collection = json.loads(f.read(), strict=False)
+
+UPDATES = {
+    "List Lead Activities": (
+        "**Authentication:** Bearer Token + Session ID required\n"
+        "**Fingerprint validation:** Active\n\n"
+        "**IMPORTANT:** For GET requests, session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in body.\n\n"
+        "List all activities logged on a specific lead.",
+        "**Authentication:** Bearer Token + Session ID required\n"
+        "**Multi-tenancy:** Company isolation active (@require_company) — returns 403 ACCESS_DENIED if the lead belongs to a different company\n"
+        "**Fingerprint validation:** Active\n\n"
+        "**IMPORTANT:** For GET requests, session_id MUST be sent via header 'X-Openerp-Session-Id', NOT in body.\n\n"
+        "List all activities logged on a specific lead.",
+    ),
+    "Log Activity on Lead": (
+        "**Authentication:** Bearer Token + Session ID required\n"
+        "**Fingerprint validation:** Active\n\n"
+        "Log a new activity (call, email, visit, etc.) on a lead.",
+        "**Authentication:** Bearer Token + Session ID required\n"
+        "**Multi-tenancy:** Company isolation active (@require_company) — returns 403 ACCESS_DENIED if the lead belongs to a different company\n"
+        "**Fingerprint validation:** Active\n\n"
+        "Log a new activity (call, email, visit, etc.) on a lead.",
+    ),
+    "Schedule Activity on Lead": (
+        "**Authentication:** Bearer Token + Session ID required\n"
+        "**Fingerprint validation:** Active\n\n"
+        "Schedule a future activity on a lead with deadline.",
+        "**Authentication:** Bearer Token + Session ID required\n"
+        "**Multi-tenancy:** Company isolation active (@require_company) — returns 403 ACCESS_DENIED if the lead belongs to a different company\n"
+        "**Fingerprint validation:** Active\n\n"
+        "Schedule a future activity on a lead with deadline.",
+    ),
+}
+
+
+def walk(items):
+    for it in items:
+        if "item" in it:
+            yield from walk(it["item"])
+        else:
+            yield it
+
+
+applied = set()
+for it in walk(collection["item"]):
+    name = it.get("name")
+    if name in UPDATES:
+        old_desc, new_desc = UPDATES[name]
+        req = it.get("request", {})
+        current = req.get("description", "")
+        if current != old_desc:
+            raise SystemExit(
+                f"Description for '{name}' did not match the expected text — "
+                f"the collection may have changed since this script was written. "
+                f"Found:\n{current!r}"
+            )
+        req["description"] = new_desc
+        applied.add(name)
+
+missing = set(UPDATES) - applied
+if missing:
+    raise SystemExit(f"Could not find these requests in the collection: {missing}")
+
+collection["info"]["version"] = "1.35"
+collection["info"]["description"] += (
+    "\n\n## Changelog v1.35 (Feature 024)\n\n"
+    "**Lead company isolation enforced**\n\n"
+    "✅ `List Leads`, `Export Leads to CSV`, and `Get Lead Statistics` now actually "
+    "enforce the company/agent isolation their descriptions always claimed "
+    "(previously a domain-filter bug let cross-company leads leak through).\n"
+    "✅ `List Lead Activities`, `Log Activity on Lead`, and `Schedule Activity on Lead` "
+    "now require `@require_company` and return **403 ACCESS_DENIED** when the "
+    "target lead belongs to a different company than the requester's."
+)
+
+with open(DST, "w", encoding="utf-8") as f:
+    json.dump(collection, f, indent=2, ensure_ascii=False)
+
+print(f"Wrote {DST} (version {collection['info']['version']}, updated: {sorted(applied)})")
+```
+
+Run it from the repo root:
+
+```bash
+python3 /private/tmp/claude-501/-opt-homebrew-var-www-realestate-odoo-docker/scratchpad/bump_postman_v1_35.py
+```
+
+Expected output:
+
+```
+Wrote docs/postman/quicksol_api_v1.35_postman_collection.json (version 1.35, updated: ['List Lead Activities', 'Log Activity on Lead', 'Schedule Activity on Lead'])
+```
+
+If it exits with `SystemExit` instead, the collection has drifted from what Task 11 assumed — open `quicksol_api_v1.34_postman_collection.json`, find the current description text for the named request, and adjust `old_desc` in the script to match before re-running.
+
+- [ ] **Step 2: Validate the new file**
+
+```bash
+python3 -c "
+import json
+d = json.load(open('docs/postman/quicksol_api_v1.35_postman_collection.json'))
+assert d['info']['version'] == '1.35'
+assert 'v1.35' in d['info']['description']
+def walk(items):
+    for it in items:
+        if 'item' in it: yield from walk(it['item'])
+        else: yield it
+names = {it['name']: it['request'].get('description','') for it in walk(d['item'])}
+for n in ('List Lead Activities', 'Log Activity on Lead', 'Schedule Activity on Lead'):
+    assert 'Multi-tenancy' in names[n], f'{n} missing multi-tenancy note'
+print('OK')
+"
+```
+
+Expected: `OK`.
+
+- [ ] **Step 3: Update `docs/postman/README.md`**
+
+Update the header block near the top:
+
+```markdown
+**Version:** 1.35.0
+**Last Updated:** <today's date, YYYY-MM-DD>
+**Spec Coverage:** Complete API (55+ endpoints)
+```
+
+Add a new first entry under "## Available Collections" (renumber the existing "### 1. Complete API Collection (v1.31)" entry to "### 2." and so on is not required — this project's README already has non-sequential/duplicate numbering across versions, e.g. two "### 1." style entries from different eras; just prepend, don't renumber existing entries):
+
+```markdown
+### 1. Complete API Collection (v1.35) ⭐ RECOMMENDED
+**File:** `quicksol_api_v1.35_postman_collection.json`
+**Coverage:** All 55+ endpoints - Complete API coverage
+**ADR Compliance:** ADR-016 (complete)
+**Note:** Lead company/agent isolation now correctly enforced on List Leads, Export Leads to CSV, Get Lead Statistics, and all three Lead Activities endpoints (Feature 024)
+```
+
+Add a new changelog section directly above `## Changelog v1.31 (Latest - 2026-05-12)`:
+
+```markdown
+## Changelog v1.35 (Latest - <today's date, YYYY-MM-DD>)
+
+**Lead company isolation enforced (Feature 024)**
+
+✅ `List Leads`, `Export Leads to CSV`, and `Get Lead Statistics` now actually enforce the company/agent isolation their descriptions always claimed.
+✅ `List Lead Activities`, `Log Activity on Lead`, and `Schedule Activity on Lead` now require `@require_company` and document the new **403 ACCESS_DENIED** response for cross-company access attempts.
+
+```
+
+- [ ] **Step 4: Delete the superseded version and commit**
+
+```bash
+git rm docs/postman/quicksol_api_v1.34_postman_collection.json
+git add docs/postman/quicksol_api_v1.35_postman_collection.json docs/postman/README.md
+git commit -m "docs(024): update Postman collection to v1.35 for lead company isolation"
+```
