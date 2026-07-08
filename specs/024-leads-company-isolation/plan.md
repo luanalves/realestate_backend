@@ -1335,8 +1335,9 @@ git commit -m "docs(024): correct stale public-endpoint claims for GET /api/v1/l
 
 **Files:**
 - Create: `docs/postman/quicksol_api_v1.35_postman_collection.json`
-- Delete: `docs/postman/quicksol_api_v1.34_postman_collection.json` (per `.github/skills/postman-collection-manager/SKILL.md`: "Delete o arquivo antigo — apenas guarde a última versão")
 - Modify: `docs/postman/README.md`
+
+Note: per explicit user instruction, the previous version (`quicksol_api_v1.34_postman_collection.json`) is kept, not deleted — this deviates from the "keep only the latest version" rule in `.github/skills/postman-collection-manager/SKILL.md`, matching this project's existing practice of keeping many historical versioned files in `docs/postman/`.
 
 **Interfaces:** None — documentation/tooling artifact only.
 
@@ -1501,10 +1502,11 @@ Add a new changelog section directly above `## Changelog v1.31 (Latest - 2026-05
 
 ```
 
-- [ ] **Step 4: Delete the superseded version and commit**
+- [ ] **Step 4: Commit**
+
+The previous version (`quicksol_api_v1.34_postman_collection.json`) is kept, not deleted, per explicit user instruction:
 
 ```bash
-git rm docs/postman/quicksol_api_v1.34_postman_collection.json
 git add docs/postman/quicksol_api_v1.35_postman_collection.json docs/postman/README.md
-git commit -m "docs(024): update Postman collection to v1.35 for lead company isolation"
+git commit -m "docs(024): add Postman collection v1.35 for lead company isolation"
 ```
