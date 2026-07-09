@@ -64,6 +64,14 @@ class LeadApiController(http.Controller):
             # Build domain for filtering
             domain = []
 
+            # Company isolation (request.company_domain is set by @require_company;
+            # it is [] for base.group_system, meaning unrestricted access)
+            domain += request.company_domain
+
+            # Agent isolation: agents only see their own leads
+            if self._is_agent_role(user):
+                domain.append(("agent_id.user_id", "=", user.id))
+
             # Active filter (ADR-015: soft-delete)
             if active_filter == "true":
                 domain.append(("active", "=", True))
@@ -192,7 +200,7 @@ class LeadApiController(http.Controller):
                         f"Invalid date format for last_activity_before: {last_activity_before}"
                     )
 
-            # Query leads (record rules auto-filter by agent/company)
+            # Query leads (company/agent isolation enforced explicitly above)
             Lead = request.env["real.estate.lead"]
             # active='all' requires active_test=False so Odoo doesn't implicitly add ('active','=',True)
             lead_ctx = (
@@ -932,6 +940,15 @@ class LeadApiController(http.Controller):
             return error_response(str(e), 500, "INTERNAL_SERVER_ERROR")
 
     # ==================== PRIVATE HELPERS ====================
+
+    def _is_agent_role(self, user):
+        """Check if user has only agent role (not manager/owner/admin)."""
+        return (
+            user.has_group("quicksol_estate.group_real_estate_agent")
+            and not user.has_group("quicksol_estate.group_real_estate_manager")
+            and not user.has_group("quicksol_estate.group_real_estate_owner")
+            and not user.has_group("base.group_system")
+        )
 
     def _serialize_lead(self, lead, include_activities=False):
         """Serialize lead record to JSON (ADR-007: HATEOAS)"""
