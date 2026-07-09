@@ -307,6 +307,14 @@ class LeadApiController(http.Controller):
             # Build domain (same logic as list_leads, without pagination)
             domain = []
 
+            # Company isolation (request.company_domain is set by @require_company;
+            # it is [] for base.group_system, meaning unrestricted access)
+            domain += request.company_domain
+
+            # Agent isolation: agents only see their own leads
+            if self._is_agent_role(user):
+                domain.append(("agent_id.user_id", "=", user.id))
+
             if active_filter == "true":
                 domain.append(("active", "=", True))
             elif active_filter == "false":
@@ -344,7 +352,7 @@ class LeadApiController(http.Controller):
             if location_filter:
                 domain.append(("location_preference", "ilike", location_filter))
 
-            # Query leads (record rules enforce security)
+            # Query leads (company/agent isolation enforced explicitly above)
             Lead = request.env["real.estate.lead"]
             leads = Lead.sudo().search(domain, order="create_date desc")
 
