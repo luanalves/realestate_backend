@@ -1054,6 +1054,33 @@ class LeadApiController(http.Controller):
 
         return data
 
+    def _is_agent_role(self, user):
+        """FR2.1: True only for a pure Agent (no Manager/Owner/Admin override).
+
+        Managers and Owners already see all company leads (FR1); Admins
+        (base.group_system) are unrestricted. Only a user who has the
+        Agent group and none of those broader roles is scoped down to
+        their own leads.
+        """
+        if user.has_group("base.group_system"):
+            return False
+        if user.has_group("quicksol_estate.group_real_estate_manager"):
+            return False
+        if user.has_group("quicksol_estate.group_real_estate_owner"):
+            return False
+        return user.has_group("quicksol_estate.group_real_estate_agent")
+
+    def _check_lead_company_access(self, lead, user_company_ids):
+        """FR3.2/FR3.4: explicit company check for single-lead activity endpoints.
+
+        An empty user_company_ids means the caller is base.group_system
+        (admin), which bypasses this check entirely, consistent with
+        require_company's own admin semantics.
+        """
+        if not user_company_ids:
+            return True
+        return lead.company_id.id in user_company_ids
+
     # ==================== ACTIVITY TRACKING ENDPOINTS ====================
 
     @http.route(
