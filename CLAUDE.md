@@ -9,6 +9,10 @@
 
 **Prior documentation reconciled with code (Step 0.5):** `README.md` (root and `18.0/`), `docs/guide/*` (chapters 1–5), `docs/adr/*` (29 ADRs), `docs/architecture/*`, `TECHNICAL_DEBIT.md`. There is also a pre-existing, separately maintained **spec-kit constitution** at `.specify/memory/constitution.md` (v1.9.1) — a detailed, code-pattern-level governance document (Redis cache patterns, RBAC/multi-tenancy principles, forbidden patterns, etc.) used by the `.specify`/`.github/agents` speckit tooling. This `CLAUDE.md` is a separate, higher-level navigation document and does not replace or duplicate it; consult `.specify/memory/constitution.md` for binding, pattern-level engineering rules and amendment history.
 
+## Specifications (spec-kit pattern)
+
+This project tracks feature specs under `specs/NNN-slug/` (spec-kit convention), one numbered directory per feature — e.g. `specs/023-redis-session-cache/`, `specs/024-leads-company-isolation/`. Each directory typically contains `spec.md` (the design/requirements) plus, as needed, `plan.md`, `tasks.md`, `research.md`, `data-model.md`, `quickstart.md`, and `contracts/`/`checklists/` subfolders. When starting a new feature or writing a design doc, create the next sequentially numbered `specs/NNN-slug/` directory rather than a flat file elsewhere. `NNN` is zero-padded and increments from the highest existing number in `specs/`.
+
 ---
 
 ## Knowledge Base
