@@ -64,6 +64,14 @@ class LeadApiController(http.Controller):
             # Build domain for filtering
             domain = []
 
+            # Company isolation (request.company_domain is set by @require_company;
+            # it is [] for base.group_system, meaning unrestricted access)
+            domain += request.company_domain
+
+            # Agent isolation: agents only see their own leads
+            if self._is_agent_role(user):
+                domain.append(("agent_id.user_id", "=", user.id))
+
             # Active filter (ADR-015: soft-delete)
             if active_filter == "true":
                 domain.append(("active", "=", True))
@@ -192,7 +200,7 @@ class LeadApiController(http.Controller):
                         f"Invalid date format for last_activity_before: {last_activity_before}"
                     )
 
-            # Query leads (record rules auto-filter by agent/company)
+            # Query leads (company/agent isolation enforced explicitly above)
             Lead = request.env["real.estate.lead"]
             # active='all' requires active_test=False so Odoo doesn't implicitly add ('active','=',True)
             lead_ctx = (
@@ -299,6 +307,14 @@ class LeadApiController(http.Controller):
             # Build domain (same logic as list_leads, without pagination)
             domain = []
 
+            # Company isolation (request.company_domain is set by @require_company;
+            # it is [] for base.group_system, meaning unrestricted access)
+            domain += request.company_domain
+
+            # Agent isolation: agents only see their own leads
+            if self._is_agent_role(user):
+                domain.append(("agent_id.user_id", "=", user.id))
+
             if active_filter == "true":
                 domain.append(("active", "=", True))
             elif active_filter == "false":
@@ -336,7 +352,7 @@ class LeadApiController(http.Controller):
             if location_filter:
                 domain.append(("location_preference", "ilike", location_filter))
 
-            # Query leads (record rules enforce security)
+            # Query leads (company/agent isolation enforced explicitly above)
             Lead = request.env["real.estate.lead"]
             leads = Lead.sudo().search(domain, order="create_date desc")
 
@@ -879,6 +895,10 @@ class LeadApiController(http.Controller):
             # Build domain
             domain = [("active", "=", True)]
 
+            # Company isolation (request.company_domain is set by @require_company;
+            # it is [] for base.group_system, meaning unrestricted access)
+            domain += request.company_domain
+
             if date_from:
                 domain.append(("create_date", ">=", f"{date_from} 00:00:00"))
             if date_to:
@@ -888,7 +908,7 @@ class LeadApiController(http.Controller):
 
             Lead = request.env["real.estate.lead"]
 
-            # Total leads (record rules auto-filter by company)
+            # Total leads (company isolation enforced explicitly above)
             total = Lead.sudo().search_count(domain)
 
             # Count by status
@@ -932,6 +952,15 @@ class LeadApiController(http.Controller):
             return error_response(str(e), 500, "INTERNAL_SERVER_ERROR")
 
     # ==================== PRIVATE HELPERS ====================
+
+    def _is_agent_role(self, user):
+        """Check if user has only agent role (not manager/owner/admin)."""
+        return (
+            user.has_group("quicksol_estate.group_real_estate_agent")
+            and not user.has_group("quicksol_estate.group_real_estate_manager")
+            and not user.has_group("quicksol_estate.group_real_estate_owner")
+            and not user.has_group("base.group_system")
+        )
 
     def _serialize_lead(self, lead, include_activities=False):
         """Serialize lead record to JSON (ADR-007: HATEOAS)"""
@@ -1066,6 +1095,7 @@ class LeadApiController(http.Controller):
     )
     @require_jwt
     @require_session
+    @require_company
     def log_activity(self, lead_id, **kwargs):
 
         try:
@@ -1091,7 +1121,12 @@ class LeadApiController(http.Controller):
 
             # Verify user has access to this lead
             current_user = request.env.user
-            # Note: Company isolation is handled by @require_company decorator
+
+            if (
+                request.user_company_ids
+                and lead.company_id.id not in request.user_company_ids
+            ):
+                return error_response("Access denied", 403, "ACCESS_DENIED")
 
             # Check agent isolation (agents can only log on their own leads)
             user_groups = current_user.groups_id.mapped("name")
@@ -1146,7 +1181,7 @@ class LeadApiController(http.Controller):
                 ),
             }
 
-            return success_response("Activity logged successfully", activity_data, 201)
+            return success_response(activity_data, 201)
 
         except Exception as e:
             _logger.error(
@@ -1164,6 +1199,7 @@ class LeadApiController(http.Controller):
     )
     @require_jwt
     @require_session
+    @require_company
     def list_activities(self, lead_id, **kwargs):
 
         try:
@@ -1181,7 +1217,14 @@ class LeadApiController(http.Controller):
 
             # Verify user has access to this lead
             current_user = request.env.user
-            # Note: Company isolation is handled by @require_company decorator
+
+            if (
+                request.user_company_ids
+                and lead.company_id.id not in request.user_company_ids
+            ):
+                return error_response(
+                    403, "Access denied: lead belongs to a different company", "ACCESS_DENIED"
+                )
 
             # Check agent isolation (agents can only view their own leads)
             user_groups = current_user.groups_id.mapped("name")
@@ -1297,6 +1340,7 @@ class LeadApiController(http.Controller):
     )
     @require_jwt
     @require_session
+    @require_company
     def schedule_activity(self, lead_id, **kwargs):
 
         try:
@@ -1330,7 +1374,14 @@ class LeadApiController(http.Controller):
 
             # Verify user has access to this lead
             current_user = request.env.user
-            # Note: Company isolation is handled by @require_company decorator
+
+            if (
+                request.user_company_ids
+                and lead.company_id.id not in request.user_company_ids
+            ):
+                return error_response(
+                    "Forbidden", "Access denied: lead belongs to a different company", 403
+                )
 
             # Check agent isolation (agents can only schedule on their own leads)
             user_groups = current_user.groups_id.mapped("name")
@@ -1416,9 +1467,7 @@ class LeadApiController(http.Controller):
                 ),
             }
 
-            return success_response(
-                "Activity scheduled successfully", activity_data, 201
-            )
+            return success_response(activity_data, 201)
 
         except Exception as e:
             _logger.error(

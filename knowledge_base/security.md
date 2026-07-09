@@ -41,7 +41,7 @@ Two-layer validation for all REST write endpoints:
 
 ## CORS
 
-- Several public/list endpoints explicitly set `cors='*'` (e.g., `/api/v1/leads` GET, `/api/v1/sales` GET, `/api/v1/tags` GET, health/OTLP proxy endpoints, user-auth endpoints). `TECHNICAL_DEBIT.md` explicitly flags this as a known issue: CORS should be configurable dynamically via the back-office "Technical" menu rather than hardcoded `cors='*'` on every endpoint — **documented, unresolved technical debt**, not a new finding.
+- Several list endpoints explicitly set `cors='*'`. `GET /api/v1/leads` is fully authenticated (`@require_jwt` + `@require_session` + `@require_company`) and, as of Feature 024, enforces explicit company- and agent-based domain filtering. It was previously misdocumented here as public — the auth decorators were always present; the bug was a missing `company_id` domain filter inside the handler. `/api/v1/sales` and `/api/v1/tags` are unaffected by this correction and remain open questions, along with health/OTLP proxy endpoints and user-auth endpoints. `TECHNICAL_DEBIT.md` explicitly flags CORS configuration as a known issue: CORS should be configurable dynamically via the back-office "Technical" menu rather than hardcoded `cors='*'` on every endpoint — **documented, unresolved technical debt**, not a new finding.
 
 ## Multi-Tenancy Security
 

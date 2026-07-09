@@ -4,11 +4,17 @@
 
 Complete Postman collection for Quicksol Real Estate Management System API.
 
-**Version:** 1.31.0
-**Last Updated:** 2026-05-12
+**Version:** 1.35.0
+**Last Updated:** 2026-07-09
 **Spec Coverage:** Complete API (55+ endpoints)
 
 ## Available Collections
+
+### 1. Complete API Collection (v1.35) ⭐ RECOMMENDED
+**File:** `quicksol_api_v1.35_postman_collection.json`
+**Coverage:** All 55+ endpoints - Complete API coverage
+**ADR Compliance:** ADR-016 (complete)
+**Note:** Lead company/agent isolation now correctly enforced on List Leads, Export Leads to CSV, Get Lead Statistics, and all three Lead Activities endpoints (Feature 024)
 
 ### 1. Complete API Collection (v1.31) ⭐ RECOMMENDED
 **File:** `quicksol_api_v1.31_postman_collection.json`
@@ -62,7 +68,14 @@ Complete Postman collection for Quicksol Real Estate Management System API.
 **Coverage:** Lead CRUD, conversions, statistics, multi-tenancy tests  
 **Feature:** 006-lead-management
 
-## Changelog v1.31 (Latest - 2026-05-12)
+## Changelog v1.35 (Latest - 2026-07-09)
+
+**Lead company isolation enforced (Feature 024)**
+
+✅ `List Leads`, `Export Leads to CSV`, and `Get Lead Statistics` now actually enforce the company/agent isolation their descriptions always claimed.
+✅ `List Lead Activities`, `Log Activity on Lead`, and `Schedule Activity on Lead` now require `@require_company` and document the new **403 ACCESS_DENIED** response for cross-company access attempts.
+
+## Changelog v1.31 (2026-05-12)
 
 **Property FGTS eligibility**
 
