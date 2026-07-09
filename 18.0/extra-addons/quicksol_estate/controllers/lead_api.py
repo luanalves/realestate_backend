@@ -1107,7 +1107,7 @@ class LeadApiController(http.Controller):
 
     @http.route(
         "/api/v1/leads/<int:lead_id>/activities",
-        type="json",
+        type="http",
         auth="none",
         methods=["POST"],
         csrf=False,
@@ -1119,13 +1119,15 @@ class LeadApiController(http.Controller):
     def log_activity(self, lead_id, **kwargs):
 
         try:
-            body = kwargs.get("body", "").strip()
+            body_data = json.loads(request.httprequest.data.decode("utf-8"))
+
+            body = body_data.get("body", "").strip()
             if not body:
                 return error_response(
                     "Validation Error", "Activity body is required", 400
                 )
 
-            activity_type = kwargs.get("activity_type", "note")
+            activity_type = body_data.get("activity_type", "note")
             if activity_type not in ["call", "email", "meeting", "note"]:
                 return error_response(
                     "Validation Error",
@@ -1202,7 +1204,9 @@ class LeadApiController(http.Controller):
                 ),
             }
 
-            return success_response("Activity logged successfully", activity_data, 201)
+            activity_data["success"] = True
+            activity_data["message"] = "Activity logged successfully"
+            return success_response(activity_data, 201)
 
         except Exception as e:
             _logger.error(
@@ -1352,7 +1356,7 @@ class LeadApiController(http.Controller):
 
     @http.route(
         "/api/v1/leads/<int:lead_id>/schedule-activity",
-        type="json",
+        type="http",
         auth="none",
         methods=["POST"],
         csrf=False,
@@ -1364,13 +1368,15 @@ class LeadApiController(http.Controller):
     def schedule_activity(self, lead_id, **kwargs):
 
         try:
-            summary = kwargs.get("summary", "").strip()
+            body_data = json.loads(request.httprequest.data.decode("utf-8"))
+
+            summary = body_data.get("summary", "").strip()
             if not summary:
                 return error_response(
                     "Validation Error", "Activity summary is required", 400
                 )
 
-            date_deadline = kwargs.get("date_deadline", "").strip()
+            date_deadline = body_data.get("date_deadline", "").strip()
             if not date_deadline:
                 return error_response(
                     "Validation Error", "Activity deadline date is required", 400
@@ -1417,7 +1423,7 @@ class LeadApiController(http.Controller):
 
             # Get activity type (default to 'To Do')
             ActivityType = request.env["mail.activity.type"].sudo()
-            activity_type_id = kwargs.get("activity_type_id")
+            activity_type_id = body_data.get("activity_type_id")
 
             if not activity_type_id:
                 # Find default 'To Do' activity type
@@ -1435,7 +1441,7 @@ class LeadApiController(http.Controller):
                 )
 
             # Get assigned user (default to current user)
-            user_id = kwargs.get("user_id", current_user.id)
+            user_id = body_data.get("user_id", current_user.id)
 
             # Validate assigned user exists
             assigned_user = request.env["res.users"].sudo().browse(user_id)
@@ -1453,7 +1459,7 @@ class LeadApiController(http.Controller):
                 .id,
                 "activity_type_id": activity_type_id,
                 "summary": summary,
-                "note": kwargs.get("note", ""),
+                "note": body_data.get("note", ""),
                 "date_deadline": deadline_date,
                 "user_id": user_id,
             }
@@ -1486,9 +1492,9 @@ class LeadApiController(http.Controller):
                 ),
             }
 
-            return success_response(
-                "Activity scheduled successfully", activity_data, 201
-            )
+            activity_data["success"] = True
+            activity_data["message"] = "Activity scheduled successfully"
+            return success_response(activity_data, 201)
 
         except Exception as e:
             _logger.error(
