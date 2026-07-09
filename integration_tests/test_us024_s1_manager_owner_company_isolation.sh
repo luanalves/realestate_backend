@@ -26,6 +26,7 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 mkdir -p "$SCRIPT_DIR/test_logs"
+exec > >(tee "$TEST_LOG") 2>&1
 
 FAILED=0
 
@@ -58,8 +59,7 @@ echo "US024-S1: Manager/Owner Company Isolation"
 echo "=========================================="
 echo ""
 
-{
-    echo "=== Test Started: $(date) ==="
+echo "=== Test Started: $(date) ==="
 
     # --------------------------------------------------------------------
     # Company A (quicksol) Manager
@@ -134,8 +134,6 @@ echo ""
         echo -e "${RED}TEST FAILED${NC}"
         echo "=========================================="
     fi
-    echo "=== Test Ended: $(date) ==="
-
-} 2>&1 | tee "$TEST_LOG"
+echo "=== Test Ended: $(date) ==="
 
 exit $FAILED
