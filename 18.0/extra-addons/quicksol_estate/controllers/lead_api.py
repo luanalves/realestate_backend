@@ -892,7 +892,14 @@ class LeadApiController(http.Controller):
             agent_filter = kwargs.get("agent_id")
 
             # Build domain
-            domain = [("active", "=", True)]
+            # FR1.1: company scoping is the base of every subsequent filter.
+            # FR2.2 is included here for defense-in-depth/consistency with
+            # list_leads and export_leads_csv, even though the manager/owner
+            # gate above already means a pure Agent can never reach this line.
+            domain = [("active", "=", True)] + list(request.company_domain)
+
+            if self._is_agent_role(user):
+                domain.append(("agent_id.user_id", "=", user.id))
 
             if date_from:
                 domain.append(("create_date", ">=", f"{date_from} 00:00:00"))
@@ -903,7 +910,7 @@ class LeadApiController(http.Controller):
 
             Lead = request.env["real.estate.lead"]
 
-            # Total leads (record rules auto-filter by company)
+            # Total leads (company/agent domain applied explicitly above)
             total = Lead.sudo().search_count(domain)
 
             # Count by status
