@@ -1129,17 +1129,30 @@ git commit -m "test(024): add agent-only-sees-own-leads test for list_leads"
 - Create: `integration_tests/test_us024_leads_activity_cross_company.sh`
 
 **Interfaces:**
-- None (standalone bash script). Exercises the three `type="json"` endpoints fixed in Tasks 4-6 using the JSON-RPC envelope convention already used elsewhere in this project (see `integration_tests/test_us1_s2_owner_crud.sh`).
+- None (standalone bash script). Exercises the three activity endpoints fixed in Tasks 4-6 using the JSON-RPC envelope convention already used elsewhere in this project (see `integration_tests/test_us1_s2_owner_crud.sh`).
+
+**Known pre-existing quirk (discovered during Task 6, documented in `specs/024-leads-company-isolation/spec.md`'s Known follow-up items):** `log_activity` and `schedule_activity` are `type="json"` routes that return a raw `Response` object via `error_response()`/`success_response()`. Odoo's JSON-RPC dispatcher does not pass such objects through — it always answers `HTTP 200` and serializes the returned value into the envelope's `"result"` field, so a `Response` becomes a string like `"<_Response 100 bytes [403 FORBIDDEN]>"`. This happens for both success and error paths on these two endpoints and predates Feature 024 entirely — it is not something this plan fixes. The security check itself still works (a blocked write is never persisted; verified directly against the database during Task 6), but the HTTP status these two endpoints return is always 200. `list_activities` is `type="http"` and is unaffected — it returns a real 403. The test below asserts against this actual, verified behavior rather than an HTTP 403 that will never occur on the `type="json"` endpoints.
 
 - [ ] **Step 1: Write the test script**
 
 ```bash
 #!/bin/bash
 # ==============================================================================
-# Integration Test: Feature 024 - Cross-Company 403 on Lead Activity Endpoints
+# Integration Test: Feature 024 - Cross-Company Access Denial on Lead Activity Endpoints
 # ==============================================================================
 # Verifies log_activity, list_activities, and schedule_activity reject a user
-# whose company does not match the lead's company with 403 ACCESS_DENIED.
+# whose company does not match the lead's company.
+#
+# NOTE: log_activity and schedule_activity are `type="json"` Odoo routes that
+# return a raw Response object. Odoo's JSON-RPC dispatcher does not forward
+# such a Response's status code to the client — it always replies HTTP 200
+# and stringifies the Response into the envelope's "result" field (a
+# pre-existing bug affecting both success and error paths on these two
+# endpoints, unrelated to and predating this feature; see
+# specs/024-leads-company-isolation/spec.md's Known follow-up items). So for
+# these two endpoints this test asserts HTTP 200 plus "403 FORBIDDEN" inside
+# the stringified body, and confirms no unauthorized data was actually
+# written. list_activities is `type="http"` and correctly returns a real 403.
 # ==============================================================================
 
 set -e
@@ -1174,6 +1187,17 @@ assert_status() {
     fi
 }
 
+assert_true() {
+    local label="$1" condition="$2"
+    if [ "$condition" = "true" ]; then
+        echo -e "${GREEN}✓${NC} $label"
+        PASS=$((PASS+1))
+    else
+        echo -e "${RED}✗${NC} $label"
+        FAIL=$((FAIL+1))
+    fi
+}
+
 {
     echo "=== Test Started: $(date) ==="
     TIMESTAMP=$(date +%s)
@@ -1200,13 +1224,18 @@ assert_status() {
     echo -e "${BLUE}WHEN${NC}: Owner A (different company) calls the three activity endpoints"
     authenticate_user "$TEST_USER_OWNER" "$TEST_PASSWORD_OWNER"
 
-    STATUS_LOG=$(curl -s -o /dev/null -w "%{http_code}" \
+    LOG_BODY=$(curl -s -o /tmp/us024_log_cross.json -w "%{http_code}" \
         -X POST "${BASE_URL}/api/v1/leads/${LEAD_B_ID}/activities" \
         -H "Authorization: Bearer ${OAUTH_TOKEN}" \
         -H "X-Openerp-Session-Id: ${USER_SESSION_ID}" \
         -H "Content-Type: application/json" \
         -d '{"jsonrpc":"2.0","method":"call","params":{"body":"cross-company note","activity_type":"note"}}')
-    assert_status "log_activity rejects cross-company access" "403" "$STATUS_LOG"
+    assert_status "log_activity: HTTP status is 200 (JSON-RPC envelope quirk)" "200" "$LOG_BODY"
+    if grep -q "403 FORBIDDEN" /tmp/us024_log_cross.json; then
+        assert_true "log_activity: response body indicates 403 FORBIDDEN" "true"
+    else
+        assert_true "log_activity: response body indicates 403 FORBIDDEN" "false"
+    fi
 
     STATUS_LIST=$(curl -s -o /dev/null -w "%{http_code}" \
         -X GET "${BASE_URL}/api/v1/leads/${LEAD_B_ID}/activities" \
@@ -1214,26 +1243,45 @@ assert_status() {
         -H "X-Openerp-Session-Id: ${USER_SESSION_ID}")
     assert_status "list_activities rejects cross-company access" "403" "$STATUS_LIST"
 
-    STATUS_SCHEDULE=$(curl -s -o /dev/null -w "%{http_code}" \
+    SCHEDULE_BODY=$(curl -s -o /tmp/us024_schedule_cross.json -w "%{http_code}" \
         -X POST "${BASE_URL}/api/v1/leads/${LEAD_B_ID}/schedule-activity" \
         -H "Authorization: Bearer ${OAUTH_TOKEN}" \
         -H "X-Openerp-Session-Id: ${USER_SESSION_ID}" \
         -H "Content-Type: application/json" \
         -d '{"jsonrpc":"2.0","method":"call","params":{"summary":"cross-company activity","date_deadline":"2099-01-01"}}')
-    assert_status "schedule_activity rejects cross-company access" "403" "$STATUS_SCHEDULE"
+    assert_status "schedule_activity: HTTP status is 200 (JSON-RPC envelope quirk)" "200" "$SCHEDULE_BODY"
+    if grep -q "403 FORBIDDEN" /tmp/us024_schedule_cross.json; then
+        assert_true "schedule_activity: response body indicates 403 FORBIDDEN" "true"
+    else
+        assert_true "schedule_activity: response body indicates 403 FORBIDDEN" "false"
+    fi
+
+    echo ""
+    echo -e "${BLUE}AND${NC}: the blocked cross-company writes were never actually persisted"
+    unset OAUTH_TOKEN USER_SESSION_ID
+    authenticate_user "owner2@example.com" "OwnerB123!"
+    ACTIVITIES_AFTER_BLOCK=$(make_api_request "GET" "/api/v1/leads/${LEAD_B_ID}/activities")
+    if echo "$ACTIVITIES_AFTER_BLOCK" | grep -q "cross-company note"; then
+        assert_true "blocked log_activity did not create an activity" "false"
+    else
+        assert_true "blocked log_activity did not create an activity" "true"
+    fi
 
     echo ""
     echo -e "${BLUE}AND${NC}: Owner B (same company) can still use all three endpoints"
-    unset OAUTH_TOKEN USER_SESSION_ID
-    authenticate_user "owner2@example.com" "OwnerB123!"
 
-    STATUS_LOG_OK=$(curl -s -o /dev/null -w "%{http_code}" \
+    STATUS_LOG_OK=$(curl -s -o /tmp/us024_log_ok.json -w "%{http_code}" \
         -X POST "${BASE_URL}/api/v1/leads/${LEAD_B_ID}/activities" \
         -H "Authorization: Bearer ${OAUTH_TOKEN}" \
         -H "X-Openerp-Session-Id: ${USER_SESSION_ID}" \
         -H "Content-Type: application/json" \
         -d '{"jsonrpc":"2.0","method":"call","params":{"body":"same-company note","activity_type":"note"}}')
-    assert_status "log_activity still works for same company" "200" "$STATUS_LOG_OK"
+    assert_status "log_activity: HTTP status is 200 for same-company call too" "200" "$STATUS_LOG_OK"
+    if grep -q "201 CREATED" /tmp/us024_log_ok.json; then
+        assert_true "log_activity: response body indicates 201 CREATED for same company" "true"
+    else
+        assert_true "log_activity: response body indicates 201 CREATED for same company" "false"
+    fi
 
     STATUS_LIST_OK=$(curl -s -o /dev/null -w "%{http_code}" \
         -X GET "${BASE_URL}/api/v1/leads/${LEAD_B_ID}/activities" \
@@ -1241,23 +1289,30 @@ assert_status() {
         -H "X-Openerp-Session-Id: ${USER_SESSION_ID}")
     assert_status "list_activities still works for same company" "200" "$STATUS_LIST_OK"
 
-    STATUS_SCHEDULE_OK=$(curl -s -o /dev/null -w "%{http_code}" \
+    ACTIVITIES_FINAL=$(make_api_request "GET" "/api/v1/leads/${LEAD_B_ID}/activities")
+    if echo "$ACTIVITIES_FINAL" | grep -q "same-company note"; then
+        assert_true "the legitimate same-company activity was actually created" "true"
+    else
+        assert_true "the legitimate same-company activity was actually created" "false"
+    fi
+
+    STATUS_SCHEDULE_OK=$(curl -s -o /tmp/us024_schedule_ok.json -w "%{http_code}" \
         -X POST "${BASE_URL}/api/v1/leads/${LEAD_B_ID}/schedule-activity" \
         -H "Authorization: Bearer ${OAUTH_TOKEN}" \
         -H "X-Openerp-Session-Id: ${USER_SESSION_ID}" \
         -H "Content-Type: application/json" \
         -d '{"jsonrpc":"2.0","method":"call","params":{"summary":"same-company activity","date_deadline":"2099-01-01"}}')
-    if [ "$STATUS_SCHEDULE_OK" = "200" ] || [ "$STATUS_SCHEDULE_OK" = "201" ]; then
-        echo -e "${GREEN}✓${NC} schedule_activity still works for same company (status=$STATUS_SCHEDULE_OK)"
-        PASS=$((PASS+1))
+    assert_status "schedule_activity: HTTP status is 200 for same-company call too" "200" "$STATUS_SCHEDULE_OK"
+    if grep -qE "201 CREATED|200 OK" /tmp/us024_schedule_ok.json; then
+        assert_true "schedule_activity: response body indicates success for same company" "true"
     else
-        echo -e "${RED}✗${NC} schedule_activity still works for same company (actual=$STATUS_SCHEDULE_OK)"
-        FAIL=$((FAIL+1))
+        assert_true "schedule_activity: response body indicates success for same company" "false"
     fi
 
     echo ""
     echo "Cleanup: archiving Company B test lead..."
     make_api_request "DELETE" "/api/v1/leads/$LEAD_B_ID" > /dev/null 2>&1
+    rm -f /tmp/us024_log_cross.json /tmp/us024_schedule_cross.json /tmp/us024_log_ok.json /tmp/us024_schedule_ok.json
 
     echo ""
     echo "=========================================="
@@ -1279,7 +1334,7 @@ chmod +x integration_tests/test_us024_leads_activity_cross_company.sh
 ./integration_tests/test_us024_leads_activity_cross_company.sh
 ```
 
-Expected: `PASS: 6  FAIL: 0`.
+Expected: `PASS: 11  FAIL: 0`.
 
 - [ ] **Step 3: Commit**
 

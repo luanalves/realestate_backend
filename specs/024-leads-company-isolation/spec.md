@@ -183,3 +183,26 @@ not a modification of existing assertions.
   isolation check compares `lead.agent_id.id` (a `real.estate.agent` id)
   against `current_user.id` (a `res.users` id) — a pre-existing, unrelated
   correctness bug independent of company isolation.
+- **`log_activity` and `schedule_activity` (both `type="json"` routes) never
+  return a usable HTTP status to real JSON-RPC clients — pre-existing,
+  discovered during Task 6.** Both call `error_response()`/`success_response()`,
+  which build a `werkzeug`/Odoo `Response` via `request.make_json_response(...)`.
+  For a `type="http"` route that value is returned to the client as-is (status
+  code included); for a `type="json"` route, Odoo's JSON-RPC dispatcher instead
+  always answers with `HTTP 200` and serializes the *returned value* into the
+  `"result"` field — since a `Response` object isn't JSON-serializable, it falls
+  back to `str(response)`, so the client receives
+  `{"jsonrpc": "2.0", "id": null, "result": "<_Response NN bytes [403 FORBIDDEN]>"}`
+  with HTTP 200, for both error *and success* paths (confirmed on the
+  pre-existing 400/404 validation paths too, not just the new company check).
+  **The authorization itself is not broken** — verified directly against the
+  database that a blocked cross-company `log_activity`/`schedule_activity`
+  call creates no `mail.message`/`mail.activity` row — but no real API
+  consumer can distinguish success from failure from the HTTP status alone on
+  these two endpoints. `list_activities` (`type="http"`) is unaffected.
+  `create_filter`/`list_filters`/`delete_filter` are also `type="json"` and
+  likely share this bug, though not independently re-verified here. Fixing
+  this properly means changing these routes to return plain dicts (letting
+  Odoo's own JSON-RPC envelope carry them) instead of `Response` objects,
+  which touches every success and error branch in three functions — a larger,
+  separate change than Feature 024's scope. Tracked as technical debt.
