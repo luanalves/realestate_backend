@@ -1122,7 +1122,14 @@ class LeadApiController(http.Controller):
     def log_activity(self, lead_id, **kwargs):
 
         try:
-            body_data = json.loads(request.httprequest.data.decode("utf-8"))
+            try:
+                body_data = json.loads(request.httprequest.data.decode("utf-8"))
+                if not isinstance(body_data, dict):
+                    raise ValueError("Request body must be a JSON object")
+            except (json.JSONDecodeError, UnicodeDecodeError, ValueError):
+                return error_response(
+                    "Validation Error", "Request body must be valid JSON", 400
+                )
 
             body = body_data.get("body", "").strip()
             if not body:
@@ -1367,7 +1374,14 @@ class LeadApiController(http.Controller):
     def schedule_activity(self, lead_id, **kwargs):
 
         try:
-            body_data = json.loads(request.httprequest.data.decode("utf-8"))
+            try:
+                body_data = json.loads(request.httprequest.data.decode("utf-8"))
+                if not isinstance(body_data, dict):
+                    raise ValueError("Request body must be a JSON object")
+            except (json.JSONDecodeError, UnicodeDecodeError, ValueError):
+                return error_response(
+                    "Validation Error", "Request body must be valid JSON", 400
+                )
 
             summary = body_data.get("summary", "").strip()
             if not summary:

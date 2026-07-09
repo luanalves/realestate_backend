@@ -170,7 +170,7 @@ echo ""
 # session remains a legitimate, if indirect, sanity check that admin
 # retains cross-company visibility at the data layer (no regression),
 # but it exercises a different code path than the endpoints under test.
-echo -e "${BLUE}WHEN${NC}: Admin (base.group_system) calls GET /api/v1/leads/$LEAD_B1_ID/activities (bypass check)..."
+echo -e "${BLUE}WHEN${NC}: Admin (base.group_system) reads the cross-company lead via ORM (/web/dataset/call_kw), as an indirect data-layer sanity check (see comment above)..."
 ADMIN_ACTIVITIES=$(curl -s --max-time 30 -X POST "$BASE_URL/web/dataset/call_kw" \
     -H "Content-Type: application/json" \
     -b "$ADMIN_COOKIE_FILE" \
