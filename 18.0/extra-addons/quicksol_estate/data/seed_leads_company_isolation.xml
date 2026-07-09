@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    SEED: Lead Company/Agent Isolation (Feature 024)
+    ─────────────────────────────────────────────────────────────────────────
+    Reuses the two existing demo companies (company_quicksol_real_estate,
+    company_urban_properties, both from data/demo_users.xml) and their
+    existing agents (agent_pedro_demo, agent_carmen_demo) as "Company A"
+    and "Company B". Adds only what's missing to exercise every acceptance
+    criterion in specs/024-leads-company-isolation/spec-idea.md:
+
+      - A Manager and an Owner restricted to ONLY company_quicksol_real_estate
+        (the existing user_estate_manager_demo has access to BOTH demo
+        companies, which would make it useless for proving isolation).
+      - A second Agent inside company_quicksol_real_estate, so pedro's
+        "own leads only" restriction can be tested against a same-company,
+        different-agent lead (not just a different-company lead).
+      - 4 leads split across agents/companies as described above.
+
+    Dependencies: data/demo_users.xml must load first (company + agent refs).
+-->
+<odoo>
+    <data noupdate="0" context="{'tracking_disable': True, 'no_recompute': True}">
+
+        <!-- Manager restricted to Company A only (quicksol) -->
+        <record id="user_seed_024_manager" model="res.users">
+            <field name="name">Seed024 Manager (Company A only)</field>
+            <field name="login">manager024@imobiliaria.com</field>
+            <field name="password">manager123seed024</field>
+            <field name="email">manager024@imobiliaria.com</field>
+            <field name="groups_id" eval="[(6, 0, [
+                ref('base.group_user'),
+                ref('quicksol_estate.group_real_estate_manager')
+            ])]"/>
+            <field name="company_ids" eval="[(6, 0, [
+                ref('quicksol_estate.company_quicksol_real_estate')
+            ])]"/>
+            <field name="company_id" ref="quicksol_estate.company_quicksol_real_estate"/>
+        </record>
+
+        <!-- Owner restricted to Company A only (quicksol) -->
+        <record id="user_seed_024_owner" model="res.users">
+            <field name="name">Seed024 Owner (Company A only)</field>
+            <field name="login">owner024@imobiliaria.com</field>
+            <field name="password">owner123seed024</field>
+            <field name="email">owner024@imobiliaria.com</field>
+            <field name="groups_id" eval="[(6, 0, [
+                ref('base.group_user'),
+                ref('quicksol_estate.group_real_estate_owner')
+            ])]"/>
+            <field name="company_ids" eval="[(6, 0, [
+                ref('quicksol_estate.company_quicksol_real_estate')
+            ])]"/>
+            <field name="company_id" ref="quicksol_estate.company_quicksol_real_estate"/>
+        </record>
+
+        <!-- Second Agent in Company A (quicksol), alongside pedro -->
+        <record id="user_seed_024_agent2" model="res.users">
+            <field name="name">Seed024 Agent 2 (Company A)</field>
+            <field name="login">agent2.024@imobiliaria.com</field>
+            <field name="password">agent123seed024</field>
+            <field name="email">agent2.024@imobiliaria.com</field>
+            <field name="groups_id" eval="[(6, 0, [
+                ref('base.group_user'),
+                ref('quicksol_estate.group_real_estate_agent')
+            ])]"/>
+            <field name="company_ids" eval="[(6, 0, [
+                ref('quicksol_estate.company_quicksol_real_estate')
+            ])]"/>
+            <field name="company_id" ref="quicksol_estate.company_quicksol_real_estate"/>
+        </record>
+
+        <record id="agent_seed_024_agent2" model="real.estate.agent">
+            <field name="name">Seed024 Agent 2</field>
+            <field name="cpf">222.333.444-05</field>
+            <field name="user_id" ref="user_seed_024_agent2"/>
+            <field name="email">agent2.024@imobiliaria.com</field>
+            <field name="company_id" ref="quicksol_estate.company_quicksol_real_estate"/>
+        </record>
+
+        <!-- Leads: Company A / Agent pedro (2 leads) -->
+        <record id="lead_seed_024_a1_1" model="real.estate.lead">
+            <field name="name">Seed024 Lead A1-1 (pedro, Company A)</field>
+            <field name="state">new</field>
+            <field name="active" eval="True"/>
+            <field name="email">seed024.a1.1@test-seed.com.br</field>
+            <field name="agent_id" ref="quicksol_estate.agent_pedro_demo"/>
+            <field name="company_id" ref="quicksol_estate.company_quicksol_real_estate"/>
+        </record>
+
+        <record id="lead_seed_024_a1_2" model="real.estate.lead">
+            <field name="name">Seed024 Lead A1-2 (pedro, Company A)</field>
+            <field name="state">qualified</field>
+            <field name="active" eval="True"/>
+            <field name="email">seed024.a1.2@test-seed.com.br</field>
+            <field name="agent_id" ref="quicksol_estate.agent_pedro_demo"/>
+            <field name="company_id" ref="quicksol_estate.company_quicksol_real_estate"/>
+        </record>
+
+        <!-- Lead: Company A / Agent 2 (must NOT be visible to pedro) -->
+        <record id="lead_seed_024_a2_1" model="real.estate.lead">
+            <field name="name">Seed024 Lead A2-1 (agent2, Company A)</field>
+            <field name="state">new</field>
+            <field name="active" eval="True"/>
+            <field name="email">seed024.a2.1@test-seed.com.br</field>
+            <field name="agent_id" ref="agent_seed_024_agent2"/>
+            <field name="company_id" ref="quicksol_estate.company_quicksol_real_estate"/>
+        </record>
+
+        <!-- Lead: Company B / Agent carmen (must NOT be visible to any Company A user) -->
+        <record id="lead_seed_024_b1_1" model="real.estate.lead">
+            <field name="name">Seed024 Lead B1-1 (carmen, Company B)</field>
+            <field name="state">new</field>
+            <field name="active" eval="True"/>
+            <field name="email">seed024.b1.1@test-seed.com.br</field>
+            <field name="agent_id" ref="quicksol_estate.agent_carmen_demo"/>
+            <field name="company_id" ref="quicksol_estate.company_urban_properties"/>
+        </record>
+
+    </data>
+</odoo>
