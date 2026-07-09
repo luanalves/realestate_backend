@@ -1199,6 +1199,7 @@ class LeadApiController(http.Controller):
     )
     @require_jwt
     @require_session
+    @require_company
     def list_activities(self, lead_id, **kwargs):
 
         try:
@@ -1216,7 +1217,14 @@ class LeadApiController(http.Controller):
 
             # Verify user has access to this lead
             current_user = request.env.user
-            # Note: Company isolation is handled by @require_company decorator
+
+            if (
+                request.user_company_ids
+                and lead.company_id.id not in request.user_company_ids
+            ):
+                return error_response(
+                    403, "Access denied: lead belongs to a different company", "ACCESS_DENIED"
+                )
 
             # Check agent isolation (agents can only view their own leads)
             user_groups = current_user.groups_id.mapped("name")
@@ -1332,6 +1340,7 @@ class LeadApiController(http.Controller):
     )
     @require_jwt
     @require_session
+    @require_company
     def schedule_activity(self, lead_id, **kwargs):
 
         try:
@@ -1365,7 +1374,14 @@ class LeadApiController(http.Controller):
 
             # Verify user has access to this lead
             current_user = request.env.user
-            # Note: Company isolation is handled by @require_company decorator
+
+            if (
+                request.user_company_ids
+                and lead.company_id.id not in request.user_company_ids
+            ):
+                return error_response(
+                    "Forbidden", "Access denied: lead belongs to a different company", 403
+                )
 
             # Check agent isolation (agents can only schedule on their own leads)
             user_groups = current_user.groups_id.mapped("name")
