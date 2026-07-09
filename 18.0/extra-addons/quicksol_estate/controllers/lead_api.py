@@ -895,6 +895,10 @@ class LeadApiController(http.Controller):
             # Build domain
             domain = [("active", "=", True)]
 
+            # Company isolation (request.company_domain is set by @require_company;
+            # it is [] for base.group_system, meaning unrestricted access)
+            domain += request.company_domain
+
             if date_from:
                 domain.append(("create_date", ">=", f"{date_from} 00:00:00"))
             if date_to:
@@ -904,7 +908,7 @@ class LeadApiController(http.Controller):
 
             Lead = request.env["real.estate.lead"]
 
-            # Total leads (record rules auto-filter by company)
+            # Total leads (company isolation enforced explicitly above)
             total = Lead.sudo().search_count(domain)
 
             # Count by status
