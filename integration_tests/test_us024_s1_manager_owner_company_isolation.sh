@@ -99,10 +99,19 @@ echo "=== Test Started: $(date) ==="
     MANAGER_STATS_TOTAL=$(extract_json_field "$MANAGER_STATS" "total")
     echo "Manager statistics total: $MANAGER_STATS_TOTAL"
     if [ "$MANAGER_STATS_TOTAL" -ge 3 ]; then
-        echo -e "${GREEN}✓${NC} Manager statistics total includes at least the 3 Company A seed leads"
+        echo -e "${GREEN}✓${NC} Manager statistics total ($MANAGER_STATS_TOTAL) includes at least the 3 Company A seed leads"
     else
         echo -e "${RED}✗ FAIL${NC}: Manager statistics total ($MANAGER_STATS_TOTAL) is lower than expected"
         FAILED=1
+    fi
+
+    # Additional isolation check: Company B's agent (Carmen) must NOT appear in the breakdown
+    # If the domain leaked, Carmen's leads would be included in by_agent
+    if echo "$MANAGER_STATS" | grep -qi "carmen"; then
+        echo -e "${RED}✗ FAIL${NC}: Company B agent (Carmen) appears in Manager's statistics — ISOLATION LEAKED"
+        FAILED=1
+    else
+        echo -e "${GREEN}✓${NC} Company B agent (Carmen) NOT in Manager's statistics — isolation confirmed"
     fi
 
     # --------------------------------------------------------------------
