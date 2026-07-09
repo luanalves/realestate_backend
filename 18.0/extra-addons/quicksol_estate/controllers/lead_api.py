@@ -305,7 +305,12 @@ class LeadApiController(http.Controller):
             location_filter = kwargs.get("location", "").strip()
 
             # Build domain (same logic as list_leads, without pagination)
-            domain = []
+            # FR1.1: company scoping is the base of every subsequent filter.
+            domain = list(request.company_domain)
+
+            # FR2.2: pure Agents are additionally restricted to their own leads.
+            if self._is_agent_role(user):
+                domain.append(("agent_id.user_id", "=", user.id))
 
             if active_filter == "true":
                 domain.append(("active", "=", True))
@@ -344,7 +349,9 @@ class LeadApiController(http.Controller):
             if location_filter:
                 domain.append(("location_preference", "ilike", location_filter))
 
-            # Query leads (record rules enforce security)
+            # Query leads (company/agent domain applied explicitly above,
+            # per ADR-008 Sec.1 — .sudo() is retained but no longer relied
+            # upon alone for isolation; see FR1.3)
             Lead = request.env["real.estate.lead"]
             leads = Lead.sudo().search(domain, order="create_date desc")
 
