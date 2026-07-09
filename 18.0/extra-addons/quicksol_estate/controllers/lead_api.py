@@ -1095,6 +1095,7 @@ class LeadApiController(http.Controller):
     )
     @require_jwt
     @require_session
+    @require_company
     def log_activity(self, lead_id, **kwargs):
 
         try:
@@ -1120,7 +1121,12 @@ class LeadApiController(http.Controller):
 
             # Verify user has access to this lead
             current_user = request.env.user
-            # Note: Company isolation is handled by @require_company decorator
+
+            if (
+                request.user_company_ids
+                and lead.company_id.id not in request.user_company_ids
+            ):
+                return error_response("Access denied", 403, "ACCESS_DENIED")
 
             # Check agent isolation (agents can only log on their own leads)
             user_groups = current_user.groups_id.mapped("name")
