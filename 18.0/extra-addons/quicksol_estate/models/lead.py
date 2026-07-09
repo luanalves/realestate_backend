@@ -45,6 +45,16 @@ class RealEstateLead(models.Model):
         """
         )
 
+        # Composite index for company-scoped queries (Feature 024: company isolation)
+        # Every list/export/statistics query now has company_id as a mandatory
+        # domain clause, frequently combined with a state filter/group-by.
+        self._cr.execute(
+            """
+            CREATE INDEX IF NOT EXISTS real_estate_lead_company_state_idx
+            ON real_estate_lead (company_id, state)
+        """
+        )
+
         # Index for budget range queries
         self._cr.execute(
             """
@@ -146,6 +156,7 @@ class RealEstateLead(models.Model):
         string="Company",
         required=True,
         tracking=True,
+        index=True,
         ondelete="restrict",
         default=lambda self: self._default_company_id(),
         help="Company this lead belongs to (multi-tenancy)",
