@@ -1115,6 +1115,7 @@ class LeadApiController(http.Controller):
     )
     @require_jwt
     @require_session
+    @require_company
     def log_activity(self, lead_id, **kwargs):
 
         try:
@@ -1140,7 +1141,13 @@ class LeadApiController(http.Controller):
 
             # Verify user has access to this lead
             current_user = request.env.user
-            # Note: Company isolation is handled by @require_company decorator
+
+            # FR3.2/FR3.4: explicit cross-company check (request.user_company_ids
+            # is empty only for base.group_system, which bypasses this check).
+            if not self._check_lead_company_access(
+                lead, request.user_company_ids
+            ):
+                return error_response("Access denied", 403, "ACCESS_DENIED")
 
             # Check agent isolation (agents can only log on their own leads)
             user_groups = current_user.groups_id.mapped("name")
@@ -1213,6 +1220,7 @@ class LeadApiController(http.Controller):
     )
     @require_jwt
     @require_session
+    @require_company
     def list_activities(self, lead_id, **kwargs):
 
         try:
@@ -1230,7 +1238,13 @@ class LeadApiController(http.Controller):
 
             # Verify user has access to this lead
             current_user = request.env.user
-            # Note: Company isolation is handled by @require_company decorator
+
+            # FR3.2/FR3.4: explicit cross-company check (request.user_company_ids
+            # is empty only for base.group_system, which bypasses this check).
+            if not self._check_lead_company_access(
+                lead, request.user_company_ids
+            ):
+                return error_response("Access denied", 403, "ACCESS_DENIED")
 
             # Check agent isolation (agents can only view their own leads)
             user_groups = current_user.groups_id.mapped("name")
@@ -1346,6 +1360,7 @@ class LeadApiController(http.Controller):
     )
     @require_jwt
     @require_session
+    @require_company
     def schedule_activity(self, lead_id, **kwargs):
 
         try:
@@ -1379,7 +1394,13 @@ class LeadApiController(http.Controller):
 
             # Verify user has access to this lead
             current_user = request.env.user
-            # Note: Company isolation is handled by @require_company decorator
+
+            # FR3.2/FR3.4: explicit cross-company check (request.user_company_ids
+            # is empty only for base.group_system, which bypasses this check).
+            if not self._check_lead_company_access(
+                lead, request.user_company_ids
+            ):
+                return error_response("Access denied", 403, "ACCESS_DENIED")
 
             # Check agent isolation (agents can only schedule on their own leads)
             user_groups = current_user.groups_id.mapped("name")
