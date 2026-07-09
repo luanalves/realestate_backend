@@ -1181,7 +1181,7 @@ class LeadApiController(http.Controller):
                 ),
             }
 
-            return success_response("Activity logged successfully", activity_data, 201)
+            return success_response(activity_data, 201)
 
         except Exception as e:
             _logger.error(
