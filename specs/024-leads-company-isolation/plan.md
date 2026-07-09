@@ -28,6 +28,8 @@
 **Interfaces:**
 - Produces: `LeadApiController._is_agent_role(self, user) -> bool` — returns `True` only for a user in `quicksol_estate.group_real_estate_agent` and none of `group_real_estate_manager`, `group_real_estate_owner`, `base.group_system`. Reused by Tasks 2 (not Task 3, see below).
 
+Note: `POST /api/v1/leads` (`create_lead`) requires the calling user to have an associated `real.estate.agent` record — it always auto-assigns the new lead to the caller's own agent record and has no way to pass a different `agent_id` in the request body. Owner B (`owner2@example.com`) has no such record, so throughout this plan the "Company B" probe lead is created by `pedro@imobiliaria.com` / `agent123` (a seeded Agent in the same company as Owner B, `company_id=2`), not by Owner B directly. Owner B is still used afterward to verify same-company access where a task calls for it.
+
 - [ ] **Step 1: Reproduce the bug manually (failing check)**
 
 Requires Owner B to exist. Run this once; if it errors because Owner B already exists, continue anyway:
@@ -42,9 +44,11 @@ Then, from repo root, run:
 source 18.0/.env
 BASE_URL="${ODOO_BASE_URL:-http://localhost:8069}"
 
-# Owner B (company "Urban Properties") creates a lead
+# Pedro (agent in Company B / company_id=2, same company as Owner B) creates
+# a lead — POST /api/v1/leads requires the caller to have an associated
+# real.estate.agent record (see create_lead), which Owner B does not have
 source 18.0/extra-addons/quicksol_estate/tests/lib/auth_helper.sh
-authenticate_user "owner2@example.com" "OwnerB123!"
+authenticate_user "pedro@imobiliaria.com" "agent123"
 CREATE_RESP=$(make_api_request "POST" "/api/v1/leads" '{
   "name": "CompanyB Isolation Probe",
   "phone": "+5511900000001",
@@ -160,7 +164,7 @@ Expected: the `grep` finds nothing and exits non-zero (no match) — Owner A no 
 ```bash
 unset OAUTH_TOKEN USER_SESSION_ID
 source 18.0/extra-addons/quicksol_estate/tests/lib/auth_helper.sh
-authenticate_user "owner2@example.com" "OwnerB123!"
+authenticate_user "pedro@imobiliaria.com" "agent123"
 make_api_request "DELETE" "/api/v1/leads/$LEAD_B_ID" > /dev/null
 
 git add 18.0/extra-addons/quicksol_estate/controllers/lead_api.py
@@ -185,7 +189,7 @@ Reuse the pattern from Task 1 Step 1 but hit `/api/v1/leads/export` instead (CSV
 source 18.0/.env
 source 18.0/extra-addons/quicksol_estate/tests/lib/auth_helper.sh
 
-authenticate_user "owner2@example.com" "OwnerB123!"
+authenticate_user "pedro@imobiliaria.com" "agent123"
 CREATE_RESP=$(make_api_request "POST" "/api/v1/leads" '{
   "name": "CompanyB Export Probe",
   "phone": "+5511900000002",
@@ -268,7 +272,7 @@ Expected: `grep` finds nothing (exit code 1) — Owner A's export no longer cont
 ```bash
 unset OAUTH_TOKEN USER_SESSION_ID
 source 18.0/extra-addons/quicksol_estate/tests/lib/auth_helper.sh
-authenticate_user "owner2@example.com" "OwnerB123!"
+authenticate_user "pedro@imobiliaria.com" "agent123"
 make_api_request "DELETE" "/api/v1/leads/$LEAD_B_ID" > /dev/null
 
 git add 18.0/extra-addons/quicksol_estate/controllers/lead_api.py
@@ -291,7 +295,7 @@ git commit -m "fix(024): enforce company/agent isolation on GET /api/v1/leads/ex
 source 18.0/.env
 source 18.0/extra-addons/quicksol_estate/tests/lib/auth_helper.sh
 
-authenticate_user "owner2@example.com" "OwnerB123!"
+authenticate_user "pedro@imobiliaria.com" "agent123"
 CREATE_RESP=$(make_api_request "POST" "/api/v1/leads" '{
   "name": "CompanyB Stats Probe",
   "phone": "+5511900000003",
@@ -368,7 +372,7 @@ Expected: `AFTER_TOTAL` is strictly less than `BEFORE_TOTAL` captured in Step 1 
 ```bash
 unset OAUTH_TOKEN USER_SESSION_ID
 source 18.0/extra-addons/quicksol_estate/tests/lib/auth_helper.sh
-authenticate_user "owner2@example.com" "OwnerB123!"
+authenticate_user "pedro@imobiliaria.com" "agent123"
 make_api_request "DELETE" "/api/v1/leads/$LEAD_B_ID" > /dev/null
 
 git add 18.0/extra-addons/quicksol_estate/controllers/lead_api.py
@@ -391,7 +395,7 @@ git commit -m "fix(024): enforce company isolation on GET /api/v1/leads/statisti
 source 18.0/.env
 source 18.0/extra-addons/quicksol_estate/tests/lib/auth_helper.sh
 
-authenticate_user "owner2@example.com" "OwnerB123!"
+authenticate_user "pedro@imobiliaria.com" "agent123"
 CREATE_RESP=$(make_api_request "POST" "/api/v1/leads" '{
   "name": "CompanyB Activity Probe",
   "phone": "+5511900000004",
@@ -522,7 +526,7 @@ git commit -m "fix(024): add missing @require_company and company check to log_a
 source 18.0/.env
 source 18.0/extra-addons/quicksol_estate/tests/lib/auth_helper.sh
 
-authenticate_user "owner2@example.com" "OwnerB123!"
+authenticate_user "pedro@imobiliaria.com" "agent123"
 CREATE_RESP=$(make_api_request "POST" "/api/v1/leads" '{
   "name": "CompanyB ListActivities Probe",
   "phone": "+5511900000005",
@@ -647,7 +651,7 @@ git commit -m "fix(024): add missing @require_company and company check to list_
 source 18.0/.env
 source 18.0/extra-addons/quicksol_estate/tests/lib/auth_helper.sh
 
-authenticate_user "owner2@example.com" "OwnerB123!"
+authenticate_user "pedro@imobiliaria.com" "agent123"
 CREATE_RESP=$(make_api_request "POST" "/api/v1/leads" '{
   "name": "CompanyB Schedule Probe",
   "phone": "+5511900000006",
@@ -819,8 +823,9 @@ assert_true() {
     echo "=== Test Started: $(date) ==="
     TIMESTAMP=$(date +%s)
 
-    echo -e "${BLUE}GIVEN${NC}: Owner B creates a lead in Company B"
-    authenticate_user "owner2@example.com" "OwnerB123!"
+    echo -e "${BLUE}GIVEN${NC}: Pedro (agent in Company B) creates a lead — POST /api/v1/leads requires"
+    echo "  the caller to have an associated real.estate.agent record, which Owner B lacks"
+    authenticate_user "pedro@imobiliaria.com" "agent123"
     CREATE_RESP=$(make_api_request "POST" "/api/v1/leads" "{
         \"name\": \"US024 CrossCompany Lead ${TIMESTAMP}\",
         \"phone\": \"+551190${TIMESTAMP: -7}\",
@@ -831,7 +836,7 @@ assert_true() {
     echo "Lead B ID: $LEAD_B_ID"
 
     if [ -z "$LEAD_B_ID" ] || [ "$LEAD_B_ID" = "null" ]; then
-        echo -e "${RED}✗ FAIL${NC}: Could not create Company B lead — is Owner B seeded? Run integration_tests/setup_owner_b.sh"
+        echo -e "${RED}✗ FAIL${NC}: Could not create Company B lead as pedro@imobiliaria.com — check demo_users.xml seed data"
         exit 1
     fi
 
@@ -1173,8 +1178,9 @@ assert_status() {
     echo "=== Test Started: $(date) ==="
     TIMESTAMP=$(date +%s)
 
-    echo -e "${BLUE}GIVEN${NC}: Owner B creates a lead in Company B"
-    authenticate_user "owner2@example.com" "OwnerB123!"
+    echo -e "${BLUE}GIVEN${NC}: Pedro (agent in Company B) creates a lead — POST /api/v1/leads requires"
+    echo "  the caller to have an associated real.estate.agent record, which Owner B lacks"
+    authenticate_user "pedro@imobiliaria.com" "agent123"
     CREATE_RESP=$(make_api_request "POST" "/api/v1/leads" "{
         \"name\": \"US024 Activity CrossCompany ${TIMESTAMP}\",
         \"phone\": \"+551192${TIMESTAMP: -7}\",
@@ -1185,7 +1191,7 @@ assert_status() {
     echo "Lead B ID: $LEAD_B_ID"
 
     if [ -z "$LEAD_B_ID" ] || [ "$LEAD_B_ID" = "null" ]; then
-        echo -e "${RED}✗ FAIL${NC}: Could not create Company B lead — is Owner B seeded? Run integration_tests/setup_owner_b.sh"
+        echo -e "${RED}✗ FAIL${NC}: Could not create Company B lead as pedro@imobiliaria.com — check demo_users.xml seed data"
         exit 1
     fi
 
