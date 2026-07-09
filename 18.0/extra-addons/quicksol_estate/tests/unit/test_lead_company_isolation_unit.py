@@ -10,13 +10,14 @@ endpoints (log_activity/list_activities/schedule_activity).
 Follows ADR-003: Unitario (SEM banco, mock only).
 """
 
-import unittest
-from unittest.mock import MagicMock
-from pathlib import Path
 import sys
+import unittest
+from pathlib import Path
+from unittest.mock import MagicMock
 
 # Setup odoo.addons namespace for imports (no running Odoo server needed)
 import odoo.addons
+
 _addons_root = str(Path(__file__).parent.parent.parent.parent)  # /mnt/extra-addons
 if _addons_root not in odoo.addons.__path__:
     odoo.addons.__path__.insert(0, _addons_root)

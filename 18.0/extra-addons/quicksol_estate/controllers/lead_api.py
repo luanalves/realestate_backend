@@ -3,15 +3,17 @@
 
 import json
 import logging
+
 from odoo import http
-from odoo.http import request, Response
+from odoo.addons.thedevkitchen_apigateway.middleware import (
+    require_company,
+    require_session,
+)
 from odoo.exceptions import AccessError, UserError, ValidationError
+from odoo.http import Response, request
+
 from .utils.auth import require_jwt
 from .utils.response import error_response, success_response
-from odoo.addons.thedevkitchen_apigateway.middleware import (
-    require_session,
-    require_company,
-)
 
 _logger = logging.getLogger(__name__)
 
@@ -287,6 +289,7 @@ class LeadApiController(http.Controller):
         try:
             import csv
             import io
+
             from werkzeug.wrappers import Response as WerkzeugResponse
 
             user = request.env.user
@@ -1146,9 +1149,7 @@ class LeadApiController(http.Controller):
 
             # FR3.2/FR3.4: explicit cross-company check (request.user_company_ids
             # is empty only for base.group_system, which bypasses this check).
-            if not self._check_lead_company_access(
-                lead, request.user_company_ids
-            ):
+            if not self._check_lead_company_access(lead, request.user_company_ids):
                 return error_response("Access denied", 403, "ACCESS_DENIED")
 
             # Check agent isolation (agents can only log on their own leads)
@@ -1245,9 +1246,7 @@ class LeadApiController(http.Controller):
 
             # FR3.2/FR3.4: explicit cross-company check (request.user_company_ids
             # is empty only for base.group_system, which bypasses this check).
-            if not self._check_lead_company_access(
-                lead, request.user_company_ids
-            ):
+            if not self._check_lead_company_access(lead, request.user_company_ids):
                 return error_response("Access denied", 403, "ACCESS_DENIED")
 
             # Check agent isolation (agents can only view their own leads)
@@ -1403,9 +1402,7 @@ class LeadApiController(http.Controller):
 
             # FR3.2/FR3.4: explicit cross-company check (request.user_company_ids
             # is empty only for base.group_system, which bypasses this check).
-            if not self._check_lead_company_access(
-                lead, request.user_company_ids
-            ):
+            if not self._check_lead_company_access(lead, request.user_company_ids):
                 return error_response("Access denied", 403, "ACCESS_DENIED")
 
             # Check agent isolation (agents can only schedule on their own leads)
