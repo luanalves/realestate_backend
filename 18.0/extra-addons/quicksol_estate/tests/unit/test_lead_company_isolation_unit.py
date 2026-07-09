@@ -10,7 +10,6 @@ endpoints (log_activity/list_activities/schedule_activity).
 Follows ADR-003: Unitario (SEM banco, mock only).
 """
 
-import sys
 import unittest
 from pathlib import Path
 from unittest.mock import MagicMock
