@@ -121,7 +121,7 @@
 
 | Method | Route | Handler | Authentication |
 |---|---|---|---|
-| GET | `/api/v1/leads` | `list_leads` | none (`cors='*'`) |
+| GET | `/api/v1/leads` | `list_leads` | JWT+Session+Company |
 | GET | `/api/v1/leads/export` | `export_leads_csv` | JWT+Session+Company |
 | POST | `/api/v1/leads` | `create_lead` | JWT+Session+Company |
 | GET | `/api/v1/leads/<int:lead_id>` | `get_lead` | JWT+Session+Company |
@@ -240,5 +240,5 @@
 ## Discrepancies / Findings
 
 - Several endpoints intended for internal/authenticated use are registered with `auth='none'` at the Odoo routing level and rely entirely on the `@require_jwt`/`@require_session`/`@require_company` decorators for protection (this is the intended pattern per ADR-011, since Odoo's native `auth='user'` cookie-session model is incompatible with a stateless JWT-first headless API — not a defect, but worth knowing when reasoning about any single route in isolation).
-- A handful of `GET` list endpoints (`/api/v1/leads`, `/api/v1/sales`, `/api/v1/tags`) are fully public (`auth='none'`, no auth decorator, `cors='*'`), which is inconsistent with the otherwise-universal triple-decorator convention used across nearly all other endpoints in the same controllers. This is corroborated by `TECHNICAL_DEBIT.md`'s note about hardcoded `cors='*'`; recommend the team confirm whether these specific public list endpoints are intentional (e.g., a public marketing/leads-capture use case) or an oversight.
+- Two `GET` list endpoints (`/api/v1/sales`, `/api/v1/tags`) are fully public (`auth='none'`, no auth decorator, `cors='*'`), which is inconsistent with the otherwise-universal triple-decorator convention used across nearly all other endpoints in the same controllers. `GET /api/v1/leads`, previously listed here as public, is fully authenticated as of Feature 024 and was misdocumented. This is corroborated by `TECHNICAL_DEBIT.md`'s note about hardcoded `cors='*'`; recommend the team confirm whether the remaining public list endpoints are intentional (e.g., a public marketing use case) or an oversight.
 - No GraphQL or gRPC surface exists in this codebase.
