@@ -62,7 +62,13 @@ class LeadApiController(http.Controller):
             offset = int(kwargs.get("offset", 0))
 
             # Build domain for filtering
-            domain = []
+            # FR1.1: company scoping is the base of every subsequent filter,
+            # including the last_activity_before subquery below.
+            domain = list(request.company_domain)
+
+            # FR2.2: pure Agents are additionally restricted to their own leads.
+            if self._is_agent_role(user):
+                domain.append(("agent_id.user_id", "=", user.id))
 
             # Active filter (ADR-015: soft-delete)
             if active_filter == "true":
@@ -192,7 +198,9 @@ class LeadApiController(http.Controller):
                         f"Invalid date format for last_activity_before: {last_activity_before}"
                     )
 
-            # Query leads (record rules auto-filter by agent/company)
+            # Query leads (company/agent domain applied explicitly above,
+            # per ADR-008 Sec.1 — .sudo() is retained but no longer relied
+            # upon alone for isolation; see FR1.3)
             Lead = request.env["real.estate.lead"]
             # active='all' requires active_test=False so Odoo doesn't implicitly add ('active','=',True)
             lead_ctx = (
