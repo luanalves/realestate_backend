@@ -3,15 +3,17 @@
 
 import json
 import logging
+
 from odoo import http
-from odoo.http import request, Response
+from odoo.addons.thedevkitchen_apigateway.middleware import (
+    require_company,
+    require_session,
+)
 from odoo.exceptions import AccessError, UserError, ValidationError
+from odoo.http import Response, request
+
 from .utils.auth import require_jwt
 from .utils.response import error_response, success_response
-from odoo.addons.thedevkitchen_apigateway.middleware import (
-    require_session,
-    require_company,
-)
 
 _logger = logging.getLogger(__name__)
 
@@ -62,7 +64,13 @@ class LeadApiController(http.Controller):
             offset = int(kwargs.get("offset", 0))
 
             # Build domain for filtering
-            domain = []
+            # FR1.1: company scoping is the base of every subsequent filter,
+            # including the last_activity_before subquery below.
+            domain = list(request.company_domain)
+
+            # FR2.2: pure Agents are additionally restricted to their own leads.
+            if self._is_agent_role(user):
+                domain.append(("agent_id.user_id", "=", user.id))
 
             # Active filter (ADR-015: soft-delete)
             if active_filter == "true":
@@ -192,7 +200,9 @@ class LeadApiController(http.Controller):
                         f"Invalid date format for last_activity_before: {last_activity_before}"
                     )
 
-            # Query leads (record rules auto-filter by agent/company)
+            # Query leads (company/agent domain applied explicitly above,
+            # per ADR-008 Sec.1 — .sudo() is retained but no longer relied
+            # upon alone for isolation; see FR1.3)
             Lead = request.env["real.estate.lead"]
             # active='all' requires active_test=False so Odoo doesn't implicitly add ('active','=',True)
             lead_ctx = (
@@ -279,6 +289,7 @@ class LeadApiController(http.Controller):
         try:
             import csv
             import io
+
             from werkzeug.wrappers import Response as WerkzeugResponse
 
             user = request.env.user
@@ -297,7 +308,12 @@ class LeadApiController(http.Controller):
             location_filter = kwargs.get("location", "").strip()
 
             # Build domain (same logic as list_leads, without pagination)
-            domain = []
+            # FR1.1: company scoping is the base of every subsequent filter.
+            domain = list(request.company_domain)
+
+            # FR2.2: pure Agents are additionally restricted to their own leads.
+            if self._is_agent_role(user):
+                domain.append(("agent_id.user_id", "=", user.id))
 
             if active_filter == "true":
                 domain.append(("active", "=", True))
@@ -336,7 +352,9 @@ class LeadApiController(http.Controller):
             if location_filter:
                 domain.append(("location_preference", "ilike", location_filter))
 
-            # Query leads (record rules enforce security)
+            # Query leads (company/agent domain applied explicitly above,
+            # per ADR-008 Sec.1 — .sudo() is retained but no longer relied
+            # upon alone for isolation; see FR1.3)
             Lead = request.env["real.estate.lead"]
             leads = Lead.sudo().search(domain, order="create_date desc")
 
@@ -877,7 +895,14 @@ class LeadApiController(http.Controller):
             agent_filter = kwargs.get("agent_id")
 
             # Build domain
-            domain = [("active", "=", True)]
+            # FR1.1: company scoping is the base of every subsequent filter.
+            # FR2.2 is included here for defense-in-depth/consistency with
+            # list_leads and export_leads_csv, even though the manager/owner
+            # gate above already means a pure Agent can never reach this line.
+            domain = [("active", "=", True)] + list(request.company_domain)
+
+            if self._is_agent_role(user):
+                domain.append(("agent_id.user_id", "=", user.id))
 
             if date_from:
                 domain.append(("create_date", ">=", f"{date_from} 00:00:00"))
@@ -888,7 +913,7 @@ class LeadApiController(http.Controller):
 
             Lead = request.env["real.estate.lead"]
 
-            # Total leads (record rules auto-filter by company)
+            # Total leads (company/agent domain applied explicitly above)
             total = Lead.sudo().search_count(domain)
 
             # Count by status
@@ -1054,11 +1079,38 @@ class LeadApiController(http.Controller):
 
         return data
 
+    def _is_agent_role(self, user):
+        """FR2.1: True only for a pure Agent (no Manager/Owner/Admin override).
+
+        Managers and Owners already see all company leads (FR1); Admins
+        (base.group_system) are unrestricted. Only a user who has the
+        Agent group and none of those broader roles is scoped down to
+        their own leads.
+        """
+        if user.has_group("base.group_system"):
+            return False
+        if user.has_group("quicksol_estate.group_real_estate_manager"):
+            return False
+        if user.has_group("quicksol_estate.group_real_estate_owner"):
+            return False
+        return user.has_group("quicksol_estate.group_real_estate_agent")
+
+    def _check_lead_company_access(self, lead, user_company_ids):
+        """FR3.2/FR3.4: explicit company check for single-lead activity endpoints.
+
+        An empty user_company_ids means the caller is base.group_system
+        (admin), which bypasses this check entirely, consistent with
+        require_company's own admin semantics.
+        """
+        if not user_company_ids:
+            return True
+        return lead.company_id.id in user_company_ids
+
     # ==================== ACTIVITY TRACKING ENDPOINTS ====================
 
     @http.route(
         "/api/v1/leads/<int:lead_id>/activities",
-        type="json",
+        type="http",
         auth="none",
         methods=["POST"],
         csrf=False,
@@ -1066,16 +1118,26 @@ class LeadApiController(http.Controller):
     )
     @require_jwt
     @require_session
+    @require_company
     def log_activity(self, lead_id, **kwargs):
 
         try:
-            body = kwargs.get("body", "").strip()
+            try:
+                body_data = json.loads(request.httprequest.data.decode("utf-8"))
+                if not isinstance(body_data, dict):
+                    raise ValueError("Request body must be a JSON object")
+            except (json.JSONDecodeError, UnicodeDecodeError, ValueError):
+                return error_response(
+                    "Validation Error", "Request body must be valid JSON", 400
+                )
+
+            body = body_data.get("body", "").strip()
             if not body:
                 return error_response(
                     "Validation Error", "Activity body is required", 400
                 )
 
-            activity_type = kwargs.get("activity_type", "note")
+            activity_type = body_data.get("activity_type", "note")
             if activity_type not in ["call", "email", "meeting", "note"]:
                 return error_response(
                     "Validation Error",
@@ -1091,7 +1153,11 @@ class LeadApiController(http.Controller):
 
             # Verify user has access to this lead
             current_user = request.env.user
-            # Note: Company isolation is handled by @require_company decorator
+
+            # FR3.2/FR3.4: explicit cross-company check (request.user_company_ids
+            # is empty only for base.group_system, which bypasses this check).
+            if not self._check_lead_company_access(lead, request.user_company_ids):
+                return error_response("Access denied", 403, "ACCESS_DENIED")
 
             # Check agent isolation (agents can only log on their own leads)
             user_groups = current_user.groups_id.mapped("name")
@@ -1146,7 +1212,9 @@ class LeadApiController(http.Controller):
                 ),
             }
 
-            return success_response("Activity logged successfully", activity_data, 201)
+            activity_data["success"] = True
+            activity_data["message"] = "Activity logged successfully"
+            return success_response(activity_data, 201)
 
         except Exception as e:
             _logger.error(
@@ -1164,6 +1232,7 @@ class LeadApiController(http.Controller):
     )
     @require_jwt
     @require_session
+    @require_company
     def list_activities(self, lead_id, **kwargs):
 
         try:
@@ -1181,7 +1250,11 @@ class LeadApiController(http.Controller):
 
             # Verify user has access to this lead
             current_user = request.env.user
-            # Note: Company isolation is handled by @require_company decorator
+
+            # FR3.2/FR3.4: explicit cross-company check (request.user_company_ids
+            # is empty only for base.group_system, which bypasses this check).
+            if not self._check_lead_company_access(lead, request.user_company_ids):
+                return error_response("Access denied", 403, "ACCESS_DENIED")
 
             # Check agent isolation (agents can only view their own leads)
             user_groups = current_user.groups_id.mapped("name")
@@ -1289,7 +1362,7 @@ class LeadApiController(http.Controller):
 
     @http.route(
         "/api/v1/leads/<int:lead_id>/schedule-activity",
-        type="json",
+        type="http",
         auth="none",
         methods=["POST"],
         csrf=False,
@@ -1297,16 +1370,26 @@ class LeadApiController(http.Controller):
     )
     @require_jwt
     @require_session
+    @require_company
     def schedule_activity(self, lead_id, **kwargs):
 
         try:
-            summary = kwargs.get("summary", "").strip()
+            try:
+                body_data = json.loads(request.httprequest.data.decode("utf-8"))
+                if not isinstance(body_data, dict):
+                    raise ValueError("Request body must be a JSON object")
+            except (json.JSONDecodeError, UnicodeDecodeError, ValueError):
+                return error_response(
+                    "Validation Error", "Request body must be valid JSON", 400
+                )
+
+            summary = body_data.get("summary", "").strip()
             if not summary:
                 return error_response(
                     "Validation Error", "Activity summary is required", 400
                 )
 
-            date_deadline = kwargs.get("date_deadline", "").strip()
+            date_deadline = body_data.get("date_deadline", "").strip()
             if not date_deadline:
                 return error_response(
                     "Validation Error", "Activity deadline date is required", 400
@@ -1330,7 +1413,11 @@ class LeadApiController(http.Controller):
 
             # Verify user has access to this lead
             current_user = request.env.user
-            # Note: Company isolation is handled by @require_company decorator
+
+            # FR3.2/FR3.4: explicit cross-company check (request.user_company_ids
+            # is empty only for base.group_system, which bypasses this check).
+            if not self._check_lead_company_access(lead, request.user_company_ids):
+                return error_response("Access denied", 403, "ACCESS_DENIED")
 
             # Check agent isolation (agents can only schedule on their own leads)
             user_groups = current_user.groups_id.mapped("name")
@@ -1347,7 +1434,7 @@ class LeadApiController(http.Controller):
 
             # Get activity type (default to 'To Do')
             ActivityType = request.env["mail.activity.type"].sudo()
-            activity_type_id = kwargs.get("activity_type_id")
+            activity_type_id = body_data.get("activity_type_id")
 
             if not activity_type_id:
                 # Find default 'To Do' activity type
@@ -1365,7 +1452,7 @@ class LeadApiController(http.Controller):
                 )
 
             # Get assigned user (default to current user)
-            user_id = kwargs.get("user_id", current_user.id)
+            user_id = body_data.get("user_id", current_user.id)
 
             # Validate assigned user exists
             assigned_user = request.env["res.users"].sudo().browse(user_id)
@@ -1383,7 +1470,7 @@ class LeadApiController(http.Controller):
                 .id,
                 "activity_type_id": activity_type_id,
                 "summary": summary,
-                "note": kwargs.get("note", ""),
+                "note": body_data.get("note", ""),
                 "date_deadline": deadline_date,
                 "user_id": user_id,
             }
@@ -1416,9 +1503,9 @@ class LeadApiController(http.Controller):
                 ),
             }
 
-            return success_response(
-                "Activity scheduled successfully", activity_data, 201
-            )
+            activity_data["success"] = True
+            activity_data["message"] = "Activity scheduled successfully"
+            return success_response(activity_data, 201)
 
         except Exception as e:
             _logger.error(

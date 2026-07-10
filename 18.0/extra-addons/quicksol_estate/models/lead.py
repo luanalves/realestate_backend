@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
 
-from odoo import models, fields, api, _
-from odoo.exceptions import ValidationError, UserError
+from odoo import _, api, fields, models
+from odoo.exceptions import UserError, ValidationError
 
 
 class RealEstateLead(models.Model):
@@ -42,6 +42,16 @@ class RealEstateLead(models.Model):
             """
             CREATE INDEX IF NOT EXISTS real_estate_lead_state_agent_idx
             ON real_estate_lead (state, agent_id)
+        """
+        )
+
+        # Composite index for company-scoped queries (Feature 024: company isolation)
+        # Every list/export/statistics query now has company_id as a mandatory
+        # domain clause, frequently combined with a state filter/group-by.
+        self._cr.execute(
+            """
+            CREATE INDEX IF NOT EXISTS real_estate_lead_company_state_idx
+            ON real_estate_lead (company_id, state)
         """
         )
 
@@ -146,6 +156,7 @@ class RealEstateLead(models.Model):
         string="Company",
         required=True,
         tracking=True,
+        index=True,
         ondelete="restrict",
         default=lambda self: self._default_company_id(),
         help="Company this lead belongs to (multi-tenancy)",

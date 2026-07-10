@@ -99,6 +99,10 @@ docker compose exec redis redis-cli MONITOR
 
 When providing assistance, assume the user is working within the 18.0 directory context unless otherwise specified.
 
+## Specifications (spec-kit pattern)
+
+This project tracks feature specs under `specs/NNN-slug/` (spec-kit convention), one numbered directory per feature — e.g. `specs/023-redis-session-cache/`, `specs/024-leads-company-isolation/`. Each directory typically contains `spec.md` (the design/requirements) plus, as needed, `plan.md`, `tasks.md`, `research.md`, `data-model.md`, `quickstart.md`, and `contracts/`/`checklists/` subfolders. When starting a new feature or writing a design doc, create the next sequentially numbered `specs/NNN-slug/` directory rather than a flat file elsewhere. `NNN` is zero-padded and increments from the highest existing number in `specs/`.
+
 ## Architecture Decision Records (ADRs)
 
 This project follows documented architectural decisions. **Always consult the ADR directory** for guidelines on:

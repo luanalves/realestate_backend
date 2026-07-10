@@ -4992,7 +4992,55 @@ GET /api/v1/leads?state=qualified&budget_min=300000&budget_max=500000]]></field>
             <field name="protected" eval="True"/>
             <field name="tags">Leads</field>
             <field name="summary">Create activity for lead</field>
-            <field name="description">Create a new activity for a lead (call, email, meeting, etc.).</field>
+            <field name="description">Create a new activity for a lead (call, email, meeting, etc.). Posts a message to the lead's chatter.
+
+**Path Parameters:**
+- id (integer): Lead ID
+
+**Required Fields:**
+- body (string): Activity note/content
+
+**Optional Fields:**
+- activity_type (string): One of call, email, meeting, note (default: note)
+
+**Error Responses:**
+- **403 Forbidden**: Lead does not belong to any of the caller's companies, or (agents only) the lead is not assigned to the caller
+- **404 Not Found**: Lead does not exist</field>
+            <field name="request_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "CreateLeadActivityRequest",
+  "required": ["body"],
+  "properties": {
+    "body":          {"type": "string", "example": "Called the client, interested in a second visit."},
+    "activity_type": {"type": "string", "enum": ["call", "email", "meeting", "note"], "default": "note", "example": "call"}
+  }
+}
+]]></field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "LeadActivityResponse",
+  "properties": {
+    "success": {"type": "boolean", "example": true},
+    "message": {"type": "string", "example": "Activity logged successfully"},
+    "id": {"type": "integer", "example": 501},
+    "lead_id": {"type": "integer", "example": 42},
+    "activity_type": {"type": "string", "example": "call"},
+    "body": {"type": "string", "example": "Called the client, interested in a second visit."},
+    "author": {
+      "type": "object",
+      "properties": {
+        "id": {"type": "integer", "example": 7},
+        "name": {"type": "string", "example": "Maria Silva"},
+        "email": {"type": "string", "example": "maria@imobiliaria.com"}
+      }
+    },
+    "date": {"type": "string", "example": "2026-07-09 14:30:00"},
+    "created_at": {"type": "string", "example": "2026-07-09 14:30:00"}
+  }
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 
@@ -5004,7 +5052,72 @@ GET /api/v1/leads?state=qualified&budget_min=300000&budget_max=500000]]></field>
             <field name="protected" eval="True"/>
             <field name="tags">Leads</field>
             <field name="summary">Schedule activity for lead</field>
-            <field name="description">Schedule a future activity for a lead with reminders.</field>
+            <field name="description">Schedule a future activity (mail.activity) for a lead with reminders.
+
+**Path Parameters:**
+- id (integer): Lead ID
+
+**Required Fields:**
+- summary (string): Short activity summary
+- date_deadline (string): Deadline date, format YYYY-MM-DD
+
+**Optional Fields:**
+- activity_type_id (integer): Activity type ID (defaults to the "To Do" type if omitted)
+- user_id (integer): Assigned user ID (defaults to the current user)
+- note (string): Extra notes for the activity
+
+**Error Responses:**
+- **400 Bad Request**: Missing/invalid summary, deadline date, or referenced user
+- **403 Forbidden**: Lead does not belong to any of the caller's companies, or (agents only) the lead is not assigned to the caller
+- **404 Not Found**: Lead does not exist</field>
+            <field name="request_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "ScheduleLeadActivityRequest",
+  "required": ["summary", "date_deadline"],
+  "properties": {
+    "summary":          {"type": "string", "example": "Follow up call"},
+    "date_deadline":    {"type": "string", "format": "date", "example": "2026-07-15"},
+    "activity_type_id": {"type": "integer"},
+    "user_id":          {"type": "integer"},
+    "note":             {"type": "string", "example": "Confirm interest in the Jardins unit."}
+  }
+}
+]]></field>
+            <field name="response_schema"><![CDATA[
+{
+  "type": "object",
+  "title": "ScheduleLeadActivityResponse",
+  "properties": {
+    "success": {"type": "boolean", "example": true},
+    "message": {"type": "string", "example": "Activity scheduled successfully"},
+    "id": {"type": "integer", "example": 120},
+    "lead_id": {"type": "integer", "example": 42},
+    "summary": {"type": "string", "example": "Follow up call"},
+    "note": {"type": "string", "example": "Confirm interest in the Jardins unit."},
+    "activity_type": {"type": "string", "example": "To Do"},
+    "date_deadline": {"type": "string", "example": "2026-07-15"},
+    "assigned_to": {
+      "type": "object",
+      "properties": {
+        "id": {"type": "integer", "example": 7},
+        "name": {"type": "string", "example": "Maria Silva"},
+        "email": {"type": "string", "example": "maria@imobiliaria.com"}
+      }
+    },
+    "created_by": {
+      "type": "object",
+      "properties": {
+        "id": {"type": "integer", "example": 7},
+        "name": {"type": "string", "example": "Maria Silva"},
+        "email": {"type": "string", "example": "maria@imobiliaria.com"}
+      }
+    },
+    "state": {"type": "string", "example": "planned"},
+    "created_at": {"type": "string", "example": "2026-07-09 14:30:00"}
+  }
+}
+]]></field>
             <field name="active" eval="True"/>
         </record>
 

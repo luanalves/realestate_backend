@@ -41,20 +41,19 @@ BEGIN
     -- Create user
     INSERT INTO res_users (
         login, password, partner_id, company_id, active, notification_type,
-        company_id, create_date, write_date, create_uid, write_uid
+        create_date, write_date, create_uid, write_uid
     ) VALUES (
         'owner2@example.com',
         '$PASSWORD_HASH',
         v_partner_id,
-        1,  -- Odoo res_company (must be 1)
+        2,  -- Urban Properties (Owner B's company)
         true,
         'email',
-        2,  -- Urban Properties
         NOW(), NOW(), 2, 2
     ) RETURNING id INTO v_user_id;
-    
+
     -- Associate with estate company via Many2many
-    INSERT INTO res_company_users_rel (user_id, company_id)
+    INSERT INTO res_company_users_rel (user_id, cid)
     VALUES (v_user_id, 2)
     ON CONFLICT DO NOTHING;
     
