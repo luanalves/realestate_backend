@@ -42,7 +42,7 @@ class TestUserAuth(TransactionCase):
         })
 
         self.assertIsNotNone(session.login_at)
-        self.assertIsNone(session.logout_at)
+        self.assertFalse(session.logout_at)
 
     def test_session_validator_finds_valid_session(self):
         session = self.env['thedevkitchen.api.session'].create({
@@ -51,13 +51,17 @@ class TestUserAuth(TransactionCase):
             'ip_address': '127.0.0.1',
         })
 
-        valid, user, error = SessionValidator.validate('valid-session-123')
+        valid, user, api_session, error = SessionValidator.validate(
+            'valid-session-123', env=self.env
+        )
         self.assertTrue(valid, 'Valid session should pass validation')
         self.assertEqual(user.id, self.test_user.id)
         self.assertIsNone(error)
 
     def test_session_validator_rejects_invalid_session(self):
-        valid, user, error = SessionValidator.validate('invalid-session')
+        valid, user, api_session, error = SessionValidator.validate(
+            'invalid-session', env=self.env
+        )
         self.assertFalse(valid, 'Invalid session should fail validation')
         self.assertIsNone(user)
         self.assertIsNotNone(error)
@@ -69,7 +73,9 @@ class TestUserAuth(TransactionCase):
             'is_active': False,
         })
 
-        valid, user, error = SessionValidator.validate('inactive-session-123')
+        valid, user, api_session, error = SessionValidator.validate(
+            'inactive-session-123', env=self.env
+        )
         self.assertFalse(valid, 'Inactive session should fail validation')
 
     def test_session_validator_rejects_inactive_user(self):
@@ -79,7 +85,9 @@ class TestUserAuth(TransactionCase):
             'user_id': self.test_user.id,
         })
 
-        valid, user, error = SessionValidator.validate('user-inactive-session')
+        valid, user, api_session, error = SessionValidator.validate(
+            'user-inactive-session', env=self.env
+        )
         self.assertFalse(valid, 'Session for inactive user should fail')
 
         session_after = self.env['thedevkitchen.api.session'].search([
