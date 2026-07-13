@@ -225,19 +225,13 @@ class CreditCheckService:
 
     def _emit_credit_check_event(self, check, result):
         try:
-            from odoo.addons.quicksol_estate.celery_tasks import (
-                send_proposal_notification,
-            )
-            send_proposal_notification.apply_async(
+            from odoo.addons.quicksol_estate.services.celery_client import send_task
+
+            send_task(
+                'proposal.send_email',
                 kwargs={
                     'proposal_id': check.proposal_id.id,
-                    'event_type': 'credit_check.result_registered',
-                    'payload': {
-                        'check_id': check.id,
-                        'result': result,
-                        'insurer_name': check.insurer_name,
-                    },
-                    'db': self.env.cr.dbname,
+                    'event_name': 'credit_check.result_registered',
                 },
                 queue='notification_events',
             )

@@ -858,17 +858,11 @@ class RealEstateProposal(models.Model):
         """
         self.ensure_one()
         try:
-            from odoo.addons.quicksol_estate.celery_tasks import (
-                send_proposal_notification,
-            )
+            from odoo.addons.quicksol_estate.services.celery_client import send_task
 
-            send_proposal_notification.apply_async(
-                kwargs={
-                    "proposal_id": self.id,
-                    "event_type": event_type,
-                    "payload": payload,
-                    "db": self.env.cr.dbname,
-                },
+            send_task(
+                "proposal.send_email",
+                kwargs={"proposal_id": self.id, "event_name": event_type},
                 queue="notification_events",
             )
         except Exception:
