@@ -98,7 +98,9 @@ class TestEnhancedSpanAttributes(common.TransactionCase):
         # Create mock request with session
         mock_request = Mock()
         mock_request.session.uid = 42
+        mock_request.session.creation_time = None
         mock_request.env.user = mock_user
+        mock_request.env.companies.ids = []
         mock_request.httprequest.method = "GET"
         mock_request.httprequest.path = "/api/v1/users"
         mock_request.httprequest.url = "http://localhost/api/v1/users"
@@ -106,15 +108,16 @@ class TestEnhancedSpanAttributes(common.TransactionCase):
         mock_request.httprequest.full_path = "/api/v1/users"
         mock_request.httprequest.headers = {}
         mock_request.httprequest.remote_addr = "127.0.0.1"
-        
+        mock_request.httprequest.data = b''
+
         @trace_http_request
         def test_endpoint(**kwargs):
             return "success"
-        
-        with patch('odoo.http.request', mock_request):
+
+        with patch('odoo.addons.thedevkitchen_observability.services.tracer.request', mock_request):
             with patch('odoo.addons.thedevkitchen_observability.services.tracer._is_tracing_enabled', return_value=True):
                 result = test_endpoint()
-        
+
         # Verify user attributes were set
         span_calls = {call[0][0]: call[0][1] for call in mock_span.set_attribute.call_args_list}
         
@@ -143,6 +146,7 @@ class TestEnhancedSpanAttributes(common.TransactionCase):
         
         mock_request = Mock()
         mock_request.session.uid = 42
+        mock_request.session.creation_time = None
         mock_request.env.company = mock_company
         mock_request.env.companies = mock_companies
         mock_request.env.user = Mock(name="Test User")
@@ -153,15 +157,16 @@ class TestEnhancedSpanAttributes(common.TransactionCase):
         mock_request.httprequest.full_path = "/api/v1/companies"
         mock_request.httprequest.headers = {}
         mock_request.httprequest.remote_addr = "127.0.0.1"
-        
+        mock_request.httprequest.data = b''
+
         @trace_http_request
         def test_endpoint(**kwargs):
             return "success"
-        
-        with patch('odoo.http.request', mock_request):
+
+        with patch('odoo.addons.thedevkitchen_observability.services.tracer.request', mock_request):
             with patch('odoo.addons.thedevkitchen_observability.services.tracer._is_tracing_enabled', return_value=True):
                 result = test_endpoint()
-        
+
         # Verify company attributes were set
         span_calls = {call[0][0]: call[0][1] for call in mock_span.set_attribute.call_args_list}
         
@@ -181,6 +186,8 @@ class TestEnhancedSpanAttributes(common.TransactionCase):
         
         mock_request = Mock()
         mock_request.session.uid = None  # No user
+        mock_request.session.creation_time = None
+        mock_request.env.companies.ids = []
         mock_request.httprequest.method = "GET"
         mock_request.httprequest.path = "/api/v1/health"
         mock_request.httprequest.url = "http://localhost/api/v1/health"
@@ -194,7 +201,7 @@ class TestEnhancedSpanAttributes(common.TransactionCase):
         def test_endpoint(**kwargs):
             return "success"
         
-        with patch('odoo.http.request', mock_request):
+        with patch('odoo.addons.thedevkitchen_observability.services.tracer.request', mock_request):
             with patch('odoo.addons.thedevkitchen_observability.services.tracer._is_tracing_enabled', return_value=True):
                 result = test_endpoint()
         
@@ -222,6 +229,7 @@ class TestEnhancedSpanAttributes(common.TransactionCase):
         mock_request = Mock()
         mock_request.session = mock_session
         mock_request.env.user = Mock(name="Test User")
+        mock_request.env.companies.ids = []
         mock_request.httprequest.method = "GET"
         mock_request.httprequest.path = "/api/v1/users"
         mock_request.httprequest.url = "http://localhost/api/v1/users"
@@ -235,7 +243,7 @@ class TestEnhancedSpanAttributes(common.TransactionCase):
         def test_endpoint(**kwargs):
             return "success"
         
-        with patch('odoo.http.request', mock_request):
+        with patch('odoo.addons.thedevkitchen_observability.services.tracer.request', mock_request):
             with patch('odoo.addons.thedevkitchen_observability.services.tracer._is_tracing_enabled', return_value=True):
                 result = test_endpoint()
         
