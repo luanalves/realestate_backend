@@ -156,7 +156,7 @@ Plus 1 vendored OCA module: `auditlog` (18.0.2.0.2, AGPL-3, audit-log CRUD/sessi
 | `18.0/docker-compose.yml` + `docker-compose-production.yml` | Yes | Local dev and production container orchestration |
 | CI/CD config (`.github/workflows/`, etc.) | **No** | See discrepancy #2 — documented pipeline not present in-repo |
 | Lint/static-analysis config (`18.0/.flake8`) | Yes | flake8 config (max line length 88, `E203/E501/W503/E402` ignored); black/isort/pylint/mypy pinned in `Dockerfile` per ADR-022 |
-| Test config | No dedicated `pytest.ini`/config file | Odoo's own `odoo.tests.common` test discovery (`--test-enable -i <module>`); coverage enforced via `scripts/validate_coverage.sh` (80% min, ADR-003) |
+| Test config | No dedicated `pytest.ini`/config file | Odoo's own `odoo.tests.common` test discovery (`--test-enable -i <module>`); validated via `scripts/validate_coverage.sh` per the ADR-003 flow (unit runner → E2E curl → optional Cypress) |
 | Patches/hotfixes directory | No | Not applicable — no patch-management convention found |
 | `.coderabbit.yaml` | Yes | AI PR-review bot configuration (closest thing to an automated quality gate found) |
 | Orphaned `addons/` directory (repo root) | Yes — **stale/unreferenced** | See discrepancy #3 |
@@ -195,7 +195,7 @@ Plus 1 vendored OCA module: `auditlog` (18.0.2.0.2, AGPL-3, audit-log CRUD/sessi
 - [x] Functional / E2E tests (Cypress, 41 specs)
 - [x] API/contract tests (Postman collections governed by ADR-016; `scripts/validate_openapi_sync.sh`, scoped only to the proposals module)
 
-Mandatory 80% coverage threshold per ADR-003 / spec-kit "Constitution Principle II" (`.specify/memory/constitution.md`); actual coverage percentages were not verified (would require running the suite).
+ADR-003 (current, v3.0) requires 100% coverage of validations (`required=True`, `@api.constrains`, `_sql_constraints`, `compute=`, each with a success + failure test) rather than a blanket line/branch coverage percentage; a module-by-module audit against that rule has not yet been performed.
 
 > Details: [testing.md](knowledge_base/testing.md)
 
