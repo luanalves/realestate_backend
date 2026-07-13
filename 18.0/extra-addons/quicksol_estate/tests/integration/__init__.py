@@ -29,3 +29,6 @@ from . import test_proposal_lead_integration
 from . import test_proposal_list
 from . import test_proposal_attachments
 from . import test_proposal_expiration
+
+# 2026-07 ADR-003 validation-coverage audit gap fixes
+from . import test_validation_gaps

@@ -19,6 +19,7 @@ from .integration import test_proposal_lead_integration
 from .integration import test_proposal_list
 from .integration import test_proposal_attachments
 from .integration import test_proposal_expiration
+from .integration import test_validation_gaps
 
 # Observer pattern tests
 from . import observers
