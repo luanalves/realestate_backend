@@ -44,6 +44,7 @@ class TestTokenService(TransactionCase):
                 "name": "Token Test User",
                 "email": "token@test.com",
                 "signup_pending": True,
+                "company_id": self.company.id,
                 "company_ids": [(6, 0, [self.company.id])],
             }
         )
@@ -79,8 +80,7 @@ class TestTokenService(TransactionCase):
         raw_token, token_record = self.token_service.generate_token(
             user=self.test_user,
             token_type="invite",
-            ttl_hours=24,
-            company_id=self.company.id,
+            company=self.company,
         )
 
         # Verify raw token is 32 hex characters (UUID4 hex format)
@@ -99,8 +99,7 @@ class TestTokenService(TransactionCase):
         raw_token, token_record = self.token_service.generate_token(
             user=self.test_user,
             token_type="invite",
-            ttl_hours=24,
-            company_id=self.company.id,
+            company=self.company,
         )
 
         # Compute expected SHA-256 hash
@@ -119,8 +118,7 @@ class TestTokenService(TransactionCase):
         raw_token, token_record = self.token_service.generate_token(
             user=self.test_user,
             token_type="invite",
-            ttl_hours=24,
-            company_id=self.company.id,
+            company=self.company,
         )
 
         after_generation = datetime.now()
@@ -139,8 +137,7 @@ class TestTokenService(TransactionCase):
         raw_token, token_record = self.token_service.generate_token(
             user=self.test_user,
             token_type="invite",
-            ttl_hours=24,
-            company_id=self.company.id,
+            company=self.company,
         )
 
         self.assertEqual(token_record.status, "pending")
@@ -150,8 +147,7 @@ class TestTokenService(TransactionCase):
         raw_token, token_record = self.token_service.generate_token(
             user=self.test_user,
             token_type="invite",
-            ttl_hours=24,
-            company_id=self.company.id,
+            company=self.company,
         )
 
         self.assertEqual(token_record.user_id.id, self.test_user.id)
@@ -161,8 +157,7 @@ class TestTokenService(TransactionCase):
         raw_token, token_record = self.token_service.generate_token(
             user=self.test_user,
             token_type="invite",
-            ttl_hours=24,
-            company_id=self.company.id,
+            company=self.company,
         )
 
         self.assertEqual(token_record.company_id.id, self.company.id)
@@ -177,8 +172,7 @@ class TestTokenService(TransactionCase):
         raw_token, token_record = self.token_service.generate_token(
             user=self.test_user,
             token_type="invite",
-            ttl_hours=24,
-            company_id=self.company.id,
+            company=self.company,
         )
 
         # Validate token
@@ -191,17 +185,24 @@ class TestTokenService(TransactionCase):
 
     def test_validate_token_with_expired_token_returns_error(self):
         """validate_token() with expired token returns error."""
-        # Create expired token manually
+        # _check_expires_at rejects a past expires_at on create/write, so create
+        # with a valid future date then backdate it via SQL (bypasses the
+        # Python-level constrain, which only runs through the ORM).
         expired_token = self.env["thedevkitchen.password.token"].create(
             {
                 "user_id": self.test_user.id,
                 "token": "b" * 64,
                 "token_type": "invite",
                 "status": "pending",
-                "expires_at": datetime.now() - timedelta(hours=1),  # Expired 1 hour ago
+                "expires_at": datetime.now() + timedelta(hours=1),
                 "company_id": self.company.id,
             }
         )
+        self.env.cr.execute(
+            "UPDATE thedevkitchen_password_token SET expires_at = %s WHERE id = %s",
+            (datetime.now() - timedelta(hours=1), expired_token.id),
+        )
+        expired_token.invalidate_recordset()
 
         # Compute raw token that would hash to 'b' * 64
         # For testing, we'll use the hash directly and validate with invalid raw token
@@ -221,8 +222,7 @@ class TestTokenService(TransactionCase):
         raw_token, token_record = self.token_service.generate_token(
             user=self.test_user,
             token_type="invite",
-            ttl_hours=24,
-            company_id=self.company.id,
+            company=self.company,
         )
 
         token_record.write(
@@ -263,10 +263,15 @@ class TestTokenService(TransactionCase):
                 "token": token_hash,
                 "token_type": "invite",
                 "status": "pending",
-                "expires_at": datetime.now() - timedelta(hours=1),
+                "expires_at": datetime.now() + timedelta(hours=1),
                 "company_id": self.company.id,
             }
         )
+        self.env.cr.execute(
+            "UPDATE thedevkitchen_password_token SET expires_at = %s WHERE id = %s",
+            (datetime.now() - timedelta(hours=1), expired_token.id),
+        )
+        expired_token.invalidate_recordset()
 
         # Validate token
         result = self.token_service.validate_token(raw_token_value, "invite")
@@ -275,7 +280,7 @@ class TestTokenService(TransactionCase):
         self.assertFalse(result["valid"])
 
         # Check if token status was updated to expired
-        expired_token.refresh()
+        expired_token.invalidate_recordset()
         self.assertEqual(expired_token.status, "expired")
 
     # ============================================================
@@ -308,11 +313,11 @@ class TestTokenService(TransactionCase):
         )
 
         # Invalidate previous tokens
-        self.token_service.invalidate_previous_tokens(self.test_user, "invite")
+        self.token_service.invalidate_previous_tokens(self.test_user.id, "invite")
 
         # Verify both tokens marked as invalidated
-        token1.refresh()
-        token2.refresh()
+        token1.invalidate_recordset()
+        token2.invalidate_recordset()
 
         self.assertEqual(token1.status, "invalidated")
         self.assertEqual(token2.status, "invalidated")
@@ -333,10 +338,10 @@ class TestTokenService(TransactionCase):
         )
 
         # Invalidate previous tokens
-        self.token_service.invalidate_previous_tokens(self.test_user, "invite")
+        self.token_service.invalidate_previous_tokens(self.test_user.id, "invite")
 
         # Used token should remain used
-        used_token.refresh()
+        used_token.invalidate_recordset()
         self.assertEqual(used_token.status, "used")
 
     def test_invalidate_previous_tokens_respects_token_type(self):
@@ -366,11 +371,11 @@ class TestTokenService(TransactionCase):
         )
 
         # Invalidate only invite tokens
-        self.token_service.invalidate_previous_tokens(self.test_user, "invite")
+        self.token_service.invalidate_previous_tokens(self.test_user.id, "invite")
 
         # Check statuses
-        invite_token.refresh()
-        reset_token.refresh()
+        invite_token.invalidate_recordset()
+        reset_token.invalidate_recordset()
 
         self.assertEqual(invite_token.status, "invalidated")
         self.assertEqual(reset_token.status, "pending")  # Should not be affected
@@ -395,16 +400,17 @@ class TestTokenService(TransactionCase):
 
         # Try to create duplicate token
         with self.assertRaises(Exception) as context:
-            self.env["thedevkitchen.password.token"].create(
-                {
-                    "user_id": self.test_user.id,
-                    "token": "unique" * 16,  # Same hash
-                    "token_type": "invite",
-                    "status": "pending",
-                    "expires_at": datetime.now() + timedelta(hours=24),
-                    "company_id": self.company.id,
-                }
-            )
+            with self.env.cr.savepoint():
+                self.env["thedevkitchen.password.token"].create(
+                    {
+                        "user_id": self.test_user.id,
+                        "token": "unique" * 16,  # Same hash
+                        "token_type": "invite",
+                        "status": "pending",
+                        "expires_at": datetime.now() + timedelta(hours=24),
+                        "company_id": self.company.id,
+                    }
+                )
 
         # Verify it's a uniqueness constraint violation
         error_message = str(context.exception).lower()
@@ -418,7 +424,10 @@ class TestTokenService(TransactionCase):
     # ============================================================
 
     def test_forgot_password_always_returns_success(self):
-        """Forgot password always returns success (anti-enumeration)."""
+        """Forgot password never raises, for existing or non-existent users
+        (anti-enumeration, ADR-008). The controller ignores the return value
+        and always responds with the same generic success message either way -
+        forgot_password() itself returns None in both cases."""
         from odoo.addons.thedevkitchen_user_onboarding.services.password_service import (
             PasswordService,
         )
@@ -426,15 +435,18 @@ class TestTokenService(TransactionCase):
         password_service = PasswordService(self.env)
 
         # Test with existing user
-        result_existing = password_service.forgot_password("token@test.com")
-        self.assertTrue(result_existing, "Should return success for existing user")
+        try:
+            password_service.forgot_password("token@test.com")
+        except Exception as e:
+            self.fail(f"Should not raise for existing user, but got: {e}")
 
         # Test with non-existent user
-        result_nonexistent = password_service.forgot_password("nonexistent@test.com")
-        self.assertTrue(
-            result_nonexistent,
-            "Should return success for non-existent user (anti-enumeration)",
-        )
+        try:
+            password_service.forgot_password("nonexistent@test.com")
+        except Exception as e:
+            self.fail(
+                f"Should not raise for non-existent user (anti-enumeration), but got: {e}"
+            )
 
     def test_reset_token_invalidates_previous_reset_tokens(self):
         """New reset token marks previous pending reset tokens as invalidated."""
@@ -451,17 +463,16 @@ class TestTokenService(TransactionCase):
         )
 
         # Generate new reset token (should invalidate first)
-        self.token_service.invalidate_previous_tokens(self.test_user, "reset")
+        self.token_service.invalidate_previous_tokens(self.test_user.id, "reset")
 
         raw_token, new_token = self.token_service.generate_token(
             user=self.test_user,
             token_type="reset",
-            ttl_hours=48,
-            company_id=self.company.id,
+            company=self.company,
         )
 
         # First token should be invalidated
-        first_token.refresh()
+        first_token.invalidate_recordset()
         self.assertEqual(first_token.status, "invalidated")
 
         # New token should be pending
@@ -510,8 +521,7 @@ class TestTokenService(TransactionCase):
         raw_token, token_record = self.token_service.generate_token(
             user=self.test_user,
             token_type="reset",
-            ttl_hours=48,
-            company_id=self.company.id,
+            company=self.company,
         )
 
         # Mock validate_token to return valid
@@ -533,7 +543,7 @@ class TestTokenService(TransactionCase):
             )
 
         # Verify session invalidation was called
-        mock_invalidate.assert_called_once_with(self.test_user)
+        mock_invalidate.assert_called_once_with(self.test_user.id)
 
     def test_session_invalidation_sets_api_session_inactive(self):
         """_invalidate_user_sessions() sets api_session.is_active=False for all user sessions."""
@@ -566,11 +576,11 @@ class TestTokenService(TransactionCase):
             )
 
             password_service = PasswordService(self.env)
-            password_service._invalidate_user_sessions(self.test_user)
+            password_service._invalidate_user_sessions(self.test_user.id)
 
             # Verify sessions are inactive
-            session1.refresh()
-            session2.refresh()
+            session1.invalidate_recordset()
+            session2.invalidate_recordset()
 
             self.assertFalse(session1.is_active, "Session 1 should be inactive")
             self.assertFalse(session2.is_active, "Session 2 should be inactive")

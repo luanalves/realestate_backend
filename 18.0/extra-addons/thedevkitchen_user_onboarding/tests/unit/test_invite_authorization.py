@@ -8,7 +8,7 @@ Authorization Matrix:
 - Owner: Can invite all 9 profiles
 - Director: Can invite 5 operational profiles (inherits Manager permissions)
 - Manager: Can invite 5 operational profiles (agent, prospector, receptionist, financial, legal)
-- Agent: Can invite owner and portal only
+- Agent: Can invite property_owner and tenant only (ADR-024 unified portal profiles)
 - Other profiles (Prospector, Receptionist, Financial, Legal, Portal): Cannot invite anyone
 
 Author: TheDevKitchen
@@ -83,6 +83,7 @@ class TestInviteAuthorization(TransactionCase):
                 "login": login,
                 "name": name,
                 "email": login,
+                "company_id": self.company.id,
                 "company_ids": [(6, 0, [self.company.id])],
                 "groups_id": [(6, 0, [g.id for g in groups])],
             }
@@ -94,7 +95,7 @@ class TestInviteAuthorization(TransactionCase):
     # ============================================================
 
     def test_owner_can_invite_all_profiles(self):
-        """Owner can invite all 9 profiles."""
+        """Owner can invite all profiles (ADR-024 unified portal profiles)."""
         profiles = [
             "owner",
             "director",
@@ -104,7 +105,8 @@ class TestInviteAuthorization(TransactionCase):
             "receptionist",
             "financial",
             "legal",
-            "portal",
+            "property_owner",
+            "tenant",
         ]
 
         for profile in profiles:
@@ -134,28 +136,28 @@ class TestInviteAuthorization(TransactionCase):
         with self.assertRaises(UserError) as context:
             self.invite_service.check_authorization(self.manager_user, "owner")
 
-        self.assertIn("not authorized", str(context.exception).lower())
+        self.assertIn("permission", str(context.exception).lower())
 
     def test_manager_cannot_invite_director(self):
         """Manager cannot invite director profile."""
         with self.assertRaises(UserError) as context:
             self.invite_service.check_authorization(self.manager_user, "director")
 
-        self.assertIn("not authorized", str(context.exception).lower())
+        self.assertIn("permission", str(context.exception).lower())
 
     def test_manager_cannot_invite_manager(self):
         """Manager cannot invite another manager."""
         with self.assertRaises(UserError) as context:
             self.invite_service.check_authorization(self.manager_user, "manager")
 
-        self.assertIn("not authorized", str(context.exception).lower())
+        self.assertIn("permission", str(context.exception).lower())
 
     def test_manager_cannot_invite_portal(self):
         """Manager cannot invite portal profile."""
         with self.assertRaises(UserError) as context:
             self.invite_service.check_authorization(self.manager_user, "portal")
 
-        self.assertIn("not authorized", str(context.exception).lower())
+        self.assertIn("permission", str(context.exception).lower())
 
     # ============================================================
     # Director Authorization Tests
@@ -177,39 +179,39 @@ class TestInviteAuthorization(TransactionCase):
         with self.assertRaises(UserError) as context:
             self.invite_service.check_authorization(self.director_user, "owner")
 
-        self.assertIn("not authorized", str(context.exception).lower())
+        self.assertIn("permission", str(context.exception).lower())
 
     # ============================================================
     # Agent Authorization Tests
     # ============================================================
 
-    def test_agent_can_invite_owner(self):
-        """Agent can invite owner profile."""
+    def test_agent_can_invite_property_owner(self):
+        """Agent can invite property_owner profile (ADR-024 unified portal profile)."""
         try:
-            self.invite_service.check_authorization(self.agent_user, "owner")
+            self.invite_service.check_authorization(self.agent_user, "property_owner")
         except UserError:
-            self.fail("Agent should be able to invite owner")
+            self.fail("Agent should be able to invite property_owner")
 
-    def test_agent_can_invite_portal(self):
-        """Agent can invite portal profile."""
+    def test_agent_can_invite_tenant(self):
+        """Agent can invite tenant profile (ADR-024 unified portal profile)."""
         try:
-            self.invite_service.check_authorization(self.agent_user, "portal")
+            self.invite_service.check_authorization(self.agent_user, "tenant")
         except UserError:
-            self.fail("Agent should be able to invite portal")
+            self.fail("Agent should be able to invite tenant")
 
     def test_agent_cannot_invite_manager(self):
         """Agent cannot invite manager profile."""
         with self.assertRaises(UserError) as context:
             self.invite_service.check_authorization(self.agent_user, "manager")
 
-        self.assertIn("not authorized", str(context.exception).lower())
+        self.assertIn("permission", str(context.exception).lower())
 
     def test_agent_cannot_invite_agent(self):
         """Agent cannot invite another agent."""
         with self.assertRaises(UserError) as context:
             self.invite_service.check_authorization(self.agent_user, "agent")
 
-        self.assertIn("not authorized", str(context.exception).lower())
+        self.assertIn("permission", str(context.exception).lower())
 
     # ============================================================
     # Other Profiles Authorization Tests
@@ -260,7 +262,7 @@ class TestInviteAuthorization(TransactionCase):
 
         # Call send_invite_email with mock
         with patch.object(
-            self.env["thedevkitchen.email.link.settings"],
+            type(self.env["thedevkitchen.email.link.settings"]),
             "get_settings",
             return_value=settings,
         ):
@@ -312,5 +314,5 @@ class TestInviteAuthorization(TransactionCase):
 
     def test_none_profile_raises_error(self):
         """None profile raises appropriate error."""
-        with self.assertRaises((UserError, TypeError)):
+        with self.assertRaises(UserError):
             self.invite_service.check_authorization(self.owner_user, None)

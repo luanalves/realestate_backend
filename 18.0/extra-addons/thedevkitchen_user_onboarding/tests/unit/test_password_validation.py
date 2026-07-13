@@ -41,6 +41,7 @@ class TestPasswordValidation(TransactionCase):
                 "name": "Test Password User",
                 "email": "test@password.com",
                 "signup_pending": True,
+                "company_id": self.company.id,
                 "company_ids": [(6, 0, [self.company.id])],
             }
         )
@@ -141,7 +142,7 @@ class TestPasswordValidation(TransactionCase):
             "error": None,
         }
 
-        with self.assertRaises((ValidationError, UserError)) as context:
+        with self.assertRaises(UserError) as context:
             self.password_service.set_password(
                 raw_token="test-token-123",
                 password="short",  # Only 5 characters
@@ -171,7 +172,7 @@ class TestPasswordValidation(TransactionCase):
             "error": None,
         }
 
-        with self.assertRaises((ValidationError, UserError)):
+        with self.assertRaises(UserError):
             self.password_service.set_password(
                 raw_token="test-token-123",
                 password="1234567",  # 7 characters
@@ -197,7 +198,7 @@ class TestPasswordValidation(TransactionCase):
             "error": None,
         }
 
-        with self.assertRaises((ValidationError, UserError)) as context:
+        with self.assertRaises(UserError) as context:
             self.password_service.set_password(
                 raw_token="test-token-123",
                 password="ValidPass123",
@@ -255,7 +256,7 @@ class TestPasswordValidation(TransactionCase):
             "error": None,
         }
 
-        with self.assertRaises((ValidationError, UserError)) as context:
+        with self.assertRaises(UserError) as context:
             self.password_service.set_password(
                 raw_token="test-token-123",
                 password="",
@@ -285,7 +286,7 @@ class TestPasswordValidation(TransactionCase):
             "error": None,
         }
 
-        with self.assertRaises((ValidationError, UserError)) as context:
+        with self.assertRaises(UserError) as context:
             self.password_service.set_password(
                 raw_token="test-token-123",
                 password="ValidPass123",
