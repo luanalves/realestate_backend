@@ -22,6 +22,30 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 
+def _make_env():
+    """MagicMock() env whose env['model.name'] returns a distinct, stable
+    mock per model name. A bare MagicMock()'s __getitem__ is unkeyed - every
+    env[key] access returns the SAME shared child mock regardless of key, so
+    configuring env['a'].search.return_value then env['b'].x.return_value
+    silently clobbers the earlier config instead of raising."""
+    registry = {}
+    env = MagicMock()
+    env.__getitem__.side_effect = lambda key: registry.setdefault(key, MagicMock())
+    return env
+
+
+def _make_filterable(items):
+    """Wrap a list so it supports .filtered() like an Odoo recordset -
+    search.return_value needs to behave like a recordset, not a plain list,
+    since the service code calls checks.filtered(...) on the result."""
+    m = MagicMock()
+    m.__iter__ = lambda s: iter(items)
+    m.__bool__ = lambda s: bool(items)
+    m.__len__ = lambda s: len(items)
+    m.filtered = lambda fn: _make_filterable([x for x in items if fn(x)])
+    return m
+
+
 class TestCreditHistoryController(unittest.TestCase):
     """US4: get_client_credit_history service method"""
 
@@ -44,7 +68,7 @@ class TestCreditHistoryController(unittest.TestCase):
 
     def test_owner_sees_full_credit_history(self):
         """GIVEN owner WHEN get_client_credit_history THEN all checks returned."""
-        env = MagicMock()
+        env = _make_env()
         partner = MagicMock()
         partner.id = 7
         partner.exists.return_value = True
@@ -54,7 +78,7 @@ class TestCreditHistoryController(unittest.TestCase):
 
         checks = [self._make_check_record('approved', 1), self._make_check_record('rejected', 2)]
         env['thedevkitchen.estate.credit.check'].search_count.return_value = 2
-        env['thedevkitchen.estate.credit.check'].search.return_value = checks
+        env['thedevkitchen.estate.credit.check'].search.return_value = _make_filterable(checks)
 
         svc = self._make_service(env)
         result = svc.get_client_credit_history(7)
@@ -68,7 +92,7 @@ class TestCreditHistoryController(unittest.TestCase):
 
     def test_manager_sees_full_credit_history(self):
         """GIVEN manager WHEN get_client_credit_history THEN all checks returned."""
-        env = MagicMock()
+        env = _make_env()
         partner = MagicMock()
         partner.id = 7
         partner.exists.return_value = True
@@ -78,7 +102,7 @@ class TestCreditHistoryController(unittest.TestCase):
 
         checks = [self._make_check_record('approved', 1)]
         env['thedevkitchen.estate.credit.check'].search_count.return_value = 1
-        env['thedevkitchen.estate.credit.check'].search.return_value = checks
+        env['thedevkitchen.estate.credit.check'].search.return_value = _make_filterable(checks)
 
         svc = self._make_service(env)
         result = svc.get_client_credit_history(7)
@@ -92,7 +116,7 @@ class TestCreditHistoryController(unittest.TestCase):
 
     def test_agent_sees_only_own_clients_history(self):
         """GIVEN agent WHEN client in their proposals THEN history returned."""
-        env = MagicMock()
+        env = _make_env()
         partner = MagicMock()
         partner.id = 7
         partner.exists.return_value = True
@@ -117,7 +141,7 @@ class TestCreditHistoryController(unittest.TestCase):
 
         checks = [self._make_check_record('approved', 1)]
         env['thedevkitchen.estate.credit.check'].search_count.return_value = 1
-        env['thedevkitchen.estate.credit.check'].search.return_value = checks
+        env['thedevkitchen.estate.credit.check'].search.return_value = _make_filterable(checks)
 
         svc = self._make_service(env)
         result = svc.get_client_credit_history(7)
@@ -131,7 +155,7 @@ class TestCreditHistoryController(unittest.TestCase):
     def test_agent_gets_404_for_unknown_client(self):
         """GIVEN agent WHEN client not in their proposals THEN UserError (→ 404)."""
         from odoo.exceptions import UserError
-        env = MagicMock()
+        env = _make_env()
         partner = MagicMock()
         partner.id = 99
         partner.exists.return_value = True
@@ -166,7 +190,7 @@ class TestCreditHistoryController(unittest.TestCase):
     def test_company_isolation_cross_company_returns_404(self):
         """GIVEN partner from different company WHEN queried THEN UserError (→ 404)."""
         from odoo.exceptions import UserError
-        env = MagicMock()
+        env = _make_env()
         partner = MagicMock()
         partner.id = 200
         partner.exists.return_value = False  # not visible via record rules
@@ -184,7 +208,7 @@ class TestCreditHistoryController(unittest.TestCase):
 
     def test_empty_history_returns_200_with_empty_array(self):
         """GIVEN client with no checks WHEN owner queries THEN empty items."""
-        env = MagicMock()
+        env = _make_env()
         partner = MagicMock()
         partner.id = 8
         partner.exists.return_value = True
@@ -193,7 +217,7 @@ class TestCreditHistoryController(unittest.TestCase):
         env.company.id = 1
 
         env['thedevkitchen.estate.credit.check'].search_count.return_value = 0
-        env['thedevkitchen.estate.credit.check'].search.return_value = []
+        env['thedevkitchen.estate.credit.check'].search.return_value = _make_filterable([])
 
         svc = self._make_service(env)
         result = svc.get_client_credit_history(8)
@@ -207,7 +231,7 @@ class TestCreditHistoryController(unittest.TestCase):
 
     def test_credit_history_summary_correct_counts(self):
         """GIVEN 2 approved, 1 rejected WHEN query THEN summary has correct counts."""
-        env = MagicMock()
+        env = _make_env()
         partner = MagicMock()
         partner.id = 7
         partner.exists.return_value = True
@@ -221,7 +245,7 @@ class TestCreditHistoryController(unittest.TestCase):
             self._make_check_record('rejected', 3),
         ]
         env['thedevkitchen.estate.credit.check'].search_count.return_value = 3
-        env['thedevkitchen.estate.credit.check'].search.return_value = checks
+        env['thedevkitchen.estate.credit.check'].search.return_value = _make_filterable(checks)
 
         svc = self._make_service(env)
         result = svc.get_client_credit_history(7)
@@ -235,7 +259,7 @@ class TestCreditHistoryController(unittest.TestCase):
 
     def test_credit_history_completes_under_300ms_for_1000_checks(self):
         """GIVEN 1,000 checks WHEN owner queries THEN response time < 300ms (SC-004)."""
-        env = MagicMock()
+        env = _make_env()
         partner = MagicMock()
         partner.id = 7
         partner.exists.return_value = True
@@ -246,7 +270,7 @@ class TestCreditHistoryController(unittest.TestCase):
         # Simulate 1,000 check records (mocked — service logic runs, no DB)
         checks = [self._make_check_record('approved', i) for i in range(100)]  # paginated to 100
         env['thedevkitchen.estate.credit.check'].search_count.return_value = 1000
-        env['thedevkitchen.estate.credit.check'].search.return_value = checks
+        env['thedevkitchen.estate.credit.check'].search.return_value = _make_filterable(checks)
 
         svc = self._make_service(env)
         start = time.monotonic()

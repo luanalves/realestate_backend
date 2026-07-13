@@ -26,6 +26,30 @@ from unittest.mock import MagicMock, patch, call
 from odoo.exceptions import UserError, ValidationError
 
 
+def _make_env():
+    """MagicMock() env whose env['model.name'] returns a distinct, stable
+    mock per model name. A bare MagicMock()'s __getitem__ is unkeyed - every
+    env[key] access returns the SAME shared child mock regardless of key, so
+    configuring env['a'].search.return_value then env['b'].x.return_value
+    silently clobbers the earlier config instead of raising."""
+    registry = {}
+    env = MagicMock()
+    env.__getitem__.side_effect = lambda key: registry.setdefault(key, MagicMock())
+    return env
+
+
+def _make_filterable(items):
+    """Wrap a list so it supports .filtered() like an Odoo recordset -
+    search.return_value needs to behave like a recordset, not a plain list,
+    since the service code calls checks.filtered(...) on the result."""
+    m = MagicMock()
+    m.__iter__ = lambda s: iter(items)
+    m.__bool__ = lambda s: bool(items)
+    m.__len__ = lambda s: len(items)
+    m.filtered = lambda fn: _make_filterable([x for x in items if fn(x)])
+    return m
+
+
 class TestRegisterCreditCheckResult(unittest.TestCase):
     """US2: register_result service method"""
 
@@ -56,7 +80,7 @@ class TestRegisterCreditCheckResult(unittest.TestCase):
         return check
 
     def _make_env(self, check, owner=True):
-        env = MagicMock()
+        env = _make_env()
         env['real.estate.proposal'].browse.return_value = check.proposal_id
         env['thedevkitchen.estate.credit.check'].browse.return_value = check
         env['real.estate.proposal'].search.return_value = []  # no competitors by default
@@ -220,7 +244,7 @@ class TestRegisterCreditCheckResult(unittest.TestCase):
 
     def test_manual_proposal_cancel_marks_check_cancelled(self):
         """GIVEN proposal in credit_check_pending WHEN action_cancel THEN check.result=cancelled."""
-        env = MagicMock()
+        env = _make_env()
 
         pending_check = MagicMock()
         pending_check.id = 42
@@ -391,7 +415,7 @@ class TestImmutabilityGuard(unittest.TestCase):
 
     def test_04_client_history_includes_check_from_rejected_proposal(self):
         """Credit history aggregates checks from both active and resolved proposals."""
-        env = MagicMock()
+        env = _make_env()
         svc = self._make_service(env)
 
         # Mock user as Owner (unrestricted)
@@ -437,11 +461,8 @@ class TestImmutabilityGuard(unittest.TestCase):
             make_check('rejected', 'rejected'),
             make_check('pending', 'credit_check_pending'),
         ]
-        checks_recordset = MagicMock()
-        checks_recordset.__iter__ = MagicMock(return_value=iter(checks))
-        checks_recordset.__len__ = MagicMock(return_value=3)
         env['thedevkitchen.estate.credit.check'].search_count.return_value = 3
-        env['thedevkitchen.estate.credit.check'].search.return_value = checks_recordset
+        env['thedevkitchen.estate.credit.check'].search.return_value = _make_filterable(checks)
 
         result = svc.get_client_credit_history(partner_id=5, company_id=1)
 
