@@ -49,8 +49,12 @@ SID=$(echo "$AUTH_DATA" | python3 -c "import sys,json; print(json.load(sys.stdin
 H=(-H "Authorization: Bearer $JWT" -H "X-Openerp-Session-Id: $SID" -H "Content-Type: application/json")
 
 _log "Step 2: Create tag"
+# name/company_id is unique; Step 4 archives (not deletes) the tag, so a
+# fixed name would collide with the previous run's archived tag. Suffix with
+# a timestamp to stay idempotent across repeated runs.
+TS=$(date +%s)
 CT=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/api/v1/service-tags" "${H[@]}" \
-    -d '{"name":"Integration Tag","color":"#3498db"}')
+    -d "{\"name\":\"Integration Tag ${TS}\",\"color\":\"#3498db\"}")
 CT_CODE=$(echo "$CT" | tail -1)
 _assert_code "Create tag" 201 "$CT_CODE"
 TAG_ID=$(echo "$CT" | sed '$d' | python3 -c "import sys,json; print(json.load(sys.stdin).get('id',''))" 2>/dev/null || echo "")
@@ -64,8 +68,10 @@ if [ -n "$TAG_ID" ]; then
 fi
 
 _log "Step 5: Create source"
+# code/company_id is unique and never deleted by this script - suffix with
+# the same timestamp to stay idempotent across repeated runs.
 CS=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/api/v1/service-sources" "${H[@]}" \
-    -d '{"name":"Integration Source","code":"int_test"}')
+    -d "{\"name\":\"Integration Source ${TS}\",\"code\":\"int_test_${TS}\"}")
 CS_CODE=$(echo "$CS" | tail -1)
 _assert_code "Create source" 201 "$CS_CODE"
 SRC_ID=$(echo "$CS" | sed '$d' | python3 -c "import sys,json; print(json.load(sys.stdin).get('id',''))" 2>/dev/null || echo "")
