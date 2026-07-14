@@ -130,6 +130,22 @@ else
     if [ "$CREATE_RESP2" = "201" ]; then
         COMPANY_A_GOAL_ID=$(jq -r '.id' /tmp/019_mt_create2.json)
         pass "Goal created in Company A → ID $COMPANY_A_GOAL_ID ✓"
+    elif [ "$CREATE_RESP2" = "409" ]; then
+        # Goal already exists from a previous run of this script (the
+        # (user, year, month, metric_type, operation_type) tuple is unique,
+        # and test data isn't cleaned up between runs) - look it up instead
+        # of treating this as a failure.
+        EXISTING=$(curl -s "$API_BASE/goals?user_id=${AGT_A_UID}&year=2026&month=6&metric_type=visitas&operation_type=all" \
+            -H "Authorization: Bearer $BEARER_TOKEN" \
+            -H "X-Openerp-Session-Id: $MGR_A_SID" \
+            -H "X-Company-Id: $MGR_A_CID")
+        COMPANY_A_GOAL_ID=$(echo "$EXISTING" | jq -r '.data[0].id // .results[0].id // empty' 2>/dev/null)
+        if [ -n "$COMPANY_A_GOAL_ID" ]; then
+            pass "Goal already existed in Company A (from a prior run) → ID $COMPANY_A_GOAL_ID ✓"
+        else
+            COMPANY_A_GOAL_ID=""
+            fail "Could not create Company A goal → 409, and lookup of existing goal failed"
+        fi
     else
         COMPANY_A_GOAL_ID=""
         fail "Could not create Company A goal → $CREATE_RESP2"

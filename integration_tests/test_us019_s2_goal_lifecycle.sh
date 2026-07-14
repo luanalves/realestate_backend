@@ -79,7 +79,20 @@ goals_call() {
 echo ""
 echo "Step 1: Create a new goal for lifecycle test..."
 
-# Use a unique month to avoid conflict with S1 test
+# This test's own lifecycle later archives the goal (active=False), but the
+# (user, year, month, metric_type, operation_type) sql unique constraint
+# doesn't exempt inactive rows and the list endpoint only shows active ones
+# - so a leftover archived goal from a previous run blocks a fresh create
+# with a 409 that's otherwise invisible via the API. Hard-delete any
+# previous attempt for this exact key first so the test is idempotent.
+if command -v docker &>/dev/null; then
+    docker compose -f "$SCRIPT_DIR/../18.0/docker-compose.yml" exec -T db \
+        psql -U odoo -d realestate -c "
+DELETE FROM thedevkitchen_estate_goal
+WHERE user_id = $MGR_UID AND year = 2026 AND month = 7
+  AND metric_type = 'visitas' AND operation_type = 'all';" > /dev/null 2>&1 || true
+fi
+
 CREATE_BODY=$(jq -n --argjson uid "$MGR_UID" \
     '{user_id: $uid, year: 2026, month: 7, metric_type: "visitas",
       operation_type: "all", target_count: 15}')

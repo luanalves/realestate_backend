@@ -126,6 +126,21 @@ RESP=$(curl -s -o /tmp/019_create_resp.json -w "%{http_code}" \
 if [ "$RESP" = "201" ]; then
     GOAL_ID=$(jq -r '.id' /tmp/019_create_resp.json)
     pass "Manager POST goal → 201 (goal_id=$GOAL_ID)"
+elif [ "$RESP" = "409" ]; then
+    # (user, year, month, metric_type, operation_type) already exists from a
+    # previous run of this script (not cleaned up between runs) - look it up
+    # instead of treating this as a failure.
+    EXISTING=$(curl -s "$API_BASE/goals?user_id=${AGT_UID}&year=2026&month=8&metric_type=captacao&operation_type=sale" \
+        -H "Authorization: Bearer $BEARER_TOKEN" \
+        -H "X-Openerp-Session-Id: $MGR_SID" \
+        -H "X-Company-Id: $MGR_CID")
+    GOAL_ID=$(echo "$EXISTING" | jq -r '.results[0].id // empty' 2>/dev/null)
+    if [ -n "$GOAL_ID" ]; then
+        pass "Goal already existed (from a prior run) → goal_id=$GOAL_ID"
+    else
+        fail "Manager POST goal → 409, and lookup of existing goal failed"
+        GOAL_ID=""
+    fi
 else
     fail "Manager POST goal → expected 201, got $RESP"
     cat /tmp/019_create_resp.json
