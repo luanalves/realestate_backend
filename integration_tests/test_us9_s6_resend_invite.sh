@@ -14,10 +14,11 @@
 # ADRs: ADR-003 (Testing Standards), ADR-008 (Anti-Enumeration)
 
 set -e
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Load environment variables
-if [ -f "../18.0/.env" ]; then
-    source ../18.0/.env
+if [ -f "${SCRIPT_DIR}/../18.0/.env" ]; then
+    source "${SCRIPT_DIR}/../18.0/.env"
 fi
 
 # Configuration
@@ -103,7 +104,7 @@ cleanup_test_data() {
     log_info "Cleaning up test data..."
     
     # SQL cleanup script
-    docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF
+    docker compose -f "$SCRIPT_DIR/../18.0/docker-compose.yml" exec -T db psql -U odoo -d realestate <<EOF
         -- Delete test tokens
         DELETE FROM thedevkitchen_password_token 
         WHERE user_id IN (
@@ -282,7 +283,7 @@ log_info "  Step 3: Verifying old token is invalidated..."
 
 # Note: We can't directly test the old token without having the raw token value,
 # but we can verify via database that previous tokens were invalidated
-OLD_TOKEN_COUNT=$(docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate -t -c \
+OLD_TOKEN_COUNT=$(docker compose -f "$SCRIPT_DIR/../18.0/docker-compose.yml" exec -T db psql -U odoo -d realestate -t -c \
     "SELECT COUNT(*) FROM thedevkitchen_password_token 
      WHERE user_id = $USER_ID 
      AND token_type = 'invite' 
@@ -333,7 +334,7 @@ ACTIVE_INVITE_RESPONSE=$(curl -s -X POST "$API_BASE/users/invite" \
 ACTIVE_USER_ID=$(echo "$ACTIVE_INVITE_RESPONSE" | jq -r '.data.id // empty')
 
 # Simulate user activation by setting signup_pending=False
-docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate -c \
+docker compose -f "$SCRIPT_DIR/../18.0/docker-compose.yml" exec -T db psql -U odoo -d realestate -c \
     "UPDATE res_users SET signup_pending = FALSE WHERE id = $ACTIVE_USER_ID;"
 
 log_info "  Created and activated user ID: $ACTIVE_USER_ID"

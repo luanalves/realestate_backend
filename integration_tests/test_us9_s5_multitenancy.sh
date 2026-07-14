@@ -17,10 +17,11 @@
 # ADRs: ADR-003 (Testing Standards), ADR-017 (Multi-tenancy)
 
 set -e
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Load environment variables
-if [ -f "../18.0/.env" ]; then
-    source ../18.0/.env
+if [ -f "${SCRIPT_DIR}/../18.0/.env" ]; then
+    source "${SCRIPT_DIR}/../18.0/.env"
 fi
 
 # Configuration
@@ -124,7 +125,7 @@ assert_sql_result() {
     local expected=$2
     local description=$3
     
-    local result=$(docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate -t -c "$query" | xargs)
+    local result=$(docker compose -f "$SCRIPT_DIR/../18.0/docker-compose.yml" exec -T db psql -U odoo -d realestate -t -c "$query" | xargs)
     
     if [ "$result" == "$expected" ]; then
         echo -e "  ${GREEN}✓${NC} SQL assertion passed: $description (got: $result)"
@@ -138,7 +139,7 @@ assert_sql_result() {
 cleanup_test_data() {
     log_info "Cleaning up test data..."
 
-    docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF
+    docker compose -f "$SCRIPT_DIR/../18.0/docker-compose.yml" exec -T db psql -U odoo -d realestate <<EOF
         DELETE FROM thedevkitchen_password_token
         WHERE user_id IN (
             SELECT id FROM res_users WHERE login LIKE 'mt_test_%@example.com'
@@ -182,11 +183,11 @@ OAUTH_RESPONSE=$(curl -s -X POST "$API_BASE/auth/token" \
 BEARER_TOKEN=$(echo "$OAUTH_RESPONSE" | jq -r '.access_token // empty')
 
 # Get Company A ID (first company in database)
-COMPANY_A_ID=$(docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate -t -c \
+COMPANY_A_ID=$(docker compose -f "$SCRIPT_DIR/../18.0/docker-compose.yml" exec -T db psql -U odoo -d realestate -t -c \
     "SELECT id FROM res_company ORDER BY id LIMIT 1 OFFSET 0;" | xargs)
 
 # Get Company B ID (second company in database)
-COMPANY_B_ID=$(docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate -t -c \
+COMPANY_B_ID=$(docker compose -f "$SCRIPT_DIR/../18.0/docker-compose.yml" exec -T db psql -U odoo -d realestate -t -c \
     "SELECT id FROM res_company ORDER BY id LIMIT 1 OFFSET 1;" | xargs)
 
 if [ -z "$COMPANY_A_ID" ] || [ -z "$COMPANY_B_ID" ]; then
@@ -194,7 +195,7 @@ if [ -z "$COMPANY_A_ID" ] || [ -z "$COMPANY_B_ID" ]; then
     log_info "Creating second company for testing..."
     
     # Create Company B if doesn't exist
-    docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF
+    docker compose -f "$SCRIPT_DIR/../18.0/docker-compose.yml" exec -T db psql -U odoo -d realestate <<EOF
         WITH new_partner AS (
             INSERT INTO res_partner (name, is_company, create_date, write_date)
             VALUES ('Test Company B', TRUE, NOW(), NOW())
@@ -205,7 +206,7 @@ if [ -z "$COMPANY_A_ID" ] || [ -z "$COMPANY_B_ID" ]; then
         RETURNING id;
 EOF
     
-    COMPANY_B_ID=$(docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate -t -c \
+    COMPANY_B_ID=$(docker compose -f "$SCRIPT_DIR/../18.0/docker-compose.yml" exec -T db psql -U odoo -d realestate -t -c \
         "SELECT id FROM res_company WHERE name = 'Test Company B';" | xargs)
 fi
 
@@ -223,7 +224,7 @@ log_info "Company B ID: $COMPANY_B_ID"
 log_info "Creating Owner A for Company A..."
 
 # Check if owner@example.com belongs to Company A
-OWNER_A_EXISTS=$(docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate -t -c \
+OWNER_A_EXISTS=$(docker compose -f "$SCRIPT_DIR/../18.0/docker-compose.yml" exec -T db psql -U odoo -d realestate -t -c \
     "SELECT COUNT(*) FROM res_users WHERE login = 'owner@example.com' AND company_id = $COMPANY_A_ID;" | xargs)
 
 if [ "$OWNER_A_EXISTS" == "0" ]; then
@@ -465,7 +466,7 @@ log_info "Generating invite token for User A..."
 RAW_TOKEN_A=$(python3 -c 'import uuid; print(uuid.uuid4().hex)')
 TOKEN_HASH_A=$(echo -n "$RAW_TOKEN_A" | shasum -a 256 | awk '{print $1}')
 
-docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF
+docker compose -f "$SCRIPT_DIR/../18.0/docker-compose.yml" exec -T db psql -U odoo -d realestate <<EOF
     UPDATE thedevkitchen_password_token
     SET token = '$TOKEN_HASH_A'
     WHERE user_id = $USER_A_ID

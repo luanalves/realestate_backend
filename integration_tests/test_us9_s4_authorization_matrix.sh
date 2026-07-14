@@ -2,9 +2,10 @@
 # Feature 009 - User Story 4 (US4): Authorization Matrix E2E Test
 
 set -e
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-if [ -f "../18.0/.env" ]; then
-    source ../18.0/.env
+if [ -f "${SCRIPT_DIR}/../18.0/.env" ]; then
+    source "${SCRIPT_DIR}/../18.0/.env"
 fi
 
 BASE_URL="${BASE_URL:-http://localhost:8069}"
@@ -96,7 +97,7 @@ next_email() {
 
 cleanup_test_data() {
     log_info "Cleaning up test data..."
-    docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF
+    docker compose -f "$SCRIPT_DIR/../18.0/docker-compose.yml" exec -T db psql -U odoo -d realestate <<EOF
         DELETE FROM thedevkitchen_password_token
         WHERE user_id IN (
             SELECT id FROM res_users
@@ -248,7 +249,7 @@ set_password_for_invited_user() {
     local token_hash
     token_hash=$(printf "%s" "$raw_token" | shasum -a 256 | awk '{print $1}')
 
-    docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF
+    docker compose -f "$SCRIPT_DIR/../18.0/docker-compose.yml" exec -T db psql -U odoo -d realestate <<EOF
         WITH latest AS (
             SELECT id
             FROM thedevkitchen_password_token

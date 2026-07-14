@@ -19,10 +19,11 @@
 # ADRs: ADR-003 (Testing Standards), ADR-011 (Security)
 
 set -e
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Load environment variables
-if [ -f "../18.0/.env" ]; then
-    source ../18.0/.env
+if [ -f "${SCRIPT_DIR}/../18.0/.env" ]; then
+    source "${SCRIPT_DIR}/../18.0/.env"
 fi
 
 # Configuration
@@ -95,7 +96,7 @@ assert_sql_result() {
     local expected=$2
     local description=$3
     
-    local result=$(docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate -t -c "$query" | xargs)
+    local result=$(docker compose -f "$SCRIPT_DIR/../18.0/docker-compose.yml" exec -T db psql -U odoo -d realestate -t -c "$query" | xargs)
     
     if [ "$result" == "$expected" ]; then
         echo -e "  ${GREEN}✓${NC} SQL assertion passed: $description (got: $result)"
@@ -110,7 +111,7 @@ cleanup_test_data() {
     log_info "Cleaning up test data..."
     
     # SQL cleanup script
-    docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF
+    docker compose -f "$SCRIPT_DIR/../18.0/docker-compose.yml" exec -T db psql -U odoo -d realestate <<EOF
         -- Delete test sessions
         DELETE FROM thedevkitchen_api_session
         WHERE user_id IN (
@@ -225,7 +226,7 @@ log_info "Test user created with ID: $TEST_USER_ID"
 RAW_INVITE_TOKEN=$(python3 -c 'import uuid; print(uuid.uuid4().hex)')
 INVITE_TOKEN_HASH=$(echo -n "$RAW_INVITE_TOKEN" | shasum -a 256 | awk '{print $1}')
 
-docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF
+docker compose -f "$SCRIPT_DIR/../18.0/docker-compose.yml" exec -T db psql -U odoo -d realestate <<EOF
     UPDATE thedevkitchen_password_token
     SET token = '$INVITE_TOKEN_HASH',
         status = 'pending',
@@ -335,7 +336,7 @@ log_info "Simulating reset password with mismatched passwords..."
 RAW_RESET_TOKEN=$(python3 -c 'import uuid; print(uuid.uuid4().hex)')
 RESET_TOKEN_HASH=$(echo -n "$RAW_RESET_TOKEN" | shasum -a 256 | awk '{print $1}')
 
-docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF
+docker compose -f "$SCRIPT_DIR/../18.0/docker-compose.yml" exec -T db psql -U odoo -d realestate <<EOF
     UPDATE thedevkitchen_password_token
     SET token = '$RESET_TOKEN_HASH',
         expires_at = NOW() + INTERVAL '24 hours'
@@ -483,7 +484,7 @@ curl -s -X POST "$API_BASE/auth/forgot-password" \
 EXPIRED_RAW_TOKEN=$(python3 -c 'import uuid; print(uuid.uuid4().hex)')
 EXPIRED_TOKEN_HASH=$(echo -n "$EXPIRED_RAW_TOKEN" | shasum -a 256 | awk '{print $1}')
 
-docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF
+docker compose -f "$SCRIPT_DIR/../18.0/docker-compose.yml" exec -T db psql -U odoo -d realestate <<EOF
     UPDATE thedevkitchen_password_token
     SET token = '$EXPIRED_TOKEN_HASH',
         expires_at = NOW() - INTERVAL '1 day'

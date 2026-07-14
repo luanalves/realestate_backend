@@ -11,7 +11,14 @@
 
 get_oauth2_token() {
     BASE_URL="${BASE_URL:-http://localhost:8069}"
-    
+
+    # Callers that don't source 18.0/.env themselves would otherwise fall
+    # through to the stale hardcoded secret below and get invalid_client.
+    if [ -z "${OAUTH_CLIENT_SECRET:-}" ]; then
+        _lib_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+        [ -f "${_lib_dir}/../../18.0/.env" ] && source "${_lib_dir}/../../18.0/.env" || true
+    fi
+
     # OAuth2 credentials (from seed data - see 18.0/extra-addons/quicksol_estate/data/oauth2_seed.xml)
     CLIENT_ID="${OAUTH_CLIENT_ID:-test-client-id}"
     CLIENT_SECRET="${OAUTH_CLIENT_SECRET:-test-client-secret-12345}"

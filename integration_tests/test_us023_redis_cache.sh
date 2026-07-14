@@ -91,20 +91,27 @@ bootstrap_owner_auth() {
 _redis_cmd() {
     # Helper: run redis-cli with optional auth against DB 1
     if [ -n "${REDIS_PASSWORD:-}" ]; then
-        docker compose -f 18.0/docker-compose.yml exec -T redis \
+        docker compose -f "$SCRIPT_DIR/../18.0/docker-compose.yml" exec -T redis \
             redis-cli -n 1 -a "$REDIS_PASSWORD" --no-auth-warning "$@" 2>/dev/null
     else
-        docker compose -f 18.0/docker-compose.yml exec -T redis \
+        docker compose -f "$SCRIPT_DIR/../18.0/docker-compose.yml" exec -T redis \
             redis-cli -n 1 "$@" 2>/dev/null
     fi
 }
 
 flush_cache() {
-    # Delete only this feature's key prefixes — never FLUSHDB (would wipe Odoo sessions)
+    # Delete only this feature's key prefixes — never FLUSHDB (would wipe Odoo sessions).
+    # Keys are collected into a variable (not piped straight into `while read`)
+    # because `docker compose exec -T` inside that loop would otherwise inherit
+    # and consume the loop's own stdin, hanging after the first iteration.
     for prefix in 'session:*' 'jwt:*' 'performance:*'; do
-        _redis_cmd KEYS "$prefix" 2>/dev/null | grep -v '^$' | while IFS= read -r key; do
-            [ -n "$key" ] && _redis_cmd DEL "$key" > /dev/null
-        done
+        local keys
+        keys=$(_redis_cmd KEYS "$prefix" 2>/dev/null | grep -v '^$' || true)
+        if [ -n "$keys" ]; then
+            while IFS= read -r key; do
+                [ -n "$key" ] && _redis_cmd DEL "$key" < /dev/null > /dev/null
+            done <<< "$keys"
+        fi
     done
     echo "flushed"
 }

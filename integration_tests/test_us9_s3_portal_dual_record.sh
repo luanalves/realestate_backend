@@ -18,10 +18,11 @@
 # ADRs: ADR-003 (Testing Standards), ADR-011 (Security), ADR-017 (Multi-tenancy), ADR-024 (Profile Unification)
 
 set -e
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Load environment variables
-if [ -f "../18.0/.env" ]; then
-    source ../18.0/.env
+if [ -f "${SCRIPT_DIR}/../18.0/.env" ]; then
+    source "${SCRIPT_DIR}/../18.0/.env"
 fi
 
 # Configuration
@@ -125,7 +126,7 @@ assert_sql_result() {
     local expected=$2
     local description=$3
     
-    local result=$(docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate -t -c "$query" | xargs)
+    local result=$(docker compose -f "$SCRIPT_DIR/../18.0/docker-compose.yml" exec -T db psql -U odoo -d realestate -t -c "$query" | xargs)
     
     if [ "$result" == "$expected" ]; then
         echo -e "  ${GREEN}✓${NC} SQL assertion passed: $description (got: $result)"
@@ -139,7 +140,7 @@ assert_sql_result() {
 cleanup_test_data() {
     log_info "Cleaning up test data..."
 
-    docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF
+    docker compose -f "$SCRIPT_DIR/../18.0/docker-compose.yml" exec -T db psql -U odoo -d realestate <<EOF
         DELETE FROM thedevkitchen_password_token
         WHERE user_id IN (
             SELECT id FROM res_users WHERE login LIKE 'portal_test_%@example.com'
@@ -349,7 +350,7 @@ assert_sql_result \
 test_scenario "Verify portal user has portal group assigned"
 
 # Invite controller assigns base.group_portal (Odoo standard portal)
-PORTAL_GROUP_ID=$(docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate -t -c \
+PORTAL_GROUP_ID=$(docker compose -f "$SCRIPT_DIR/../18.0/docker-compose.yml" exec -T db psql -U odoo -d realestate -t -c \
     "SELECT res_id FROM ir_model_data WHERE model = 'res.groups' AND module = 'base' AND name = 'group_portal';" | xargs)
 
 log_info "Portal group ID: $PORTAL_GROUP_ID"
@@ -390,7 +391,7 @@ log_info "Simulating set-password flow for portal user..."
 RAW_PORTAL_TOKEN=$(python3 -c 'import uuid; print(uuid.uuid4().hex)')
 PORTAL_TOKEN_HASH=$(echo -n "$RAW_PORTAL_TOKEN" | shasum -a 256 | awk '{print $1}')
 
-docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF
+docker compose -f "$SCRIPT_DIR/../18.0/docker-compose.yml" exec -T db psql -U odoo -d realestate <<EOF
     UPDATE thedevkitchen_password_token
     SET token = '$PORTAL_TOKEN_HASH'
     WHERE user_id = $PORTAL_USER_ID

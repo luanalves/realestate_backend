@@ -231,7 +231,7 @@ MANAGER_RAW_TOKEN=$(python3 -c "import uuid; print(uuid.uuid4().hex)")
 MANAGER_TOKEN_HASH=$(printf "%s" "$MANAGER_RAW_TOKEN" | shasum -a 256 | awk '{print $1}')
 
 # Update token in database
-docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF > /dev/null 2>&1
+docker compose -f "$SCRIPT_DIR/../18.0/docker-compose.yml" exec -T db psql -U odoo -d realestate <<EOF > /dev/null 2>&1
     UPDATE thedevkitchen_password_token
     SET token = '$MANAGER_TOKEN_HASH'
     WHERE user_id = $MANAGER_USER_ID
@@ -380,7 +380,7 @@ echo -e "${GREEN}✓ Agent invited (user_id=$AGENT_USER_ID)${NC}"
 AGENT_RAW_TOKEN=$(python3 -c "import uuid; print(uuid.uuid4().hex)")
 AGENT_TOKEN_HASH=$(printf "%s" "$AGENT_RAW_TOKEN" | shasum -a 256 | awk '{print $1}')
 
-docker compose -f ../18.0/docker-compose.yml exec -T db psql -U odoo -d realestate <<EOF > /dev/null 2>&1
+docker compose -f "$SCRIPT_DIR/../18.0/docker-compose.yml" exec -T db psql -U odoo -d realestate <<EOF > /dev/null 2>&1
     UPDATE thedevkitchen_password_token
     SET token = '$AGENT_TOKEN_HASH'
     WHERE user_id = $AGENT_USER_ID
