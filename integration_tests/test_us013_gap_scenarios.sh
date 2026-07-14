@@ -56,7 +56,10 @@ if [ -z "$OWNER_SESSION" ]; then
 fi
 echo -e "${GREEN}✓ Owner autenticado (company=$OWNER_COMPANY)${NC}"
 
-PROPERTY_ID="${PROPOSAL_TEST_PROPERTY_ID:-117}"
+# Property 117 belongs to company 88, not company 5 (owner@seed.com.br's
+# company) - proposal creation against it fails company isolation checks.
+# Property 4 (Apartamento Seed) is in company 5.
+PROPERTY_ID="${PROPOSAL_TEST_PROPERTY_ID:-4}"
 AGENT_ID="${TEST_AGENT_ID:-8}"
 
 PROPOSAL_BODY() {
@@ -211,6 +214,12 @@ fi
 echo ""
 echo "--- US4-S2 (FR-014): accept cancels all competitors ---"
 cleanup_proposals
+
+# Property 4 always has an active seed proposal, so a new proposal there
+# starts as "queued" (useful for US2-S2 above, wrong here). This scenario
+# needs P1 to start as "draft" so send->accept works; property 6 only has a
+# rejected (terminal) seed proposal, so it has no active competitor.
+PROPERTY_ID="${PROPOSAL_TEST_PROPERTY_ID_FRESH:-6}"
 
 # Create winner (P1) and 2 competitors (P2, P3)
 P1=$(curl -s -X POST "$API_BASE/proposals" "${OWNER_AUTH[@]}" \

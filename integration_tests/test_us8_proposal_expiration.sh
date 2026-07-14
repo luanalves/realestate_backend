@@ -26,12 +26,30 @@ SESSION_ID=$(echo "$SESSION_RESPONSE" | jq -r '.session_id // empty')
 COMPANY_ID=$(echo "$SESSION_RESPONSE" | jq -r '.user.default_company_id // empty')
 AUTH_HEADERS=(-H "Authorization: Bearer $BEARER_TOKEN" -H "X-Openerp-Session-Id: $SESSION_ID" -H "Content-Type: application/json" -H "X-Company-ID: ${COMPANY_ID:-2}")
 
-PROPERTY_ID="${PROPOSAL_TEST_PROPERTY_ID:-$(curl -s "${AUTH_HEADERS[@]}" "$API_BASE/properties?limit=1&company_ids=${COMPANY_ID:-2}" \
-  | jq -r '.data[0].id // .results[0].id // 1')}"
+# The future-valid_until scenario needs a property with no pre-existing
+# active proposal (otherwise the new one queues instead of becoming
+# draft/sent). Reusing a shared property is unreliable once earlier proposal
+# scripts in the same suite run have left one active on it. Create a
+# brand-new property instead of deleting anything.
+TS=$(date +%s)
+PROPERTY_ID=$(curl -s -X POST "$API_BASE/properties" "${AUTH_HEADERS[@]}" \
+  -d "{\"name\":\"Expiration Test Property ${TS}\",\"zip_code\":\"01000-000\",\"city\":\"Sao Paulo\",\"street\":\"Rua Teste\",\"street_number\":\"1\",\"area\":50,\"price\":100000,\"property_type_id\":1,\"location_type_id\":1,\"state_id\":1}" \
+  | jq -r '.id // empty')
+if [ -z "$PROPERTY_ID" ]; then
+  echo "ERROR: could not create a fresh property for this test"
+  exit 1
+fi
+curl -s -X POST "$API_BASE/assignments" "${AUTH_HEADERS[@]}" \
+  -d "{\"agent_id\": ${TEST_AGENT_ID:-8}, \"property_id\": $PROPERTY_ID, \"responsibility_type\": \"primary\"}" \
+  > /dev/null
 
-# Cross-platform yesterday
+# Cross-platform yesterday. TOMORROW uses +2 days (not +1) because the host
+# running this script and the odoo container can be in different timezones
+# (e.g. host UTC-3 vs container UTC) - a same-day-in-UTC "tomorrow" computed
+# on the host can already be "today" from the container's point of view,
+# which the API validates strictly ("must be after today").
 YESTERDAY=$(date -v-1d +%Y-%m-%d 2>/dev/null || date -d yesterday +%Y-%m-%d)
-TOMORROW=$(date -v+1d  +%Y-%m-%d 2>/dev/null || date -d tomorrow  +%Y-%m-%d)
+TOMORROW=$(date -v+2d  +%Y-%m-%d 2>/dev/null || date -d '+2 days'  +%Y-%m-%d)
 
 echo "--- Scenario: past valid_until rejected ($YESTERDAY) ---"
 P1_RESP=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/proposals" "${AUTH_HEADERS[@]}" \

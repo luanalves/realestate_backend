@@ -26,8 +26,28 @@ SESSION_ID=$(echo "$SESSION_RESPONSE" | jq -r '.session_id // empty')
 COMPANY_ID=$(echo "$SESSION_RESPONSE" | jq -r '.user.default_company_id // empty')
 AUTH_HEADERS=(-H "Authorization: Bearer $BEARER_TOKEN" -H "X-Openerp-Session-Id: $SESSION_ID" -H "Content-Type: application/json" -H "X-Company-ID: ${COMPANY_ID:-2}")
 
-PROPERTY_ID="${PROPOSAL_TEST_PROPERTY_ID:-$(curl -s "${AUTH_HEADERS[@]}" "$API_BASE/properties?limit=1&company_ids=${COMPANY_ID:-2}" \
-  | jq -r '.data[0].id // .results[0].id // 1')}"
+# This test asserts the first concurrent create wins "draft" and the rest
+# queue behind it, which only holds if the property has zero prior proposal
+# history. Reusing a shared property (e.g. via PROPOSAL_TEST_PROPERTY_ID) is
+# unreliable once other proposal test scripts have run earlier in the same
+# suite invocation and left it with an active proposal. Instead of deleting
+# that history, just create a brand-new property for this run (adds data,
+# deletes nothing).
+TS=$(date +%s)
+PROPERTY_ID=$(curl -s -X POST "$API_BASE/properties" "${AUTH_HEADERS[@]}" \
+  -d "{\"name\":\"Concurrent Test Property ${TS}\",\"zip_code\":\"01000-000\",\"city\":\"Sao Paulo\",\"street\":\"Rua Teste\",\"street_number\":\"1\",\"area\":50,\"price\":100000,\"property_type_id\":1,\"location_type_id\":1,\"state_id\":1}" \
+  | jq -r '.id // empty')
+if [ -z "$PROPERTY_ID" ]; then
+  echo "ERROR: could not create a fresh property for this test"
+  exit 1
+fi
+
+# Proposal creation requires the agent to already be assigned to the
+# property (unlike the shared seed properties, a brand-new one has no
+# assignment yet).
+curl -s -X POST "$API_BASE/assignments" "${AUTH_HEADERS[@]}" \
+  -d "{\"agent_id\": ${TEST_AGENT_ID:-8}, \"property_id\": $PROPERTY_ID, \"responsibility_type\": \"primary\"}" \
+  > /dev/null
 
 TMPDIR=$(mktemp -d)
 PIDS=()
