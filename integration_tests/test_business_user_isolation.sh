@@ -37,6 +37,8 @@ FAIL=0
 APP_JWT=""
 SESSION_A=""
 SESSION_B=""
+COMPANY_A_ID=""
+COMPANY_B_ID=""
 
 # --- helpers ------------------------------------------------------------------
 
@@ -82,14 +84,17 @@ get_app_jwt() {
 
 login_user() {
     local email="$1" pass="$2"
-    local sid
-    sid=$(curl -s -X POST "${BASE_URL}/api/v1/users/login" \
+    local response
+    response=$(curl -s -X POST "${BASE_URL}/api/v1/users/login" \
         -H "Content-Type: application/json" \
         -H "Authorization: Bearer ${APP_JWT}" \
         -d "{\"email\":\"${email}\",\"password\":\"${pass}\"}" \
-        2>/dev/null \
-        | python3 -c "import sys,json; print(json.load(sys.stdin).get('session_id',''))" 2>/dev/null || echo "")
-    echo "$sid"
+        2>/dev/null)
+    echo "$response" | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+print(d.get('session_id',''), d.get('user',{}).get('company_id',''))
+" 2>/dev/null || echo " "
 }
 
 # --- testes ------------------------------------------------------------------
@@ -99,7 +104,7 @@ test_empresa_a_acessa_proprio_dados() {
     yellow "=== Teste 1: Owner da Empresa A acessa suas propriedades ==="
 
     HTTP_STATUS=$(curl -s -o /tmp/f022_iso_a.json -w "%{http_code}" \
-        -X GET "${BASE_URL}/api/v1/properties" \
+        -X GET "${BASE_URL}/api/v1/properties?company_ids=${COMPANY_A_ID}" \
         -H "Authorization: Bearer ${APP_JWT}" \
         -H "X-Openerp-Session-Id: ${SESSION_A}" 2>/dev/null)
     BODY=$(cat /tmp/f022_iso_a.json 2>/dev/null || echo "")
@@ -122,7 +127,7 @@ test_empresa_b_nao_ve_dados_empresa_a() {
         | python3 -c "import sys,json; d=json.load(sys.stdin); print(','.join(str(x.get('id','')) for x in d.get('properties',d) if isinstance(d,list) or True))" 2>/dev/null || echo "")
 
     HTTP_B=$(curl -s -o /tmp/f022_iso_b.json -w "%{http_code}" \
-        -X GET "${BASE_URL}/api/v1/properties" \
+        -X GET "${BASE_URL}/api/v1/properties?company_ids=${COMPANY_B_ID}" \
         -H "Authorization: Bearer ${APP_JWT}" \
         -H "X-Openerp-Session-Id: ${SESSION_B}" 2>/dev/null)
     BODY_B=$(cat /tmp/f022_iso_b.json 2>/dev/null || echo "")
@@ -189,7 +194,7 @@ echo ""
 yellow "=== Step 0: Autenticação ==="
 get_app_jwt
 
-SESSION_A=$(login_user "$COMPANY_A_EMAIL" "$COMPANY_A_PASSWORD")
+read -r SESSION_A COMPANY_A_ID <<< "$(login_user "$COMPANY_A_EMAIL" "$COMPANY_A_PASSWORD")"
 if [[ -z "$SESSION_A" ]]; then
     red "  ✗ Login da Empresa A falhou. Verifique TEST_USER_OWNER no .env."
     exit 1
@@ -197,7 +202,7 @@ fi
 green "  ✓ Owner da Empresa A autenticado"
 
 if [[ -n "$COMPANY_B_EMAIL" && -n "$COMPANY_B_PASSWORD" ]]; then
-    SESSION_B=$(login_user "$COMPANY_B_EMAIL" "$COMPANY_B_PASSWORD")
+    read -r SESSION_B COMPANY_B_ID <<< "$(login_user "$COMPANY_B_EMAIL" "$COMPANY_B_PASSWORD")"
     if [[ -n "$SESSION_B" ]]; then
         green "  ✓ Owner da Empresa B autenticado"
     else
