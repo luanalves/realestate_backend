@@ -966,7 +966,7 @@ Based on this specification, the following patterns may need to be added to the 
 ### Next Steps (choose one or more):
 
 1. **Update Constitution** ⭐ (if new patterns) — see "Related Workflows" below
-2. **Create implementation plan** — use the `superpowers:writing-plans` skill to turn this spec into a step-by-step implementation plan (`plan-idea.md`)
+2. **Create implementation plan** — use the `superpowers:writing-plans` skill to turn this spec into a step-by-step implementation plan (`plan-idea.md`). The plan **must** include an explicit verification-before-completion step per task, using this project's real test commands — see "Verification Step (Non-Negotiable)" below.
 3. **Define test strategy** — use the `superpowers:test-driven-development` skill when implementation starts
 
 ### Post-Development Tasks (to be executed AFTER implementation is complete and validated):
@@ -1003,6 +1003,10 @@ The original Copilot-agent version of this workflow (`.github/agents/thedevkitch
   - `superpowers:brainstorming` only if, after reading the spec, there's still a genuinely open *design/approach* question (e.g. multiple viable architectures for one requirement) — not to re-derive requirements already captured here.
   - `superpowers:writing-plans` to turn the approved spec into a step-by-step implementation plan (`plan-idea.md`).
 - **Test strategy & execution** → use `superpowers:test-driven-development` when implementation starts.
+- **Verification Step (Non-Negotiable)** → any plan produced from this spec via `superpowers:writing-plans` must include an explicit verification-before-completion step (`superpowers:verification-before-completion`) before the feature can be marked done. Don't restate this generically — wire in this project's real commands:
+  - Unit/integration tests (ADR-003 flow): `bash scripts/validate_coverage.sh` — routes each touched module through its correct runner (plain `unittest`, or Odoo's native `--test-enable` for `TransactionCase`-based tests). Never `pytest` directly (see the script's header comment for why).
+  - E2E API tests: run the specific `integration_tests/test_<feature>*.sh` script(s) covering the touched endpoints, not the full suite blindly — Odoo's per-IP login-cooldown (`base.login_cooldown_after`) will lock out a large sequential batch. If several scripts must run back-to-back, expect to restart the `odoo` container between batches.
+  - Never delete or clean up test data as part of verification — this project treats accumulated fixture data as an asset for future queries, not noise to tidy up.
 - **Update Constitution** → `thedevkitchen-speckit-project-constitution` subagent (`.claude/agents/thedevkitchen-speckit-project-constitution.md`)
 - **Module/infra deep documentation** → `thedevkitchen-speckit-project-knowledge-base` subagent (`.claude/agents/thedevkitchen-speckit-project-knowledge-base.md`)
 - **Swagger / Postman / dev best practices** → `swagger-updater`, `postman-collection-manager`, and `development-best-practices` skills (`.claude/skills/`).
