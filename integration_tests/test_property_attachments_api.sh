@@ -129,16 +129,31 @@ _psql() {
     fi
 }
 
+# ir.config_parameter._get_param() is @ormcache('key'), scoped to the
+# running web server's own process/registry. Neither a raw SQL UPDATE nor an
+# `odoo shell` set_param() (a separate process) invalidates that already-
+# running process's cache - the web server keeps serving the old value until
+# it restarts. Set via the ORM (correct, not a raw SQL write) then restart
+# the odoo service so the new value is actually picked up.
+_odoo_shell_set_param() {
+    local key="$1" value="$2"
+    if command -v docker &>/dev/null && docker compose -f "${SCRIPT_DIR}/../18.0/docker-compose.yml" ps odoo --quiet 2>/dev/null | grep -q .; then
+        echo "env['ir.config_parameter'].sudo().set_param('${key}', '${value}'); env.cr.commit()" | \
+            docker compose -f "${SCRIPT_DIR}/../18.0/docker-compose.yml" exec -T odoo \
+                odoo shell -d "${DB_NAME}" --no-http >/dev/null 2>&1
+        docker compose -f "${SCRIPT_DIR}/../18.0/docker-compose.yml" restart odoo >/dev/null 2>&1
+        until curl -s -o /dev/null -w "%{http_code}" "${BASE_URL}/web/login" 2>/dev/null | grep -q 200; do sleep 1; done
+    fi
+}
+
 _set_max_upload_size() {
     local size="$1"
-    _psql "INSERT INTO ir_config_parameter (key, value, create_uid, write_uid, create_date, write_date)
-           VALUES ('web.max_file_upload_size', '${size}', 1, 1, NOW(), NOW())
-           ON CONFLICT (key) DO UPDATE SET value = '${size}', write_date = NOW();" > /dev/null
+    _odoo_shell_set_param "web.max_file_upload_size" "${size}"
     _info "Set web.max_file_upload_size = ${size}"
 }
 
 _reset_max_upload_size() {
-    _psql "UPDATE ir_config_parameter SET value = '134217728' WHERE key = 'web.max_file_upload_size';" > /dev/null
+    _odoo_shell_set_param "web.max_file_upload_size" "134217728"
     _info "Reset web.max_file_upload_size to 134217728 (128 MB)"
 }
 
@@ -285,14 +300,16 @@ if [ "${DOC_UPLOAD_CODE}" -eq 201 ]; then
     _info "Uploaded document attachment id: ${DOC_ATTACHMENT_ID}"
 fi
 
-# US2/T02: Wrong attachment_type for MIME (PDF as image) → 400
-_log "US2/T02: PDF submitted as attachment_type=image → 400"
+# US2/T02: Wrong attachment_type for MIME (PDF as image) → 415
+# (property_attachments_controller.py returns 415 unsupported_mime/mime_mismatch
+# for this case, per R002 - not 400)
+_log "US2/T02: PDF submitted as attachment_type=image → 415"
 MISMATCH_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
     -X POST "${API_BASE}/properties/${PROPERTY_ID}/attachments" \
     "${AUTH_OWNER[@]}" \
     -F "file=@${FIXTURES_DIR}/seed_document.pdf;type=application/pdf" \
     -F "attachment_type=image")
-_assert_code "US2/T02 MIME/type mismatch → 400" 400 "${MISMATCH_CODE}"
+_assert_code "US2/T02 MIME/type mismatch → 415" 415 "${MISMATCH_CODE}"
 
 # ---------------------------------------------------------------------------
 # US3 — Download
